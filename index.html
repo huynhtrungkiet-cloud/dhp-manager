@@ -1615,6 +1615,20 @@ function renderData(){
       <p class="small muted" style="margin-bottom:0">Đồng bộ các bảng: đơn hàng · nhân sự · phân công lịch · lô outsource · ghi nhận NCR. Đẩy lên = ghi đè bản ghi cùng id trên Sheet. Tải về = thay thế dữ liệu local bằng dữ liệu Sheet.</p>
     </div>
 
+    ${ (DATA.meta&&DATA.meta.hideHgc) ? `
+    <p class="small muted" style="margin:14px 0"><a onclick="DATA.meta.hideHgc=false;save()" style="cursor:pointer;color:var(--brand);font-weight:700">＋ Hiện lại mục “Cập nhật từ HANG-GIA-CONG”</a></p>
+    ` : `
+    <h2 class="sec"><span class="bar"></span>Nguồn HANG-GIA-CONG-2026 (nhập một chiều)</h2>
+    <div class="card" style="border-left:4px solid #16A34A">
+      <p class="small muted" style="margin-top:0">Đọc bảng theo dõi tiến độ <b>HANG-GIA-CONG-2026</b> trên Google Sheets và thêm các đơn mới vào database (mã đơn = <b>CK368-&lt;STT&gt;</b>). Chỉ đọc, không ghi đè sheet gốc. Đơn đã có sẽ bỏ qua.</p>
+      <div class="toolbar">
+        <button onclick="syncImportHGC()" style="background:#16A34A;border-color:#16A34A">🔄 Cập nhật từ HANG-GIA-CONG</button>
+        <a onclick="if(confirm('Ẩn mục này? Có thể hiện lại bất cứ lúc nào.')){DATA.meta.hideHgc=true;save();}" style="cursor:pointer;color:var(--muted);font-size:12px;font-weight:700;margin-left:auto">✕ Ẩn mục này</a>
+      </div>
+      <p class="small muted" style="margin-bottom:0">⚠️ Cần đã <b>Lưu URL</b> ở trên. Lần đầu chạy có thể mất 10–30 giây. Nếu báo lỗi quyền, vào Apps Script chạy thử hàm <code>doImportHGC</code> một lần để cấp quyền truy cập sheet đó.</p>
+    </div>
+    `}
+
     <h2 class="sec"><span class="bar"></span>Tải dữ liệu mẫu</h2>
     <div class="card" style="border-left:4px solid var(--brand)">
       <p style="margin:0 0 10px;font-weight:700">📦 28 đơn hàng tháng 6/2026 (CK368) — đã sẵn sàng tải vào hệ thống</p>
@@ -1709,10 +1723,15 @@ async function syncPush(){
 
 // Tải toàn bộ dữ liệu TỪ Google Sheets về (thay thế local)
 async function syncPull(){
-  const url = getSheetUrl();
-  if(!url){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
+  if(!getSheetUrl()){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
   if(!confirm('Tải dữ liệu TỪ Google Sheets về?\nDữ liệu local hiện tại sẽ bị THAY THẾ (hãy xuất JSON sao lưu nếu cần).')) return;
   setSyncStatus('Đang tải dữ liệu từ Google Sheets...');
+  await pullFromSheets();
+  setSyncStatus('✓ Đã tải về từ Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
+}
+// Lõi tải dữ liệu (không hỏi xác nhận) — dùng lại cho cả "Tải về" và "Cập nhật từ HGC"
+async function pullFromSheets(){
+  const url = getSheetUrl();
   try{
     const res = await fetch(url + '?action=readAll');
     const out = await res.json();
@@ -1741,6 +1760,23 @@ async function syncPull(){
     renderAll();
   }catch(err){
     setSyncStatus('Lỗi khi tải về: ' + err.message, true);
+  }
+}
+// Cập nhật đơn mới từ HANG-GIA-CONG-2026 (một chiều, an toàn) rồi tải về app
+async function syncImportHGC(){
+  const url = getSheetUrl();
+  if(!url){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
+  if(!confirm('Cập nhật đơn hàng mới từ HANG-GIA-CONG-2026?\n\n• Chỉ ĐỌC sheet đó, không ghi đè.\n• Đơn đã có sẽ bỏ qua (không nhân đôi).\n• Mã đơn lấy theo STT: CK368-<STT>.')) return;
+  setSyncStatus('Đang đọc HANG-GIA-CONG-2026... (có thể mất 10–30 giây, vui lòng đợi)');
+  try{
+    const res = await fetch(url + '?action=importHGC');
+    const out = await res.json();
+    if(out.error) throw new Error(out.error);
+    setSyncStatus(`Đã quét ${out.scanned} dòng, thêm ${out.added} đơn mới. Đang tải về app...`);
+    await pullFromSheets();
+    setSyncStatus(`✓ Hoàn tất: thêm ${out.added} đơn mới từ HANG-GIA-CONG (quét ${out.scanned} dòng).`);
+  }catch(err){
+    setSyncStatus('Lỗi khi cập nhật từ HGC: ' + err.message, true);
   }
 }
 function rebuildPartners(){

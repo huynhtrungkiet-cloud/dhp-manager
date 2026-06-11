@@ -1,7 +1,7 @@
 /* DHP Manager — Service Worker
    Cho phép mở app offline + cài ra màn hình chính điện thoại.
    Chiến lược: cache app shell, ưu tiên mạng cho dữ liệu Google Sheets. */
-const CACHE = 'dhp-manager-v1';
+const CACHE = 'dhp-manager-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e=>{
@@ -19,14 +19,15 @@ self.addEventListener('fetch', e=>{
   if(url.includes('script.google.com') || url.includes('script.googleusercontent.com')){
     return; // để trình duyệt gọi mạng trực tiếp
   }
-  // App shell: cache-first, fallback mạng
+  // ƯU TIÊN MẠNG: luôn lấy bản mới nhất khi có internet, chỉ dùng cache khi offline.
+  // Nhờ vậy mỗi lần upload index.html mới là thấy ngay, không bị kẹt bản cũ.
   e.respondWith(
-    caches.match(e.request).then(cached=> cached || fetch(e.request).then(res=>{
+    fetch(e.request).then(res=>{
       if(e.request.method==='GET' && res.ok){
         const copy = res.clone();
         caches.open(CACHE).then(c=>c.put(e.request, copy));
       }
       return res;
-    }).catch(()=>cached))
+    }).catch(()=> caches.match(e.request))
   );
 });

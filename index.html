@@ -174,6 +174,8 @@ function gateCheck(){
   <div class="tab" data-tab="data" onclick="goTab('data')">⚙ Dữ liệu &amp; Đồng bộ</div>
 </div>
 
+<div id="alertBar" style="display:none"></div>
+
 <main>
   <!-- ============ GRID / TIMESHEET (primary view) ============ -->
   <div class="view active" id="view-grid"></div>
@@ -302,6 +304,19 @@ function gateCheck(){
       <div class="field"><label>Khách hàng / Công ty</label><input id="ord_company" placeholder="Tên công ty khách hàng"></div>
     </div>
     <div class="field"><label>Tên hàng / sản phẩm</label><textarea id="ord_name" rows="2" placeholder="Tên hàng, mô tả ngắn"></textarea></div>
+    <div class="field"><label>Loại đơn</label>
+      <select id="ord_type">
+        <option value="Gia công">Gia công cơ khí</option>
+        <option value="Lắp đặt / Dịch vụ">Lắp đặt / Dịch vụ / Cân chỉnh</option>
+        <option value="Thương mại">Thương mại (mua – bán)</option>
+        <option value="Dự án">Dự án (nhiều chi tiết)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Chi tiết con của đơn <span class="muted small">(tùy chọn — cho đơn nhiều chi tiết / dự án, vd VHG DATA: nhiều van mang gia công ngoài)</span></label>
+      <div id="ord_items_list"></div>
+      <button type="button" class="ghost sm" onclick="addOrderItem()" style="margin-top:6px">＋ Thêm chi tiết con</button>
+    </div>
     <div class="row3">
       <div class="field"><label>Số lượng</label><input id="ord_qty" type="number" min="0" step="0.01"></div>
       <div class="field"><label>ĐVT</label><input id="ord_unit" placeholder="Cái / Bộ ..."></div>
@@ -336,6 +351,15 @@ function gateCheck(){
     <div class="row2">
       <div class="field"><label>Ngày hoàn thành gia công thực tế</label><input id="ord_completed" type="date"></div>
       <div class="field"><label>Ngày giao hàng thực tế</label><input id="ord_delivered" type="date"></div>
+    </div>
+    <div class="field">
+      <label>📁 Thư mục Google Drive của đơn <span class="muted small">(chứa bản vẽ, tài liệu Sale, ảnh SP, report đo đạc...)</span></label>
+      <input id="ord_drive" placeholder="Dán link thư mục Drive (Chia sẻ → Sao chép liên kết)">
+    </div>
+    <div class="field">
+      <label>🔗 Tài liệu / hình ảnh đính kèm <span class="muted small">(đặt tên + dán link Drive: Bản vẽ, Ảnh đo đạc, Report kích thước...)</span></label>
+      <div id="ord_att_list"></div>
+      <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
     </div>
     <div class="field"><label>Ghi chú / Lưu ý</label><textarea id="ord_note" rows="2"></textarea></div>
     <div class="toolbar" style="justify-content:flex-end">
@@ -1099,7 +1123,13 @@ function ordersTable(){
     const rowBg = overdue ? 'background:#fff5f5' : urgentToday ? 'background:#fffbeb' : '';
     return `<tr style="${rowBg}">
       <td><b>${esc(o.code)}</b>${o.assignment==='outsource'?'<span class="badge-out" title="Gia công ngoài">'+esc(o.outsourcePartner||'OUT')+'</span>':''}</td>
-      <td title="${esc(o.name)}">${esc(truncate(o.name,52))}</td>
+      <td title="${esc(o.name)}">${(o.orderType&&o.orderType!=='Gia công')?`<span style="display:inline-block;font-size:9px;font-weight:800;color:#fff;background:#6366F1;border-radius:4px;padding:1px 5px;margin-right:5px">${esc(o.orderType)}</span>`:''}${esc(truncate(o.name,52))}${(function(){
+        let bits=[];
+        if(o.items&&o.items.length) bits.push(`<span style="font-size:10px;font-weight:700;color:#6366F1">▦ ${o.items.length} chi tiết</span>`);
+        if(o.driveFolder) bits.push(`<a href="${esc(o.driveFolder)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;font-weight:700;color:#0EA5E9">📁 Drive</a>`);
+        if(o.attachments&&o.attachments.length) bits.push(`<span style="font-size:10px;color:var(--muted)">🔗 ${o.attachments.length}</span>`);
+        return bits.length?`<div style="margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">${bits.join('')}</div>`:'';
+      })()}</td>
       <td>${esc(truncate(o.company,28))}</td>
       <td>${fmtDate(dueRef)}</td>
       <td>
@@ -1117,6 +1147,52 @@ function ordersTable(){
   }).join('')}
   </tbody></table>`;
 }
+/* ---- Trình soạn chi tiết con (line items) & đính kèm trong form đơn ---- */
+let editingItems = [];
+let editingAtts = [];
+function localId(p){ return p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function itemStatusOptions(v){ return ORDER_STATUSES.map(s=>`<option value="${s.k}" ${v===s.k?'selected':''}>${esc(s.label.replace(/^\d+\.\s*/,''))}</option>`).join(''); }
+function renderItemsEditor(){
+  const wrap=document.getElementById('ord_items_list');
+  if(!editingItems.length){ wrap.innerHTML='<div class="small muted">Chưa có chi tiết con. Đơn đơn giản thì để trống phần này.</div>'; return; }
+  wrap.innerHTML = editingItems.map((it,i)=>`
+    <div style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px;background:#fafcff">
+      <div class="row2" style="gap:8px">
+        <input value="${esc(it.name||'')}" placeholder="Tên chi tiết (vd: Van WCC-VGA-8006)" oninput="updItem(${i},'name',this.value)">
+        <div style="display:flex;gap:6px">
+          <input type="number" style="width:64px" value="${it.qty!=null?it.qty:''}" placeholder="SL" oninput="updItem(${i},'qty',this.value)">
+          <input style="width:64px" value="${esc(it.unit||'')}" placeholder="ĐVT" oninput="updItem(${i},'unit',this.value)">
+        </div>
+      </div>
+      <div class="row3" style="gap:8px;margin-top:6px">
+        <select onchange="updItem(${i},'assignment',this.value)">
+          <option value="inhouse" ${it.assignment!=='outsource'?'selected':''}>Nội bộ</option>
+          <option value="outsource" ${it.assignment==='outsource'?'selected':''}>Outsource</option>
+        </select>
+        <select onchange="updItem(${i},'status',this.value)">${itemStatusOptions(it.status||'new')}</select>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" min="0" max="100" style="width:56px" value="${it.progress!=null?it.progress:''}" placeholder="%" oninput="updItem(${i},'progress',this.value)" title="% hoàn thành chi tiết này">
+          <a onclick="rmItem(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa chi tiết">✕</a>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function addOrderItem(){ editingItems.push({id:localId('IT'), name:'', qty:null, unit:'', assignment:'inhouse', status:'new', progress:null, note:''}); renderItemsEditor(); }
+function updItem(i,k,v){ if(!editingItems[i])return; editingItems[i][k]=(k==='qty'||k==='progress')?(v===''?null:parseFloat(v)):v; }
+function rmItem(i){ editingItems.splice(i,1); renderItemsEditor(); }
+function renderAttEditor(){
+  const wrap=document.getElementById('ord_att_list');
+  if(!editingAtts.length){ wrap.innerHTML='<div class="small muted">Chưa có link nào.</div>'; return; }
+  wrap.innerHTML=editingAtts.map((a,i)=>`<div style="display:flex;gap:6px;margin-bottom:6px">
+    <input style="width:150px" value="${esc(a.label||'')}" placeholder="Tên (Bản vẽ...)" oninput="updAtt(${i},'label',this.value)">
+    <input style="flex:1" value="${esc(a.url||'')}" placeholder="Dán link Google Drive" oninput="updAtt(${i},'url',this.value)">
+    <a onclick="rmAtt(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800;align-self:center">✕</a>
+  </div>`).join('');
+}
+function addAttachment(){ editingAtts.push({label:'',url:''}); renderAttEditor(); }
+function updAtt(i,k,v){ if(editingAtts[i]) editingAtts[i][k]=v; }
+function rmAtt(i){ editingAtts.splice(i,1); renderAttEditor(); }
+
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';
   const sSel = document.getElementById('ord_status');
@@ -1128,6 +1204,7 @@ function openOrderModal(id){
     document.getElementById('ord_code').value = o.code||'';
     document.getElementById('ord_company').value = o.company||'';
     document.getElementById('ord_name').value = o.name||'';
+    document.getElementById('ord_type').value = o.orderType||'Gia công';
     document.getElementById('ord_qty').value = o.qty||'';
     document.getElementById('ord_unit').value = o.unit||'';
     document.getElementById('ord_priority').value = o.priority||'';
@@ -1141,15 +1218,23 @@ function openOrderModal(id){
     document.getElementById('ord_delivered').value = o.deliveredDate||'';
     document.getElementById('ord_progress').value = o.progress!=null ? o.progress : '';
     document.getElementById('ord_forecast').value = o.forecastDate||'';
+    document.getElementById('ord_drive').value = o.driveFolder||'';
     document.getElementById('ord_note').value = o.note||'';
+    editingItems = (o.items||[]).map(x=>({...x}));
+    editingAtts = (o.attachments||[]).map(x=>({...x}));
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
-    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_note'].forEach(id=>document.getElementById(id).value='');
+    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
+    editingItems = [];
+    editingAtts = [];
     document.getElementById('ord_priority').value = '';
+    document.getElementById('ord_type').value = 'Gia công';
     document.getElementById('ord_status').value = 'new';
     document.getElementById('ord_assignment').value = 'inhouse';
     document.getElementById('ord_partner').value = '';
   }
+  renderItemsEditor();
+  renderAttEditor();
   toggleOutsourceField();
   openModal('modalOrder');
 }
@@ -1166,6 +1251,7 @@ function saveOrder(){
     code: code || uid('CK368', 'order'),
     company: document.getElementById('ord_company').value.trim(),
     name,
+    orderType: document.getElementById('ord_type').value,
     qty: parseFloat(document.getElementById('ord_qty').value)||null,
     unit: document.getElementById('ord_unit').value.trim(),
     priority: document.getElementById('ord_priority').value,
@@ -1179,6 +1265,9 @@ function saveOrder(){
     deliveredDate: document.getElementById('ord_delivered').value || null,
     progress: (function(){ const v=document.getElementById('ord_progress').value; return v===''?null:Math.max(0,Math.min(100,parseFloat(v))); })(),
     forecastDate: document.getElementById('ord_forecast').value || null,
+    driveFolder: document.getElementById('ord_drive').value.trim(),
+    items: editingItems.filter(it=>(it.name||'').trim()),
+    attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
     note: document.getElementById('ord_note').value.trim(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),
@@ -1220,8 +1309,16 @@ function computeForecast(o){
   }
   return null;
 }
+function orderOverallProgress(o){
+  if(o.status==='delivered') return 100;
+  if(o.items && o.items.length){
+    const vals=o.items.map(it=> it.status==='delivered'?100:(parseFloat(it.progress)||0));
+    return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+  }
+  return parseFloat(o.progress)||0;
+}
 function progressCellHtml(o){
-  const p = (o.status==='delivered') ? 100 : (parseFloat(o.progress)||0);
+  const p = orderOverallProgress(o);
   const color = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
   return `<div style="display:flex;align-items:center;gap:6px">
     <div class="bar-track" style="width:60px;margin:0"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
@@ -1548,8 +1645,14 @@ async function syncPush(){
   setSyncStatus('Đang đẩy dữ liệu lên Google Sheets...');
   try{
     for(const table of SYNC_TABLES){
-      const records = DATA[table] || [];
+      let records = DATA[table] || [];
       if(!records.length) continue;
+      // Đơn hàng: gói mảng chi tiết con & đính kèm thành chuỗi JSON để lưu vào ô Sheet
+      if(table==='orders'){
+        records = records.map(o=>({...o,
+          itemsJson: JSON.stringify(o.items||[]),
+          attachmentsJson: JSON.stringify(o.attachments||[])}));
+      }
       // KHÔNG đặt Content-Type để tránh preflight CORS với Apps Script
       const res = await fetch(url, {method:'POST', body: JSON.stringify({action:'bulkUpsert', table, records})});
       const out = await res.json();
@@ -1580,6 +1683,11 @@ async function syncPull(){
           if(table==='staff' && r.active!=null) r.active = (r.active===true||r.active==='TRUE'||r.active==='true');
           if(r.qty!=null && r.qty!=='') r.qty = parseFloat(r.qty)||null;
           if(r.hours!=null && r.hours!=='') r.hours = parseFloat(r.hours)||0;
+          if(table==='orders'){
+            try{ r.items = r.itemsJson ? JSON.parse(r.itemsJson) : []; }catch(e){ r.items=[]; }
+            try{ r.attachments = r.attachmentsJson ? JSON.parse(r.attachmentsJson) : []; }catch(e){ r.attachments=[]; }
+            if(r.progress!=null && r.progress!=='') r.progress = parseFloat(r.progress);
+          }
           return r;
         });
       }
@@ -1878,9 +1986,59 @@ function renderKpi(){
   `;
 }
 
+/* ============================================================
+   CẢNH BÁO DEADLINE (đơn sắp tới hạn ≤3 ngày / đã quá hạn, chưa giao)
+   ============================================================ */
+function getDeadlineAlerts(){
+  const today = todayStr();
+  return DATA.orders.filter(o=>o.status!=='delivered').map(o=>{
+    const ref = o.requestedDate || o.dueDate;
+    if(!ref) return null;
+    const d = daysBetween(today, ref);
+    if(d===null) return null;
+    if(d < 0)  return {o, d, type:'late'};
+    if(d <= 3) return {o, d, type:'soon'};
+    return null;
+  }).filter(Boolean).sort((a,b)=>a.d-b.d);
+}
+function renderAlertBar(){
+  const el = document.getElementById('alertBar'); if(!el) return;
+  const alerts = getDeadlineAlerts();
+  // Badge số lượng trên tab Đơn hàng
+  const tab = document.querySelector('.tab[data-tab="orders"]');
+  if(tab){
+    tab.querySelector('.tabBadge')?.remove();
+    if(alerts.length){
+      const b=document.createElement('span'); b.className='tabBadge';
+      b.style.cssText='display:inline-block;min-width:16px;height:16px;line-height:16px;text-align:center;background:var(--st-late);color:#fff;border-radius:99px;font-size:10px;font-weight:800;margin-left:6px;padding:0 4px';
+      b.textContent=alerts.length; tab.appendChild(b);
+    }
+  }
+  if(!alerts.length){ el.style.display='none'; el.innerHTML=''; return; }
+  if(sessionStorage.getItem('dhp_alert_hidden')==='1'){ el.style.display='none'; return; }
+  const lateN = alerts.filter(a=>a.type==='late').length;
+  const soonN = alerts.filter(a=>a.type==='soon').length;
+  el.style.display='block';
+  el.innerHTML = `<div style="max-width:1480px;margin:0 auto;padding:10px 20px;background:${lateN?'#fef2f2':'#fffbeb'};border-bottom:1px solid ${lateN?'#fecaca':'#fde68a'}">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <b style="color:${lateN?'var(--st-late)':'var(--st-prod)'};font-size:13px">🔔 ${lateN?lateN+' đơn QUÁ HẠN':''}${lateN&&soonN?' · ':''}${soonN?soonN+' đơn sắp tới hạn (≤3 ngày)':''} — chưa giao</b>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">
+        ${alerts.slice(0,6).map(a=>{
+          const ref=a.o.requestedDate||a.o.dueDate;
+          const lbl=a.type==='late'?`trễ ${-a.d}n`:(a.d===0?'hôm nay':`còn ${a.d}n`);
+          return `<span onclick="goTab('orders')" title="${esc(a.o.name)}" style="cursor:pointer;font-size:11px;background:#fff;border:1px solid ${a.type==='late'?'#fecaca':'#fde68a'};border-radius:99px;padding:2px 9px;white-space:nowrap"><b>${esc(a.o.code)}</b> · ${esc(truncate(a.o.company||'',16))} · <span style="color:${a.type==='late'?'var(--st-late)':'var(--st-prod)'};font-weight:700">${lbl}</span></span>`;
+        }).join('')}
+        ${alerts.length>6?`<span class="muted small" style="align-self:center">+${alerts.length-6} đơn khác</span>`:''}
+      </div>
+      <a onclick="sessionStorage.setItem('dhp_alert_hidden','1');renderAlertBar()" style="cursor:pointer;color:var(--muted);font-size:12px;font-weight:700">✕ Ẩn</a>
+    </div>
+  </div>`;
+}
+
 /* ---------------- INIT ---------------- */
 function renderAll(){
   document.getElementById('topStamp').textContent = 'Cập nhật lúc ' + new Date().toLocaleString('vi-VN');
+  renderAlertBar();
   const active = document.querySelector('.view.active');
   if(!active) return;
   const id = active.id;

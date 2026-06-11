@@ -330,6 +330,10 @@ function gateCheck(){
       <select id="ord_partner"></select>
     </div>
     <div class="row2">
+      <div class="field"><label>% hoàn thành (khi đang gia công)</label><input id="ord_progress" type="number" min="0" max="100" step="5" placeholder="0 – 100"></div>
+      <div class="field"><label>Dự báo ngày giao (để trống = tự tính)</label><input id="ord_forecast" type="date"></div>
+    </div>
+    <div class="row2">
       <div class="field"><label>Ngày hoàn thành gia công thực tế</label><input id="ord_completed" type="date"></div>
       <div class="field"><label>Ngày giao hàng thực tế</label><input id="ord_delivered" type="date"></div>
     </div>
@@ -544,6 +548,8 @@ function loadSeedOrders(){
       status: o.status,
       assignment: 'inhouse', outsourcePartner:'',
       completedDate: o.completedDate, deliveredDate: o.deliveredDate,
+      progress: (o.status==='delivered'||o.status==='done_waiting')?100:null,
+      forecastDate: null,
       note:'Nhập từ dữ liệu tháng 6/2026',
       statusHistory:[{status:o.status, date:today}],
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -1070,7 +1076,7 @@ function ordersTable(){
   if(!rows.length) return '<div class="empty">Không có đơn nào khớp bộ lọc.</div>';
   const statusOpts = ORDER_STATUSES.map(s=>`<option value="${s.k}">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('');
   return `<table><thead><tr>
-    ${sortHeader('code','Mã đơn')}${sortHeader('name','Tên hàng')}${sortHeader('company','Khách hàng')}${sortHeader('dueDate','Hạn KH')}${sortHeader('status','Trạng thái')}${sortHeader('assignment','Thực hiện')}${sortHeader('progress','Tiến độ')}<th></th>
+    ${sortHeader('code','Mã đơn')}${sortHeader('name','Tên hàng')}${sortHeader('company','Khách hàng')}${sortHeader('dueDate','Hạn KH')}${sortHeader('status','Trạng thái')}<th>% HT</th>${sortHeader('assignment','Thực hiện')}${sortHeader('progress','Hạn / Dự báo')}<th></th>
   </tr></thead><tbody>
   ${rows.map(o=>{
     const dueRef = o.requestedDate || o.dueDate;
@@ -1103,8 +1109,9 @@ function ordersTable(){
           ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${o.status===s.k?'selected':''} style="background:#fff;color:var(--ink)">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('')}
         </select>
       </td>
+      <td>${progressCellHtml(o)}</td>
       <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'(chưa chọn)') : 'Nội bộ'}</td>
-      <td class="small">${progressNote}</td>
+      <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 Dự báo giao: ${fmtDate(fc.date)}${fc.kind==='manual'?' (đặt tay)':''}${late?' · trễ hạn KH':''}</span></div>`;})()}</td>
       <td class="actions"><a onclick="openOrderModal('${o.id}')">Sửa</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">Xóa</a></td>
     </tr>`;
   }).join('')}
@@ -1132,10 +1139,12 @@ function openOrderModal(id){
     document.getElementById('ord_partner').value = o.outsourcePartner||'';
     document.getElementById('ord_completed').value = o.completedDate||'';
     document.getElementById('ord_delivered').value = o.deliveredDate||'';
+    document.getElementById('ord_progress').value = o.progress!=null ? o.progress : '';
+    document.getElementById('ord_forecast').value = o.forecastDate||'';
     document.getElementById('ord_note').value = o.note||'';
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
-    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_note'].forEach(id=>document.getElementById(id).value='');
+    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_note'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('ord_priority').value = '';
     document.getElementById('ord_status').value = 'new';
     document.getElementById('ord_assignment').value = 'inhouse';
@@ -1168,6 +1177,8 @@ function saveOrder(){
     outsourcePartner: document.getElementById('ord_assignment').value==='outsource' ? document.getElementById('ord_partner').value : '',
     completedDate: document.getElementById('ord_completed').value || null,
     deliveredDate: document.getElementById('ord_delivered').value || null,
+    progress: (function(){ const v=document.getElementById('ord_progress').value; return v===''?null:Math.max(0,Math.min(100,parseFloat(v))); })(),
+    forecastDate: document.getElementById('ord_forecast').value || null,
     note: document.getElementById('ord_note').value.trim(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),
@@ -1191,6 +1202,31 @@ function deleteOrder(id){
   if(!confirm('Xóa đơn hàng này? (Các ghi nhận NCR/outsource/phân công liên quan vẫn được giữ lại nhưng sẽ mất liên kết — ô lịch tương ứng sẽ hiển thị "?".)')) return;
   DATA.orders = DATA.orders.filter(o=>o.id!==id);
   save(); goTab('orders');
+}
+// Dự báo ngày có thể giao: ưu tiên ngày nhập tay, sau đó suy ra từ % hoàn thành + ngày nhận đơn
+function computeForecast(o){
+  if(o.status==='delivered') return o.deliveredDate ? {date:o.deliveredDate, kind:'done'} : null;
+  if(o.forecastDate) return {date:o.forecastDate, kind:'manual'};
+  const p = parseFloat(o.progress);
+  const start = o.receivedDate;
+  if(p>=100) return {date:todayStr(), kind:'est'};
+  if(p>0 && p<100 && start){
+    const elapsed = daysBetween(start, todayStr());
+    if(elapsed!=null && elapsed>=0){
+      const total = Math.round(elapsed/(p/100));
+      const d = new Date(start+'T00:00:00'); d.setDate(d.getDate()+total);
+      return {date:d.toISOString().slice(0,10), kind:'est'};
+    }
+  }
+  return null;
+}
+function progressCellHtml(o){
+  const p = (o.status==='delivered') ? 100 : (parseFloat(o.progress)||0);
+  const color = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
+  return `<div style="display:flex;align-items:center;gap:6px">
+    <div class="bar-track" style="width:60px;margin:0"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
+    <span style="font-size:11px;font-weight:700;min-width:30px">${p}%</span>
+  </div>`;
 }
 function quickStatusChange(id, newStatus){
   const o = DATA.orders.find(x=>x.id===id);
@@ -1650,6 +1686,8 @@ function importPaste(){
       outsourcePartner: '',
       completedDate: null,
       deliveredDate,
+      progress: (status==='delivered'||status==='done_waiting')?100:null,
+      forecastDate: null,
       note: statusTxt ? ('Trạng thái gốc: '+statusTxt.trim()) : '',
       statusHistory: [{status, date: todayStr()}],
       createdAt: new Date().toISOString(),

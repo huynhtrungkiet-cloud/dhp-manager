@@ -479,6 +479,7 @@ function gateCheck(){
   </div>
 </div>
 
+<script src="seed_orders.js"></script>
 <script>
 /* ============================================================
    DHP PROCESS HUB — v2
@@ -571,12 +572,17 @@ const SEED_ORDERS_JUNE2026 = [
 ];
 
 function loadSeedOrders(){
-  if(!confirm('Tải 28 đơn hàng tháng 6/2026 vào hệ thống?\n\nLưu ý: sẽ THÊM VÀO các đơn đã có, không xóa dữ liệu cũ.\nNếu muốn tải lại từ đầu, hãy "Xóa toàn bộ" trước.')) return;
+  if(typeof SEED_ORDERS_ALL === 'undefined'){ alert('Thiếu file seed_orders.js — hãy upload file đó cùng index.html.'); return; }
+  // Chống trùng theo mã đơn — bấm nhiều lần không bị nhân đôi
+  const existCodes = new Set(DATA.orders.map(o=>o.code));
   const today = todayStr();
-  SEED_ORDERS_JUNE2026.forEach(o=>{
-    const rec = {
+  let added = 0;
+  SEED_ORDERS_ALL.forEach(o=>{
+    if(existCodes.has(o.code)) return;
+    existCodes.add(o.code);
+    DATA.orders.push({
       id: uid('DH','order'),
-      code: uid('CK368','order'),
+      code: o.code,
       company: o.company, name: o.name,
       qty: o.qty, unit: o.unit, priority:'',
       receivedDate: o.receivedDate, requestedDate: o.requestedDate,
@@ -586,14 +592,15 @@ function loadSeedOrders(){
       completedDate: o.completedDate, deliveredDate: o.deliveredDate,
       progress: (o.status==='delivered'||o.status==='done_waiting')?100:null,
       forecastDate: null,
-      note:'Nhập từ dữ liệu tháng 6/2026',
+      currentLocation: o.location||'',
+      note: o.note||'',
       statusHistory:[{status:o.status, date:today}],
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    DATA.orders.push(rec);
+    });
+    added++;
   });
   save();
-  alert('Đã tải thành công ' + SEED_ORDERS_JUNE2026.length + ' đơn hàng tháng 6/2026!');
+  alert('Đã tải ' + added + ' đơn (bỏ qua ' + (SEED_ORDERS_ALL.length-added) + ' đơn trùng mã).\nMã T6: CK368-<STT> · Tháng cũ: CK368-T03/T04/T05-<STT>.');
   goTab('orders');
 }
 
@@ -1700,11 +1707,11 @@ function renderData(){
     </div>
     `}
 
-    <h2 class="sec"><span class="bar"></span>Tải dữ liệu mẫu</h2>
+    <h2 class="sec"><span class="bar"></span>Nạp dữ liệu từ HANG-GIA-CONG-2026 (bản chốt 12/6)</h2>
     <div class="card" style="border-left:4px solid var(--brand)">
-      <p style="margin:0 0 10px;font-weight:700">📦 28 đơn hàng tháng 6/2026 (CK368) — đã sẵn sàng tải vào hệ thống</p>
-      <p class="small muted" style="margin:0 0 12px">Nhấn nút bên dưới để thêm toàn bộ 28 đơn hàng tháng 6 vào danh sách. Dữ liệu cũ sẽ <b>không bị xóa</b> — các đơn mới sẽ được thêm vào.</p>
-      <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Tải 28 đơn hàng tháng 6/2026</button>
+      <p style="margin:0 0 10px;font-weight:700">📦 ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:'?'} đơn hàng T03→T06/2026 — trích sẵn từ file Excel, bấm 1 nút là có</p>
+      <p class="small muted" style="margin:0 0 12px">Mã đơn tháng 6: <b>CK368-&lt;STT&gt;</b> (đúng STT trong bảng) · tháng cũ: CK368-T03/T04/T05-&lt;STT&gt;. Chống trùng theo mã — bấm nhiều lần không nhân đôi. Dữ liệu cũ trong app <b>không bị xóa</b>.</p>
+      <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Nạp toàn bộ đơn hàng (T03→T06/2026)</button>
     </div>
 
     <h2 class="sec"><span class="bar"></span>Xuất / Nhập dữ liệu (đồng bộ &amp; sao lưu)</h2>

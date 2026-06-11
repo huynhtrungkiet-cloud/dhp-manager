@@ -1,8 +1,8 @@
 /* DHP Manager — Service Worker
    Cho phép mở app offline + cài ra màn hình chính điện thoại.
    Chiến lược: cache app shell, ưu tiên mạng cho dữ liệu Google Sheets. */
-const CACHE = 'dhp-manager-v2';
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'dhp-manager-v3';
+const ASSETS = ['./', './index.html', './manifest.json', './icon.svg', './seed_orders.js'];
 
 self.addEventListener('install', e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));

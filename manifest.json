@@ -1,0 +1,15 @@
+{
+  "name": "DHP Manager — Quản lý sản xuất CK368",
+  "short_name": "DHP Manager",
+  "description": "Hệ thống quản lý đơn hàng, tiến độ, lịch phân công, outsource và NCR cho xưởng CK368.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6f9",
+  "theme_color": "#C8102E",
+  "lang": "vi",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

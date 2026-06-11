@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#C8102E"/>
+  <rect x="56" y="56" width="400" height="400" rx="72" fill="#C8102E"/>
+  <text x="256" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="170"
+        font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="-6">DHP</text>
+  <rect x="150" y="350" width="212" height="20" rx="10" fill="rgba(255,255,255,.55)"/>
+</svg>

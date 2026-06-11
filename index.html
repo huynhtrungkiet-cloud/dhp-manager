@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DHP Manager — Quản lý sản xuất CK368</title>
+<!-- ===== PWA: cài ra màn hình chính như app ===== -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DHP Manager">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<style>
+  :root{
+    --brand:#C8102E; --brand-dark:#8B0A1F; --ink:#1f2937; --muted:#6b7280;
+    --bg:#f4f6f9; --card:#ffffff; --line:#e5e9f0;
+    --st-new:#9CA3AF; --st-planned:#3B82F6; --st-prod:#F59E0B;
+    --st-qc:#8B5CF6; --st-wait:#14B8A6; --st-done:#22C55E; --st-late:#EF4444;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:12px 20px;}
+  .topbar .logo{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
+  .topbar h1{font-size:17px;margin:0;font-weight:700;}
+  .topbar .sub{font-size:12px;opacity:.85;}
+  .topbar .right{margin-left:auto;font-size:12px;opacity:.9;text-align:right;}
+  .tabs{display:flex;gap:4px;background:#fff;border-bottom:1px solid var(--line);padding:0 16px;overflow-x:auto;}
+  .tab{padding:12px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;}
+  .tab.active{color:var(--brand);border-color:var(--brand);}
+  .tab:hover{color:var(--brand-dark);}
+  main{max-width:1480px;margin:0 auto;padding:18px 20px 60px;}
+  .view{display:none;} .view.active{display:block;}
+  .grid{display:grid;gap:14px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);} .grid-3{grid-template-columns:repeat(3,1fr);} .grid-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:980px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .kpi{display:flex;flex-direction:column;gap:4px;}
+  .kpi .v{font-size:28px;font-weight:800;}
+  .kpi .l{font-size:12px;color:var(--muted);font-weight:600;}
+  .kpi .d{font-size:11px;color:var(--muted);}
+  h2.sec{font-size:15px;font-weight:800;margin:26px 0 12px;color:var(--ink);display:flex;align-items:center;gap:8px;}
+  h2.sec .bar{width:4px;height:16px;background:var(--brand);border-radius:2px;display:inline-block;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  th{background:#f8fafc;font-weight:700;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0;}
+  th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+  th.sortable:hover{color:var(--brand);background:#eef2ff;}
+  th.sortable.sorted{color:var(--brand);}
+  tr:hover td{background:#fafcff;}
+  .pill{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:8px 0;}
+  .bar-track{flex:1;height:10px;background:#eef1f5;border-radius:6px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:6px;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+  textarea{width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px;}
+  button{font:inherit;font-weight:700;font-size:12.5px;padding:9px 16px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer;}
+  button.secondary{background:#fff;color:var(--brand);}
+  button.ghost{background:#fff;color:var(--ink);border-color:var(--line);}
+  button.sm{padding:5px 10px;font-size:11.5px;}
+  button:hover{filter:brightness(1.06);}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;max-width:640px;width:100%;padding:22px;}
+  .modal.wide{max-width:820px;}
+  .modal h3{margin:0 0 14px;font-size:16px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px;}
+  .field input,.field select,.field textarea{width:100%;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .muted{color:var(--muted);}
+  .small{font-size:11.5px;}
+  .empty{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+  .badge-out{font-size:10px;font-weight:800;color:#fff;background:#0EA5E9;border-radius:5px;padding:2px 6px;margin-left:6px;}
+  .footer-note{margin-top:40px;padding:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.6;}
+  .actions a{cursor:pointer;color:var(--brand);font-weight:700;font-size:12px;margin-right:10px;}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11.5px;color:var(--ink);margin-bottom:6px;}
+  .legend span.chip{display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid var(--line);border-radius:99px;padding:4px 10px 4px 6px;}
+  .legend i{width:14px;height:14px;border-radius:4px;display:inline-block;}
+  .sev-1{color:#EF4444;font-weight:800;} .sev-2{color:#F59E0B;font-weight:800;} .sev-3{color:#6B7280;font-weight:700;}
+
+  /* ---- Grid / timesheet view ---- */
+  .gridwrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff;max-height:72vh;}
+  table.tg{border-collapse:separate;border-spacing:0;font-size:11.5px;min-width:100%;}
+  table.tg th, table.tg td{border:1px solid var(--line);padding:0;text-align:center;}
+  table.tg thead th{position:sticky;top:0;z-index:3;background:#f8fafc;padding:7px 4px;font-weight:700;color:var(--muted);}
+  table.tg thead th.dow-sat,table.tg thead th.dow-sun{background:#fef2f2;color:#b91c1c;}
+  table.tg th.namecol, table.tg td.namecol{position:sticky;left:0;z-index:2;background:#fff;text-align:left;padding:8px 12px;min-width:190px;max-width:220px;border-right:2px solid var(--line);}
+  table.tg thead th.namecol{z-index:4;background:#f8fafc;}
+  table.tg td.namecol .nm{font-weight:700;font-size:12.5px;}
+  table.tg td.namecol .bd{color:var(--muted);font-size:10.5px;}
+  table.tg td.daycell{width:38px;height:46px;cursor:pointer;font-weight:800;font-size:11px;color:#fff;transition:filter .1s;padding:2px !important;}
+  table.tg td.daycell:hover{filter:brightness(0.96);outline:2px solid var(--brand);outline-offset:-2px;}
+  table.tg td.daycell.empty-cell{background:#fff;color:var(--line);font-weight:400;}
+  table.tg td.daycell.empty-cell:hover{background:#fafafa;color:var(--muted);}
+  table.tg td.weekend{background:#fef9f9;}
+  .joblist{display:flex;flex-direction:column;gap:1.5px;height:100%;justify-content:center;}
+  .jobchip{font-size:8px;font-weight:800;color:#fff;border-radius:2px;line-height:12px;padding:0 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:left;}
+  .daylist{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;}
+  .dayjob{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .dayjob .dot{width:14px;height:14px;border-radius:4px;flex-shrink:0;display:inline-block;}
+  table.tg tbody tr.grp-row td{background:#eef1f5;color:var(--ink);font-weight:800;text-align:left;padding:6px 12px;font-size:11.5px;letter-spacing:.02em;text-transform:uppercase;border-right:none;}
+  .seg-toggle{display:flex;gap:6px;}
+  .seg-toggle button{padding:6px 12px;}
+  .colorpick{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .colorpick i{width:26px;height:26px;border-radius:6px;display:inline-block;cursor:pointer;border:2px solid transparent;}
+  .colorpick i.sel{border-color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">DHP</div>
+  <div>
+    <h1>Process Hub — Lịch phân công, Tiến độ &amp; NCR</h1>
+    <div class="sub">Xưởng CK368 · v3 · Lịch phân công kiểu timesheet (người × ngày) — gắn trực tiếp với mã đơn hàng</div>
+  </div>
+  <div class="right">
+    <div id="topUser">—</div>
+    <div id="topStamp" class="small"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 Lịch phân công</div>
+  <div class="tab" data-tab="orders" onclick="goTab('orders')">📦 Đơn hàng &amp; Tiến độ</div>
+  <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 Outsource</div>
+  <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ Ghi nhận NCR</div>
+  <div class="tab" data-tab="data" onclick="goTab('data')">⚙ Dữ liệu &amp; Đồng bộ</div>
+</div>
+
+<main>
+  <!-- ============ GRID / TIMESHEET (primary view) ============ -->
+  <div class="view active" id="view-grid"></div>
+  <!-- ============ ORDERS ============ -->
+  <div class="view" id="view-orders"></div>
+  <!-- ============ OUTSOURCE ============ -->
+  <div class="view" id="view-outsource"></div>
+  <!-- ============ NCR ============ -->
+  <div class="view" id="view-ncr"></div>
+  <!-- ============ DATA ============ -->
+  <div class="view" id="view-data"></div>
+
+  <div class="footer-note">
+    <b>Cách dùng nhanh:</b> Tab <b>“Lịch phân công”</b> là màn hình chính — mỗi dòng là một người (nhân sự xưởng hoặc đối tác outsource), mỗi cột là một ngày trong tháng, mỗi ô màu thể hiện người đó đang làm <b>đơn hàng nào</b> (lấy thẳng từ danh sách đơn hàng — không cần tự đặt mã riêng). Bấm vào ô để gán/đổi việc cho ngày đó. Khi đổi trạng thái đơn ở tab “Đơn hàng”, các ô đã gán đơn đó trên lịch sẽ tự cập nhật theo. Toàn bộ dữ liệu vẫn nằm trong <b>một lớp dữ liệu chung</b> (xuất/nhập JSON ở tab “Dữ liệu &amp; Đồng bộ”) để dần kết nối với 3 công cụ hiện có (Coding System, Internal Tool, Process App), đúng theo khung đề xuất trong báo cáo (mục 4 &amp; 6.2).
+  </div>
+</main>
+
+<!-- ===== Modal: Day jobs (1 người + 1 ngày — có thể nhiều việc) ===== -->
+<div class="modal-bg" id="modalDay">
+  <div class="modal">
+    <h3 id="dayModalTitle">Công việc trong ngày</h3>
+    <input type="hidden" id="day_staff">
+    <input type="hidden" id="day_date">
+    <p class="small muted" id="dayModalSub" style="margin-top:-8px"></p>
+    <div id="dayJobList" class="daylist"></div>
+    <div class="toolbar" style="justify-content:space-between;margin-top:14px">
+      <button onclick="openAssignModal(document.getElementById('day_staff').value, document.getElementById('day_date').value)">＋ Thêm việc trong ngày (cho phép nhiều việc / nửa ngày)</button>
+      <button class="ghost" onclick="closeModal('modalDay')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Assign one job entry ===== -->
+<div class="modal-bg" id="modalAssign">
+  <div class="modal">
+    <h3 id="assignModalTitle">Phân công công việc</h3>
+    <input type="hidden" id="as_id">
+    <input type="hidden" id="as_staff">
+    <input type="hidden" id="as_date">
+    <p class="small muted" id="assignModalSub" style="margin-top:-8px"></p>
+    <div class="field">
+      <label>Loại công việc / trạng thái trong ngày</label>
+      <select id="as_kind" onchange="toggleAssignOrderField()">
+        <option value="order">Làm đơn hàng (chọn từ danh sách đơn)</option>
+        <option value="available">Có mặt — chờ việc (A)</option>
+        <option value="leave">Nghỉ phép (AL)</option>
+        <option value="training">Đào tạo (TRAIN)</option>
+        <option value="holiday">Nghỉ lễ / BHXH (Lễ)</option>
+        <option value="other">Khác (tự ghi chú)</option>
+      </select>
+    </div>
+    <div class="field" id="as_order_field">
+      <label>Đơn hàng (mã đơn sẽ hiển thị trực tiếp trên ô lịch)</label>
+      <select id="as_order"></select>
+    </div>
+    <div class="field" id="as_stage_field">
+      <label>Công đoạn gia công (để anh em nắm rõ đang làm khâu nào của đơn)</label>
+      <select id="as_stage"></select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Số giờ công cho việc này</label><input id="as_hours" type="number" min="0" max="24" step="0.5" value="8"></div>
+      <div class="field"><label>Ghi chú (tùy chọn)</label><input id="as_note" placeholder="VD: làm ca chiều, hỗ trợ tổ khác..."></div>
+    </div>
+    <p class="small muted" style="margin-top:-6px">Mẹo: 1 người có thể có <b>nhiều việc trong cùng 1 ngày</b> (VD: sáng làm đơn A, chiều làm đơn B) — chỉ cần thêm từng việc một với số giờ tương ứng; ô lịch sẽ liệt kê tất cả các việc trong ngày đó.</p>
+    <div class="toolbar" style="justify-content:space-between">
+      <button class="ghost" id="as_clear_btn" onclick="clearAssign()" style="border-color:var(--st-late);color:var(--st-late)">🗑 Xóa việc này</button>
+      <div class="toolbar" style="margin:0">
+        <button class="ghost" onclick="closeModal('modalAssign')">Hủy</button>
+        <button onclick="saveAssign()">💾 Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Staff roster ===== -->
+<div class="modal-bg" id="modalStaff">
+  <div class="modal wide">
+    <h3>Quản lý danh sách nhân sự &amp; đối tác trên lịch phân công</h3>
+    <div class="toolbar">
+      <button onclick="openStaffEdit()">＋ Thêm người / đối tác</button>
+      <span class="muted small">Những người đang "Ngừng hiển thị" sẽ không xuất hiện trên lịch nhưng dữ liệu phân công cũ vẫn được giữ.</span>
+    </div>
+    <div id="staffListWrap" style="max-height:360px;overflow:auto"></div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+      <button class="ghost" onclick="closeModal('modalStaff')">Đóng</button>
+    </div>
+  </div>
+</div>
+<!-- ===== Modal: Staff edit (single record) ===== -->
+<div class="modal-bg" id="modalStaffEdit">
+  <div class="modal">
+    <h3 id="staffEditTitle">Thêm người / đối tác</h3>
+    <input type="hidden" id="st_id">
+    <div class="row2">
+      <div class="field"><label>Mã số / Badge (tùy chọn)</label><input id="st_badge" placeholder="VD: 80213"></div>
+      <div class="field"><label>Họ tên / Tên đối tác</label><input id="st_name" placeholder="VD: Nguyễn Văn A — hoặc — CK Tuyết Vinh"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Loại</label>
+        <select id="st_type">
+          <option value="internal">Nhân sự nội bộ (xưởng)</option>
+          <option value="outsource">Đối tác outsource</option>
+        </select>
+      </div>
+      <div class="field"><label>Vai trò / Tổ / Ghi chú</label><input id="st_role" placeholder="VD: Tổ hàn / Tổ tiện / Quản lý lô hàng..."></div>
+    </div>
+    <div class="field"><label><input type="checkbox" id="st_active" style="width:auto;display:inline-block;margin-right:6px" checked> Hiển thị trên lịch phân công</label></div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalStaffEdit')">Hủy</button>
+      <button onclick="saveStaff()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Order form ===== -->
+<div class="modal-bg" id="modalOrder">
+  <div class="modal">
+    <h3 id="orderModalTitle">Thêm đơn hàng</h3>
+    <input type="hidden" id="ord_id">
+    <div class="row2">
+      <div class="field"><label>Mã đơn (tự đặt hoặc để trống để tự sinh)</label><input id="ord_code" placeholder="VD: CK368-0142"></div>
+      <div class="field"><label>Khách hàng / Công ty</label><input id="ord_company" placeholder="Tên công ty khách hàng"></div>
+    </div>
+    <div class="field"><label>Tên hàng / sản phẩm</label><textarea id="ord_name" rows="2" placeholder="Tên hàng, mô tả ngắn"></textarea></div>
+    <div class="row3">
+      <div class="field"><label>Số lượng</label><input id="ord_qty" type="number" min="0" step="0.01"></div>
+      <div class="field"><label>ĐVT</label><input id="ord_unit" placeholder="Cái / Bộ ..."></div>
+      <div class="field"><label>Độ ưu tiên</label>
+        <select id="ord_priority"><option value="">—</option><option value="Cao">Cao</option><option value="Trung bình">Trung bình</option><option value="Thấp">Thấp</option></select>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Ngày nhận đơn</label><input id="ord_received" type="date"></div>
+      <div class="field"><label>Ngày yêu cầu hoàn thành</label><input id="ord_requested" type="date"></div>
+      <div class="field"><label>Hạn giao hàng</label><input id="ord_due" type="date"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Trạng thái hiện tại (theo bộ 6 trạng thái chuẩn)</label>
+        <select id="ord_status"></select>
+      </div>
+      <div class="field"><label>Phân công thực hiện</label>
+        <select id="ord_assignment" onchange="toggleOutsourceField()">
+          <option value="inhouse">Gia công nội bộ (xưởng)</option>
+          <option value="outsource">Gia công ngoài (outsource)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" id="ord_partner_field" style="display:none">
+      <label>Đối tác outsource</label>
+      <select id="ord_partner"></select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Ngày hoàn thành gia công thực tế</label><input id="ord_completed" type="date"></div>
+      <div class="field"><label>Ngày giao hàng thực tế</label><input id="ord_delivered" type="date"></div>
+    </div>
+    <div class="field"><label>Ghi chú / Lưu ý</label><textarea id="ord_note" rows="2"></textarea></div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalOrder')">Hủy</button>
+      <button onclick="saveOrder()">💾 Lưu đơn hàng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Outsource shipment form ===== -->
+<div class="modal-bg" id="modalOut">
+  <div class="modal">
+    <h3>Ghi nhận lô hàng gửi gia công ngoài</h3>
+    <input type="hidden" id="out_id">
+    <div class="row2">
+      <div class="field"><label>Đơn hàng liên quan</label><select id="out_order"></select></div>
+      <div class="field"><label>Đối tác outsource</label><select id="out_partner"></select></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Ngày gửi đi</label><input id="out_sent" type="date"></div>
+      <div class="field"><label>Ngày cam kết nhận lại</label><input id="out_committed" type="date"></div>
+      <div class="field"><label>Ngày nhận lại thực tế</label><input id="out_actual" type="date"></div>
+    </div>
+    <div class="field"><label>Kết quả kiểm tra đầu vào khi nhận lại</label>
+      <select id="out_qc">
+        <option value="pending">Chưa kiểm tra / đang chờ nhận</option>
+        <option value="pass">Đạt yêu cầu</option>
+        <option value="fail">Không đạt — phát hiện sai lệch</option>
+      </select>
+    </div>
+    <div class="field"><label>Ghi chú</label><textarea id="out_note" rows="2"></textarea></div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalOut')">Hủy</button>
+      <button onclick="saveOutsource()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: NCR form ===== -->
+<div class="modal-bg" id="modalNcr">
+  <div class="modal">
+    <h3>Ghi nhận sai lệch / NCR</h3>
+    <input type="hidden" id="ncr_id">
+    <div class="row2">
+      <div class="field"><label>Đơn hàng liên quan</label><select id="ncr_order"></select></div>
+      <div class="field"><label>Ngày phát hiện</label><input id="ncr_date" type="date"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Công đoạn phát hiện</label>
+        <select id="ncr_stage">
+          <option value="Gia công">Trong khi gia công</option>
+          <option value="QC nội bộ">Kiểm tra QC nội bộ</option>
+          <option value="Nhận hàng outsource">Khi nhận hàng từ outsource</option>
+          <option value="Lắp ráp">Lắp ráp / hoàn thiện</option>
+          <option value="Phản hồi khách hàng">Khách hàng phản hồi sau giao hàng</option>
+        </select>
+      </div>
+      <div class="field"><label>Mức độ</label>
+        <select id="ncr_severity">
+          <option value="1">Nghiêm trọng — ảnh hưởng giao hàng/khách hàng</option>
+          <option value="2">Trung bình — phải làm lại trong xưởng</option>
+          <option value="3">Nhẹ — phát hiện &amp; xử lý ngay tại chỗ</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Mô tả sai lệch (so với bản vẽ / tiêu chuẩn)</label><textarea id="ncr_desc" rows="2"></textarea></div>
+    <div class="field"><label>Hướng xử lý</label>
+      <select id="ncr_action">
+        <option value="Làm lại">Làm lại (rework)</option>
+        <option value="Chấp nhận có điều kiện">Chấp nhận có điều kiện</option>
+        <option value="Trả lại NCC/đối tác">Trả lại nhà cung cấp / đối tác outsource</option>
+        <option value="Khác">Khác — xem ghi chú</option>
+      </select>
+    </div>
+    <div class="field"><label>Người ghi nhận</label><input id="ncr_by" placeholder="Tên người phát hiện / ghi nhận"></div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalNcr')">Hủy</button>
+      <button onclick="saveNcr()">💾 Lưu ghi nhận</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DHP PROCESS HUB — v2
+   Màn hình chính: LỊCH PHÂN CÔNG kiểu timesheet (người × ngày),
+   thay thế hoàn toàn bảng điều khiển/danh sách đơn của bản v1,
+   theo phản hồi trực tiếp của xưởng (tham khảo cách quản lý job
+   theo timesheet kiểu Danieli — rõ ràng, dễ kiểm soát cả nội bộ
+   lẫn outsource). Mỗi ô trên lịch gắn THẲNG với mã đơn hàng đã có
+   trong Process Hub — không dùng mã tự đặt / chú giải rời rạc.
+   Lưu trữ: localStorage key 'dhp_hub_v2' + xuất/nhập JSON.
+   ============================================================ */
+
+const ORDER_STATUSES = [
+  {k:'new',          label:'1. Mới nhận đơn',                 color:'var(--st-new)'},
+  {k:'planned',      label:'2. Đã lên kế hoạch / phân công',  color:'var(--st-planned)'},
+  {k:'in_production',label:'3. Đang gia công',                color:'var(--st-prod)'},
+  {k:'qc',           label:'4. Chờ kiểm tra chất lượng (QC)', color:'var(--st-qc)'},
+  {k:'done_waiting', label:'5. Hoàn thành — chờ giao',        color:'var(--st-wait)'},
+  {k:'delivered',    label:'6. Đã giao — đóng đơn',           color:'var(--st-done)'},
+];
+const statusByKey = k => ORDER_STATUSES.find(s=>s.k===k) || ORDER_STATUSES[0];
+
+const SEED_PARTNERS = ['CK Tuyết Vinh'];
+const SEED_STAFF = [
+  {badge:'80213', name:'Phan Trường Sơn', type:'internal', role:'Tổ gia công', active:true},
+  {badge:'80265', name:'Đoàn Ngọc Thanh', type:'internal', role:'Tổ gia công', active:true},
+  {badge:'80301', name:'Lê Văn Hùng',     type:'internal', role:'Tổ hàn',      active:true},
+  {badge:'',      name:'CK Tuyết Vinh',   type:'outsource',role:'Đối tác outsource', active:true},
+];
+
+// Bảng màu cho mã đơn hàng — mỗi đơn được gán 1 màu cố định theo mã (hash),
+// để trên lịch luôn hiển thị nhất quán dù người dùng chưa tự chọn màu.
+const ORDER_PALETTE = ['#3B82F6','#F59E0B','#10B981','#8B5CF6','#EC4899','#14B8A6','#F97316','#6366F1','#84CC16','#06B6D4','#D946EF','#EAB308','#0EA5E9','#F43F5E','#22C55E','#A855F7'];
+function colorForOrder(order){
+  if(order && order.calendarColor) return order.calendarColor;
+  const code = (order && order.code) || '';
+  let h = 0; for(let i=0;i<code.length;i++) h = (h*31 + code.charCodeAt(i)) >>> 0;
+  return ORDER_PALETTE[h % ORDER_PALETTE.length];
+}
+// Danh sách công đoạn gia công — đầy đủ các loại hình chế tạo cơ khí phổ biến ở CK368
+// (gắn vào từng lượt phân công để anh em xưởng nắm rõ đang làm khâu nào của đơn)
+const PRODUCTION_STAGES = [
+  'Cắt phôi', 'Chấn / Uốn', 'Tiện', 'Phay', 'Khoan / Doa', 'Gia công CNC',
+  'Hàn', 'Mài / Đánh bóng', 'Dập / Đột', 'Lắp ráp', 'Sơn / Xử lý bề mặt',
+  'Kiểm tra chất lượng (QC)', 'Đóng gói / Giao hàng', 'Khác',
+];
+// Mã/màu cho các loại "không phải đơn hàng" trên lịch (nghỉ phép, đào tạo...)
+const ASSIGN_KINDS = {
+  available: {code:'A',     label:'Có mặt — chờ việc',  color:'#9CA3AF'},
+  leave:     {code:'AL',    label:'Nghỉ phép',          color:'#93C5FD'},
+  training:  {code:'TRAIN', label:'Đào tạo',            color:'#FB923C'},
+  holiday:   {code:'LỄ',    label:'Nghỉ lễ / BHXH',     color:'#C4B5FD'},
+  other:     {code:'KHÁC',  label:'Việc khác',          color:'#D1D5DB'},
+};
+
+const STORAGE_KEY = 'dhp_hub_v3';
+let DATA = null;
+
+/* ---- Dữ liệu mẫu: 28 đơn hàng tháng 6/2026 (CK368) ---- */
+const SEED_ORDERS_JUNE2026 = [
+  {name:'Khớp nối cao su bu lông CK368-PIN-160 Lỗ trục theo yêu cầu (KH bổ sung sau) – d1=d2=63.4mmH7, then 15mmJs9. Vật liệu thép, Torque: 900Nm, Thương hiệu: CK368/VN',qty:2,unit:'Bộ',company:'CÔNG TY CỔ PHẦN TRUNG TÂM GIA CÔNG POSCO VIỆT NAM – CHI NHÁNH ĐỒNG NAI – VHPC',receivedDate:'2026-05-11',requestedDate:'2026-05-18',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Khớp nối CK368-SEM-200 – 1 áo răng + 1 hub răng – Lỗ trục 70.02mm then tiêu chuẩn. Thương hiệu: CK368/VN',qty:1,unit:'Cái',company:'CÔNG TY CỔ PHẦN TRUNG TÂM GIA CÔNG POSCO VIỆT NAM – CHI NHÁNH ĐỒNG NAI – VHPC',receivedDate:'2026-05-11',requestedDate:'2026-05-26',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Khớp nối Flender N-EUPEX B 095 – Gia công theo thông số hình ảnh đính kèm',qty:3,unit:'Bộ',company:'Ultimind',receivedDate:'2026-05-12',requestedDate:'2026-05-17',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'BRAKE DRUM CK368-BDR-400X150 – Mat\'l: SCM 440, Brand: DHP/VN, Dimensions: as per attached drawing',qty:1,unit:'Cái',company:'Ultimind',receivedDate:'2026-05-13',requestedDate:'2026-05-28',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Khớp nối bu lông PTI PF 140',qty:2,unit:'Bộ',company:'DELTA',receivedDate:'2026-05-15',requestedDate:null,completedDate:null,deliveredDate:'2026-05-20',status:'delivered'},
+  {name:'Khớp nối đĩa đàn hồi CK368-DSCP4-25S (Lỗ trục theo bản vẽ) – Thương hiệu: CK368/VN',qty:1,unit:'Bộ',company:'CÔNG TY CỔ PHẦN LIWAYWAY VIỆT NAM',receivedDate:'2026-05-16',requestedDate:'2026-06-05',completedDate:null,deliveredDate:'2026-06-02',status:'delivered'},
+  {name:'Tấm cách nhiệt CK368 dùng cho cardan 90 – Thương hiệu: CK368/VN',qty:4,unit:'Cái',company:'CÔNG TY TNHH MỘT THÀNH VIÊN CONCORD TEXTILE CORPORATION VIETNAM',receivedDate:'2026-05-19',requestedDate:'2026-06-08',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Tấm cách nhiệt CK368 dùng cho cardan 110 – Thương hiệu: CK368/VN',qty:4,unit:'Cái',company:'CÔNG TY TNHH MỘT THÀNH VIÊN CONCORD TEXTILE CORPORATION VIETNAM',receivedDate:'2026-05-19',requestedDate:'2026-06-08',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Giảm chấn bằng thép CK368-D195-6ARS (gồm 6 bulong + đai ốc) – Thương hiệu: CK368/VN',qty:6,unit:'Bộ',company:'CÔNG TY TNHH KỸ THUẬT TRUNG THÀNH KTC',receivedDate:'2026-05-29',requestedDate:'2026-06-08',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Khớp nối Rathi Lovejoy L-095 (PU) – Lỗ trục d1=d2=1"inch then tiêu chuẩn – Thương hiệu: Rathi Ringfeder/India',qty:2,unit:'Bộ',company:'SIAM HON CHONG',receivedDate:'2026-05-30',requestedDate:'2026-06-06',completedDate:'2026-06-03',deliveredDate:null,status:'done_waiting'},
+  {name:'Khớp nối Loop 30 (Bore 10-10mm) – Lỗ trục d1=d2=15.8mm, không then – Thương hiệu: HUCO/UK',qty:1,unit:'Cái',company:'CÔNG TY TNHH THIẾT BỊ SONG PHÁT',receivedDate:'2026-06-01',requestedDate:'2026-06-04',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Chi phí gia công Motor DC 24V – Khớp nối Ringfeder Nor-mex TNM E 67 (Pb82) – d1=14mmH7 then 5mmJs9 / d2=7/8"inchH7 then 1/4"inchJs9',qty:2,unit:'Bộ',company:'CÔNG TY TNHH KỸ THUẬT ECOPOWER',receivedDate:'2026-06-01',requestedDate:'2026-06-04',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Chi phí gia công Motor 1.1Kw – Khớp nối Ringfeder Nor-mex TNM E 67 (Pb82) – d1=24mmH7 then chuẩn DIN 6885-1 / d2=7/8"inchH7 then 1/4"inchJs9',qty:1,unit:'Bộ',company:'CÔNG TY TNHH KỸ THUẬT ECOPOWER',receivedDate:'2026-06-01',requestedDate:'2026-06-04',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Chi phí gia công Motor 2.2Kw – Khớp nối Ringfeder Nor-mex TNM E 67 (Pb82) – d1=28mmH7 then chuẩn DIN 6885-1 / d2=7/8"inchH7 then 1/4"inchJs9',qty:1,unit:'Bộ',company:'CÔNG TY TNHH KỸ THUẬT ECOPOWER',receivedDate:'2026-06-01',requestedDate:'2026-06-04',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Dịch vụ Tư vấn – Lắp đặt – Cân chỉnh (4 bộ)',qty:4,unit:'Bộ',company:'CÔNG TY TNHH KỸ THUẬT ECOPOWER',receivedDate:'2026-06-01',requestedDate:'2026-06-04',completedDate:null,deliveredDate:null,status:'new'},
+  {name:'Vòng đệm giảm chấn Ringfeder TNS 400 (Vk60D) – cắt chỉnh theo mẫu khách hàng (KH gửi về 03 sản phẩm: 02 vòng DHP cung cấp 16/04/2025 + 01 mẫu KH)',qty:2,unit:'Cái',company:'CẢNG CÁI MÉP GEMADEPT-TERMINAL LINK',receivedDate:'2026-06-01',requestedDate:'2026-06-01',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Ống lót côn Martin 3525 (25mm) – khoét lỗ trục 60mm then 18mm – Thương hiệu: Martin/China',qty:3,unit:'Cái',company:'CÔNG TY CỔ PHẦN MÀNG CHÂU ÂU',receivedDate:'2026-06-01',requestedDate:'2026-06-06',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Khớp nối KTR Rotex 38 (GG/ST Hub 1a1b) + Vòng đệm KTR Rotex 38 (98ShA màu tím) + KTR Rotex 38 (GG Hub 1a) + KTR Rotex 38 (ST Hub 1b) – Gia công theo mẫu – Thương hiệu: KTR',qty:1,unit:'Bộ',company:'CÔNG TY TNHH THIẾT BỊ ANH PHƯƠNG',receivedDate:'2026-06-01',requestedDate:'2026-06-05',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Khớp nối trục PTI DHP 1100T20 – Gia công lỗ trục theo mẫu – Thương hiệu: PTI/Korea',qty:1,unit:'Bộ',company:'CÔNG TY TNHH THƯƠNG MẠI – DỊCH VỤ KỸ THUẬT ĐẠI TÍN',receivedDate:'2026-06-03',requestedDate:'2026-06-05',completedDate:null,deliveredDate:'2026-06-06',status:'delivered'},
+  {name:'Khớp nối Flender N-EUPEX B 68 – Pump side Ø24k6 key B=8 / Motor side Ø28k6 key B=8 – Thương hiệu: Flender/Đức',qty:1,unit:'Bộ',company:'CÔNG TY TNHH WATTENS VIỆT NAM',receivedDate:'2026-06-03',requestedDate:'2026-06-06',completedDate:null,deliveredDate:'2026-06-06',status:'delivered'},
+  {name:'Khớp nối KTR Rotex 24 (ALU Hub 1-1a 92ShA) – d1=20mm then 6mm / d2=28mm then 8mm – Thương hiệu: KTR/Đức',qty:3,unit:'Bộ',company:'CÔNG TY CỔ PHẦN THƯƠNG MẠI KỸ THUẬT HẢI ANH',receivedDate:'2026-06-03',requestedDate:'2026-06-08',completedDate:null,deliveredDate:null,status:'done_waiting'},
+  {name:'Van WCC-VGA-8006 NCC: ĐHP',qty:21,unit:'Cái',company:'CÔNG TY TNHH VHG DATA',receivedDate:'2026-06-03',requestedDate:'2026-07-08',completedDate:null,deliveredDate:null,status:'new'},
+  {name:'Puly Martin SPB 150-3-TB-2517 + Ống lót côn CK368-TBC-2517-40H7 (Xuất xứ: VN) – Thương hiệu: Martin/China',qty:2,unit:'Bộ',company:'CÔNG TY TNHH KỸ THUẬT CÔNG NGHIỆP TNT',receivedDate:'2026-06-04',requestedDate:'2026-06-14',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Khớp nối KTR Rotex 48 (ST Hub 1-1 64ShD) – d1=48H7 then 14Js9 / d2=38H7 then 10Js9 – Thương hiệu: KTR/Germany',qty:1,unit:'Bộ',company:'CÔNG TY TNHH FLASHBOY SOLUTION',receivedDate:'2026-06-05',requestedDate:'2026-06-10',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Khớp nối bu lông PTI PF 160 – d1/d2=32/42H7 then tiêu chuẩn, mỗi đầu 2 vít cấy M10 vuông góc – Thương hiệu: PTI/Korea',qty:1,unit:'Bộ',company:'CÔNG TY CỔ PHẦN VIỆT NAM KỸ NGHỆ SÚC SẢN (VISSAN)',receivedDate:'2026-06-05',requestedDate:'2026-06-10',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Khớp nối KTR Poly-Norm AZR 60-140 NBR – d1/d2=42/45H7 then tiêu chuẩn – Thương hiệu: KTR/Germany',qty:1,unit:'Bộ',company:'CÔNG TY TNHH THIẾT BỊ VÀ DỊCH VỤ KỸ THUẬT BÁCH VIỆT',receivedDate:'2026-06-06',requestedDate:'2026-06-09',completedDate:null,deliveredDate:null,status:'in_production'},
+  {name:'Khớp nối Rathi Lovejoy L-100 (PU) – d1/d2=25/28mmH7 then tiêu chuẩn – Thương hiệu: Rathi Ringfeder/Germany – Xuất xứ: India',qty:1,unit:'Bộ',company:'CÔNG TY CỔ PHẦN THỰC PHẨM DÂN ÔN – CHI NHÁNH MỸ PHƯỚC 3',receivedDate:'2026-06-08',requestedDate:'2026-06-11',completedDate:null,deliveredDate:null,status:'new'},
+  {name:'Khớp nối KTR Bowex M-65 – d1=40mmH7 then 12mmH9 / d2=55mmH7 then 16mmH9 – Thương hiệu: KTR/Đức',qty:1,unit:'Bộ',company:'CÔNG TY TNHH CÔNG NGHIỆP HÙNG QUÂN',receivedDate:'2026-06-08',requestedDate:'2026-06-11',completedDate:null,deliveredDate:null,status:'new'},
+];
+
+function loadSeedOrders(){
+  if(!confirm('Tải 28 đơn hàng tháng 6/2026 vào hệ thống?\n\nLưu ý: sẽ THÊM VÀO các đơn đã có, không xóa dữ liệu cũ.\nNếu muốn tải lại từ đầu, hãy "Xóa toàn bộ" trước.')) return;
+  const today = todayStr();
+  SEED_ORDERS_JUNE2026.forEach(o=>{
+    const rec = {
+      id: uid('DH','order'),
+      code: uid('CK368','order'),
+      company: o.company, name: o.name,
+      qty: o.qty, unit: o.unit, priority:'',
+      receivedDate: o.receivedDate, requestedDate: o.requestedDate,
+      dueDate: o.requestedDate,
+      status: o.status,
+      assignment: 'inhouse', outsourcePartner:'',
+      completedDate: o.completedDate, deliveredDate: o.deliveredDate,
+      note:'Nhập từ dữ liệu tháng 6/2026',
+      statusHistory:[{status:o.status, date:today}],
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    DATA.orders.push(rec);
+  });
+  save();
+  alert('Đã tải thành công ' + SEED_ORDERS_JUNE2026.length + ' đơn hàng tháng 6/2026!');
+  goTab('orders');
+}
+
+function defaultData(){
+  return {
+    version: '2.0',
+    meta: { user: '' },
+    counters: { order: 0, ncr: 0, out: 0, staff: SEED_STAFF.length, assign: 0 },
+    orders: [],
+    outsourceShipments: [],
+    ncrRecords: [],
+    partners: SEED_PARTNERS.map(n=>({name:n, notes:''})),
+    staff: SEED_STAFF.map((s,i)=>({id:'NS-'+String(i+1).padStart(4,'0'), ...s})),
+    assignments: [],
+  };
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ DATA = JSON.parse(raw); }
+    else {
+      // Thử nhập từ phiên bản v1 nếu có, để không mất dữ liệu đã nhập trước đó
+      const old = localStorage.getItem('dhp_hub_v1');
+      if(old){
+        try{
+          const o = JSON.parse(old);
+          DATA = { ...defaultData(), ...o, staff: defaultData().staff, assignments: [] };
+        }catch(e){ DATA = defaultData(); }
+      } else DATA = defaultData();
+    }
+  }catch(e){ DATA = defaultData(); }
+  if(!DATA.partners || !DATA.partners.length) DATA.partners = SEED_PARTNERS.map(n=>({name:n, notes:''}));
+  if(!DATA.staff || !DATA.staff.length) DATA.staff = SEED_STAFF.map((s,i)=>({id:'NS-'+String(i+1).padStart(4,'0'), ...s}));
+  if(!DATA.assignments) DATA.assignments = [];
+  if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0 };
+  ['order','ncr','out','staff','assign'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ alert('Không lưu được dữ liệu (bộ nhớ trình duyệt đầy hoặc bị chặn).'); }
+  renderAll();
+}
+function uid(prefix, counterKey){
+  DATA.counters[counterKey] = (DATA.counters[counterKey]||0) + 1;
+  return prefix + '-' + String(DATA.counters[counterKey]).padStart(4,'0');
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtDate(s){ if(!s) return '—'; const d=new Date(s+'T00:00:00'); if(isNaN(d)) return s; return d.toLocaleDateString('vi-VN'); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ if(!a||!b) return null; const d1=new Date(a+'T00:00:00'), d2=new Date(b+'T00:00:00'); return Math.round((d2-d1)/86400000); }
+function truncate(s,n){ s=s||''; return s.length>n? s.slice(0,n)+'…' : s; }
+function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(s.label.replace(/^\d+\.\s*/,''))}</span>`; }
+function sevLabel(s){ return s=='1'?'Nghiêm trọng':(s=='2'?'Trung bình':'Nhẹ'); }
+function fillSelect(sel, items, valueKey, labelKey, placeholder){
+  sel.innerHTML = (placeholder?`<option value="">${esc(placeholder)}</option>`:'') +
+    items.map(it=>`<option value="${esc(it[valueKey])}">${esc(it[labelKey])}</option>`).join('');
+}
+
+/* ---------------- TAB NAV ---------------- */
+function goTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
+  renderAll();
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+
+/* ============================================================
+   LỊCH PHÂN CÔNG (GRID / TIMESHEET) — màn hình chính
+   ============================================================ */
+let gridMonth = todayStr().slice(0,7); // 'yyyy-mm'
+const DOW_VI = ['CN','T2','T3','T4','T5','T6','T7'];
+
+function monthLabel(ym){
+  const [y,m] = ym.split('-').map(Number);
+  return `Tháng ${m}/${y}`;
+}
+function daysInMonth(ym){
+  const [y,m] = ym.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+function shiftMonth(ym, delta){
+  let [y,m] = ym.split('-').map(Number);
+  m += delta;
+  if(m<1){ m=12; y--; } else if(m>12){ m=1; y++; }
+  return y+'-'+String(m).padStart(2,'0');
+}
+function prevMonth(){ gridMonth = shiftMonth(gridMonth,-1); renderGrid(); }
+function nextMonth(){ gridMonth = shiftMonth(gridMonth, 1); renderGrid(); }
+function gridDateStr(ym, day){ return ym+'-'+String(day).padStart(2,'0'); }
+
+// Một ô (người + ngày) có thể chứa NHIỀU lượt việc (vd: sáng đơn A, chiều đơn B)
+function assignmentsForCell(staffId, dateStr){
+  return DATA.assignments.filter(a=>a.staffId===staffId && a.date===dateStr)
+    .sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+}
+// Thông tin hiển thị thống nhất cho 1 lượt việc: dùng cho cả ô lịch (rút gọn) và modal danh sách (đầy đủ)
+function jobInfo(a){
+  if(!a) return null;
+  if(a.kind==='order'){
+    const ord = DATA.orders.find(o=>o.id===a.orderId);
+    if(!ord){
+      return {shortCode:'?', color:'#D1D5DB',
+        label:'(Đơn hàng đã bị xóa)', sub:`Giờ công: ${a.hours||8}h${a.note?' · '+a.note:''}`,
+        title:'Đơn hàng đã bị xóa khỏi hệ thống'};
+    }
+    const code = ord.code.replace(/^CK368-?/i,'') || ord.code;
+    const stage = a.stage ? a.stage : '';
+    return {
+      shortCode: truncate(code,6),
+      color: colorForOrder(ord),
+      label: `${ord.code} — ${truncate(ord.name,46)}`,
+      sub: `${stage?'Công đoạn: '+stage+' · ':''}${statusByKey(ord.status).label.replace(/^\d+\.\s*/,'')} · ${a.hours||8}h${a.note?' · '+a.note:''}`,
+      title: `${ord.code} — ${ord.name}${stage?'\nCông đoạn: '+stage:''}\nTrạng thái: ${statusByKey(ord.status).label}\nGiờ công: ${a.hours||8}h${a.note?'\nGhi chú: '+a.note:''}`,
+    };
+  }
+  const k = ASSIGN_KINDS[a.kind] || ASSIGN_KINDS.other;
+  return {
+    shortCode: k.code, color: k.color,
+    label: k.label,
+    sub: `${a.hours||8}h${a.note?' · '+a.note:''}`,
+    title: `${k.label}${a.note?' — '+a.note:''}`,
+  };
+}
+// HTML danh sách rút gọn xếp chồng trong 1 ô lịch — mỗi việc 1 dòng nhỏ màu riêng
+function cellStackHtml(staffId, dateStr){
+  const jobs = assignmentsForCell(staffId, dateStr);
+  if(!jobs.length) return null;
+  const items = jobs.map(a=>{
+    const info = jobInfo(a);
+    return `<div class="jobchip" style="background:${info.color}" title="${esc(info.title)}">${esc(info.shortCode)}</div>`;
+  }).join('');
+  return `<div class="joblist">${items}</div>`;
+}
+
+function renderGrid(){
+  const el = document.getElementById('view-grid');
+  const orders = DATA.orders;
+  const total = orders.length;
+  const delivered = orders.filter(o=>o.status==='delivered');
+  const withBothDates = orders.filter(o=>o.dueDate && o.deliveredDate);
+  const late = withBothDates.filter(o=>daysBetween(o.dueDate,o.deliveredDate) > 0);
+  const onTime = withBothDates.length - late.length;
+  const onTimeRate = withBothDates.length ? Math.round(onTime/withBothDates.length*100) : null;
+  const overdueOpen = orders.filter(o=>o.status!=='delivered' && o.dueDate && o.dueDate < todayStr());
+  const ordersWithNcr = new Set(DATA.ncrRecords.map(n=>n.orderId));
+  const ncrRate = total ? Math.round(ordersWithNcr.size/total*1000)/10 : null;
+
+  const nDays = daysInMonth(gridMonth);
+  const [gy,gm] = gridMonth.split('-').map(Number);
+  const staffList = DATA.staff.filter(s=>s.active!==false);
+  const internalStaff = staffList.filter(s=>s.type!=='outsource');
+  const outsourceStaff = staffList.filter(s=>s.type==='outsource');
+
+  // Xây bảng cột ngày
+  let theadDays = '';
+  for(let d=1; d<=nDays; d++){
+    const dow = new Date(gy, gm-1, d).getDay();
+    const cls = dow===0?'dow-sun':(dow===6?'dow-sat':'');
+    theadDays += `<th class="${cls}">${d}<br><span style="font-weight:400">${DOW_VI[dow]}</span></th>`;
+  }
+
+  function staffRow(s){
+    let cells = '';
+    for(let d=1; d<=nDays; d++){
+      const dateStr = gridDateStr(gridMonth, d);
+      const dow = new Date(gy, gm-1, d).getDay();
+      const stack = cellStackHtml(s.id, dateStr);
+      const wknd = (dow===0||dow===6) ? ' weekend' : '';
+      if(stack){
+        cells += `<td class="daycell${wknd}" onclick="openDayModal('${s.id}','${dateStr}')">${stack}</td>`;
+      } else {
+        cells += `<td class="daycell empty-cell${wknd}" title="Bấm để phân công" onclick="openDayModal('${s.id}','${dateStr}')">·</td>`;
+      }
+    }
+    return `<tr>
+      <td class="namecol"><div class="nm">${esc(s.name)}</div><div class="bd">${s.badge?esc(s.badge)+' · ':''}${esc(s.role||(s.type==='outsource'?'Đối tác outsource':'Nhân sự nội bộ'))}</div></td>
+      ${cells}
+    </tr>`;
+  }
+
+  // Chú giải: liệt kê các đơn hàng đang xuất hiện trên lịch tháng này + tổng giờ công đã phân
+  const monthAssigns = DATA.assignments.filter(a=>a.date && a.date.slice(0,7)===gridMonth);
+  const orderHours = {};
+  monthAssigns.forEach(a=>{
+    if(a.kind==='order' && a.orderId){
+      orderHours[a.orderId] = (orderHours[a.orderId]||0) + (parseFloat(a.hours)||8);
+    }
+  });
+  const legendOrders = Object.keys(orderHours).map(oid=>{
+    const ord = DATA.orders.find(o=>o.id===oid);
+    return ord ? {ord, hours: orderHours[oid]} : null;
+  }).filter(Boolean).sort((a,b)=> b.hours - a.hours);
+  const kindCounts = {};
+  monthAssigns.forEach(a=>{ if(a.kind!=='order') kindCounts[a.kind]=(kindCounts[a.kind]||0)+1; });
+  // Tổng hợp theo công đoạn — để anh em xưởng nắm khối lượng từng khâu trong tháng
+  const stageCounts = {};
+  monthAssigns.forEach(a=>{ if(a.kind==='order' && a.stage){ stageCounts[a.stage] = (stageCounts[a.stage]||0) + (parseFloat(a.hours)||8); } });
+  const stageEntries = Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]);
+
+  el.innerHTML = `
+    <div class="grid grid-4">
+      ${kpiCard('Tổng số đơn hàng đang theo dõi', total, 'đơn', '')}
+      ${kpiCard('Tỷ lệ giao đúng hạn', onTimeRate==null?'—':onTimeRate+'%', onTimeRate==null?'(chưa đủ dữ liệu đối chiếu)':`trên ${withBothDates.length} đơn có đủ 2 mốc ngày`, onTimeRate!=null && onTimeRate<70 ? 'var(--st-late)':'var(--st-done)')}
+      ${kpiCard('Đơn quá hạn nhưng chưa đóng', overdueOpen.length, 'đơn — cần xử lý ngay', overdueOpen.length>0?'var(--st-late)':'var(--st-done)')}
+      ${kpiCard('Tỷ lệ đơn có ghi nhận NCR', ncrRate==null?'—':ncrRate+'%', `${ordersWithNcr.size} / ${total} đơn · mục tiêu ≤ 3%`, ncrRate!=null && ncrRate>3 ? 'var(--st-late)':'var(--st-done)')}
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Lịch phân công — ${esc(monthLabel(gridMonth))}</h2>
+    <div class="toolbar">
+      <button class="ghost" onclick="prevMonth()">‹ Tháng trước</button>
+      <div style="font-weight:800;min-width:140px;text-align:center">${esc(monthLabel(gridMonth))}</div>
+      <button class="ghost" onclick="nextMonth()">Tháng sau ›</button>
+      <input type="month" value="${esc(gridMonth)}" onchange="gridMonth=this.value;renderGrid()" style="margin-left:6px">
+      <button class="secondary" onclick="openStaffModal()">👥 Quản lý nhân sự &amp; đối tác</button>
+      <span class="muted small" style="margin-left:auto">Bấm vào một ô để gán/đổi việc cho người đó vào ngày đó · ô màu = đơn hàng đang theo</span>
+    </div>
+
+    ${ staffList.length===0 ? '<div class="card empty">Chưa có nhân sự / đối tác nào trên lịch. Bấm “Quản lý nhân sự &amp; đối tác” để thêm — bao gồm cả người trong xưởng lẫn đối tác outsource.</div>' : `
+    <div class="gridwrap">
+      <table class="tg">
+        <thead><tr><th class="namecol">Nhân sự / Đối tác</th>${theadDays}</tr></thead>
+        <tbody>
+          ${ internalStaff.length ? `<tr class="grp-row"><td colspan="${nDays+1}">Nhân sự nội bộ (xưởng) — ${internalStaff.length} người</td></tr>` + internalStaff.map(staffRow).join('') : '' }
+          ${ outsourceStaff.length ? `<tr class="grp-row"><td colspan="${nDays+1}">Đối tác Outsource — ${outsourceStaff.length}</td></tr>` + outsourceStaff.map(staffRow).join('') : '' }
+        </tbody>
+      </table>
+    </div>`}
+
+    <h2 class="sec"><span class="bar"></span>Chú giải — đơn hàng &amp; loại công việc xuất hiện trong tháng</h2>
+    <div class="card">
+      ${ legendOrders.length===0 && !Object.keys(kindCounts).length ? '<div class="empty">Chưa có phân công nào trong tháng này. Bấm vào một ô trống trên lịch để bắt đầu gán việc.</div>' : `
+      <div class="legend">
+        ${legendOrders.map(x=>`<span class="chip"><i style="background:${colorForOrder(x.ord)}"></i><b>${esc(x.ord.code)}</b> — ${esc(truncate(x.ord.name,34))} · ${pillFor(x.ord.status)} · <span class="muted">${x.hours}h trong tháng</span></span>`).join('')}
+        ${Object.keys(kindCounts).map(k=>{ const kk=ASSIGN_KINDS[k]||ASSIGN_KINDS.other; return `<span class="chip"><i style="background:${kk.color}"></i>${esc(kk.code)} — ${esc(kk.label)} · <span class="muted">${kindCounts[k]} lượt</span></span>`; }).join('')}
+      </div>
+      <p class="small muted" style="margin-top:8px">Mã hiển thị trên mỗi ô chính là <b>mã đơn hàng</b> (rút gọn) đã có trong tab “Đơn hàng &amp; Tiến độ” — không cần tra cứu chú giải riêng. Một ô có thể chứa <b>nhiều việc trong cùng 1 ngày</b> (xếp chồng) — bấm vào ô để xem/sửa từng việc. Khi cập nhật trạng thái đơn, màu/trạng thái trong chú giải tự đồng bộ theo.</p>`
+      }
+      ${ stageEntries.length ? `
+      <h3 style="font-size:12.5px;margin:14px 0 8px">Khối lượng giờ công theo công đoạn trong tháng (để anh em xưởng nắm tổng quan các khâu)</h3>
+      <div class="legend">
+        ${stageEntries.map(([stage,hours])=>`<span class="chip"><b>${esc(stage)}</b> · <span class="muted">${hours}h</span></span>`).join('')}
+      </div>` : ''}
+    </div>
+  `;
+}
+function kpiCard(label, value, sub, accent){
+  return `<div class="card kpi" style="${accent?'border-left:4px solid '+accent:''}">
+    <div class="v">${esc(String(value))}</div>
+    <div class="l">${esc(label)}</div>
+    <div class="d">${esc(sub)}</div>
+  </div>`;
+}
+
+/* ---- Modal: danh sách việc trong 1 ô (người + ngày) — hỗ trợ nhiều việc/ngày ---- */
+function openDayModal(staffId, dateStr){
+  const s = DATA.staff.find(x=>x.id===staffId);
+  if(!s) return;
+  document.getElementById('day_staff').value = staffId;
+  document.getElementById('day_date').value = dateStr;
+  document.getElementById('dayModalTitle').textContent = 'Công việc trong ngày — '+s.name;
+  document.getElementById('dayModalSub').textContent = `${s.name}${s.badge?' ('+s.badge+')':''} — Ngày ${fmtDate(dateStr)} (${DOW_VI[new Date(dateStr+'T00:00:00').getDay()]})`;
+  renderDayJobList();
+  openModal('modalDay');
+}
+function renderDayJobList(){
+  const staffId = document.getElementById('day_staff').value;
+  const date = document.getElementById('day_date').value;
+  const jobs = assignmentsForCell(staffId, date);
+  const wrap = document.getElementById('dayJobList');
+  if(!jobs.length){ wrap.innerHTML = '<div class="empty">Chưa có việc nào được gán cho ngày này. Bấm “Thêm việc trong ngày” để gán đơn hàng / công đoạn cho người này.</div>'; return; }
+  const totalHours = jobs.reduce((s,a)=>s+(parseFloat(a.hours)||8), 0);
+  wrap.innerHTML = jobs.map(a=>{
+    const info = jobInfo(a);
+    return `<div class="dayjob">
+      <i class="dot" style="background:${info.color}"></i>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:12.5px">${esc(info.label)}</div>
+        <div class="small muted">${info.sub}</div>
+      </div>
+      <div class="actions">
+        <a onclick="openAssignModal('${staffId}','${date}','${a.id}')">Sửa</a>
+        <a onclick="deleteAssignFromDay('${a.id}')" style="color:var(--st-late)">Xóa</a>
+      </div>
+    </div>`;
+  }).join('') + `<p class="small muted" style="margin-top:2px">Tổng giờ công đã gán trong ngày: <b>${totalHours}h</b>${totalHours>8?' <span style="color:var(--st-late);font-weight:700">— vượt quá 8h/ngày, kiểm tra lại nếu không phải tăng ca</span>':''}</p>`;
+}
+function deleteAssignFromDay(id){
+  if(!confirm('Xóa việc này khỏi ngày?')) return;
+  DATA.assignments = DATA.assignments.filter(x=>x.id!==id);
+  save();
+  renderDayJobList();
+}
+
+/* ---- Modal: thêm/sửa MỘT lượt việc (gắn với đơn hàng hoặc loại công việc khác) ---- */
+function openAssignModal(staffId, dateStr, assignId){
+  const s = DATA.staff.find(x=>x.id===staffId);
+  if(!s) return;
+  document.getElementById('as_staff').value = staffId;
+  document.getElementById('as_date').value = dateStr;
+  document.getElementById('assignModalSub').textContent = `${s.name}${s.badge?' ('+s.badge+')':''} — Ngày ${fmtDate(dateStr)}`;
+  fillSelect(document.getElementById('as_order'), DATA.orders.map(o=>({id:o.id,label:o.code+' — '+truncate(o.name,42)+'  ['+statusByKey(o.status).label.replace(/^\d+\.\s*/,'')+']'})), 'id','label','— Chọn đơn hàng —');
+  fillSelect(document.getElementById('as_stage'), PRODUCTION_STAGES.map(x=>({k:x,label:x})), 'k','label','— Chọn công đoạn (tùy chọn) —');
+  const a = assignId ? DATA.assignments.find(x=>x.id===assignId) : null;
+  document.getElementById('assignModalTitle').textContent = a ? 'Sửa việc trong ngày' : 'Thêm việc trong ngày';
+  document.getElementById('as_clear_btn').style.display = a ? 'inline-block' : 'none';
+  if(a){
+    document.getElementById('as_id').value = a.id;
+    document.getElementById('as_kind').value = a.kind;
+    document.getElementById('as_order').value = a.orderId||'';
+    document.getElementById('as_stage').value = a.stage||'';
+    document.getElementById('as_hours').value = a.hours!=null ? a.hours : 8;
+    document.getElementById('as_note').value = a.note||'';
+  } else {
+    document.getElementById('as_id').value = '';
+    document.getElementById('as_kind').value = 'order';
+    document.getElementById('as_order').value = '';
+    document.getElementById('as_stage').value = '';
+    document.getElementById('as_hours').value = 8;
+    document.getElementById('as_note').value = '';
+  }
+  toggleAssignOrderField();
+  openModal('modalAssign');
+}
+function toggleAssignOrderField(){
+  const isOrder = document.getElementById('as_kind').value==='order';
+  document.getElementById('as_order_field').style.display = isOrder ? 'block' : 'none';
+  document.getElementById('as_stage_field').style.display = isOrder ? 'block' : 'none';
+}
+function saveAssign(){
+  const staffId = document.getElementById('as_staff').value;
+  const date = document.getElementById('as_date').value;
+  const kind = document.getElementById('as_kind').value;
+  let orderId = '';
+  if(kind==='order'){
+    orderId = document.getElementById('as_order').value;
+    if(!orderId){ alert('Vui lòng chọn đơn hàng cho việc này (hoặc chọn loại công việc khác như Nghỉ phép / Đào tạo...).'); return; }
+  }
+  const id = document.getElementById('as_id').value;
+  const rec = {
+    id: id || uid('PC','assign'),
+    staffId, date, kind,
+    orderId: kind==='order' ? orderId : '',
+    stage: kind==='order' ? document.getElementById('as_stage').value : '',
+    hours: parseFloat(document.getElementById('as_hours').value) || 8,
+    note: document.getElementById('as_note').value.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+  const idx = DATA.assignments.findIndex(x=>x.id===rec.id);
+  if(idx>=0){ rec.createdAt = DATA.assignments[idx].createdAt; DATA.assignments[idx] = rec; }
+  else { rec.createdAt = new Date().toISOString(); DATA.assignments.push(rec); }
+  save();
+  closeModal('modalAssign');
+  // Mở lại danh sách việc trong ngày để xem kết quả vừa thêm/sửa (hỗ trợ thêm tiếp nhiều việc)
+  openDayModal(staffId, date);
+}
+function clearAssign(){
+  const id = document.getElementById('as_id').value;
+  if(!id) return;
+  if(!confirm('Xóa việc này?')) return;
+  const staffId = document.getElementById('as_staff').value;
+  const date = document.getElementById('as_date').value;
+  DATA.assignments = DATA.assignments.filter(x=>x.id!==id);
+  save();
+  closeModal('modalAssign');
+  openDayModal(staffId, date);
+}
+
+/* ---- Modal: quản lý danh sách nhân sự / đối tác ---- */
+function openStaffModal(){
+  renderStaffList();
+  openModal('modalStaff');
+}
+function renderStaffList(){
+  const wrap = document.getElementById('staffListWrap');
+  if(!DATA.staff.length){ wrap.innerHTML = '<div class="empty">Chưa có ai trong danh sách.</div>'; return; }
+  wrap.innerHTML = `<table><thead><tr><th>Mã số</th><th>Họ tên / Đối tác</th><th>Loại</th><th>Vai trò / Ghi chú</th><th>Hiển thị</th><th></th></tr></thead><tbody>
+    ${DATA.staff.map(s=>`<tr>
+      <td>${esc(s.badge||'—')}</td>
+      <td><b>${esc(s.name)}</b></td>
+      <td>${s.type==='outsource' ? '<span class="badge-out">OUTSOURCE</span>' : 'Nội bộ'}</td>
+      <td class="small">${esc(s.role||'—')}</td>
+      <td>${s.active!==false ? '<span class="pill" style="background:var(--st-done)">Đang hiện</span>' : '<span class="pill" style="background:var(--st-new)">Đã ẩn</span>'}</td>
+      <td class="actions"><a onclick="openStaffEdit('${s.id}')">Sửa</a><a onclick="deleteStaff('${s.id}')" style="color:var(--st-late)">Xóa</a></td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+function openStaffEdit(id){
+  document.getElementById('st_id').value = id||'';
+  if(id){
+    const s = DATA.staff.find(x=>x.id===id);
+    document.getElementById('staffEditTitle').textContent = 'Sửa — '+s.name;
+    document.getElementById('st_badge').value = s.badge||'';
+    document.getElementById('st_name').value = s.name||'';
+    document.getElementById('st_type').value = s.type||'internal';
+    document.getElementById('st_role').value = s.role||'';
+    document.getElementById('st_active').checked = s.active!==false;
+  } else {
+    document.getElementById('staffEditTitle').textContent = 'Thêm người / đối tác';
+    document.getElementById('st_badge').value='';
+    document.getElementById('st_name').value='';
+    document.getElementById('st_type').value='internal';
+    document.getElementById('st_role').value='';
+    document.getElementById('st_active').checked = true;
+  }
+  openModal('modalStaffEdit');
+}
+function saveStaff(){
+  const name = document.getElementById('st_name').value.trim();
+  if(!name){ alert('Vui lòng nhập họ tên / tên đối tác.'); return; }
+  const id = document.getElementById('st_id').value;
+  const rec = {
+    id: id || uid('NS','staff'),
+    badge: document.getElementById('st_badge').value.trim(),
+    name,
+    type: document.getElementById('st_type').value,
+    role: document.getElementById('st_role').value.trim(),
+    active: document.getElementById('st_active').checked,
+  };
+  const idx = DATA.staff.findIndex(x=>x.id===rec.id);
+  if(idx>=0) DATA.staff[idx]=rec; else DATA.staff.push(rec);
+  closeModal('modalStaffEdit');
+  save();
+  renderStaffList();
+}
+function deleteStaff(id){
+  if(!confirm('Xóa người / đối tác này khỏi danh sách? Các phân công đã gán cho người này trên lịch cũ sẽ vẫn được giữ nhưng không còn hiển thị.')) return;
+  DATA.staff = DATA.staff.filter(x=>x.id!==id);
+  save();
+  renderStaffList();
+}
+
+/* ============================================================
+   ORDERS
+   ============================================================ */
+let orderFilter = { status:'', q:'', assignment:'', sortKey:'dueDate', sortDir:'desc' };
+// Giá trị dùng để so sánh/sắp xếp cho từng cột — cho phép người xem bấm vào tiêu đề cột
+// để sắp xếp theo ý mình (mã đơn, tên hàng, khách hàng, hạn giao, trạng thái, thực hiện, tiến độ...)
+function orderSortValue(o, key){
+  switch(key){
+    case 'code': return (o.code||'');
+    case 'name': return (o.name||'').toLowerCase();
+    case 'company': return (o.company||'').toLowerCase();
+    case 'dueDate': return (o.dueDate||'');
+    case 'status': { const i = ORDER_STATUSES.findIndex(s=>s.k===o.status); return i<0?99:i; }
+    case 'assignment': return (o.assignment==='outsource' ? '1-'+(o.outsourcePartner||'') : '0-noi bo');
+    case 'progress': {
+      // Số càng nhỏ (âm) = càng trễ/khẩn cấp hơn — để mặc định (giảm dần) hiện đơn cần chú ý lên trên
+      if(o.status==='delivered'){
+        if(o.dueDate && o.deliveredDate) return -daysBetween(o.dueDate, o.deliveredDate);
+        return 0;
+      }
+      if(o.dueDate) return daysBetween(todayStr(), o.dueDate);
+      return 9999;
+    }
+    default: return '';
+  }
+}
+function sortOrdersBy(key){
+  if(orderFilter.sortKey === key){
+    orderFilter.sortDir = (orderFilter.sortDir === 'asc') ? 'desc' : 'asc';
+  } else {
+    orderFilter.sortKey = key;
+    orderFilter.sortDir = (key==='dueDate' || key==='progress') ? 'desc' : 'asc';
+  }
+  renderOrders();
+}
+function sortHeader(key, label){
+  const active = orderFilter.sortKey === key;
+  const arrow = active ? (orderFilter.sortDir==='asc' ? ' ▲' : ' ▼') : ' ⇅';
+  return `<th class="sortable${active?' sorted':''}" onclick="sortOrdersBy('${key}')" title="Bấm để sắp xếp theo ${esc(label)} (bấm lại để đảo chiều tăng/giảm)">${esc(label)}<span class="muted" style="font-weight:400">${arrow}</span></th>`;
+}
+function renderOrders(){
+  const el = document.getElementById('view-orders');
+  el.innerHTML = `
+    <div class="toolbar">
+      <button onclick="openOrderModal()">＋ Thêm đơn hàng</button>
+      <input id="ofQ" placeholder="Tìm theo mã đơn / tên hàng / khách hàng..." style="min-width:260px" oninput="orderFilter.q=this.value;renderOrders()" value="${esc(orderFilter.q)}">
+      <select onchange="orderFilter.status=this.value;renderOrders()">
+        <option value="">— Tất cả trạng thái —</option>
+        ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${orderFilter.status===s.k?'selected':''}>${esc(s.label)}</option>`).join('')}
+      </select>
+      <select onchange="orderFilter.assignment=this.value;renderOrders()">
+        <option value="">— Nội bộ &amp; Outsource —</option>
+        <option value="inhouse" ${orderFilter.assignment==='inhouse'?'selected':''}>Chỉ nội bộ</option>
+        <option value="outsource" ${orderFilter.assignment==='outsource'?'selected':''}>Chỉ outsource</option>
+      </select>
+      <span class="muted small" style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} đơn · <a onclick="goTab('grid')" style="cursor:pointer;color:var(--brand);font-weight:700">Xem trên Lịch phân công →</a></span>
+    </div>
+    <div class="legend">${ORDER_STATUSES.map(s=>`<span class="chip"><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('')}</div>
+    <p class="small muted" style="margin:0 0 8px">💡 Bấm vào tiêu đề cột (Mã đơn, Tên hàng, Khách hàng, Hạn giao, Trạng thái, Thực hiện, Tiến độ) để sắp xếp theo cột đó — bấm lại để đảo chiều tăng/giảm. Mặc định đang xếp theo <b>Hạn giao — đơn có ngày gần nhất ở trên cùng</b> để dễ theo dõi việc cần làm trước.</p>
+    <div class="card" style="overflow:auto;padding:0">
+      ${ DATA.orders.length===0 ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nhập nhanh từ bảng Excel theo dõi tiến độ hiện có. Sau khi có đơn, bạn có thể gán đơn cho người trên Lịch phân công.</div>' : ordersTable() }
+    </div>
+  `;
+}
+function filteredOrders(){
+  const q = orderFilter.q.trim().toLowerCase();
+  return DATA.orders.filter(o=>{
+    if(orderFilter.status && o.status!==orderFilter.status) return false;
+    if(orderFilter.assignment && (o.assignment||'inhouse')!==orderFilter.assignment) return false;
+    if(q && !((o.code||'')+' '+(o.name||'')+' '+(o.company||'')).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>{
+    const key = orderFilter.sortKey||'dueDate', dir = orderFilter.sortDir||'desc';
+    const va = orderSortValue(a,key), vb = orderSortValue(b,key);
+    let cmp;
+    if(typeof va==='number' && typeof vb==='number') cmp = va-vb;
+    else cmp = String(va).localeCompare(String(vb), 'vi');
+    return dir==='asc' ? cmp : -cmp;
+  });
+}
+function ordersTable(){
+  const rows = filteredOrders();
+  if(!rows.length) return '<div class="empty">Không có đơn nào khớp bộ lọc.</div>';
+  const statusOpts = ORDER_STATUSES.map(s=>`<option value="${s.k}">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('');
+  return `<table><thead><tr>
+    ${sortHeader('code','Mã đơn')}${sortHeader('name','Tên hàng')}${sortHeader('company','Khách hàng')}${sortHeader('dueDate','Hạn KH')}${sortHeader('status','Trạng thái')}${sortHeader('assignment','Thực hiện')}${sortHeader('progress','Tiến độ')}<th></th>
+  </tr></thead><tbody>
+  ${rows.map(o=>{
+    const dueRef = o.requestedDate || o.dueDate;
+    const overdue = o.status!=='delivered' && dueRef && dueRef < todayStr();
+    const urgentToday = o.status!=='delivered' && dueRef && dueRef === todayStr();
+    let progressNote = '';
+    if(o.status==='delivered'){
+      if(dueRef && o.deliveredDate){
+        const d = daysBetween(dueRef,o.deliveredDate);
+        progressNote = d>0 ? `<span style="color:var(--st-late);font-weight:700">Trễ ${d} ngày</span>` : `<span style="color:var(--st-done);font-weight:700">Đúng/sớm hạn</span>`;
+      } else progressNote = '<span class="muted">Đã đóng đơn</span>';
+    } else if(overdue){
+      progressNote = `<span style="color:var(--st-late);font-weight:700">Quá hạn ${daysBetween(dueRef,todayStr())} ngày</span>`;
+    } else if(urgentToday){
+      progressNote = `<span style="color:var(--st-prod);font-weight:800">⚠ Hạn hôm nay!</span>`;
+    } else if(dueRef){
+      const d = daysBetween(todayStr(), dueRef);
+      progressNote = d<=3 ? `<span style="color:var(--st-prod);font-weight:700">Còn ${d} ngày</span>` : `<span class="muted">Còn ${d} ngày</span>`;
+    }
+    const rowBg = overdue ? 'background:#fff5f5' : urgentToday ? 'background:#fffbeb' : '';
+    return `<tr style="${rowBg}">
+      <td><b>${esc(o.code)}</b>${o.assignment==='outsource'?'<span class="badge-out" title="Gia công ngoài">'+esc(o.outsourcePartner||'OUT')+'</span>':''}</td>
+      <td title="${esc(o.name)}">${esc(truncate(o.name,52))}</td>
+      <td>${esc(truncate(o.company,28))}</td>
+      <td>${fmtDate(dueRef)}</td>
+      <td>
+        <select style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:${statusByKey(o.status).color};color:#fff;font-weight:700;cursor:pointer"
+          onchange="quickStatusChange('${o.id}',this.value)"
+          title="Đổi trạng thái nhanh">
+          ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${o.status===s.k?'selected':''} style="background:#fff;color:var(--ink)">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('')}
+        </select>
+      </td>
+      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'(chưa chọn)') : 'Nội bộ'}</td>
+      <td class="small">${progressNote}</td>
+      <td class="actions"><a onclick="openOrderModal('${o.id}')">Sửa</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">Xóa</a></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+function openOrderModal(id){
+  document.getElementById('ord_id').value = id||'';
+  const sSel = document.getElementById('ord_status');
+  sSel.innerHTML = ORDER_STATUSES.map(s=>`<option value="${s.k}">${esc(s.label)}</option>`).join('');
+  fillSelect(document.getElementById('ord_partner'), DATA.partners, 'name', 'name', '— Chọn đối tác —');
+  if(id){
+    const o = DATA.orders.find(x=>x.id===id);
+    document.getElementById('orderModalTitle').textContent = 'Sửa đơn hàng — '+o.code;
+    document.getElementById('ord_code').value = o.code||'';
+    document.getElementById('ord_company').value = o.company||'';
+    document.getElementById('ord_name').value = o.name||'';
+    document.getElementById('ord_qty').value = o.qty||'';
+    document.getElementById('ord_unit').value = o.unit||'';
+    document.getElementById('ord_priority').value = o.priority||'';
+    document.getElementById('ord_received').value = o.receivedDate||'';
+    document.getElementById('ord_requested').value = o.requestedDate||'';
+    document.getElementById('ord_due').value = o.dueDate||'';
+    document.getElementById('ord_status').value = o.status||'new';
+    document.getElementById('ord_assignment').value = o.assignment||'inhouse';
+    document.getElementById('ord_partner').value = o.outsourcePartner||'';
+    document.getElementById('ord_completed').value = o.completedDate||'';
+    document.getElementById('ord_delivered').value = o.deliveredDate||'';
+    document.getElementById('ord_note').value = o.note||'';
+  } else {
+    document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
+    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_note'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ord_priority').value = '';
+    document.getElementById('ord_status').value = 'new';
+    document.getElementById('ord_assignment').value = 'inhouse';
+    document.getElementById('ord_partner').value = '';
+  }
+  toggleOutsourceField();
+  openModal('modalOrder');
+}
+function toggleOutsourceField(){
+  document.getElementById('ord_partner_field').style.display = document.getElementById('ord_assignment').value==='outsource' ? 'block':'none';
+}
+function saveOrder(){
+  const id = document.getElementById('ord_id').value;
+  const name = document.getElementById('ord_name').value.trim();
+  if(!name){ alert('Vui lòng nhập tên hàng / sản phẩm.'); return; }
+  let code = document.getElementById('ord_code').value.trim();
+  const rec = {
+    id: id || uid('DH', 'order'),
+    code: code || uid('CK368', 'order'),
+    company: document.getElementById('ord_company').value.trim(),
+    name,
+    qty: parseFloat(document.getElementById('ord_qty').value)||null,
+    unit: document.getElementById('ord_unit').value.trim(),
+    priority: document.getElementById('ord_priority').value,
+    receivedDate: document.getElementById('ord_received').value || null,
+    requestedDate: document.getElementById('ord_requested').value || null,
+    dueDate: document.getElementById('ord_due').value || null,
+    status: document.getElementById('ord_status').value,
+    assignment: document.getElementById('ord_assignment').value,
+    outsourcePartner: document.getElementById('ord_assignment').value==='outsource' ? document.getElementById('ord_partner').value : '',
+    completedDate: document.getElementById('ord_completed').value || null,
+    deliveredDate: document.getElementById('ord_delivered').value || null,
+    note: document.getElementById('ord_note').value.trim(),
+    statusHistory: [],
+    updatedAt: new Date().toISOString(),
+  };
+  const idx = DATA.orders.findIndex(o=>o.id===rec.id);
+  if(idx>=0){
+    rec.statusHistory = DATA.orders[idx].statusHistory||[];
+    if(DATA.orders[idx].status !== rec.status) rec.statusHistory.push({status:rec.status, date: todayStr()});
+    rec.createdAt = DATA.orders[idx].createdAt;
+    DATA.orders[idx] = rec;
+  } else {
+    rec.createdAt = new Date().toISOString();
+    rec.statusHistory = [{status:rec.status, date: todayStr()}];
+    DATA.orders.push(rec);
+  }
+  closeModal('modalOrder');
+  save();
+  goTab('orders');
+}
+function deleteOrder(id){
+  if(!confirm('Xóa đơn hàng này? (Các ghi nhận NCR/outsource/phân công liên quan vẫn được giữ lại nhưng sẽ mất liên kết — ô lịch tương ứng sẽ hiển thị "?".)')) return;
+  DATA.orders = DATA.orders.filter(o=>o.id!==id);
+  save(); goTab('orders');
+}
+function quickStatusChange(id, newStatus){
+  const o = DATA.orders.find(x=>x.id===id);
+  if(!o || o.status===newStatus) return;
+  o.statusHistory = o.statusHistory||[];
+  o.statusHistory.push({status:newStatus, date:todayStr()});
+  o.status = newStatus;
+  o.updatedAt = new Date().toISOString();
+  if(newStatus==='delivered' && !o.deliveredDate) o.deliveredDate = todayStr();
+  save();
+}
+
+/* ============================================================
+   OUTSOURCE
+   ============================================================ */
+function renderOutsource(){
+  const el = document.getElementById('view-outsource');
+  const ships = DATA.outsourceShipments.slice().sort((a,b)=>(b.sentDate||'').localeCompare(a.sentDate||''));
+  // hiệu suất đối tác — dùng để gợi ý quyết định khối lượng giao việc
+  const partnerStats = DATA.partners.map(p=>{
+    const ps = ships.filter(s=>s.partner===p.name);
+    const withDates = ps.filter(s=>s.committedReturnDate && s.actualReturnDate);
+    const lateCount = withDates.filter(s=>daysBetween(s.committedReturnDate,s.actualReturnDate)>0).length;
+    const failCount = ps.filter(s=>s.inputQcResult==='fail').length;
+    return {name:p.name, total:ps.length, late:lateCount, withDates:withDates.length, fail:failCount};
+  }).filter(p=>p.total>0);
+  el.innerHTML = `
+    <div class="toolbar">
+      <button onclick="openOutModal()">＋ Ghi nhận lô hàng outsource</button>
+      <button class="secondary" onclick="openPartnerPrompt()">＋ Thêm đối tác outsource</button>
+      <span class="muted small">Đối tác hiện có: ${DATA.partners.map(p=>esc(p.name)).join(', ')||'—'} · <a onclick="goTab('grid')" style="cursor:pointer;color:var(--brand);font-weight:700">Xem lịch phân công outsource →</a></span>
+    </div>
+    <div class="card" style="overflow:auto;padding:0">
+      ${ ships.length===0 ? '<div class="empty">Chưa có lô hàng outsource nào được ghi nhận. Mỗi khi gửi hàng đi gia công ngoài (VD: CK Tuyết Vinh), hãy ghi nhận tại đây để theo dõi tách bạch theo đề xuất mục 4.3 trong báo cáo.</div>' :
+      `<table><thead><tr>
+        <th>Đơn hàng</th><th>Đối tác</th><th>Ngày gửi</th><th>Cam kết nhận lại</th><th>Nhận lại thực tế</th><th>Đúng hẹn?</th><th>KT đầu vào</th><th></th>
+      </tr></thead><tbody>
+      ${ships.map(s=>{
+        const ord = DATA.orders.find(o=>o.id===s.orderId);
+        let onTime = '—';
+        if(s.committedReturnDate && s.actualReturnDate){
+          const d = daysBetween(s.committedReturnDate, s.actualReturnDate);
+          onTime = d>0 ? `<span class="pill" style="background:var(--st-late)">trễ ${d} ngày</span>` : `<span class="pill" style="background:var(--st-done)">đúng/sớm hẹn</span>`;
+        }
+        const qcMap = {pass:'<span class="pill" style="background:var(--st-done)">Đạt</span>', fail:'<span class="pill" style="background:var(--st-late)">Không đạt</span>', pending:'<span class="pill" style="background:var(--st-new)">Chưa kiểm tra</span>'};
+        return `<tr>
+          <td><b>${ord?esc(ord.code):'—'}</b><div class="small muted">${ord?esc(truncate(ord.name,40)):''}</div></td>
+          <td>${esc(s.partner)}</td>
+          <td>${fmtDate(s.sentDate)}</td>
+          <td>${fmtDate(s.committedReturnDate)}</td>
+          <td>${fmtDate(s.actualReturnDate)}</td>
+          <td>${onTime}</td>
+          <td>${qcMap[s.inputQcResult]||qcMap.pending}</td>
+          <td class="actions"><a onclick="openOutModal('${s.id}')">Sửa</a><a onclick="deleteOut('${s.id}')" style="color:var(--st-late)">Xóa</a></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`}
+    </div>
+    <h2 class="sec"><span class="bar"></span>Hiệu suất đối tác Outsource</h2>
+    <div class="card">
+      ${ partnerStats.length===0 ? '<div class="empty">Chưa có dữ liệu lô hàng outsource.</div>' :
+        `<table><thead><tr><th>Đối tác</th><th>Số lô</th><th>Tỷ lệ trễ hẹn</th><th>Số lô không đạt KT đầu vào</th></tr></thead><tbody>
+          ${partnerStats.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${p.total}</td>
+            <td>${p.withDates? Math.round(p.late/p.withDates*100)+'% ('+p.late+'/'+p.withDates+')' : '—'}</td>
+            <td>${p.fail>0?'<span class="pill" style="background:var(--st-late)">'+p.fail+' lô</span>':'0'}</td></tr>`).join('')}
+        </tbody></table>
+        <p class="small muted" style="margin-top:10px">Dùng số liệu này định kỳ để quyết định tiếp tục/điều chỉnh khối lượng giao việc cho từng đối tác (theo đề xuất mục 4.3 trong báo cáo).</p>`
+      }
+    </div>
+  `;
+}
+function openPartnerPrompt(){
+  const name = prompt('Tên đối tác outsource mới (VD: tên xưởng gia công ngoài):');
+  if(name && name.trim()){
+    if(DATA.partners.some(p=>p.name.toLowerCase()===name.trim().toLowerCase())){ alert('Đối tác này đã có trong danh sách.'); return; }
+    DATA.partners.push({name:name.trim(), notes:''});
+    save(); goTab('outsource');
+  }
+}
+function openOutModal(id){
+  document.getElementById('out_id').value = id||'';
+  fillSelect(document.getElementById('out_order'), DATA.orders.map(o=>({id:o.id,label:o.code+' — '+truncate(o.name,40)})), 'id','label','— Chọn đơn hàng —');
+  fillSelect(document.getElementById('out_partner'), DATA.partners, 'name','name','— Chọn đối tác —');
+  if(id){
+    const s = DATA.outsourceShipments.find(x=>x.id===id);
+    document.getElementById('out_order').value = s.orderId||'';
+    document.getElementById('out_partner').value = s.partner||'';
+    document.getElementById('out_sent').value = s.sentDate||'';
+    document.getElementById('out_committed').value = s.committedReturnDate||'';
+    document.getElementById('out_actual').value = s.actualReturnDate||'';
+    document.getElementById('out_qc').value = s.inputQcResult||'pending';
+    document.getElementById('out_note').value = s.note||'';
+  } else {
+    ['out_order','out_partner','out_sent','out_committed','out_actual','out_note'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('out_qc').value = 'pending';
+  }
+  openModal('modalOut');
+}
+function saveOutsource(){
+  const orderId = document.getElementById('out_order').value;
+  const partner = document.getElementById('out_partner').value;
+  if(!orderId || !partner){ alert('Vui lòng chọn đơn hàng và đối tác.'); return; }
+  const id = document.getElementById('out_id').value;
+  const rec = {
+    id: id || uid('OUT','out'),
+    orderId, partner,
+    sentDate: document.getElementById('out_sent').value || null,
+    committedReturnDate: document.getElementById('out_committed').value || null,
+    actualReturnDate: document.getElementById('out_actual').value || null,
+    inputQcResult: document.getElementById('out_qc').value,
+    note: document.getElementById('out_note').value.trim(),
+  };
+  const idx = DATA.outsourceShipments.findIndex(x=>x.id===rec.id);
+  if(idx>=0) DATA.outsourceShipments[idx]=rec; else DATA.outsourceShipments.push(rec);
+  closeModal('modalOut'); save(); goTab('outsource');
+}
+function deleteOut(id){
+  if(!confirm('Xóa ghi nhận lô hàng này?')) return;
+  DATA.outsourceShipments = DATA.outsourceShipments.filter(x=>x.id!==id);
+  save(); goTab('outsource');
+}
+
+/* ============================================================
+   NCR
+   ============================================================ */
+function renderNcr(){
+  const el = document.getElementById('view-ncr');
+  const recs = DATA.ncrRecords.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const total = DATA.orders.length || 1;
+  const withNcr = new Set(DATA.ncrRecords.map(r=>r.orderId)).size;
+  const rate = Math.round(withNcr/total*1000)/10;
+  const byStage = {};
+  recs.forEach(r=>{ byStage[r.stage] = (byStage[r.stage]||0)+1; });
+  el.innerHTML = `
+    <div class="grid grid-3">
+      ${kpiCard('Tổng số ghi nhận NCR', DATA.ncrRecords.length, 'lượt phát hiện sai lệch', '')}
+      ${kpiCard('Số đơn có ít nhất 1 NCR', withNcr, `trên tổng ${DATA.orders.length} đơn đang theo dõi`, '')}
+      ${kpiCard('Tỷ lệ NCR ước tính', rate+'%', 'mục tiêu của xưởng: ≤ 3% — xem định nghĩa ở mục 4.4 báo cáo', rate>3?'var(--st-late)':'var(--st-done)')}
+    </div>
+    <div class="toolbar">
+      <button onclick="openNcrModal()">＋ Ghi nhận sai lệch mới</button>
+      ${Object.keys(byStage).length? '<span class="muted small">Theo công đoạn: '+Object.entries(byStage).map(([k,v])=>esc(k)+': <b>'+v+'</b>').join(' · ')+'</span>':''}
+    </div>
+    <div class="card" style="overflow:auto;padding:0">
+      ${ recs.length===0 ? '<div class="empty">Chưa có ghi nhận nào. Hãy bắt đầu ghi lại <i>mọi</i> lần phát hiện sai lệch — kể cả lỗi nhỏ được sửa ngay tại chỗ — để có dữ liệu nền (baseline) cho mục tiêu giảm NCR xuống 3%.</div>' :
+      `<table><thead><tr>
+        <th>Ngày</th><th>Đơn hàng</th><th>Công đoạn phát hiện</th><th>Mức độ</th><th>Mô tả sai lệch</th><th>Hướng xử lý</th><th>Người ghi nhận</th><th></th>
+      </tr></thead><tbody>
+      ${recs.map(n=>{
+        const ord = DATA.orders.find(o=>o.id===n.orderId);
+        return `<tr>
+          <td>${fmtDate(n.date)}</td>
+          <td><b>${ord?esc(ord.code):'(đã xóa)'}</b><div class="small muted">${ord?esc(truncate(ord.name,36)):''}</div></td>
+          <td>${esc(n.stage)}</td>
+          <td><span class="sev-${n.severity}">${sevLabel(n.severity)}</span></td>
+          <td>${esc(n.description)}</td>
+          <td>${esc(n.action)}</td>
+          <td class="small">${esc(n.reportedBy||'—')}</td>
+          <td class="actions"><a onclick="openNcrModal('${n.id}')">Sửa</a><a onclick="deleteNcr('${n.id}')" style="color:var(--st-late)">Xóa</a></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`}
+    </div>
+  `;
+}
+function openNcrModal(id){
+  document.getElementById('ncr_id').value = id||'';
+  fillSelect(document.getElementById('ncr_order'), DATA.orders.map(o=>({id:o.id,label:o.code+' — '+truncate(o.name,40)})), 'id','label','— Chọn đơn hàng —');
+  if(id){
+    const n = DATA.ncrRecords.find(x=>x.id===id);
+    document.getElementById('ncr_order').value = n.orderId||'';
+    document.getElementById('ncr_date').value = n.date||'';
+    document.getElementById('ncr_stage').value = n.stage||'Gia công';
+    document.getElementById('ncr_severity').value = n.severity||'2';
+    document.getElementById('ncr_desc').value = n.description||'';
+    document.getElementById('ncr_action').value = n.action||'Làm lại';
+    document.getElementById('ncr_by').value = n.reportedBy||'';
+  } else {
+    document.getElementById('ncr_order').value='';
+    document.getElementById('ncr_date').value = todayStr();
+    document.getElementById('ncr_stage').value = 'Gia công';
+    document.getElementById('ncr_severity').value = '2';
+    document.getElementById('ncr_desc').value='';
+    document.getElementById('ncr_action').value='Làm lại';
+    document.getElementById('ncr_by').value='';
+  }
+  openModal('modalNcr');
+}
+function saveNcr(){
+  const orderId = document.getElementById('ncr_order').value;
+  const description = document.getElementById('ncr_desc').value.trim();
+  if(!orderId){ alert('Vui lòng chọn đơn hàng liên quan.'); return; }
+  if(!description){ alert('Vui lòng mô tả ngắn gọn sai lệch đã phát hiện.'); return; }
+  const id = document.getElementById('ncr_id').value;
+  const rec = {
+    id: id || uid('NCR','ncr'),
+    orderId,
+    date: document.getElementById('ncr_date').value || todayStr(),
+    stage: document.getElementById('ncr_stage').value,
+    severity: document.getElementById('ncr_severity').value,
+    description,
+    action: document.getElementById('ncr_action').value,
+    reportedBy: document.getElementById('ncr_by').value.trim(),
+  };
+  const idx = DATA.ncrRecords.findIndex(x=>x.id===rec.id);
+  if(idx>=0) DATA.ncrRecords[idx]=rec; else DATA.ncrRecords.push(rec);
+  closeModal('modalNcr'); save(); goTab('ncr');
+}
+function deleteNcr(id){
+  if(!confirm('Xóa ghi nhận NCR này?')) return;
+  DATA.ncrRecords = DATA.ncrRecords.filter(x=>x.id!==id);
+  save(); goTab('ncr');
+}
+
+/* ============================================================
+   DATA & SYNC
+   ============================================================ */
+function renderData(){
+  const el = document.getElementById('view-data');
+  const sizeKb = Math.round((localStorage.getItem(STORAGE_KEY)||'').length/1024*10)/10;
+  el.innerHTML = `
+    <div class="grid grid-2">
+      <div class="card">
+        <h3 style="margin-top:0">Tên người dùng (hiển thị trên thanh trên cùng)</h3>
+        <div class="field"><input id="dataUser" value="${esc(DATA.meta.user||'')}" placeholder="VD: Anh Kiệt"></div>
+        <button class="secondary" onclick="DATA.meta.user=document.getElementById('dataUser').value.trim();save()">Lưu tên</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Dung lượng dữ liệu hiện tại</h3>
+        <p class="muted small">Đang lưu trong trình duyệt (localStorage): <b>${sizeKb} KB</b> · ${DATA.orders.length} đơn hàng · ${DATA.staff.length} nhân sự/đối tác · ${DATA.assignments.length} lượt phân công · ${DATA.outsourceShipments.length} lô outsource · ${DATA.ncrRecords.length} ghi nhận NCR</p>
+        <p class="small muted">Lưu ý: dữ liệu đang nằm trong trình duyệt này. Để dùng trên máy khác hoặc chia sẻ với người khác, hãy <b>Xuất ra file JSON</b> rồi <b>Nhập vào</b> ở máy/trình duyệt kia — đây cũng chính là “lớp dữ liệu chung” để dần kết nối với 3 công cụ hiện có.</p>
+      </div>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Đồng bộ Google Sheets (database chung)</h2>
+    <div class="card" style="border-left:4px solid #0EA5E9">
+      <p class="small muted" style="margin-top:0">Dán <b>Web app URL</b> từ Google Apps Script (xem <i>HUONG_DAN_SETUP_GoogleSheets.md</i>). Sau đó dùng 2 nút để đẩy/tải dữ liệu giữa máy này và Google Sheets — đây là cách nhiều app dùng chung một database.</p>
+      <div class="field">
+        <label>Google Apps Script Web App URL</label>
+        <input id="sheetUrl" value="${esc((DATA.meta&&DATA.meta.sheetUrl)||'')}" placeholder="https://script.google.com/macros/s/XXXX/exec" style="width:100%">
+      </div>
+      <div class="toolbar">
+        <button class="secondary" onclick="setSheetUrl()">💾 Lưu URL</button>
+        <button onclick="syncPush()" style="background:#0EA5E9;border-color:#0EA5E9">⬆ Đẩy lên Sheets</button>
+        <button onclick="syncPull()" style="background:#0284C7;border-color:#0284C7">⬇ Tải về từ Sheets</button>
+        <span id="syncStatus" class="small muted">${DATA.meta&&DATA.meta.lastSync?('Đồng bộ lần cuối: '+new Date(DATA.meta.lastSync).toLocaleString('vi-VN')):'Chưa đồng bộ lần nào.'}</span>
+      </div>
+      <p class="small muted" style="margin-bottom:0">Đồng bộ các bảng: đơn hàng · nhân sự · phân công lịch · lô outsource · ghi nhận NCR. Đẩy lên = ghi đè bản ghi cùng id trên Sheet. Tải về = thay thế dữ liệu local bằng dữ liệu Sheet.</p>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Tải dữ liệu mẫu</h2>
+    <div class="card" style="border-left:4px solid var(--brand)">
+      <p style="margin:0 0 10px;font-weight:700">📦 28 đơn hàng tháng 6/2026 (CK368) — đã sẵn sàng tải vào hệ thống</p>
+      <p class="small muted" style="margin:0 0 12px">Nhấn nút bên dưới để thêm toàn bộ 28 đơn hàng tháng 6 vào danh sách. Dữ liệu cũ sẽ <b>không bị xóa</b> — các đơn mới sẽ được thêm vào.</p>
+      <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Tải 28 đơn hàng tháng 6/2026</button>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Xuất / Nhập dữ liệu (đồng bộ &amp; sao lưu)</h2>
+    <div class="card">
+      <div class="toolbar">
+        <button onclick="exportJson()">⬇ Xuất ra file JSON</button>
+        <button class="secondary" onclick="document.getElementById('importFile').click()">⬆ Nhập từ file JSON</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importJsonFile(this.files[0])">
+        <button class="ghost" onclick="if(confirm('Xóa toàn bộ dữ liệu hiện tại trong công cụ này? Hãy xuất file JSON sao lưu trước nếu cần.')){DATA=defaultData();save();}">🗑 Xóa toàn bộ &amp; làm lại</button>
+      </div>
+      <p class="small muted">Khuyến nghị: cuối mỗi tuần, xuất một bản JSON sao lưu và lưu vào thư mục dùng chung — vừa là bản dự phòng, vừa là điểm khởi đầu để sau này kết nối dữ liệu với Coding System / Process App qua cùng một định dạng.</p>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Nhập nhanh đơn hàng từ bảng Excel theo dõi tiến độ hiện có</h2>
+    <div class="card">
+      <p class="small muted">Dán các dòng sao chép từ Excel (mỗi dòng một đơn, các cột cách nhau bằng <b>Tab</b> — tức là bôi đen rồi Copy/Paste trực tiếp từ Excel) theo đúng thứ tự cột:<br>
+      <code>Tên hàng | SL | ĐVT | Công ty | Ngày nhận đơn (yyyy-mm-dd) | Hạn giao hàng (yyyy-mm-dd) | Ngày giao hàng thực tế (yyyy-mm-dd, để trống nếu chưa giao) | Tình trạng (text bất kỳ — hệ thống sẽ map về 1 trong 6 trạng thái chuẩn)</code></p>
+      <textarea id="pasteArea" rows="6" placeholder="Dán dữ liệu copy từ Excel vào đây..."></textarea>
+      <div class="toolbar"><button onclick="importPaste()">📥 Nhập các dòng trên thành đơn hàng</button>
+      <span id="pasteResult" class="small muted"></span></div>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Cấu trúc dữ liệu (để tham khảo khi kết nối với công cụ khác)</h2>
+    <div class="card">
+      <p class="small muted">Toàn bộ dữ liệu của công cụ này được lưu dưới một đối tượng JSON duy nhất — đây chính là "từ điển dữ liệu chung" đề xuất ở mục 6.2 trong báo cáo:</p>
+      <ul class="small muted" style="line-height:1.9">
+        <li><b>orders[]</b> — đơn hàng: mã đơn, tên hàng, khách hàng, các mốc ngày, <b>trạng thái (1 trong 6 chuẩn)</b>, phân công nội bộ/outsource</li>
+        <li><b>staff[]</b> — danh sách nhân sự nội bộ &amp; đối tác outsource hiển thị trên Lịch phân công (badge, tên, loại, vai trò)</li>
+        <li><b>assignments[]</b> — từng lượt phân công trên lịch: người + ngày + (mã đơn hàng <i>hoặc</i> loại công việc khác như nghỉ phép/đào tạo) + số giờ công</li>
+        <li><b>outsourceShipments[]</b> — lô hàng gửi gia công ngoài: liên kết tới đơn hàng gốc, đối tác, ngày gửi/nhận, kết quả kiểm tra đầu vào</li>
+        <li><b>ncrRecords[]</b> — ghi nhận sai lệch: liên kết tới đơn hàng, công đoạn phát hiện, mức độ, mô tả, hướng xử lý</li>
+        <li><b>partners[]</b> — danh sách đối tác outsource (khởi tạo sẵn “CK Tuyết Vinh”, có thể thêm)</li>
+      </ul>
+    </div>
+  `;
+  document.getElementById('topUser').textContent = DATA.meta.user ? ('Xin chào, '+DATA.meta.user) : 'DHP Process Hub';
+}
+/* ============================================================
+   ĐỒNG BỘ GOOGLE SHEETS (qua Apps Script Web App)
+   ============================================================ */
+// Các bảng đồng bộ 2 chiều với Google Sheets (khớp schema chung)
+const SYNC_TABLES = ['orders','staff','assignments','outsourceShipments','ncrRecords'];
+
+function getSheetUrl(){ return (DATA.meta && DATA.meta.sheetUrl) ? DATA.meta.sheetUrl.trim() : ''; }
+function setSheetUrl(){
+  const url = document.getElementById('sheetUrl').value.trim();
+  if(url && !/^https:\/\/script\.google\.com\/macros\/.*\/exec$/.test(url)){
+    if(!confirm('URL không giống dạng Apps Script (.../exec). Vẫn lưu?')) return;
+  }
+  DATA.meta.sheetUrl = url;
+  save();
+  setSyncStatus(url ? '✓ Đã lưu URL. Có thể bấm "Tải xuống" hoặc "Đẩy lên".' : 'Đã xóa URL.');
+}
+function setSyncStatus(msg, isError){
+  const el = document.getElementById('syncStatus');
+  if(el){ el.textContent = msg; el.style.color = isError ? 'var(--st-late)' : 'var(--muted)'; }
+}
+
+// Đẩy toàn bộ dữ liệu local LÊN Google Sheets
+async function syncPush(){
+  const url = getSheetUrl();
+  if(!url){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
+  if(!confirm('Đẩy dữ liệu hiện tại LÊN Google Sheets?\nCác bản ghi cùng id trên Sheet sẽ bị ghi đè.')) return;
+  setSyncStatus('Đang đẩy dữ liệu lên Google Sheets...');
+  try{
+    for(const table of SYNC_TABLES){
+      const records = DATA[table] || [];
+      if(!records.length) continue;
+      // KHÔNG đặt Content-Type để tránh preflight CORS với Apps Script
+      const res = await fetch(url, {method:'POST', body: JSON.stringify({action:'bulkUpsert', table, records})});
+      const out = await res.json();
+      if(out.error) throw new Error(table+': '+out.error);
+    }
+    DATA.meta.lastSync = new Date().toISOString();
+    save();
+    setSyncStatus('✓ Đã đẩy lên Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
+  }catch(err){
+    setSyncStatus('Lỗi khi đẩy lên: ' + err.message, true);
+  }
+}
+
+// Tải toàn bộ dữ liệu TỪ Google Sheets về (thay thế local)
+async function syncPull(){
+  const url = getSheetUrl();
+  if(!url){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
+  if(!confirm('Tải dữ liệu TỪ Google Sheets về?\nDữ liệu local hiện tại sẽ bị THAY THẾ (hãy xuất JSON sao lưu nếu cần).')) return;
+  setSyncStatus('Đang tải dữ liệu từ Google Sheets...');
+  try{
+    const res = await fetch(url + '?action=readAll');
+    const out = await res.json();
+    if(out.error) throw new Error(out.error);
+    SYNC_TABLES.forEach(table=>{
+      if(Array.isArray(out[table])){
+        // Chuẩn hóa kiểu: bool/number từ Sheet về đúng dạng
+        DATA[table] = out[table].map(r=>{
+          if(table==='staff' && r.active!=null) r.active = (r.active===true||r.active==='TRUE'||r.active==='true');
+          if(r.qty!=null && r.qty!=='') r.qty = parseFloat(r.qty)||null;
+          if(r.hours!=null && r.hours!=='') r.hours = parseFloat(r.hours)||0;
+          return r;
+        });
+      }
+    });
+    // Khôi phục danh sách đối tác từ outsource + đơn hàng
+    rebuildPartners();
+    DATA.meta.lastSync = new Date().toISOString();
+    save();
+    setSyncStatus('✓ Đã tải về từ Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
+    renderAll();
+  }catch(err){
+    setSyncStatus('Lỗi khi tải về: ' + err.message, true);
+  }
+}
+function rebuildPartners(){
+  const names = new Set((DATA.partners||[]).map(p=>p.name));
+  (DATA.staff||[]).filter(s=>s.type==='outsource').forEach(s=>names.add(s.name));
+  (DATA.outsourceShipments||[]).forEach(s=>{ if(s.partner) names.add(s.partner); });
+  DATA.partners = [...names].filter(Boolean).map(n=>({name:n, notes:''}));
+}
+
+function exportJson(){
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dhp_process_hub_'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function importJsonFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const incoming = JSON.parse(e.target.result);
+      if(!incoming.orders){ alert('File JSON không đúng định dạng của Process Hub.'); return; }
+      if(confirm('Nhập dữ liệu này sẽ THAY THẾ toàn bộ dữ liệu hiện tại trong công cụ. Tiếp tục?')){
+        DATA = incoming;
+        if(!DATA.counters) DATA.counters = {order:0,ncr:0,out:0,staff:0,assign:0};
+        ['order','ncr','out','staff','assign'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
+        if(!DATA.partners||!DATA.partners.length) DATA.partners = SEED_PARTNERS.map(n=>({name:n,notes:''}));
+        if(!DATA.staff||!DATA.staff.length) DATA.staff = SEED_STAFF.map((s,i)=>({id:'NS-'+String(i+1).padStart(4,'0'), ...s}));
+        if(!DATA.assignments) DATA.assignments = [];
+        save();
+        alert('Đã nhập dữ liệu thành công.');
+        goTab('grid');
+      }
+    }catch(err){ alert('Không đọc được file JSON: '+err.message); }
+  };
+  reader.readAsText(file);
+}
+const STATUS_TEXT_MAP = [
+  [/chưa.*thực hiện/i, 'new'],
+  [/đang.*thực hiện|đang gia công/i, 'in_production'],
+  [/chờ giao|hoàn thành.*chờ/i, 'done_waiting'],
+  [/đã giao|hoàn thành.*đã giao/i, 'delivered'],
+  [/kiểm tra|qc/i, 'qc'],
+  [/kế hoạch|phân công/i, 'planned'],
+];
+function mapStatusText(t){
+  t = (t||'').trim();
+  for(const [re,key] of STATUS_TEXT_MAP){ if(re.test(t)) return key; }
+  return 'new';
+}
+function parseDateLoose(s){
+  s = (s||'').trim();
+  if(!s) return null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return null;
+}
+function importPaste(){
+  const raw = document.getElementById('pasteArea').value;
+  const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let added=0, skipped=0;
+  lines.forEach(line=>{
+    let cols = line.split('\t');
+    if(cols.length < 2){ skipped++; return; }
+    // Nếu cột đầu là số thứ tự (định dạng .txt DHP), bỏ qua cột đó
+    if(/^\d+$/.test(cols[0].trim())) cols = cols.slice(1);
+    // Hỗ trợ 2 định dạng:
+    // Định dạng A (cũ): name | qty | unit | company | received | due | delivered | status
+    // Định dạng B (DHP .txt): name | qty | unit | company | received | requestedDate | deliveredDate | status
+    const [name, qty, unit, company, received, requested, deliveredOrBlank, statusTxt] = cols;
+    if(!name){ skipped++; return; }
+    const receivedDate = parseDateLoose(received);
+    const requestedDate = parseDateLoose(requested);
+    const deliveredDate = parseDateLoose(deliveredOrBlank);
+    let status = mapStatusText(statusTxt);
+    if(deliveredDate) status = 'delivered';
+    const rec = {
+      id: uid('DH','order'),
+      code: uid('CK368','order'),
+      company: (company||'').trim(),
+      name: name.trim(),
+      qty: parseFloat(qty)||null,
+      unit: (unit||'').trim(),
+      priority:'',
+      receivedDate,
+      requestedDate,
+      dueDate: requestedDate,
+      status,
+      assignment: 'inhouse',
+      outsourcePartner: '',
+      completedDate: null,
+      deliveredDate,
+      note: statusTxt ? ('Trạng thái gốc: '+statusTxt.trim()) : '',
+      statusHistory: [{status, date: todayStr()}],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    DATA.orders.push(rec);
+    added++;
+  });
+  document.getElementById('pasteResult').textContent = `Đã thêm ${added} đơn hàng, bỏ qua ${skipped} dòng không hợp lệ.`;
+  document.getElementById('pasteArea').value = '';
+  save();
+}
+
+/* ---------------- INIT ---------------- */
+function renderAll(){
+  document.getElementById('topStamp').textContent = 'Cập nhật lúc ' + new Date().toLocaleString('vi-VN');
+  const active = document.querySelector('.view.active');
+  if(!active) return;
+  const id = active.id;
+  if(id==='view-grid') renderGrid();
+  else if(id==='view-orders') renderOrders();
+  else if(id==='view-outsource') renderOutsource();
+  else if(id==='view-ncr') renderNcr();
+  else if(id==='view-data') renderData();
+  document.getElementById('topUser').textContent = DATA.meta.user ? ('Xin chào, '+DATA.meta.user) : 'DHP Process Hub';
+}
+load();
+renderAll();
+
+/* ===== PWA: đăng ký service worker để chạy offline + cài ra màn hình chính ===== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+</script>

@@ -158,7 +158,7 @@ function gateCheck(){
 </script>
 
 <div class="topbar">
-  <img class="logo-img" src="logo.png" alt="DAI HONG PHAT" onerror="this.outerHTML='<div class=\'logo\'>DHP</div>'">
+  <img class="logo-img" src="logo.png" alt="DAI HONG PHAT" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='logo.svg';}else{this.outerHTML='<div class=\'logo\'>DHP</div>';}">
   <div>
     <h1 data-i18n="appTitle">DHP Manager — Quản lý sản xuất CK368</h1>
     <div class="sub" data-i18n="appSub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets</div>
@@ -493,14 +493,16 @@ function gateCheck(){
    ============================================================ */
 
 const ORDER_STATUSES = [
-  {k:'new',          label:'1. Mới nhận đơn',                 color:'var(--st-new)'},
-  {k:'planned',      label:'2. Đã lên kế hoạch / phân công',  color:'var(--st-planned)'},
-  {k:'in_production',label:'3. Đang gia công',                color:'var(--st-prod)'},
-  {k:'qc',           label:'4. Chờ kiểm tra chất lượng (QC)', color:'var(--st-qc)'},
-  {k:'done_waiting', label:'5. Hoàn thành — chờ giao',        color:'var(--st-wait)'},
-  {k:'delivered',    label:'6. Đã giao — đóng đơn',           color:'var(--st-done)'},
-  {k:'hold',         label:'7. Tạm dừng (HOLD)',              color:'#64748B'},
+  {k:'new',          label:'1. Mới nhận đơn',                 en:'1. New order',            color:'var(--st-new)'},
+  {k:'planned',      label:'2. Đã lên kế hoạch / phân công',  en:'2. Planned / assigned',   color:'var(--st-planned)'},
+  {k:'in_production',label:'3. Đang gia công',                en:'3. In production',        color:'var(--st-prod)'},
+  {k:'qc',           label:'4. Chờ kiểm tra chất lượng (QC)', en:'4. Awaiting QC',          color:'var(--st-qc)'},
+  {k:'done_waiting', label:'5. Hoàn thành — chờ giao',        en:'5. Done — to deliver',    color:'var(--st-wait)'},
+  {k:'delivered',    label:'6. Đã giao — đóng đơn',           en:'6. Delivered — closed',   color:'var(--st-done)'},
+  {k:'hold',         label:'7. Tạm dừng (HOLD)',              en:'7. On hold',              color:'#64748B'},
 ];
+// Nhãn trạng thái theo ngôn ngữ đang chọn (LANG khai báo ở phần i18n bên dưới)
+function stLabel(st){ return (typeof LANG!=='undefined' && LANG==='en' && st.en) ? st.en : st.label; }
 const statusByKey = k => ORDER_STATUSES.find(s=>s.k===k) || ORDER_STATUSES[0];
 
 const SEED_PARTNERS = ['CK Tuyết Vinh'];
@@ -684,7 +686,7 @@ function sanitizeOrderDates(){
   });
 }
 function truncate(s,n){ s=s||''; return s.length>n? s.slice(0,n)+'…' : s; }
-function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(s.label.replace(/^\d+\.\s*/,''))}</span>`; }
+function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(stLabel(s).replace(/^\d+\.\s*/,''))}</span>`; }
 function sevLabel(s){ return s=='1'?'Nghiêm trọng':(s=='2'?'Trung bình':'Nhẹ'); }
 function fillSelect(sel, items, valueKey, labelKey, placeholder){
   sel.innerHTML = (placeholder?`<option value="">${esc(placeholder)}</option>`:'') +
@@ -704,6 +706,38 @@ const I18N = {
   tab_outsource:{vi:'Outsource', en:'Outsource'},
   tab_ncr:     {vi:'Ghi nhận NCR', en:'NCR Records'},
   tab_data:    {vi:'Dữ liệu & Đồng bộ', en:'Data & Sync'},
+  /* ---- Bảng đơn hàng ---- */
+  th_code:     {vi:'Mã đơn', en:'Order code'},
+  th_name:     {vi:'Tên hàng', en:'Product'},
+  th_customer: {vi:'Khách hàng', en:'Customer'},
+  th_due:      {vi:'Hạn KH', en:'Due date'},
+  th_status:   {vi:'Trạng thái', en:'Status'},
+  th_pct:      {vi:'% HT', en:'% Done'},
+  th_assign:   {vi:'Thực hiện', en:'Executed by'},
+  th_progress: {vi:'Hạn / Dự báo', en:'Deadline / Forecast'},
+  btn_addOrder:{vi:'＋ Thêm đơn hàng', en:'＋ Add order'},
+  search_ph:   {vi:'Tìm theo mã đơn / tên hàng / khách hàng...', en:'Search by code / product / customer...'},
+  f_allStatus: {vi:'— Tất cả trạng thái —', en:'— All statuses —'},
+  f_allAssign: {vi:'— Nội bộ & Outsource —', en:'— Internal & Outsource —'},
+  f_inhouse:   {vi:'Chỉ nội bộ', en:'Internal only'},
+  f_outsource: {vi:'Chỉ outsource', en:'Outsource only'},
+  lb_inhouse:  {vi:'Nội bộ', en:'Internal'},
+  lb_mixed:    {vi:'Hỗn hợp', en:'Mixed'},
+  lb_purchase: {vi:'Mua hàng', en:'Purchase'},
+  lb_edit:     {vi:'Sửa', en:'Edit'},
+  lb_del:      {vi:'Xóa', en:'Delete'},
+  lb_orders:   {vi:'đơn', en:'orders'},
+  lb_late:     {vi:'Trễ', en:'Late'},
+  lb_overdue:  {vi:'Quá hạn', en:'Overdue'},
+  lb_daysLeft: {vi:'Còn', en:''},
+  lb_days:     {vi:'ngày', en:'day(s)'},
+  lb_dueToday: {vi:'⚠ Hạn hôm nay!', en:'⚠ Due today!'},
+  lb_onTime:   {vi:'Đúng/sớm hạn', en:'On time / early'},
+  lb_closed:   {vi:'Đã đóng đơn', en:'Closed'},
+  lb_forecast: {vi:'Dự báo giao', en:'Forecast'},
+  lb_manual:   {vi:'(đặt tay)', en:'(manual)'},
+  lb_lateKH:   {vi:'trễ hạn KH', en:'past customer due'},
+  lb_detail:   {vi:'chi tiết', en:'item(s)'},
 };
 function t(key){ const e=I18N[key]; return e ? (e[LANG]||e.vi) : key; }
 function applyLang(){
@@ -713,7 +747,7 @@ function applyLang(){
   const lb=document.getElementById('langLabel'); if(lb) lb.textContent = (LANG==='vi'?'EN':'VI');
   document.documentElement.lang = LANG;
 }
-function toggleLang(){ LANG = (LANG==='vi'?'en':'vi'); localStorage.setItem('dhp_lang',LANG); applyLang(); }
+function toggleLang(){ LANG = (LANG==='vi'?'en':'vi'); localStorage.setItem('dhp_lang',LANG); applyLang(); renderAll(); }
 
 /* ---------------- TAB NAV ---------------- */
 function goTab(name){
@@ -1133,20 +1167,20 @@ function renderOrders(){
   const el = document.getElementById('view-orders');
   el.innerHTML = `
     <div class="toolbar">
-      <button onclick="openOrderModal()">＋ Thêm đơn hàng</button>
-      <input id="ofQ" placeholder="Tìm theo mã đơn / tên hàng / khách hàng..." style="min-width:260px" oninput="orderFilter.q=this.value;renderOrders()" value="${esc(orderFilter.q)}">
+      <button onclick="openOrderModal()">${t('btn_addOrder')}</button>
+      <input id="ofQ" placeholder="${t('search_ph')}" style="min-width:260px" oninput="orderFilter.q=this.value;renderOrders()" value="${esc(orderFilter.q)}">
       <select onchange="orderFilter.status=this.value;renderOrders()">
-        <option value="">— Tất cả trạng thái —</option>
-        ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${orderFilter.status===s.k?'selected':''}>${esc(s.label)}</option>`).join('')}
+        <option value="">${t('f_allStatus')}</option>
+        ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${orderFilter.status===s.k?'selected':''}>${esc(stLabel(s))}</option>`).join('')}
       </select>
       <select onchange="orderFilter.assignment=this.value;renderOrders()">
-        <option value="">— Nội bộ &amp; Outsource —</option>
-        <option value="inhouse" ${orderFilter.assignment==='inhouse'?'selected':''}>Chỉ nội bộ</option>
-        <option value="outsource" ${orderFilter.assignment==='outsource'?'selected':''}>Chỉ outsource</option>
+        <option value="">${t('f_allAssign')}</option>
+        <option value="inhouse" ${orderFilter.assignment==='inhouse'?'selected':''}>${t('f_inhouse')}</option>
+        <option value="outsource" ${orderFilter.assignment==='outsource'?'selected':''}>${t('f_outsource')}</option>
       </select>
-      <span class="muted small" style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} đơn · <a onclick="goTab('grid')" style="cursor:pointer;color:var(--brand);font-weight:700">Xem trên Lịch phân công →</a></span>
+      <span class="muted small" style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} ${t('lb_orders')}</span>
     </div>
-    <div class="legend">${ORDER_STATUSES.map(s=>`<span class="chip"><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('')}</div>
+    <div class="legend">${ORDER_STATUSES.map(s=>`<span class="chip"><i style="background:${s.color}"></i>${esc(stLabel(s))}</span>`).join('')}</div>
     <p class="small muted" style="margin:0 0 8px">💡 Bấm vào tiêu đề cột (Mã đơn, Tên hàng, Khách hàng, Hạn giao, Trạng thái, Thực hiện, Tiến độ) để sắp xếp theo cột đó — bấm lại để đảo chiều tăng/giảm. Mặc định đang xếp theo <b>Hạn giao — đơn có ngày gần nhất ở trên cùng</b> để dễ theo dõi việc cần làm trước.</p>
     <div class="card" style="overflow:auto;padding:0">
       ${ DATA.orders.length===0 ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nhập nhanh từ bảng Excel theo dõi tiến độ hiện có. Sau khi có đơn, bạn có thể gán đơn cho người trên Lịch phân công.</div>' : ordersTable() }
@@ -1174,7 +1208,7 @@ function ordersTable(){
   if(!rows.length) return '<div class="empty">Không có đơn nào khớp bộ lọc.</div>';
   const statusOpts = ORDER_STATUSES.map(s=>`<option value="${s.k}">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('');
   return `<table><thead><tr>
-    ${sortHeader('code','Mã đơn')}${sortHeader('name','Tên hàng')}${sortHeader('company','Khách hàng')}${sortHeader('dueDate','Hạn KH')}${sortHeader('status','Trạng thái')}<th>% HT</th>${sortHeader('assignment','Thực hiện')}${sortHeader('progress','Hạn / Dự báo')}<th></th>
+    ${sortHeader('code',t('th_code'))}${sortHeader('name',t('th_name'))}${sortHeader('company',t('th_customer'))}${sortHeader('dueDate',t('th_due'))}${sortHeader('status',t('th_status'))}<th>${t('th_pct')}</th>${sortHeader('assignment',t('th_assign'))}${sortHeader('progress',t('th_progress'))}<th></th>
   </tr></thead><tbody>
   ${rows.map(o=>{
     const dueRef = o.requestedDate || o.dueDate;
@@ -1183,43 +1217,44 @@ function ordersTable(){
     const urgentToday = !onHold && o.status!=='delivered' && dueRef && dueRef === todayStr();
     let progressNote = '';
     if(onHold){
-      progressNote = `<span style="color:#64748B;font-weight:700">⏸ HOLD${o.holdReason?': '+esc(truncate(o.holdReason,30)):''}</span>`;
+      progressNote = `<span style="color:#64748B;font-weight:700">⏸ HOLD${o.holdReason?': '+esc(o.holdReason):''}</span>`;
     } else if(o.status==='delivered'){
       if(dueRef && o.deliveredDate){
         const d = daysBetween(dueRef,o.deliveredDate);
-        progressNote = d>0 ? `<span style="color:var(--st-late);font-weight:700">Trễ ${d} ngày</span>` : `<span style="color:var(--st-done);font-weight:700">Đúng/sớm hạn</span>`;
-      } else progressNote = '<span class="muted">Đã đóng đơn</span>';
+        progressNote = d>0 ? `<span style="color:var(--st-late);font-weight:700">${t('lb_late')} ${d} ${t('lb_days')}</span>` : `<span style="color:var(--st-done);font-weight:700">${t('lb_onTime')}</span>`;
+      } else progressNote = `<span class="muted">${t('lb_closed')}</span>`;
     } else if(overdue){
-      progressNote = `<span style="color:var(--st-late);font-weight:700">Quá hạn ${daysBetween(dueRef,todayStr())} ngày</span>`;
+      progressNote = `<span style="color:var(--st-late);font-weight:700">${t('lb_overdue')} ${daysBetween(dueRef,todayStr())} ${t('lb_days')}</span>`;
     } else if(urgentToday){
-      progressNote = `<span style="color:var(--st-prod);font-weight:800">⚠ Hạn hôm nay!</span>`;
+      progressNote = `<span style="color:var(--st-prod);font-weight:800">${t('lb_dueToday')}</span>`;
     } else if(dueRef){
       const d = daysBetween(todayStr(), dueRef);
-      progressNote = d<=3 ? `<span style="color:var(--st-prod);font-weight:700">Còn ${d} ngày</span>` : `<span class="muted">Còn ${d} ngày</span>`;
+      const txt = (LANG==='en') ? (d+' '+t('lb_days')+' left') : (t('lb_daysLeft')+' '+d+' '+t('lb_days'));
+      progressNote = d<=3 ? `<span style="color:var(--st-prod);font-weight:700">${txt}</span>` : `<span class="muted">${txt}</span>`;
     }
     const rowBg = overdue ? 'background:#fff5f5' : urgentToday ? 'background:#fffbeb' : '';
     return `<tr style="${rowBg}">
       <td><b>${esc(o.code)}</b>${o.assignment==='outsource'?'<span class="badge-out" title="Gia công ngoài">'+esc(o.outsourcePartner||'OUT')+'</span>':''}</td>
-      <td title="${esc(o.name)}">${(o.orderType&&o.orderType!=='Gia công')?`<span style="display:inline-block;font-size:9px;font-weight:800;color:#fff;background:#6366F1;border-radius:4px;padding:1px 5px;margin-right:5px">${esc(o.orderType)}</span>`:''}${esc(truncate(o.name,52))}${(function(){
+      <td style="min-width:220px;white-space:normal;word-break:break-word">${(o.orderType&&o.orderType!=='Gia công')?`<span style="display:inline-block;font-size:9px;font-weight:800;color:#fff;background:#6366F1;border-radius:4px;padding:1px 5px;margin-right:5px">${esc(o.orderType)}</span>`:''}${esc(o.name)}${(function(){
         let bits=[];
-        if(o.items&&o.items.length) bits.push(`<span style="font-size:10px;font-weight:700;color:#6366F1">▦ ${o.items.length} chi tiết</span>`);
+        if(o.items&&o.items.length) bits.push(`<span style="font-size:10px;font-weight:700;color:#6366F1">▦ ${o.items.length} ${t('lb_detail')}</span>`);
         if(o.driveFolder) bits.push(`<a href="${esc(o.driveFolder)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;font-weight:700;color:#0EA5E9">📁 Drive</a>`);
         if(o.attachments&&o.attachments.length) bits.push(`<span style="font-size:10px;color:var(--muted)">🔗 ${o.attachments.length}</span>`);
         return bits.length?`<div style="margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">${bits.join('')}</div>`:'';
       })()}</td>
-      <td>${esc(truncate(o.company,28))}</td>
+      <td style="min-width:150px;white-space:normal;word-break:break-word">${esc(o.company)}</td>
       <td>${fmtDate(dueRef)}</td>
       <td>
         <select style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:${statusByKey(o.status).color};color:#fff;font-weight:700;cursor:pointer"
           onchange="quickStatusChange('${o.id}',this.value)"
-          title="Đổi trạng thái nhanh">
-          ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${o.status===s.k?'selected':''} style="background:#fff;color:var(--ink)">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('')}
+          title="Đổi trạng thái nhanh / Quick status change">
+          ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${o.status===s.k?'selected':''} style="background:#fff;color:var(--ink)">${stLabel(s).replace(/^\d+\.\s*/,'')}</option>`).join('')}
         </select>
       </td>
       <td>${progressCellHtml(o)}</td>
-      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'(chưa chọn)') : (o.assignment==='mixed' ? '<span style="font-weight:700;color:#6366F1">Hỗn hợp</span>'+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : 'Nội bộ')}${o.currentLocation?`<div style="margin-top:2px;font-size:10.5px;color:#0EA5E9;font-weight:700">📍 ${esc(truncate(o.currentLocation,34))}</div>`:''}</td>
-      <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 Dự báo giao: ${fmtDate(fc.date)}${fc.kind==='manual'?' (đặt tay)':''}${late?' · trễ hạn KH':''}</span></div>`;})()}</td>
-      <td class="actions"><a onclick="openOrderModal('${o.id}')">Sửa</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">Xóa</a></td>
+      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'—') : (o.assignment==='mixed' ? `<span style="font-weight:700;color:#6366F1">${t('lb_mixed')}</span>`+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : t('lb_inhouse'))}${o.currentLocation?`<div style="margin-top:2px;font-size:10.5px;color:#0EA5E9;font-weight:700;white-space:normal">📍 ${esc(o.currentLocation)}</div>`:''}</td>
+      <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 ${t('lb_forecast')}: ${fmtDate(fc.date)}${fc.kind==='manual'?' '+t('lb_manual'):''}${late?' · '+t('lb_lateKH'):''}</span></div>`;})()}</td>
+      <td class="actions"><a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a></td>
     </tr>${itemsSubRow(o, rowBg)}`;
   }).join('')}
   </tbody></table>`;
@@ -1421,8 +1456,8 @@ function progressCellHtml(o){
 // Nhãn nơi thực hiện của chi tiết con: nội bộ / outsource / mua hàng
 function itemAssignLabel(a){
   if(a==='outsource') return {txt:'Outsource', bg:'#0EA5E9'};
-  if(a==='purchase')  return {txt:'Mua hàng',  bg:'#A855F7'};
-  return {txt:'Nội bộ', bg:'#6B7280'};
+  if(a==='purchase')  return {txt:t('lb_purchase'), bg:'#A855F7'};
+  return {txt:t('lb_inhouse'), bg:'#6B7280'};
 }
 // Dòng phụ dưới mỗi đơn: liệt kê TẤT CẢ chi tiết con với trạng thái + nơi làm + % riêng
 function itemsSubRow(o, rowBg){
@@ -1433,11 +1468,11 @@ function itemsSubRow(o, rowBg){
     const p = it.status==='delivered' ? 100 : (parseFloat(it.progress)||0);
     const pColor = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
     return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px dashed #eef1f5">
-      <i style="width:9px;height:9px;border-radius:3px;background:${st.color};flex-shrink:0" title="${esc(st.label)}"></i>
-      <span style="flex:1;min-width:140px">${esc(truncate(it.name,46))}${it.process?` <span style="color:var(--muted)">· ${esc(truncate(it.process,40))}</span>`:''}</span>
+      <i style="width:9px;height:9px;border-radius:3px;background:${st.color};flex-shrink:0" title="${esc(stLabel(st))}"></i>
+      <span style="flex:1;min-width:140px;white-space:normal;word-break:break-word">${esc(it.name)}${it.process?` <span style="color:var(--muted)">· ${esc(it.process)}</span>`:''}</span>
       <span style="color:var(--muted);white-space:nowrap">${it.qty!=null?it.qty:''} ${esc(it.unit||'')}</span>
       <span style="font-size:9px;font-weight:800;color:#fff;background:${al.bg};border-radius:4px;padding:1px 6px;white-space:nowrap">${al.txt}</span>
-      <span class="pill" style="background:${st.color};font-size:9.5px;padding:2px 7px">${esc(st.label.replace(/^\d+\.\s*/,''))}</span>
+      <span class="pill" style="background:${st.color};font-size:9.5px;padding:2px 7px">${esc(stLabel(st).replace(/^\d+\.\s*/,''))}</span>
       <div class="bar-track" style="width:46px;margin:0;height:7px"><div class="bar-fill" style="width:${p}%;background:${pColor}"></div></div>
       <b style="font-size:10px;min-width:28px;text-align:right">${p}%</b>
     </div>`;

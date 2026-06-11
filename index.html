@@ -112,11 +112,51 @@
 </head>
 <body>
 
+<!-- ===== CỔNG MẬT KHẨU (chặn người lạ mở giao diện) ===== -->
+<div id="gate" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#C8102E,#8B0A1F);display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
+  <div style="background:#fff;border-radius:16px;padding:32px 28px;width:320px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
+    <div style="width:56px;height:56px;border-radius:14px;background:#C8102E;color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">DHP</div>
+    <h2 style="margin:0 0 4px;font-size:18px;color:#1f2937">DHP Manager</h2>
+    <p style="margin:0 0 18px;font-size:12.5px;color:#6b7280">Quản lý sản xuất CK368 — nhập mật khẩu để vào</p>
+    <input id="gatePass" type="password" placeholder="Mật khẩu" autocomplete="current-password"
+      style="width:100%;padding:11px 12px;border:1px solid #e5e9f0;border-radius:9px;font-size:14px;margin-bottom:10px"
+      onkeydown="if(event.key==='Enter')gateCheck()">
+    <div id="gateErr" style="display:none;color:#EF4444;font-size:12px;margin-bottom:8px">Sai mật khẩu, thử lại.</div>
+    <button onclick="gateCheck()" style="width:100%;padding:11px;border:0;border-radius:9px;background:#C8102E;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Đăng nhập</button>
+    <label style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:12px;font-size:11.5px;color:#6b7280;cursor:pointer">
+      <input type="checkbox" id="gateRemember" checked> Ghi nhớ trên thiết bị này
+    </label>
+  </div>
+  <p style="color:rgba(255,255,255,.7);font-size:11px;margin-top:18px">Chỉ dành cho nội bộ Đại Hồng Phát</p>
+</div>
+<script>
+/* ===== Cổng mật khẩu (self-contained) =====
+   ĐỔI MẬT KHẨU: sửa giá trị APP_PASSCODE bên dưới rồi upload lại index.html.
+   Lưu ý: đây là lớp chặn cơ bản cho nội bộ — bảo vệ thật sự nằm ở URL Google Sheets (chìa khóa dữ liệu). */
+const APP_PASSCODE = 'dhp368';
+(function(){
+  if(localStorage.getItem('dhp_gate_ok')==='1' || sessionStorage.getItem('dhp_gate_ok')==='1'){
+    document.getElementById('gate').style.display='none';
+  }
+})();
+function gateCheck(){
+  const v = document.getElementById('gatePass').value;
+  if(v === APP_PASSCODE){
+    if(document.getElementById('gateRemember').checked) localStorage.setItem('dhp_gate_ok','1');
+    else sessionStorage.setItem('dhp_gate_ok','1');
+    document.getElementById('gate').style.display='none';
+  } else {
+    document.getElementById('gateErr').style.display='block';
+    document.getElementById('gatePass').value='';
+  }
+}
+</script>
+
 <div class="topbar">
   <div class="logo">DHP</div>
   <div>
-    <h1>Process Hub — Lịch phân công, Tiến độ &amp; NCR</h1>
-    <div class="sub">Xưởng CK368 · v3 · Lịch phân công kiểu timesheet (người × ngày) — gắn trực tiếp với mã đơn hàng</div>
+    <h1>DHP Manager — Quản lý sản xuất CK368</h1>
+    <div class="sub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets</div>
   </div>
   <div class="right">
     <div id="topUser">—</div>
@@ -127,6 +167,8 @@
 <div class="tabs">
   <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 Lịch phân công</div>
   <div class="tab" data-tab="orders" onclick="goTab('orders')">📦 Đơn hàng &amp; Tiến độ</div>
+  <div class="tab" data-tab="customers" onclick="goTab('customers')">🏢 Khách hàng</div>
+  <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 KPI &amp; Báo cáo</div>
   <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 Outsource</div>
   <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ Ghi nhận NCR</div>
   <div class="tab" data-tab="data" onclick="goTab('data')">⚙ Dữ liệu &amp; Đồng bộ</div>
@@ -137,6 +179,10 @@
   <div class="view active" id="view-grid"></div>
   <!-- ============ ORDERS ============ -->
   <div class="view" id="view-orders"></div>
+  <!-- ============ CUSTOMERS ============ -->
+  <div class="view" id="view-customers"></div>
+  <!-- ============ KPI ============ -->
+  <div class="view" id="view-kpi"></div>
   <!-- ============ OUTSOURCE ============ -->
   <div class="view" id="view-outsource"></div>
   <!-- ============ NCR ============ -->
@@ -368,6 +414,32 @@
   </div>
 </div>
 
+<!-- ===== Modal: Customer form ===== -->
+<div class="modal-bg" id="modalCustomer">
+  <div class="modal">
+    <h3 id="custModalTitle">Thêm khách hàng</h3>
+    <input type="hidden" id="cust_id">
+    <div class="row2">
+      <div class="field"><label>Tên đầy đủ công ty *</label><input id="cust_name" placeholder="CÔNG TY TNHH ..."></div>
+      <div class="field"><label>Tên gọi tắt</label><input id="cust_short" placeholder="VD: VISSAN, ECOPOWER"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Mã số thuế</label><input id="cust_tax"></div>
+      <div class="field"><label>Người liên hệ</label><input id="cust_contact"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Điện thoại</label><input id="cust_phone"></div>
+      <div class="field"><label>Email</label><input id="cust_email"></div>
+    </div>
+    <div class="field"><label>Địa chỉ</label><input id="cust_address"></div>
+    <div class="field"><label>Ghi chú</label><textarea id="cust_note" rows="2"></textarea></div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalCustomer')">Hủy</button>
+      <button onclick="saveCustomer()">💾 Lưu khách hàng</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    DHP PROCESS HUB — v2
@@ -487,8 +559,9 @@ function defaultData(){
   return {
     version: '2.0',
     meta: { user: '' },
-    counters: { order: 0, ncr: 0, out: 0, staff: SEED_STAFF.length, assign: 0 },
+    counters: { order: 0, ncr: 0, out: 0, staff: SEED_STAFF.length, assign: 0, cust: 0 },
     orders: [],
+    customers: [],
     outsourceShipments: [],
     ncrRecords: [],
     partners: SEED_PARTNERS.map(n=>({name:n, notes:''})),
@@ -514,8 +587,9 @@ function load(){
   if(!DATA.partners || !DATA.partners.length) DATA.partners = SEED_PARTNERS.map(n=>({name:n, notes:''}));
   if(!DATA.staff || !DATA.staff.length) DATA.staff = SEED_STAFF.map((s,i)=>({id:'NS-'+String(i+1).padStart(4,'0'), ...s}));
   if(!DATA.assignments) DATA.assignments = [];
-  if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0 };
-  ['order','ncr','out','staff','assign'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
+  if(!DATA.customers) DATA.customers = [];
+  if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0, cust:0 };
+  ['order','ncr','out','staff','assign','cust'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
 }
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ alert('Không lưu được dữ liệu (bộ nhớ trình duyệt đầy hoặc bị chặn).'); }
@@ -1413,7 +1487,7 @@ function renderData(){
    ĐỒNG BỘ GOOGLE SHEETS (qua Apps Script Web App)
    ============================================================ */
 // Các bảng đồng bộ 2 chiều với Google Sheets (khớp schema chung)
-const SYNC_TABLES = ['orders','staff','assignments','outsourceShipments','ncrRecords'];
+const SYNC_TABLES = ['orders','customers','staff','assignments','outsourceShipments','ncrRecords'];
 
 function getSheetUrl(){ return (DATA.meta && DATA.meta.sheetUrl) ? DATA.meta.sheetUrl.trim() : ''; }
 function setSheetUrl(){
@@ -1589,6 +1663,183 @@ function importPaste(){
   save();
 }
 
+/* ============================================================
+   KHÁCH HÀNG (CUSTOMERS)
+   ============================================================ */
+let custFilter = { q:'' };
+function renderCustomers(){
+  const el = document.getElementById('view-customers');
+  const q = custFilter.q.trim().toLowerCase();
+  const list = DATA.customers.filter(c=>!q || ((c.name||'')+' '+(c.shortName||'')+' '+(c.contact||'')).toLowerCase().includes(q))
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||'','vi'));
+  // Đếm số đơn theo mỗi KH (khớp theo customerId hoặc tên công ty)
+  function orderCount(c){
+    return DATA.orders.filter(o=> (o.customerId && o.customerId===c.id) ||
+      (o.company && c.name && o.company.trim().toLowerCase()===c.name.trim().toLowerCase())).length;
+  }
+  el.innerHTML = `
+    <div class="toolbar">
+      <button onclick="openCustomerModal()">＋ Thêm khách hàng</button>
+      <button class="secondary" onclick="seedCustomersFromOrders()">🔄 Tạo từ danh sách đơn hàng</button>
+      <input placeholder="Tìm khách hàng..." style="min-width:240px" oninput="custFilter.q=this.value;renderCustomers()" value="${esc(custFilter.q)}">
+      <span class="muted small" style="margin-left:auto">${list.length} / ${DATA.customers.length} khách hàng</span>
+    </div>
+    <div class="card" style="overflow:auto;padding:0">
+      ${ DATA.customers.length===0 ? '<div class="empty">Chưa có khách hàng nào. Bấm “Thêm khách hàng”, hoặc “Tạo từ danh sách đơn hàng” để tự sinh danh sách từ các đơn đã nhập.</div>' :
+      (list.length===0 ? '<div class="empty">Không có khách hàng khớp tìm kiếm.</div>' :
+      `<table><thead><tr><th>Tên công ty</th><th>Gọi tắt</th><th>Liên hệ</th><th>Điện thoại</th><th>Số đơn</th><th></th></tr></thead><tbody>
+      ${list.map(c=>`<tr>
+        <td><b>${esc(c.name)}</b>${c.address?'<div class="small muted">'+esc(truncate(c.address,46))+'</div>':''}</td>
+        <td>${esc(c.shortName||'—')}</td>
+        <td class="small">${esc(c.contact||'—')}</td>
+        <td class="small">${esc(c.phone||'—')}</td>
+        <td><span class="pill" style="background:${orderCount(c)>0?'var(--st-planned)':'var(--st-new)'}">${orderCount(c)} đơn</span></td>
+        <td class="actions"><a onclick="openCustomerModal('${c.id}')">Sửa</a><a onclick="deleteCustomer('${c.id}')" style="color:var(--st-late)">Xóa</a></td>
+      </tr>`).join('')}
+      </tbody></table>`)}
+    </div>`;
+}
+function openCustomerModal(id){
+  document.getElementById('cust_id').value = id||'';
+  const f = ['cust_name','cust_short','cust_tax','cust_contact','cust_phone','cust_email','cust_address','cust_note'];
+  if(id){
+    const c = DATA.customers.find(x=>x.id===id);
+    document.getElementById('custModalTitle').textContent = 'Sửa — '+c.name;
+    document.getElementById('cust_name').value=c.name||'';
+    document.getElementById('cust_short').value=c.shortName||'';
+    document.getElementById('cust_tax').value=c.taxCode||'';
+    document.getElementById('cust_contact').value=c.contact||'';
+    document.getElementById('cust_phone').value=c.phone||'';
+    document.getElementById('cust_email').value=c.email||'';
+    document.getElementById('cust_address').value=c.address||'';
+    document.getElementById('cust_note').value=c.note||'';
+  } else {
+    document.getElementById('custModalTitle').textContent='Thêm khách hàng';
+    f.forEach(i=>document.getElementById(i).value='');
+  }
+  openModal('modalCustomer');
+}
+function saveCustomer(){
+  const name = document.getElementById('cust_name').value.trim();
+  if(!name){ alert('Vui lòng nhập tên công ty.'); return; }
+  const id = document.getElementById('cust_id').value;
+  const rec = {
+    id: id || uid('KH','cust'),
+    name,
+    shortName: document.getElementById('cust_short').value.trim(),
+    taxCode: document.getElementById('cust_tax').value.trim(),
+    contact: document.getElementById('cust_contact').value.trim(),
+    phone: document.getElementById('cust_phone').value.trim(),
+    email: document.getElementById('cust_email').value.trim(),
+    address: document.getElementById('cust_address').value.trim(),
+    note: document.getElementById('cust_note').value.trim(),
+  };
+  const idx = DATA.customers.findIndex(x=>x.id===rec.id);
+  if(idx>=0) DATA.customers[idx]=rec; else DATA.customers.push(rec);
+  closeModal('modalCustomer'); save(); goTab('customers');
+}
+function deleteCustomer(id){
+  if(!confirm('Xóa khách hàng này? (Các đơn hàng vẫn giữ tên công ty, chỉ mất liên kết hồ sơ KH.)')) return;
+  DATA.customers = DATA.customers.filter(c=>c.id!==id);
+  save(); goTab('customers');
+}
+function seedCustomersFromOrders(){
+  const existing = new Set(DATA.customers.map(c=>(c.name||'').trim().toLowerCase()));
+  let added=0;
+  DATA.orders.forEach(o=>{
+    const nm = (o.company||'').trim();
+    if(nm && !existing.has(nm.toLowerCase())){
+      existing.add(nm.toLowerCase());
+      DATA.customers.push({id:uid('KH','cust'), name:nm, shortName:'', taxCode:'', contact:'', phone:'', email:'', address:'', note:'Tự tạo từ đơn hàng'});
+      added++;
+    }
+  });
+  save();
+  alert(added>0 ? ('Đã tạo '+added+' khách hàng mới từ danh sách đơn hàng.') : 'Không có khách hàng mới (tất cả công ty trong đơn đã có hồ sơ).');
+  goTab('customers');
+}
+
+/* ============================================================
+   KPI & BÁO CÁO
+   ============================================================ */
+function renderKpi(){
+  const el = document.getElementById('view-kpi');
+  const orders = DATA.orders;
+  const total = orders.length;
+  const withBothDates = orders.filter(o=>(o.requestedDate||o.dueDate) && o.deliveredDate);
+  const late = withBothDates.filter(o=>daysBetween(o.requestedDate||o.dueDate, o.deliveredDate) > 0);
+  const onTime = withBothDates.length - late.length;
+  const onTimeRate = withBothDates.length ? Math.round(onTime/withBothDates.length*100) : null;
+  const overdueOpen = orders.filter(o=>o.status!=='delivered' && (o.requestedDate||o.dueDate) && (o.requestedDate||o.dueDate) < todayStr());
+  const delivered = orders.filter(o=>o.status==='delivered').length;
+  const ordersWithNcr = new Set(DATA.ncrRecords.map(n=>n.orderId));
+  const ncrRate = total ? Math.round(ordersWithNcr.size/total*1000)/10 : null;
+
+  // Phân bố theo trạng thái
+  const statusCounts = ORDER_STATUSES.map(s=>({s, n: orders.filter(o=>o.status===s.k).length}));
+  const maxStatus = Math.max(1, ...statusCounts.map(x=>x.n));
+
+  // Top khách hàng theo số đơn
+  const byCompany = {};
+  orders.forEach(o=>{ const k=(o.company||'(không tên)').trim(); byCompany[k]=(byCompany[k]||0)+1; });
+  const topCustomers = Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Khối lượng giờ công theo nhân sự (từ phân công kind=order)
+  const staffHours = {};
+  DATA.assignments.filter(a=>a.kind==='order').forEach(a=>{
+    staffHours[a.staffId] = (staffHours[a.staffId]||0) + (parseFloat(a.hours)||8);
+  });
+  const staffRows = DATA.staff.map(s=>({s, hours: staffHours[s.id]||0})).filter(x=>x.hours>0).sort((a,b)=>b.hours-a.hours);
+
+  // NCR theo công đoạn
+  const ncrByStage = {};
+  DATA.ncrRecords.forEach(n=>{ ncrByStage[n.stage]=(ncrByStage[n.stage]||0)+1; });
+
+  el.innerHTML = `
+    <div class="grid grid-4">
+      ${kpiCard('Tổng đơn hàng', total, delivered+' đã giao · '+(total-delivered)+' đang mở','')}
+      ${kpiCard('Tỷ lệ giao đúng hạn', onTimeRate==null?'—':onTimeRate+'%', onTimeRate==null?'(chưa đủ dữ liệu)':'trên '+withBothDates.length+' đơn có đủ mốc ngày', onTimeRate!=null&&onTimeRate<70?'var(--st-late)':'var(--st-done)')}
+      ${kpiCard('Đơn quá hạn chưa đóng', overdueOpen.length, 'cần xử lý ngay', overdueOpen.length>0?'var(--st-late)':'var(--st-done)')}
+      ${kpiCard('Tỷ lệ đơn có NCR', ncrRate==null?'—':ncrRate+'%', ordersWithNcr.size+'/'+total+' đơn · mục tiêu ≤3%', ncrRate!=null&&ncrRate>3?'var(--st-late)':'var(--st-done)')}
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>Phân bố đơn hàng theo trạng thái</h2>
+    <div class="card">
+      ${statusCounts.map(x=>`<div class="bar-row">
+        <div style="width:210px;font-size:12px">${esc(x.s.label)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(x.n/maxStatus*100)}%;background:${x.s.color}"></div></div>
+        <div style="width:36px;text-align:right;font-weight:700">${x.n}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="grid grid-2">
+      <div>
+        <h2 class="sec"><span class="bar"></span>Top khách hàng (theo số đơn)</h2>
+        <div class="card" style="padding:0;overflow:auto">
+          ${topCustomers.length? `<table><thead><tr><th>Khách hàng</th><th>Số đơn</th></tr></thead><tbody>
+            ${topCustomers.map(([nm,n])=>`<tr><td>${esc(truncate(nm,42))}</td><td><b>${n}</b></td></tr>`).join('')}
+          </tbody></table>`:'<div class="empty">Chưa có dữ liệu đơn hàng.</div>'}
+        </div>
+      </div>
+      <div>
+        <h2 class="sec"><span class="bar"></span>Khối lượng giờ công theo nhân sự</h2>
+        <div class="card" style="padding:0;overflow:auto">
+          ${staffRows.length? `<table><thead><tr><th>Nhân sự / Đối tác</th><th>Tổng giờ công</th></tr></thead><tbody>
+            ${staffRows.map(x=>`<tr><td>${esc(x.s.name)}${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td><td><b>${x.hours}h</b></td></tr>`).join('')}
+          </tbody></table>`:'<div class="empty">Chưa có phân công nào trên lịch.</div>'}
+        </div>
+      </div>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>NCR theo công đoạn phát hiện</h2>
+    <div class="card">
+      ${Object.keys(ncrByStage).length? `<div class="legend">${Object.entries(ncrByStage).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip"><b>${esc(k)}</b> · <span class="muted">${v} lượt</span></span>`).join('')}</div>` : '<div class="empty">Chưa có ghi nhận NCR nào.</div>'}
+    </div>
+
+    <p class="small muted" style="margin-top:14px">💡 Số liệu tính trực tiếp từ dữ liệu đơn hàng, phân công lịch và NCR. Cập nhật trạng thái đơn / phân công → KPI tự đổi theo. Đẩy lên Google Sheets để mọi người xem cùng một báo cáo.</p>
+  `;
+}
+
 /* ---------------- INIT ---------------- */
 function renderAll(){
   document.getElementById('topStamp').textContent = 'Cập nhật lúc ' + new Date().toLocaleString('vi-VN');
@@ -1597,6 +1848,8 @@ function renderAll(){
   const id = active.id;
   if(id==='view-grid') renderGrid();
   else if(id==='view-orders') renderOrders();
+  else if(id==='view-customers') renderCustomers();
+  else if(id==='view-kpi') renderKpi();
   else if(id==='view-outsource') renderOutsource();
   else if(id==='view-ncr') renderNcr();
   else if(id==='view-data') renderData();

@@ -343,12 +343,17 @@ function gateCheck(){
         <select id="ord_assignment" onchange="toggleOutsourceField()">
           <option value="inhouse">Gia công nội bộ (xưởng)</option>
           <option value="outsource">Gia công ngoài (outsource)</option>
+          <option value="mixed">Hỗn hợp — theo công đoạn (nội bộ + outsource)</option>
         </select>
       </div>
     </div>
     <div class="field" id="ord_partner_field" style="display:none">
       <label>Đối tác outsource</label>
       <select id="ord_partner"></select>
+    </div>
+    <div class="field">
+      <label>📍 Hàng đang ở đâu / công đoạn hiện tại <span class="muted small">(VD: "Tiện xong @CK368 — đã gửi phay @Tuyết Vinh")</span></label>
+      <input id="ord_location" placeholder="Cập nhật mỗi khi hàng chuyển công đoạn / chuyển chỗ">
     </div>
     <div class="row2">
       <div class="field"><label>% hoàn thành (khi đang gia công)</label><input id="ord_progress" type="number" min="0" max="100" step="5" placeholder="0 – 100"></div>
@@ -493,6 +498,7 @@ const ORDER_STATUSES = [
   {k:'qc',           label:'4. Chờ kiểm tra chất lượng (QC)', color:'var(--st-qc)'},
   {k:'done_waiting', label:'5. Hoàn thành — chờ giao',        color:'var(--st-wait)'},
   {k:'delivered',    label:'6. Đã giao — đóng đơn',           color:'var(--st-done)'},
+  {k:'hold',         label:'7. Tạm dừng (HOLD)',              color:'#64748B'},
 ];
 const statusByKey = k => ORDER_STATUSES.find(s=>s.k===k) || ORDER_STATUSES[0];
 
@@ -626,6 +632,7 @@ function load(){
   if(!DATA.customers) DATA.customers = [];
   if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0, cust:0 };
   ['order','ncr','out','staff','assign','cust'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
+  sanitizeOrderDates();
 }
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ alert('Không lưu được dữ liệu (bộ nhớ trình duyệt đầy hoặc bị chặn).'); }
@@ -636,9 +643,29 @@ function uid(prefix, counterKey){
   return prefix + '-' + String(DATA.counters[counterKey]).padStart(4,'0');
 }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function fmtDate(s){ if(!s) return '—'; const d=new Date(s+'T00:00:00'); if(isNaN(d)) return s; return d.toLocaleDateString('vi-VN'); }
+// Chuẩn hóa mọi kiểu ngày (yyyy-mm-dd, ISO có giờ "...T17:00:00.000Z", dd/mm/yyyy) về 'yyyy-mm-dd'
+function normDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  // ISO có giờ (vd 2026-05-17T17:00:00.000Z = nửa đêm 18/5 giờ VN) → đổi theo giờ ĐỊA PHƯƠNG, tránh lệch 1 ngày
+  const d = new Date(s);
+  if(isNaN(d)) return null;
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmtDate(s){ s=normDate(s); if(!s) return '—'; const d=new Date(s+'T00:00:00'); if(isNaN(d)) return s; return d.toLocaleDateString('vi-VN'); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
-function daysBetween(a,b){ if(!a||!b) return null; const d1=new Date(a+'T00:00:00'), d2=new Date(b+'T00:00:00'); return Math.round((d2-d1)/86400000); }
+function daysBetween(a,b){ a=normDate(a); b=normDate(b); if(!a||!b) return null; const d1=new Date(a+'T00:00:00'), d2=new Date(b+'T00:00:00'); return Math.round((d2-d1)/86400000); }
+// Dọn các trường ngày trong orders (sửa dữ liệu dán tay bị kèm giờ ...T17:00:00.000Z)
+function sanitizeOrderDates(){
+  (DATA.orders||[]).forEach(o=>{
+    ['receivedDate','requestedDate','dueDate','completedDate','deliveredDate','forecastDate'].forEach(k=>{
+      if(o[k]) o[k] = normDate(o[k]);
+    });
+  });
+}
 function truncate(s,n){ s=s||''; return s.length>n? s.slice(0,n)+'…' : s; }
 function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(s.label.replace(/^\d+\.\s*/,''))}</span>`; }
 function sevLabel(s){ return s=='1'?'Nghiêm trọng':(s=='2'?'Trung bình':'Nhẹ'); }
@@ -1134,10 +1161,13 @@ function ordersTable(){
   </tr></thead><tbody>
   ${rows.map(o=>{
     const dueRef = o.requestedDate || o.dueDate;
-    const overdue = o.status!=='delivered' && dueRef && dueRef < todayStr();
-    const urgentToday = o.status!=='delivered' && dueRef && dueRef === todayStr();
+    const onHold = o.status==='hold';
+    const overdue = !onHold && o.status!=='delivered' && dueRef && dueRef < todayStr();
+    const urgentToday = !onHold && o.status!=='delivered' && dueRef && dueRef === todayStr();
     let progressNote = '';
-    if(o.status==='delivered'){
+    if(onHold){
+      progressNote = `<span style="color:#64748B;font-weight:700">⏸ HOLD${o.holdReason?': '+esc(truncate(o.holdReason,30)):''}</span>`;
+    } else if(o.status==='delivered'){
       if(dueRef && o.deliveredDate){
         const d = daysBetween(dueRef,o.deliveredDate);
         progressNote = d>0 ? `<span style="color:var(--st-late);font-weight:700">Trễ ${d} ngày</span>` : `<span style="color:var(--st-done);font-weight:700">Đúng/sớm hạn</span>`;
@@ -1170,10 +1200,10 @@ function ordersTable(){
         </select>
       </td>
       <td>${progressCellHtml(o)}</td>
-      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'(chưa chọn)') : 'Nội bộ'}</td>
+      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'(chưa chọn)') : (o.assignment==='mixed' ? '<span style="font-weight:700;color:#6366F1">Hỗn hợp</span>'+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : 'Nội bộ')}${o.currentLocation?`<div style="margin-top:2px;font-size:10.5px;color:#0EA5E9;font-weight:700">📍 ${esc(truncate(o.currentLocation,34))}</div>`:''}</td>
       <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 Dự báo giao: ${fmtDate(fc.date)}${fc.kind==='manual'?' (đặt tay)':''}${late?' · trễ hạn KH':''}</span></div>`;})()}</td>
       <td class="actions"><a onclick="openOrderModal('${o.id}')">Sửa</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">Xóa</a></td>
-    </tr>`;
+    </tr>${itemsSubRow(o, rowBg)}`;
   }).join('')}
   </tbody></table>`;
 }
@@ -1200,8 +1230,9 @@ function renderItemsEditor(){
       </div>
       <div class="row3" style="gap:8px;margin-top:6px">
         <select onchange="updItem(${i},'assignment',this.value)">
-          <option value="inhouse" ${it.assignment!=='outsource'?'selected':''}>Nội bộ</option>
+          <option value="inhouse" ${(!it.assignment||it.assignment==='inhouse')?'selected':''}>Nội bộ</option>
           <option value="outsource" ${it.assignment==='outsource'?'selected':''}>Outsource</option>
+          <option value="purchase" ${it.assignment==='purchase'?'selected':''}>Mua hàng</option>
         </select>
         <select onchange="updItem(${i},'status',this.value)">${itemStatusOptions(it.status||'new')}</select>
         <div style="display:flex;gap:6px;align-items:center">
@@ -1260,12 +1291,13 @@ function openOrderModal(id){
     document.getElementById('ord_progress').value = o.progress!=null ? o.progress : '';
     document.getElementById('ord_forecast').value = o.forecastDate||'';
     document.getElementById('ord_drive').value = o.driveFolder||'';
+    document.getElementById('ord_location').value = o.currentLocation||'';
     document.getElementById('ord_note').value = o.note||'';
     editingItems = (o.items||[]).map(x=>({...x}));
     editingAtts = (o.attachments||[]).map(x=>({...x}));
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
-    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
+    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
     editingItems = [];
     editingAtts = [];
     document.getElementById('ord_priority').value = '';
@@ -1280,7 +1312,8 @@ function openOrderModal(id){
   openModal('modalOrder');
 }
 function toggleOutsourceField(){
-  document.getElementById('ord_partner_field').style.display = document.getElementById('ord_assignment').value==='outsource' ? 'block':'none';
+  const v = document.getElementById('ord_assignment').value;
+  document.getElementById('ord_partner_field').style.display = (v==='outsource'||v==='mixed') ? 'block':'none';
 }
 function saveOrder(){
   const id = document.getElementById('ord_id').value;
@@ -1307,6 +1340,7 @@ function saveOrder(){
     progress: (function(){ const v=document.getElementById('ord_progress').value; return v===''?null:Math.max(0,Math.min(100,parseFloat(v))); })(),
     forecastDate: document.getElementById('ord_forecast').value || null,
     driveFolder: document.getElementById('ord_drive').value.trim(),
+    currentLocation: document.getElementById('ord_location').value.trim(),
     items: editingItems.filter(it=>(it.name||'').trim()),
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
     note: document.getElementById('ord_note').value.trim(),
@@ -1315,6 +1349,7 @@ function saveOrder(){
   };
   const idx = DATA.orders.findIndex(o=>o.id===rec.id);
   if(idx>=0){
+    rec.holdReason = DATA.orders[idx].holdReason||'';
     rec.statusHistory = DATA.orders[idx].statusHistory||[];
     if(DATA.orders[idx].status !== rec.status) rec.statusHistory.push({status:rec.status, date: todayStr()});
     rec.createdAt = DATA.orders[idx].createdAt;
@@ -1366,11 +1401,47 @@ function progressCellHtml(o){
     <span style="font-size:11px;font-weight:700;min-width:30px">${p}%</span>
   </div>`;
 }
+// Nhãn nơi thực hiện của chi tiết con: nội bộ / outsource / mua hàng
+function itemAssignLabel(a){
+  if(a==='outsource') return {txt:'Outsource', bg:'#0EA5E9'};
+  if(a==='purchase')  return {txt:'Mua hàng',  bg:'#A855F7'};
+  return {txt:'Nội bộ', bg:'#6B7280'};
+}
+// Dòng phụ dưới mỗi đơn: liệt kê TẤT CẢ chi tiết con với trạng thái + nơi làm + % riêng
+function itemsSubRow(o, rowBg){
+  if(!o.items || !o.items.length) return '';
+  const lines = o.items.map(it=>{
+    const st = statusByKey(it.status||'new');
+    const al = itemAssignLabel(it.assignment);
+    const p = it.status==='delivered' ? 100 : (parseFloat(it.progress)||0);
+    const pColor = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px dashed #eef1f5">
+      <i style="width:9px;height:9px;border-radius:3px;background:${st.color};flex-shrink:0" title="${esc(st.label)}"></i>
+      <span style="flex:1;min-width:140px">${esc(truncate(it.name,46))}${it.process?` <span style="color:var(--muted)">· ${esc(truncate(it.process,40))}</span>`:''}</span>
+      <span style="color:var(--muted);white-space:nowrap">${it.qty!=null?it.qty:''} ${esc(it.unit||'')}</span>
+      <span style="font-size:9px;font-weight:800;color:#fff;background:${al.bg};border-radius:4px;padding:1px 6px;white-space:nowrap">${al.txt}</span>
+      <span class="pill" style="background:${st.color};font-size:9.5px;padding:2px 7px">${esc(st.label.replace(/^\d+\.\s*/,''))}</span>
+      <div class="bar-track" style="width:46px;margin:0;height:7px"><div class="bar-fill" style="width:${p}%;background:${pColor}"></div></div>
+      <b style="font-size:10px;min-width:28px;text-align:right">${p}%</b>
+    </div>`;
+  }).join('');
+  return `<tr style="${rowBg}"><td></td><td colspan="7" style="padding:4px 10px 8px;font-size:11px;background:#fbfcfe">
+    <div style="border-left:3px solid #6366F1;padding-left:10px">${lines}</div>
+  </td></tr>`;
+}
 function quickStatusChange(id, newStatus){
   const o = DATA.orders.find(x=>x.id===id);
   if(!o || o.status===newStatus) return;
+  if(newStatus==='hold'){
+    const reason = prompt('Lý do tạm dừng (HOLD)?\nVD: Chờ khách xác nhận bản vẽ / Chờ vật tư / KH dời lịch...');
+    if(reason===null){ renderOrders(); return; } // hủy — vẽ lại để dropdown quay về trạng thái cũ
+    o.holdReason = (reason||'').trim();
+    if(o.holdReason) o.note = ((o.note?o.note+' | ':'') + 'HOLD ' + fmtDate(todayStr()) + ': ' + o.holdReason);
+  } else if(o.status==='hold'){
+    o.holdReason = ''; // gỡ HOLD
+  }
   o.statusHistory = o.statusHistory||[];
-  o.statusHistory.push({status:newStatus, date:todayStr()});
+  o.statusHistory.push({status:newStatus, date:todayStr(), note:o.holdReason||''});
   o.status = newStatus;
   o.updatedAt = new Date().toISOString();
   if(newStatus==='delivered' && !o.deliveredDate) o.deliveredDate = todayStr();
@@ -1754,6 +1825,7 @@ async function pullFromSheets(){
     });
     // Khôi phục danh sách đối tác từ outsource + đơn hàng
     rebuildPartners();
+    sanitizeOrderDates();
     DATA.meta.lastSync = new Date().toISOString();
     save();
     setSyncStatus('✓ Đã tải về từ Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
@@ -1816,6 +1888,7 @@ function importJsonFile(file){
   reader.readAsText(file);
 }
 const STATUS_TEXT_MAP = [
+  [/hold|tạm dừng|tạm ngưng|delay/i, 'hold'],
   [/chưa.*thực hiện/i, 'new'],
   [/đang.*thực hiện|đang gia công/i, 'in_production'],
   [/chờ giao|hoàn thành.*chờ/i, 'done_waiting'],
@@ -1843,8 +1916,9 @@ function importPaste(){
   lines.forEach(line=>{
     let cols = line.split('\t');
     if(cols.length < 2){ skipped++; return; }
-    // Nếu cột đầu là số thứ tự (định dạng .txt DHP), bỏ qua cột đó
-    if(/^\d+$/.test(cols[0].trim())) cols = cols.slice(1);
+    // Cột đầu là STT → dùng làm mã đơn CK368-<STT>
+    let stt = '';
+    if(/^\d+$/.test(cols[0].trim())){ stt = cols[0].trim(); cols = cols.slice(1); }
     // Hỗ trợ 2 định dạng:
     // Định dạng A (cũ): name | qty | unit | company | received | due | delivered | status
     // Định dạng B (DHP .txt): name | qty | unit | company | received | requestedDate | deliveredDate | status
@@ -1857,7 +1931,7 @@ function importPaste(){
     if(deliveredDate) status = 'delivered';
     const rec = {
       id: uid('DH','order'),
-      code: uid('CK368','order'),
+      code: stt ? ('CK368-'+stt) : uid('CK368','order'),
       company: (company||'').trim(),
       name: name.trim(),
       qty: parseFloat(qty)||null,
@@ -2068,7 +2142,8 @@ function renderKpi(){
    ============================================================ */
 function getDeadlineAlerts(){
   const today = todayStr();
-  return DATA.orders.filter(o=>o.status!=='delivered').map(o=>{
+  // Đơn HOLD không tính cảnh báo deadline (đã chủ động tạm dừng, có lý do trong ghi chú)
+  return DATA.orders.filter(o=>o.status!=='delivered' && o.status!=='hold').map(o=>{
     const ref = o.requestedDate || o.dueDate;
     if(!ref) return null;
     const d = daysBetween(today, ref);

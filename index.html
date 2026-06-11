@@ -600,7 +600,17 @@ function loadSeedOrders(){
     added++;
   });
   save();
-  alert('Đã tải ' + added + ' đơn (bỏ qua ' + (SEED_ORDERS_ALL.length-added) + ' đơn trùng mã).\nMã T6: CK368-<STT> · Tháng cũ: CK368-T03/T04/T05-<STT>.');
+  alert('Đã tải ' + added + ' đơn (bỏ qua ' + (SEED_ORDERS_ALL.length-added) + ' đơn trùng mã).');
+  goTab('orders');
+}
+// Xóa nhanh các đơn tháng cũ (mã CK368-T03/T04/T05-...) — giữ nguyên đơn tháng 6 và đơn tự thêm
+function deleteOldMonths(){
+  const olds = DATA.orders.filter(o=>/^CK368-T0[345]/i.test(o.code||''));
+  if(!olds.length){ alert('Không có đơn tháng cũ nào (mã CK368-T03/T04/T05) trong app.'); return; }
+  if(!confirm('Xóa ' + olds.length + ' đơn tháng cũ (T03–T05)?\nĐơn tháng 6 và đơn bạn tự thêm sẽ được giữ nguyên.')) return;
+  DATA.orders = DATA.orders.filter(o=>!/^CK368-T0[345]/i.test(o.code||''));
+  save();
+  alert('Đã xóa ' + olds.length + ' đơn tháng cũ. Còn lại ' + DATA.orders.length + ' đơn.');
   goTab('orders');
 }
 
@@ -1709,9 +1719,12 @@ function renderData(){
 
     <h2 class="sec"><span class="bar"></span>Nạp dữ liệu từ HANG-GIA-CONG-2026 (bản chốt 12/6)</h2>
     <div class="card" style="border-left:4px solid var(--brand)">
-      <p style="margin:0 0 10px;font-weight:700">📦 ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:'?'} đơn hàng T03→T06/2026 — trích sẵn từ file Excel, bấm 1 nút là có</p>
-      <p class="small muted" style="margin:0 0 12px">Mã đơn tháng 6: <b>CK368-&lt;STT&gt;</b> (đúng STT trong bảng) · tháng cũ: CK368-T03/T04/T05-&lt;STT&gt;. Chống trùng theo mã — bấm nhiều lần không nhân đôi. Dữ liệu cũ trong app <b>không bị xóa</b>.</p>
-      <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Nạp toàn bộ đơn hàng (T03→T06/2026)</button>
+      <p style="margin:0 0 10px;font-weight:700">📦 ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:'?'} đơn hàng tháng 6/2026 — trích sẵn từ file Excel, bấm 1 nút là có</p>
+      <p class="small muted" style="margin:0 0 12px">Mã đơn: <b>CK368-&lt;STT&gt;</b> (đúng STT trong bảng theo dõi). Chống trùng theo mã — bấm nhiều lần không nhân đôi. Dữ liệu cũ trong app <b>không bị xóa</b>.</p>
+      <div class="toolbar">
+        <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Nạp đơn hàng tháng 6/2026</button>
+        <button class="ghost" onclick="deleteOldMonths()" style="border-color:var(--st-late);color:var(--st-late)">🗑 Xóa nhanh đơn tháng cũ (T03–T05)</button>
+      </div>
     </div>
 
     <h2 class="sec"><span class="bar"></span>Xuất / Nhập dữ liệu (đồng bộ &amp; sao lưu)</h2>

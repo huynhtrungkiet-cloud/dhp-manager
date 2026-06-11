@@ -12,6 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="DHP Manager">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
+<!-- Font "Play" -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --brand:#C8102E; --brand-dark:#8B0A1F; --ink:#1f2937; --muted:#6b7280;
@@ -20,7 +24,8 @@
     --st-qc:#8B5CF6; --st-wait:#14B8A6; --st-done:#22C55E; --st-late:#EF4444;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  body{margin:0;font-family:'Play',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  .logo-img{height:40px;width:auto;display:block;border-radius:6px;background:#fff;padding:3px 6px;}
   .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:12px 20px;}
   .topbar .logo{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   .topbar h1{font-size:17px;margin:0;font-weight:700;}
@@ -117,7 +122,7 @@
   <div style="background:#fff;border-radius:16px;padding:32px 28px;width:320px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
     <div style="width:56px;height:56px;border-radius:14px;background:#C8102E;color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">DHP</div>
     <h2 style="margin:0 0 4px;font-size:18px;color:#1f2937">DHP Manager</h2>
-    <p style="margin:0 0 18px;font-size:12.5px;color:#6b7280">Quản lý sản xuất CK368 — nhập mật khẩu để vào</p>
+    <p style="margin:0 0 18px;font-size:12.5px;color:#6b7280" data-i18n="gateSub">Quản lý sản xuất CK368 — nhập mật khẩu để vào</p>
     <input id="gatePass" type="password" placeholder="Mật khẩu" autocomplete="current-password"
       style="width:100%;padding:11px 12px;border:1px solid #e5e9f0;border-radius:9px;font-size:14px;margin-bottom:10px"
       onkeydown="if(event.key==='Enter')gateCheck()">
@@ -153,25 +158,26 @@ function gateCheck(){
 </script>
 
 <div class="topbar">
-  <div class="logo">DHP</div>
+  <img class="logo-img" src="logo.png" alt="DAI HONG PHAT" onerror="this.outerHTML='<div class=\'logo\'>DHP</div>'">
   <div>
-    <h1>DHP Manager — Quản lý sản xuất CK368</h1>
-    <div class="sub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets</div>
+    <h1 data-i18n="appTitle">DHP Manager — Quản lý sản xuất CK368</h1>
+    <div class="sub" data-i18n="appSub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets</div>
   </div>
   <div class="right">
+    <button class="ghost sm" onclick="toggleLang()" style="margin-bottom:4px" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
     <div id="topUser">—</div>
     <div id="topStamp" class="small"></div>
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 Lịch phân công</div>
-  <div class="tab" data-tab="orders" onclick="goTab('orders')">📦 Đơn hàng &amp; Tiến độ</div>
-  <div class="tab" data-tab="customers" onclick="goTab('customers')">🏢 Khách hàng</div>
-  <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 KPI &amp; Báo cáo</div>
-  <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 Outsource</div>
-  <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ Ghi nhận NCR</div>
-  <div class="tab" data-tab="data" onclick="goTab('data')">⚙ Dữ liệu &amp; Đồng bộ</div>
+  <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 <span data-i18n="tab_grid">Lịch phân công</span></div>
+  <div class="tab" data-tab="orders" onclick="goTab('orders')">📦 <span data-i18n="tab_orders">Đơn hàng &amp; Tiến độ</span></div>
+  <div class="tab" data-tab="customers" onclick="goTab('customers')">🏢 <span data-i18n="tab_customers">Khách hàng</span></div>
+  <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 <span data-i18n="tab_kpi">KPI &amp; Báo cáo</span></div>
+  <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 <span data-i18n="tab_outsource">Outsource</span></div>
+  <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ <span data-i18n="tab_ncr">Ghi nhận NCR</span></div>
+  <div class="tab" data-tab="data" onclick="goTab('data')">⚙ <span data-i18n="tab_data">Dữ liệu &amp; Đồng bộ</span></div>
 </div>
 
 <div id="alertBar" style="display:none"></div>
@@ -640,6 +646,30 @@ function fillSelect(sel, items, valueKey, labelKey, placeholder){
   sel.innerHTML = (placeholder?`<option value="">${esc(placeholder)}</option>`:'') +
     items.map(it=>`<option value="${esc(it[valueKey])}">${esc(it[labelKey])}</option>`).join('');
 }
+
+/* ---------------- SONG NGỮ (i18n) — tiêu đề & nhãn chính ---------------- */
+let LANG = localStorage.getItem('dhp_lang') || 'vi';
+const I18N = {
+  appTitle:    {vi:'DHP Manager — Quản lý sản xuất CK368', en:'DHP Manager — CK368 Production Management'},
+  appSub:      {vi:'Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets', en:'Orders · Schedule · Customers · KPI · Outsource · NCR — shared data via Google Sheets'},
+  gateSub:     {vi:'Quản lý sản xuất CK368 — nhập mật khẩu để vào', en:'CK368 Production Management — enter password to continue'},
+  tab_grid:    {vi:'Lịch phân công', en:'Schedule'},
+  tab_orders:  {vi:'Đơn hàng & Tiến độ', en:'Orders & Progress'},
+  tab_customers:{vi:'Khách hàng', en:'Customers'},
+  tab_kpi:     {vi:'KPI & Báo cáo', en:'KPI & Reports'},
+  tab_outsource:{vi:'Outsource', en:'Outsource'},
+  tab_ncr:     {vi:'Ghi nhận NCR', en:'NCR Records'},
+  tab_data:    {vi:'Dữ liệu & Đồng bộ', en:'Data & Sync'},
+};
+function t(key){ const e=I18N[key]; return e ? (e[LANG]||e.vi) : key; }
+function applyLang(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n'); if(I18N[k]) el.textContent = t(k);
+  });
+  const lb=document.getElementById('langLabel'); if(lb) lb.textContent = (LANG==='vi'?'EN':'VI');
+  document.documentElement.lang = LANG;
+}
+function toggleLang(){ LANG = (LANG==='vi'?'en':'vi'); localStorage.setItem('dhp_lang',LANG); applyLang(); }
 
 /* ---------------- TAB NAV ---------------- */
 function goTab(name){
@@ -1155,7 +1185,8 @@ function itemStatusOptions(v){ return ORDER_STATUSES.map(s=>`<option value="${s.
 function renderItemsEditor(){
   const wrap=document.getElementById('ord_items_list');
   if(!editingItems.length){ wrap.innerHTML='<div class="small muted">Chưa có chi tiết con. Đơn đơn giản thì để trống phần này.</div>'; return; }
-  wrap.innerHTML = editingItems.map((it,i)=>`
+  const summary = `<div id="ord_items_summary" class="small" style="margin-bottom:8px;padding:6px 10px;background:#eef2ff;border-radius:8px;font-weight:700;color:#3730a3">${itemsSummaryText()}</div>`;
+  wrap.innerHTML = summary + editingItems.map((it,i)=>`
     <div style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px;background:#fafcff">
       <div class="row2" style="gap:8px">
         <input value="${esc(it.name||'')}" placeholder="Tên chi tiết (vd: Van WCC-VGA-8006)" oninput="updItem(${i},'name',this.value)">
@@ -1164,6 +1195,9 @@ function renderItemsEditor(){
           <input style="width:64px" value="${esc(it.unit||'')}" placeholder="ĐVT" oninput="updItem(${i},'unit',this.value)">
         </div>
       </div>
+      <div class="field" style="margin:6px 0 0">
+        <input value="${esc(it.process||'')}" placeholder="Quy trình gia công (vd: Tiện → Phay → Khoan → Hàn → QC)" oninput="updItem(${i},'process',this.value)" style="width:100%">
+      </div>
       <div class="row3" style="gap:8px;margin-top:6px">
         <select onchange="updItem(${i},'assignment',this.value)">
           <option value="inhouse" ${it.assignment!=='outsource'?'selected':''}>Nội bộ</option>
@@ -1171,14 +1205,21 @@ function renderItemsEditor(){
         </select>
         <select onchange="updItem(${i},'status',this.value)">${itemStatusOptions(it.status||'new')}</select>
         <div style="display:flex;gap:6px;align-items:center">
-          <input type="number" min="0" max="100" style="width:56px" value="${it.progress!=null?it.progress:''}" placeholder="%" oninput="updItem(${i},'progress',this.value)" title="% hoàn thành chi tiết này">
+          <input type="number" min="0" step="0.5" style="width:70px" value="${it.estHours!=null?it.estHours:''}" placeholder="Giờ GC" oninput="updItem(${i},'estHours',this.value)" title="Thời gian gia công dự kiến (giờ)">
+          <input type="number" min="0" max="100" style="width:52px" value="${it.progress!=null?it.progress:''}" placeholder="%" oninput="updItem(${i},'progress',this.value)" title="% hoàn thành">
           <a onclick="rmItem(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa chi tiết">✕</a>
         </div>
       </div>
     </div>`).join('');
 }
-function addOrderItem(){ editingItems.push({id:localId('IT'), name:'', qty:null, unit:'', assignment:'inhouse', status:'new', progress:null, note:''}); renderItemsEditor(); }
-function updItem(i,k,v){ if(!editingItems[i])return; editingItems[i][k]=(k==='qty'||k==='progress')?(v===''?null:parseFloat(v)):v; }
+function itemsSummaryText(){
+  const totalQty = editingItems.reduce((s,it)=>s+(parseFloat(it.qty)||0),0);
+  const totalHrs = editingItems.reduce((s,it)=>s+(parseFloat(it.estHours)||0),0);
+  return `📊 ${editingItems.length} chi tiết con · Tổng SL: ${totalQty} · Tổng giờ gia công dự kiến: ${totalHrs}h${totalHrs?` (≈ ${(totalHrs/8).toFixed(1)} ngày công)`:''}`;
+}
+function updateItemsSummary(){ const el=document.getElementById('ord_items_summary'); if(el) el.innerHTML=itemsSummaryText(); }
+function addOrderItem(){ editingItems.push({id:localId('IT'), name:'', qty:null, unit:'', process:'', estHours:null, assignment:'inhouse', status:'new', progress:null, note:''}); renderItemsEditor(); }
+function updItem(i,k,v){ if(!editingItems[i])return; editingItems[i][k]=(k==='qty'||k==='progress'||k==='estHours')?(v===''?null:parseFloat(v)):v; if(k==='qty'||k==='estHours') updateItemsSummary(); }
 function rmItem(i){ editingItems.splice(i,1); renderItemsEditor(); }
 function renderAttEditor(){
   const wrap=document.getElementById('ord_att_list');
@@ -2053,6 +2094,7 @@ function renderAll(){
 }
 load();
 renderAll();
+applyLang();
 
 /* ===== PWA: đăng ký service worker để chạy offline + cài ra màn hình chính ===== */
 if('serviceWorker' in navigator){

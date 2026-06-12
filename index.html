@@ -319,6 +319,11 @@ function gateCheck(){
       </select>
     </div>
     <div class="field">
+      <label>🔧 Công đoạn (routing) <span class="muted small">— mã cố định: A=Tiện, B=Phay, C=Cắt dây... L=Mua phôi, M=Hợp đồng/Thủ tục. Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
+      <div id="ord_stages_list"></div>
+      <button type="button" class="ghost sm" onclick="addStage()" style="margin-top:6px">＋ Thêm công đoạn</button>
+    </div>
+    <div class="field">
       <label>Chi tiết con của đơn <span class="muted small">(tùy chọn — cho đơn nhiều chi tiết / dự án, vd VHG DATA: nhiều van mang gia công ngoài)</span></label>
       <div id="ord_items_list"></div>
       <button type="button" class="ghost sm" onclick="addOrderItem()" style="margin-top:6px">＋ Thêm chi tiết con</button>
@@ -529,7 +534,39 @@ const PRODUCTION_STAGES = [
   'Hàn', 'Mài / Đánh bóng', 'Dập / Đột', 'Lắp ráp', 'Sơn / Xử lý bề mặt',
   'Kiểm tra chất lượng (QC)', 'Đóng gói / Giao hàng', 'Khác',
 ];
-// Mã/màu cho các loại "không phải đơn hàng" trên lịch (nghỉ phép, đào tạo...)
+// ===== CÔNG ĐOẠN (ROUTING) — mã CỐ ĐỊNH theo loại việc, lặp lại thì thêm số: A, A2, A3... =====
+// Bao gồm cả khâu PHI GIA CÔNG (L=Mua phôi, M=Hợp đồng/Thủ tục, N=Vận chuyển) — vì kẹt thường nằm ở đó
+const STAGE_PRESETS = [
+  {c:'A', n:'Tiện'},            {c:'B', n:'Phay'},              {c:'C', n:'Cắt dây'},
+  {c:'D', n:'Khoan / Doa'},     {c:'E', n:'Hàn'},               {c:'F', n:'Mài / Đánh bóng'},
+  {c:'G', n:'Gia công CNC'},    {c:'H', n:'Nhiệt luyện'},       {c:'I', n:'Sơn / Xử lý bề mặt'},
+  {c:'J', n:'Lắp ráp'},         {c:'K', n:'QC / Kiểm tra'},     {c:'L', n:'Mua phôi / Vật tư'},
+  {c:'M', n:'Hợp đồng / Thủ tục'},{c:'N', n:'Vận chuyển / Giao nhận'},{c:'X', n:'Khác'},
+];
+function stageState(s){
+  if(s.status==='done' || s.doneDate) return 'done';
+  if(s.status==='doing') {
+    if(s.startDate && s.plannedDays && daysBetween(s.startDate, todayStr()) > s.plannedDays) return 'late';
+    return 'doing';
+  }
+  return 'pending';
+}
+const STAGE_COLORS = { done:'#22C55E', doing:'#F59E0B', late:'#EF4444', pending:'#CBD5E1' };
+// Chuỗi chip công đoạn hiển thị trong bảng: A✓ B(đang) C...
+function stageChainHtml(o){
+  if(!o.stages || !o.stages.length) return '';
+  const chips = o.stages.map(s=>{
+    const st = stageState(s);
+    const days = (st==='doing'||st==='late') && s.startDate ? daysBetween(s.startDate, todayStr()) : null;
+    const tip = `${s.code} ${s.name||''}${s.location?' @'+s.location:''}${s.plannedDays?' · KH '+s.plannedDays+'n':''}${days!=null?' · đã '+days+'n':''}`;
+    const txt = s.code + (st==='done'?'✓':'') + ((st==='doing'||st==='late')&&days!=null?'·'+days+'n':'');
+    return `<span title="${esc(tip)}" style="display:inline-block;font-size:9.5px;font-weight:800;color:${st==='pending'?'#475569':'#fff'};background:${STAGE_COLORS[st]};border-radius:4px;padding:1px 6px;margin:1px 2px 1px 0">${esc(txt)}</span>`;
+  }).join('<span style="color:#cbd5e1;font-size:9px">→</span>');
+  // Công đoạn hiện tại (chưa xong đầu tiên)
+  const cur = o.stages.find(s=>stageState(s)!=='done');
+  const curTxt = cur ? `<span style="font-size:10px;color:${stageState(cur)==='late'?'var(--st-late)':'var(--muted)'};font-weight:700;margin-left:4px">⏳ ${esc(cur.code)} ${esc(cur.name||'')}${cur.location?' @'+esc(cur.location):''}</span>` : '';
+  return `<div style="margin-top:3px;line-height:1.7">${chips}${curTxt}</div>`;
+}
 const ASSIGN_KINDS = {
   available: {code:'A',     label:'Có mặt — chờ việc',  color:'#9CA3AF'},
   leave:     {code:'AL',    label:'Nghỉ phép',          color:'#93C5FD'},
@@ -1241,7 +1278,7 @@ function ordersTable(){
         if(o.driveFolder) bits.push(`<a href="${esc(o.driveFolder)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;font-weight:700;color:#0EA5E9">📁 Drive</a>`);
         if(o.attachments&&o.attachments.length) bits.push(`<span style="font-size:10px;color:var(--muted)">🔗 ${o.attachments.length}</span>`);
         return bits.length?`<div style="margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">${bits.join('')}</div>`:'';
-      })()}</td>
+      })()}${stageChainHtml(o)}</td>
       <td style="min-width:150px;white-space:normal;word-break:break-word">${esc(o.company)}</td>
       <td>${fmtDate(dueRef)}</td>
       <td>
@@ -1262,6 +1299,68 @@ function ordersTable(){
 /* ---- Trình soạn chi tiết con (line items) & đính kèm trong form đơn ---- */
 let editingItems = [];
 let editingAtts = [];
+let editingStages = [];
+function renderStagesEditor(){
+  const wrap = document.getElementById('ord_stages_list');
+  if(!wrap) return;
+  if(!editingStages.length){ wrap.innerHTML = '<div class="small muted">Chưa có công đoạn. Thêm theo thứ tự thực hiện — kể cả khâu mua phôi / hợp đồng / vận chuyển.</div>'; return; }
+  const locs = ['CK368', ...DATA.partners.map(p=>p.name)];
+  wrap.innerHTML = `<datalist id="stageLocs">${locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>` +
+    editingStages.map((s,i)=>{
+      const st = stageState(s);
+      return `<div style="border:1px solid var(--line);border-left:4px solid ${STAGE_COLORS[st]};border-radius:8px;padding:7px;margin-bottom:6px;background:#fafcff">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select style="width:170px" onchange="pickStagePreset(${i},this.value)" title="Loại công đoạn">
+          <option value="">— Chọn loại —</option>
+          ${STAGE_PRESETS.map(p=>`<option value="${p.c}" ${String(s.code||'').replace(/\d+$/,'')===p.c?'selected':''}>${p.c} — ${p.n}</option>`).join('')}
+        </select>
+        <input style="width:52px;font-weight:800" value="${esc(s.code||'')}" placeholder="Mã" oninput="updStage(${i},'code',this.value)" title="Mã (A, A2, B...)">
+        <input style="flex:1;min-width:130px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)">
+        <input type="number" style="width:64px" min="0" step="0.5" value="${s.plannedDays!=null?s.plannedDays:''}" placeholder="KH (n)" oninput="updStage(${i},'plannedDays',this.value)" title="Số ngày kế hoạch">
+        <select style="width:108px" onchange="updStage(${i},'status',this.value);renderStagesEditor()">
+          <option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa làm</option>
+          <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
+          <option value="done" ${s.status==='done'?'selected':''}>Xong ✓</option>
+        </select>
+        <input type="date" style="width:128px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value)" title="Ngày bắt đầu">
+        <span style="display:flex;gap:4px">
+          <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Lên">↑</a>
+          <a onclick="moveStage(${i},1)" style="cursor:pointer;font-weight:800" title="Xuống">↓</a>
+          <a onclick="rmStage(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa">✕</a>
+        </span>
+      </div>
+    </div>`;}).join('');
+}
+function pickStagePreset(i, c){
+  const p = STAGE_PRESETS.find(x=>x.c===c);
+  if(!p || !editingStages[i]) return;
+  // Tự đánh số nếu mã đã dùng: A → A2 → A3
+  let code = p.c, n = 2;
+  while(editingStages.some((s,j)=>j!==i && s.code===code)){ code = p.c + n; n++; }
+  editingStages[i].code = code;
+  editingStages[i].name = p.n;
+  renderStagesEditor();
+}
+function addStage(){
+  editingStages.push({code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', note:''});
+  renderStagesEditor();
+}
+function updStage(i,k,v){
+  if(!editingStages[i]) return;
+  editingStages[i][k] = (k==='plannedDays') ? (v===''?null:parseFloat(v)) : v;
+  if(k==='status'){
+    if(v==='done' && !editingStages[i].doneDate) editingStages[i].doneDate = todayStr();
+    if(v==='doing' && !editingStages[i].startDate) editingStages[i].startDate = todayStr();
+    if(v==='pending') editingStages[i].doneDate = '';
+  }
+}
+function rmStage(i){ editingStages.splice(i,1); renderStagesEditor(); }
+function moveStage(i,d){
+  const j = i + d;
+  if(j<0 || j>=editingStages.length) return;
+  [editingStages[i], editingStages[j]] = [editingStages[j], editingStages[i]];
+  renderStagesEditor();
+}
 function localId(p){ return p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 function itemStatusOptions(v){ return ORDER_STATUSES.map(s=>`<option value="${s.k}" ${v===s.k?'selected':''}>${esc(s.label.replace(/^\d+\.\s*/,''))}</option>`).join(''); }
 function renderItemsEditor(){
@@ -1347,11 +1446,13 @@ function openOrderModal(id){
     document.getElementById('ord_note').value = o.note||'';
     editingItems = (o.items||[]).map(x=>({...x}));
     editingAtts = (o.attachments||[]).map(x=>({...x}));
+    editingStages = (o.stages||[]).map(x=>({...x}));
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
     ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
     editingItems = [];
     editingAtts = [];
+    editingStages = [];
     document.getElementById('ord_priority').value = '';
     document.getElementById('ord_type').value = 'Gia công';
     document.getElementById('ord_status').value = 'new';
@@ -1360,6 +1461,7 @@ function openOrderModal(id){
   }
   renderItemsEditor();
   renderAttEditor();
+  renderStagesEditor();
   toggleOutsourceField();
   openModal('modalOrder');
 }
@@ -1395,6 +1497,7 @@ function saveOrder(){
     currentLocation: document.getElementById('ord_location').value.trim(),
     items: editingItems.filter(it=>(it.name||'').trim()),
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
+    stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()),
     note: document.getElementById('ord_note').value.trim(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),
@@ -1832,7 +1935,8 @@ async function syncPush(){
       if(table==='orders'){
         records = records.map(o=>({...o,
           itemsJson: JSON.stringify(o.items||[]),
-          attachmentsJson: JSON.stringify(o.attachments||[])}));
+          attachmentsJson: JSON.stringify(o.attachments||[]),
+          stagesJson: JSON.stringify(o.stages||[])}));
       }
       // KHÔNG đặt Content-Type để tránh preflight CORS với Apps Script
       const res = await fetch(url, {method:'POST', body: JSON.stringify({action:'bulkUpsert', table, records})});
@@ -1872,6 +1976,7 @@ async function pullFromSheets(){
           if(table==='orders'){
             try{ r.items = r.itemsJson ? JSON.parse(r.itemsJson) : []; }catch(e){ r.items=[]; }
             try{ r.attachments = r.attachmentsJson ? JSON.parse(r.attachmentsJson) : []; }catch(e){ r.attachments=[]; }
+            try{ r.stages = r.stagesJson ? JSON.parse(r.stagesJson) : []; }catch(e){ r.stages=[]; }
             if(r.progress!=null && r.progress!=='') r.progress = parseFloat(r.progress);
           }
           return r;
@@ -2187,6 +2292,53 @@ function renderKpi(){
     <div class="card">
       ${Object.keys(ncrByStage).length? `<div class="legend">${Object.entries(ncrByStage).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip"><b>${esc(k)}</b> · <span class="muted">${v} lượt</span></span>`).join('')}</div>` : '<div class="empty">Chưa có ghi nhận NCR nào.</div>'}
     </div>
+
+    <h2 class="sec"><span class="bar"></span>🔍 Nút thắt — đơn đang kẹt ở công đoạn nào, ở đâu</h2>
+    ${(function(){
+      // Mỗi đơn đang mở: lấy công đoạn ĐẦU TIÊN chưa xong → đó là chỗ đơn đang nằm
+      const stuck = [];
+      orders.filter(o=>o.status!=='delivered' && o.status!=='hold' && o.stages && o.stages.length).forEach(o=>{
+        const cur = o.stages.find(s=>stageState(s)!=='done');
+        if(!cur) return;
+        const daysIn = cur.startDate ? daysBetween(cur.startDate, todayStr()) : null;
+        const isLate = cur.plannedDays!=null && daysIn!=null && daysIn > cur.plannedDays;
+        stuck.push({o, cur, daysIn, isLate, loc: (cur.location||'(chưa ghi nơi làm)')});
+      });
+      if(!stuck.length) return '<div class="card empty">Chưa có đơn nào khai báo công đoạn. Mở từng đơn → mục "🔧 Công đoạn" để thêm chuỗi A/B/C... kèm nơi làm — sau đó bảng này sẽ tự chỉ ra chỗ kẹt.</div>';
+      // Gom theo NƠI LÀM — nơi nào ôm nhiều đơn + trễ nhiều = nút thắt
+      const byLoc = {};
+      stuck.forEach(x=>{
+        (byLoc[x.loc] = byLoc[x.loc] || {n:0, late:0, days:0}).n++;
+        if(x.isLate) byLoc[x.loc].late++;
+        if(x.daysIn!=null) byLoc[x.loc].days += x.daysIn;
+      });
+      const locRows = Object.entries(byLoc).sort((a,b)=> (b[1].late-a[1].late) || (b[1].n-a[1].n));
+      const maxN = Math.max(...locRows.map(([,v])=>v.n));
+      const worst = stuck.filter(x=>x.daysIn!=null).sort((a,b)=>(b.isLate-a.isLate)||(b.daysIn-a.daysIn)).slice(0,8);
+      return `
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 style="margin:0 0 10px;font-size:13px">Đơn đang nằm ở đâu (theo nơi làm)</h3>
+          ${locRows.map(([loc,v])=>`<div class="bar-row">
+            <div style="width:170px;font-size:12px;font-weight:600">${esc(loc)}${v.late?` <span style="color:var(--st-late);font-weight:800">⚠${v.late} trễ</span>`:''}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v.n/maxN*100)}%;background:${v.late?'var(--st-late)':'var(--st-prod)'}"></div></div>
+            <div style="width:90px;text-align:right;font-size:11.5px"><b>${v.n}</b> đơn · ${v.days}n</div>
+          </div>`).join('')}
+          <p class="small muted" style="margin:8px 0 0">Thanh đỏ = nơi có công đoạn vượt kế hoạch. Nơi ôm nhiều đơn + nhiều ngày = ưu tiên tìm thêm outsource san tải.</p>
+        </div>
+        <div class="card" style="padding:0;overflow:auto">
+          <table><thead><tr><th>Đơn</th><th>Kẹt ở</th><th>Ở đâu</th><th>Đã nằm</th><th>KH</th></tr></thead><tbody>
+          ${worst.map(x=>`<tr style="${x.isLate?'background:#fff5f5':''}">
+            <td><b>${esc(x.o.code)}</b><div class="small muted">${esc(truncate(x.o.name,28))}</div></td>
+            <td><b>${esc(x.cur.code)}</b> ${esc(x.cur.name||'')}</td>
+            <td>${esc(x.loc)}</td>
+            <td style="font-weight:800;color:${x.isLate?'var(--st-late)':'var(--ink)'}">${x.daysIn}n</td>
+            <td class="muted">${x.cur.plannedDays!=null?x.cur.plannedDays+'n':'—'}</td>
+          </tr>`).join('')}
+          </tbody></table>
+        </div>
+      </div>`;
+    })()}
 
     <p class="small muted" style="margin-top:14px">💡 Số liệu tính trực tiếp từ dữ liệu đơn hàng, phân công lịch và NCR. Cập nhật trạng thái đơn / phân công → KPI tự đổi theo. Đẩy lên Google Sheets để mọi người xem cùng một báo cáo.</p>
   `;

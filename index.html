@@ -1860,6 +1860,10 @@ function renderData(){
         <span class="small muted">Mở app → tự tải dữ liệu chung về · sửa gì → tự đẩy lên sau 2 giây. Mọi máy dán cùng URL là dùng chung.</span>
         <span id="autoSyncBadge" class="small" style="margin-left:auto;font-weight:700;color:#16A34A"></span>
       </div>
+      <div style="margin-top:10px">
+        <button onclick="resetSharedSheet()" style="background:#fff;color:var(--st-late);border-color:var(--st-late)">🧹 Làm sạch kho chung &amp; đồng bộ lại (từ máy này)</button>
+        <span class="small muted" style="margin-left:8px">Dùng khi Sheet bị rác/trùng. Xóa sạch Sheet rồi đẩy dữ liệu máy này lên làm chuẩn — máy khác F5 tải lại theo.</span>
+      </div>
       <p class="small muted" style="margin-bottom:0">Đồng bộ các bảng: đơn hàng · nhân sự · phân công lịch · lô outsource · ghi nhận NCR. Đẩy lên = ghi đè bản ghi cùng id trên Sheet. Tải về = thay thế dữ liệu local bằng dữ liệu Sheet.</p>
     </div>
 
@@ -2060,6 +2064,22 @@ async function pullFromSheets(){
   }catch(err){
     setSyncStatus('Lỗi khi tải về: ' + err.message, true);
   }
+}
+// LÀM SẠCH kho chung trên Sheets rồi đẩy TOÀN BỘ dữ liệu máy này lên (máy này = nguồn chuẩn)
+async function resetSharedSheet(){
+  const url = getSheetUrl();
+  if(!url){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
+  if(!confirm('LÀM SẠCH toàn bộ kho chung trên Google Sheets, rồi đẩy dữ liệu của MÁY NÀY lên làm chuẩn?\n\n⚠ Mọi dữ liệu cũ/rác trên Sheet sẽ bị XÓA và thay bằng dữ liệu đang có trên máy này ('+ (DATA.orders||[]).length +' đơn).\nCác máy khác sau đó F5 sẽ tải lại theo máy này.')) return;
+  setSyncStatus('Đang làm sạch kho chung trên Google Sheets...');
+  try{
+    const res = await fetch(url + '?action=clearAll');
+    const out = await res.json();
+    if(out.error) throw new Error(out.error);
+    setSyncStatus('Đã xóa sạch ('+(out.cleared||[]).join(', ')+'). Đang đẩy dữ liệu máy này lên...');
+    await pushToSheets();
+    _suppressAutoPush = true; save(); _suppressAutoPush = false;
+    setSyncStatus('✓ Đã làm sạch & đồng bộ lại từ máy này. Các máy khác hãy F5 để tải bản sạch.');
+  }catch(err){ setSyncStatus('Lỗi khi làm sạch: ' + err.message, true); }
 }
 // Cập nhật đơn mới từ HANG-GIA-CONG-2026 (một chiều, an toàn) rồi tải về app
 async function syncImportHGC(){

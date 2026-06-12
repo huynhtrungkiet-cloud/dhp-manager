@@ -171,8 +171,7 @@ function gateCheck(){
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 <span data-i18n="tab_grid">Lịch phân công</span></div>
-  <div class="tab" data-tab="orders" onclick="goTab('orders')">📦 <span data-i18n="tab_orders">Đơn hàng &amp; Tiến độ</span></div>
+  <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 <span data-i18n="tab_grid">Lịch phân công &amp; Đơn hàng</span></div>
   <div class="tab" data-tab="customers" onclick="goTab('customers')">🏢 <span data-i18n="tab_customers">Khách hàng</span></div>
   <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 <span data-i18n="tab_kpi">KPI &amp; Báo cáo</span></div>
   <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 <span data-i18n="tab_outsource">Outsource</span></div>
@@ -185,8 +184,6 @@ function gateCheck(){
 <main>
   <!-- ============ GRID / TIMESHEET (primary view) ============ -->
   <div class="view active" id="view-grid"></div>
-  <!-- ============ ORDERS ============ -->
-  <div class="view" id="view-orders"></div>
   <!-- ============ CUSTOMERS ============ -->
   <div class="view" id="view-customers"></div>
   <!-- ============ KPI ============ -->
@@ -638,6 +635,7 @@ function loadSeedOrders(){
     });
     added++;
   });
+  ensureCustomersFromOrders();
   save();
   alert('Đã tải ' + added + ' đơn (bỏ qua ' + (SEED_ORDERS_ALL.length-added) + ' đơn trùng mã).');
   goTab('orders');
@@ -689,6 +687,7 @@ function load(){
   if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0, cust:0 };
   ['order','ncr','out','staff','assign','cust'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
   sanitizeOrderDates();
+  ensureCustomersFromOrders();
 }
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ alert('Không lưu được dữ liệu (bộ nhớ trình duyệt đầy hoặc bị chặn).'); }
@@ -736,7 +735,7 @@ const I18N = {
   appTitle:    {vi:'DHP Manager — Quản lý sản xuất CK368', en:'DHP Manager — CK368 Production Management'},
   appSub:      {vi:'Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets', en:'Orders · Schedule · Customers · KPI · Outsource · NCR — shared data via Google Sheets'},
   gateSub:     {vi:'Quản lý sản xuất CK368 — nhập mật khẩu để vào', en:'CK368 Production Management — enter password to continue'},
-  tab_grid:    {vi:'Lịch phân công', en:'Schedule'},
+  tab_grid:    {vi:'Lịch phân công & Đơn hàng', en:'Schedule & Orders'},
   tab_orders:  {vi:'Đơn hàng & Tiến độ', en:'Orders & Progress'},
   tab_customers:{vi:'Khách hàng', en:'Customers'},
   tab_kpi:     {vi:'KPI & Báo cáo', en:'KPI & Reports'},
@@ -788,6 +787,7 @@ function toggleLang(){ LANG = (LANG==='vi'?'en':'vi'); localStorage.setItem('dhp
 
 /* ---------------- TAB NAV ---------------- */
 function goTab(name){
+  if(name==='orders') name='grid'; // tab Đơn hàng đã gộp vào Lịch phân công
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
   renderAll();
@@ -1232,7 +1232,8 @@ function ordersSectionHtml(){
     </div>`;
 }
 function renderOrders(){
-  document.getElementById('view-orders').innerHTML = ordersSectionHtml();
+  const el = document.getElementById('view-orders');
+  if(el) el.innerHTML = ordersSectionHtml(); else renderGrid();
 }
 function filteredOrders(){
   const q = orderFilter.q.trim().toLowerCase();
@@ -1524,6 +1525,7 @@ function saveOrder(){
     rec.statusHistory = [{status:rec.status, date: todayStr()}];
     DATA.orders.push(rec);
   }
+  ensureCustomersFromOrders();
   closeModal('modalOrder');
   save();
   goTab('orders');
@@ -1996,6 +1998,7 @@ async function pullFromSheets(){
     // Khôi phục danh sách đối tác từ outsource + đơn hàng
     rebuildPartners();
     sanitizeOrderDates();
+    ensureCustomersFromOrders();
     DATA.meta.lastSync = new Date().toISOString();
     save();
     setSyncStatus('✓ Đã tải về từ Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
@@ -2210,10 +2213,11 @@ function deleteCustomer(id){
   DATA.customers = DATA.customers.filter(c=>c.id!==id);
   save(); goTab('customers');
 }
-function seedCustomersFromOrders(){
-  const existing = new Set(DATA.customers.map(c=>(c.name||'').trim().toLowerCase()));
+// Tự thêm KH mới từ các công ty trong đơn hàng (chạy ngầm, không thông báo) — KHÔNG lưu/đẩy ở đây
+function ensureCustomersFromOrders(){
+  const existing = new Set((DATA.customers||[]).map(c=>(c.name||'').trim().toLowerCase()));
   let added=0;
-  DATA.orders.forEach(o=>{
+  (DATA.orders||[]).forEach(o=>{
     const nm = (o.company||'').trim();
     if(nm && !existing.has(nm.toLowerCase())){
       existing.add(nm.toLowerCase());
@@ -2221,6 +2225,10 @@ function seedCustomersFromOrders(){
       added++;
     }
   });
+  return added;
+}
+function seedCustomersFromOrders(){
+  const added = ensureCustomersFromOrders();
   save();
   alert(added>0 ? ('Đã tạo '+added+' khách hàng mới từ danh sách đơn hàng.') : 'Không có khách hàng mới (tất cả công ty trong đơn đã có hồ sơ).');
   goTab('customers');
@@ -2373,8 +2381,8 @@ function getDeadlineAlerts(){
 function renderAlertBar(){
   const el = document.getElementById('alertBar'); if(!el) return;
   const alerts = getDeadlineAlerts();
-  // Badge số lượng trên tab Đơn hàng
-  const tab = document.querySelector('.tab[data-tab="orders"]');
+  // Badge số lượng trên tab Lịch phân công (đã gộp Đơn hàng vào đây)
+  const tab = document.querySelector('.tab[data-tab="grid"]');
   if(tab){
     tab.querySelector('.tabBadge')?.remove();
     if(alerts.length){
@@ -2412,7 +2420,6 @@ function renderAll(){
   if(!active) return;
   const id = active.id;
   if(id==='view-grid') renderGrid();
-  else if(id==='view-orders') renderOrders();
   else if(id==='view-customers') renderCustomers();
   else if(id==='view-kpi') renderKpi();
   else if(id==='view-outsource') renderOutsource();

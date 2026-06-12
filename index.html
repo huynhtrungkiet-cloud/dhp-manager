@@ -972,6 +972,9 @@ function renderGrid(){
         ${stageEntries.map(([stage,hours])=>`<span class="chip"><b>${esc(stage)}</b> · <span class="muted">${hours}h</span></span>`).join('')}
       </div>` : ''}
     </div>
+
+    <h2 class="sec" style="margin-top:30px"><span class="bar"></span>📦 ${t('tab_orders')}</h2>
+    ${ordersSectionHtml()}
   `;
 }
 function kpiCard(label, value, sub, accent){
@@ -1193,24 +1196,30 @@ function sortOrdersBy(key){
     orderFilter.sortKey = key;
     orderFilter.sortDir = (key==='dueDate' || key==='progress') ? 'desc' : 'asc';
   }
-  renderOrders();
+  refreshOrders();
 }
 function sortHeader(key, label){
   const active = orderFilter.sortKey === key;
   const arrow = active ? (orderFilter.sortDir==='asc' ? ' ▲' : ' ▼') : ' ⇅';
   return `<th class="sortable${active?' sorted':''}" onclick="sortOrdersBy('${key}')" title="Bấm để sắp xếp theo ${esc(label)} (bấm lại để đảo chiều tăng/giảm)">${esc(label)}<span class="muted" style="font-weight:400">${arrow}</span></th>`;
 }
-function renderOrders(){
-  const el = document.getElementById('view-orders');
-  el.innerHTML = `
+// Re-render bảng đơn vào đúng view đang mở (Lịch phân công nhúng / hoặc tab Đơn hàng riêng)
+function refreshOrders(){
+  const active = document.querySelector('.view.active');
+  if(active && active.id==='view-grid') renderGrid();
+  else renderOrders();
+}
+// HTML phần đơn hàng (toolbar + bộ lọc + bảng) — dùng chung cho cả tab riêng lẫn khi nhúng dưới Lịch
+function ordersSectionHtml(){
+  return `
     <div class="toolbar">
       <button onclick="openOrderModal()">${t('btn_addOrder')}</button>
-      <input id="ofQ" placeholder="${t('search_ph')}" style="min-width:260px" oninput="orderFilter.q=this.value;renderOrders()" value="${esc(orderFilter.q)}">
-      <select onchange="orderFilter.status=this.value;renderOrders()">
+      <input id="ofQ" placeholder="${t('search_ph')}" style="min-width:240px" oninput="orderFilter.q=this.value;refreshOrders()" value="${esc(orderFilter.q)}">
+      <select onchange="orderFilter.status=this.value;refreshOrders()">
         <option value="">${t('f_allStatus')}</option>
         ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${orderFilter.status===s.k?'selected':''}>${esc(stLabel(s))}</option>`).join('')}
       </select>
-      <select onchange="orderFilter.assignment=this.value;renderOrders()">
+      <select onchange="orderFilter.assignment=this.value;refreshOrders()">
         <option value="">${t('f_allAssign')}</option>
         <option value="inhouse" ${orderFilter.assignment==='inhouse'?'selected':''}>${t('f_inhouse')}</option>
         <option value="outsource" ${orderFilter.assignment==='outsource'?'selected':''}>${t('f_outsource')}</option>
@@ -1218,11 +1227,12 @@ function renderOrders(){
       <span class="muted small" style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} ${t('lb_orders')}</span>
     </div>
     <div class="legend">${ORDER_STATUSES.map(s=>`<span class="chip"><i style="background:${s.color}"></i>${esc(stLabel(s))}</span>`).join('')}</div>
-    <p class="small muted" style="margin:0 0 8px">💡 Bấm vào tiêu đề cột (Mã đơn, Tên hàng, Khách hàng, Hạn giao, Trạng thái, Thực hiện, Tiến độ) để sắp xếp theo cột đó — bấm lại để đảo chiều tăng/giảm. Mặc định đang xếp theo <b>Hạn giao — đơn có ngày gần nhất ở trên cùng</b> để dễ theo dõi việc cần làm trước.</p>
     <div class="card" style="overflow:auto;padding:0">
-      ${ DATA.orders.length===0 ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nhập nhanh từ bảng Excel theo dõi tiến độ hiện có. Sau khi có đơn, bạn có thể gán đơn cho người trên Lịch phân công.</div>' : ordersTable() }
-    </div>
-  `;
+      ${ DATA.orders.length===0 ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nạp dữ liệu.</div>' : ordersTable() }
+    </div>`;
+}
+function renderOrders(){
+  document.getElementById('view-orders').innerHTML = ordersSectionHtml();
 }
 function filteredOrders(){
   const q = orderFilter.q.trim().toLowerCase();

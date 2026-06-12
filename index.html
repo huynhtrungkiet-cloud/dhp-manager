@@ -689,9 +689,11 @@ function load(){
   sanitizeOrderDates();
   ensureCustomersFromOrders();
 }
+let _suppressAutoPush = false;
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ alert('Không lưu được dữ liệu (bộ nhớ trình duyệt đầy hoặc bị chặn).'); }
   renderAll();
+  if(!_suppressAutoPush && typeof scheduleAutoPush==='function') scheduleAutoPush();
 }
 function uid(prefix, counterKey){
   DATA.counters[counterKey] = (DATA.counters[counterKey]||0) + 1;
@@ -1850,6 +1852,14 @@ function renderData(){
         <button onclick="syncPull()" style="background:#0284C7;border-color:#0284C7">⬇ Tải về từ Sheets</button>
         <span id="syncStatus" class="small muted">${DATA.meta&&DATA.meta.lastSync?('Đồng bộ lần cuối: '+new Date(DATA.meta.lastSync).toLocaleString('vi-VN')):'Chưa đồng bộ lần nào.'}</span>
       </div>
+      <div style="margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin:0">
+          <input type="checkbox" id="autoSyncChk" ${(DATA.meta&&DATA.meta.autoSync!==false)?'checked':''} onchange="DATA.meta.autoSync=this.checked;save();if(this.checked)autoPullOnStart()" style="width:auto">
+          🔄 Tự động đồng bộ (khuyên bật)
+        </label>
+        <span class="small muted">Mở app → tự tải dữ liệu chung về · sửa gì → tự đẩy lên sau 2 giây. Mọi máy dán cùng URL là dùng chung.</span>
+        <span id="autoSyncBadge" class="small" style="margin-left:auto;font-weight:700;color:#16A34A"></span>
+      </div>
       <p class="small muted" style="margin-bottom:0">Đồng bộ các bảng: đơn hàng · nhân sự · phân công lịch · lô outsource · ghi nhận NCR. Đẩy lên = ghi đè bản ghi cùng id trên Sheet. Tải về = thay thế dữ liệu local bằng dữ liệu Sheet.</p>
     </div>
 
@@ -1934,33 +1944,77 @@ function setSyncStatus(msg, isError){
 }
 
 // Đẩy toàn bộ dữ liệu local LÊN Google Sheets
+// Lõi đẩy dữ liệu lên Sheets (không hỏi xác nhận) — dùng cho cả nút tay lẫn tự đồng bộ
+async function pushToSheets(){
+  const url = getSheetUrl();
+  if(!url) throw new Error('Chưa cấu hình URL');
+  for(const table of SYNC_TABLES){
+    let records = DATA[table] || [];
+    if(!records.length) continue;
+    if(table==='orders'){
+      records = records.map(o=>({...o,
+        itemsJson: JSON.stringify(o.items||[]),
+        attachmentsJson: JSON.stringify(o.attachments||[]),
+        stagesJson: JSON.stringify(o.stages||[])}));
+    }
+    // KHÔNG đặt Content-Type để tránh preflight CORS với Apps Script
+    const res = await fetch(url, {method:'POST', body: JSON.stringify({action:'bulkUpsert', table, records})});
+    const out = await res.json();
+    if(out.error) throw new Error(table+': '+out.error);
+  }
+  DATA.meta.lastSync = new Date().toISOString();
+}
 async function syncPush(){
   const url = getSheetUrl();
   if(!url){ setSyncStatus('Chưa cấu hình URL Google Sheets.', true); return; }
   if(!confirm('Đẩy dữ liệu hiện tại LÊN Google Sheets?\nCác bản ghi cùng id trên Sheet sẽ bị ghi đè.')) return;
   setSyncStatus('Đang đẩy dữ liệu lên Google Sheets...');
   try{
-    for(const table of SYNC_TABLES){
-      let records = DATA[table] || [];
-      if(!records.length) continue;
-      // Đơn hàng: gói mảng chi tiết con & đính kèm thành chuỗi JSON để lưu vào ô Sheet
-      if(table==='orders'){
-        records = records.map(o=>({...o,
-          itemsJson: JSON.stringify(o.items||[]),
-          attachmentsJson: JSON.stringify(o.attachments||[]),
-          stagesJson: JSON.stringify(o.stages||[])}));
-      }
-      // KHÔNG đặt Content-Type để tránh preflight CORS với Apps Script
-      const res = await fetch(url, {method:'POST', body: JSON.stringify({action:'bulkUpsert', table, records})});
-      const out = await res.json();
-      if(out.error) throw new Error(table+': '+out.error);
-    }
-    DATA.meta.lastSync = new Date().toISOString();
+    await pushToSheets();
     save();
     setSyncStatus('✓ Đã đẩy lên Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
   }catch(err){
     setSyncStatus('Lỗi khi đẩy lên: ' + err.message, true);
   }
+}
+/* ===== TỰ ĐỘNG ĐỒNG BỘ — bật khi có URL & meta.autoSync ===== */
+let _autoPushTimer = null;
+function autoSyncEnabled(){ return getSheetUrl() && DATA.meta && DATA.meta.autoSync !== false; }
+function setAutoBadge(txt, err){
+  const el = document.getElementById('autoSyncBadge');
+  if(el){ el.textContent = txt; el.style.color = err ? 'var(--st-late)' : '#16A34A'; }
+}
+// Gọi sau mỗi save() — gom nhiều thay đổi rồi đẩy 1 lần (chống spam mạng)
+function scheduleAutoPush(){
+  if(!autoSyncEnabled()) return;
+  clearTimeout(_autoPushTimer);
+  setAutoBadge('● đang chờ đồng bộ...');
+  _autoPushTimer = setTimeout(async ()=>{
+    try{ setAutoBadge('● đang đẩy lên...'); await pushToSheets(); setAutoBadge('✓ đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN')); }
+    catch(e){ setAutoBadge('⚠ lỗi đồng bộ: ' + e.message, true); }
+  }, 2000);
+}
+// Gọi khi mở app — tự kéo dữ liệu mới nhất về (an toàn: KHÔNG xóa local nếu Sheet trống)
+async function autoPullOnStart(){
+  if(!autoSyncEnabled()) return;
+  setAutoBadge('● đang kết nối kho chung...');
+  try{
+    const res = await fetch(getSheetUrl() + '?action=readAll');
+    const out = await res.json();
+    if(out.error) throw new Error(out.error);
+    const remote = (out.orders||[]).length + (out.staff||[]).length;
+    const local  = (DATA.orders||[]).length + (DATA.staff||[]).length;
+    if(remote===0 && local>0){
+      setAutoBadge('● Sheet trống — đang đưa dữ liệu máy này lên...');
+      await pushToSheets(); _suppressAutoPush=true; save(); _suppressAutoPush=false;
+      setAutoBadge('✓ đã khởi tạo kho chung từ máy này');
+    } else if(remote>0){
+      await pullFromSheets();
+      setAutoBadge('✓ đã tải dữ liệu chung ' + new Date().toLocaleTimeString('vi-VN'));
+    } else {
+      setAutoBadge('kho chung đang trống');
+    }
+  }catch(e){ setAutoBadge('⚠ không kết nối được: ' + e.message, true); }
 }
 
 // Tải toàn bộ dữ liệu TỪ Google Sheets về (thay thế local)
@@ -2000,7 +2054,7 @@ async function pullFromSheets(){
     sanitizeOrderDates();
     ensureCustomersFromOrders();
     DATA.meta.lastSync = new Date().toISOString();
-    save();
+    _suppressAutoPush = true; save(); _suppressAutoPush = false; // tải về thì KHÔNG tự đẩy ngược lên
     setSyncStatus('✓ Đã tải về từ Google Sheets lúc ' + new Date().toLocaleString('vi-VN'));
     renderAll();
   }catch(err){
@@ -2430,6 +2484,7 @@ function renderAll(){
 load();
 renderAll();
 applyLang();
+autoPullOnStart(); // nếu đã cấu hình URL + bật tự đồng bộ → tự kéo dữ liệu chung về khi mở app
 
 /* ===== PWA: đăng ký service worker để chạy offline + cài ra màn hình chính ===== */
 if('serviceWorker' in navigator){

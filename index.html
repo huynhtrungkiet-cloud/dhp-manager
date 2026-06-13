@@ -317,10 +317,13 @@ function gateCheck(){
         <option value="Dự án">Dự án (nhiều chi tiết)</option>
       </select>
     </div>
-    <div class="field">
+    <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff">
       <label>🔧 Công đoạn (routing) <span class="muted small">— mã cố định: A=Tiện, B=Phay, C=Cắt dây... L=Mua phôi, M=Hợp đồng/Thủ tục. Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
       <div id="ord_stages_list"></div>
-      <button type="button" class="ghost sm" onclick="addStage()" style="margin-top:6px">＋ Thêm công đoạn</button>
+      <div class="toolbar" style="margin-top:8px">
+        <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
+        <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
+      </div>
     </div>
     <div class="field">
       <label>Chi tiết con của đơn <span class="muted small">(tùy chọn — cho đơn nhiều chi tiết / dự án, vd VHG DATA: nhiều van mang gia công ngoài)</span></label>
@@ -507,6 +510,7 @@ const ORDER_STATUSES = [
 ];
 // Nhãn trạng thái theo ngôn ngữ đang chọn (LANG khai báo ở phần i18n bên dưới)
 function stLabel(st){ return (typeof LANG!=='undefined' && LANG==='en' && st.en) ? st.en : st.label; }
+
 const statusByKey = k => ORDER_STATUSES.find(s=>s.k===k) || ORDER_STATUSES[0];
 
 const SEED_PARTNERS = ['CK Tuyết Vinh', 'Cơ Khí Minh Hiển'];
@@ -981,6 +985,8 @@ function renderGrid(){
       </div>` : ''}
     </div>
 
+    ${renderBottleneckHtml()}
+
     <h2 class="sec" style="margin-top:30px"><span class="bar"></span>📦 ${t('tab_orders')}</h2>
     ${ordersSectionHtml()}
   `;
@@ -1441,6 +1447,14 @@ function addAttachment(){ editingAtts.push({label:'',url:''}); renderAttEditor()
 function updAtt(i,k,v){ if(editingAtts[i]) editingAtts[i][k]=v; }
 function rmAtt(i){ editingAtts.splice(i,1); renderAttEditor(); }
 
+// Tạo nhanh chuỗi công đoạn chuẩn xưởng CK368 (có thể sửa lại sau)
+function applyStageTemplate(){
+  if(editingStages.length && !confirm('Thay chuỗi công đoạn hiện tại bằng MẪU CHUẨN?\n(L Mua phôi → A Tiện → B Phay → K Đo/QC → N Đóng gói & nghiệm thu → X Xuất xưởng)')) return;
+  const tpl = [['L','Mua phôi / Vật tư'],['A','Tiện'],['B','Phay'],['K','Đo đạc / QC'],['N','Đóng gói & nghiệm thu'],['X','Xuất xưởng']];
+  editingStages = tpl.map(([c,n])=>({code:c, name:n, location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', note:''}));
+  renderStagesEditor();
+}
+
 // Mã đơn tự sinh = số lớn nhất hiện có + 1 (mã chỉ là số cho gọn)
 function nextOrderCode(){
   let mx = 0;
@@ -1615,6 +1629,55 @@ function itemsSubRow(o, rowBg){
   return `<tr style="${rowBg}"><td></td><td colspan="7" style="padding:4px 10px 8px;font-size:11px;background:#fbfcfe">
     <div style="border-left:3px solid #6366F1;padding-left:10px">${lines}</div>
   </td></tr>`;
+}
+/* ===== DASHBOARD NÚT THẮT — công đoạn đang treo lâu nhất & hiệu suất nơi làm ===== */
+function renderBottleneckHtml(){
+  const today = todayStr();
+  const stuck = [];
+  const byWho = {};
+  (DATA.orders||[]).filter(o=>o.status!=='delivered' && o.status!=='hold').forEach(o=>{
+    (o.stages||[]).forEach(st=>{
+      const sstate = stageState(st);            // pending | doing | late | done
+      const active = (sstate==='doing' || sstate==='late');
+      const d = st.startDate ? daysBetween(st.startDate, today) : null;
+      if(active) stuck.push({o, st, days:(d==null?0:d), late:(sstate==='late')});
+      const loc = (st.location||'').trim();
+      if(loc && loc.toLowerCase()!=='ck368' && loc!=='Nội bộ (xưởng)'){
+        byWho[loc] = byWho[loc] || {name:loc, active:0, late:0, maxDays:0};
+        if(active){ byWho[loc].active++; if((d||0)>byWho[loc].maxDays) byWho[loc].maxDays=(d||0); if(sstate==='late') byWho[loc].late++; }
+      }
+    });
+  });
+  stuck.sort((a,b)=>b.days-a.days);
+  const whoList = Object.values(byWho).sort((a,b)=> (b.late-a.late) || (b.maxDays-a.maxDays));
+  if(!stuck.length && !whoList.length) return '';
+  const topStuck = stuck.slice(0,8).map(x=>{
+    const plan = x.st.plannedDays;
+    const over = plan!=null && x.days>plan;
+    return `<tr>
+      <td><b>${esc(x.o.code)}</b> <span class="muted">${esc(truncate(x.o.name,28))}</span></td>
+      <td><span style="background:${x.late?'var(--st-late)':'var(--st-prod)'};color:#fff;border-radius:4px;padding:1px 6px;font-weight:700">${esc(x.st.code||'?')} ${esc(truncate(x.st.name,18))}</span></td>
+      <td class="small">${esc(x.st.location||'Nội bộ')}</td>
+      <td style="${(x.late||over)?'color:var(--st-late);font-weight:800':'font-weight:700'}">${x.late?'⛔ ':''}${x.days} ngày${plan!=null?' / KH '+plan:''}</td>
+    </tr>`;
+  }).join('');
+  return `
+    <h2 class="sec" style="margin-top:26px"><span class="bar" style="background:var(--st-late)"></span>🔴 Nút thắt sản xuất — công đoạn đang treo</h2>
+    <div class="grid grid-2">
+      <div class="card" style="padding:0;overflow:auto">
+        ${ stuck.length ? `<table><thead><tr><th>Đơn</th><th>Công đoạn đang làm</th><th>Nơi làm</th><th>Đã treo / Kế hoạch</th></tr></thead><tbody>${topStuck}</tbody></table>
+        <p class="small muted" style="padding:8px 12px;margin:0">Sắp theo số ngày treo lâu nhất. ⛔ = đã vượt số ngày kế hoạch → cần can thiệp / tìm thêm nơi gia công.</p>`
+        : '<div class="empty">Chưa có công đoạn nào đang làm. Mở 1 đơn → thêm chuỗi công đoạn để theo dõi.</div>' }
+      </div>
+      <div class="card" style="padding:0;overflow:auto">
+        <div style="padding:8px 12px;font-weight:800;font-size:12.5px;border-bottom:1px solid var(--line)">Hiệu suất nơi gia công ngoài / supplier</div>
+        ${ whoList.length ? `<table><thead><tr><th>Nơi làm</th><th>Đang giữ</th><th>Trễ KH</th><th>Lâu nhất</th></tr></thead><tbody>
+          ${whoList.map(w=>`<tr><td><b>${esc(w.name)}</b></td><td>${w.active} CĐ</td><td>${w.late>0?'<span class="pill" style="background:var(--st-late)">'+w.late+'</span>':'0'}</td><td style="${w.maxDays>=5?'color:var(--st-late);font-weight:700':''}">${w.maxDays} ngày</td></tr>`).join('')}
+        </tbody></table>
+        <p class="small muted" style="padding:8px 12px;margin:0">Nơi "Đang giữ" nhiều + "Lâu nhất" cao = phụ thuộc/quá tải → cân nhắc tìm thêm đối tác (vd ngoài CK Tuyết Vinh).</p>`
+        : '<div class="empty">Chưa có công đoạn ở nơi ngoài nào đang chạy.</div>' }
+      </div>
+    </div>`;
 }
 function quickStatusChange(id, newStatus){
   const o = DATA.orders.find(x=>x.id===id);

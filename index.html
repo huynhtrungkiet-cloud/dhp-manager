@@ -102,6 +102,8 @@
   table.tg td.daycell.empty-cell{background:#fff;color:var(--line);font-weight:400;}
   table.tg td.daycell.empty-cell:hover{background:#fafafa;color:var(--muted);}
   table.tg td.weekend{background:#fef9f9;}
+  table.tg th.today-col{background:#fff1f2 !important;color:var(--brand);box-shadow:inset 0 -3px 0 var(--brand);}
+  table.tg td.today-col{background:#fff5f6;box-shadow:inset 2px 0 0 var(--brand),inset -2px 0 0 var(--brand);}
   .joblist{display:flex;flex-direction:column;gap:1.5px;height:100%;justify-content:center;}
   .jobchip{font-size:8px;font-weight:800;color:#fff;border-radius:2px;line-height:12px;padding:0 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:left;}
   .daylist{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;}
@@ -507,12 +509,13 @@ const ORDER_STATUSES = [
 function stLabel(st){ return (typeof LANG!=='undefined' && LANG==='en' && st.en) ? st.en : st.label; }
 const statusByKey = k => ORDER_STATUSES.find(s=>s.k===k) || ORDER_STATUSES[0];
 
-const SEED_PARTNERS = ['CK Tuyết Vinh'];
+const SEED_PARTNERS = ['CK Tuyết Vinh', 'Cơ Khí Minh Hiển'];
 const SEED_STAFF = [
-  {badge:'80213', name:'Phan Trường Sơn', type:'internal', role:'Tổ gia công', active:true},
-  {badge:'80265', name:'Đoàn Ngọc Thanh', type:'internal', role:'Tổ gia công', active:true},
-  {badge:'80301', name:'Lê Văn Hùng',     type:'internal', role:'Tổ hàn',      active:true},
-  {badge:'',      name:'CK Tuyết Vinh',   type:'outsource',role:'Đối tác outsource', active:true},
+  {badge:'', name:'Cao Thanh Tuấn Kiệt', type:'internal', role:'Điều phối gia công · Cắt dây', active:true},
+  {badge:'', name:'Nguyễn Tấn Sê',       type:'internal', role:'Tổ gia công', active:true},
+  {badge:'', name:'Lê Kim Quân',         type:'internal', role:'Tổ gia công', active:true},
+  {badge:'', name:'CK Tuyết Vinh',       type:'outsource',role:'Đối tác outsource · Gia công CNC', active:true},
+  {badge:'', name:'Cơ Khí Minh Hiển',    type:'outsource',role:'Đối tác outsource · Gia công theo bản vẽ', active:true},
 ];
 
 // Bảng màu cho mã đơn hàng — mỗi đơn được gán 1 màu cố định theo mã (hash),
@@ -884,12 +887,14 @@ function renderGrid(){
   const internalStaff = staffList.filter(s=>s.type!=='outsource');
   const outsourceStaff = staffList.filter(s=>s.type==='outsource');
 
+  const TODAY = todayStr();
   // Xây bảng cột ngày
   let theadDays = '';
   for(let d=1; d<=nDays; d++){
     const dow = new Date(gy, gm-1, d).getDay();
-    const cls = dow===0?'dow-sun':(dow===6?'dow-sat':'');
-    theadDays += `<th class="${cls}">${d}<br><span style="font-weight:400">${DOW_VI[dow]}</span></th>`;
+    const isToday = gridDateStr(gridMonth, d) === TODAY;
+    const cls = (dow===0?'dow-sun':(dow===6?'dow-sat':'')) + (isToday?' today-col':'');
+    theadDays += `<th class="${cls}" ${isToday?'id="todayCol"':''}>${d}<br><span style="font-weight:400">${DOW_VI[dow]}</span>${isToday?'<br><span style="font-size:8px;color:#fff;background:var(--brand);border-radius:3px;padding:0 3px">HÔM NAY</span>':''}</th>`;
   }
 
   function staffRow(s){
@@ -899,10 +904,11 @@ function renderGrid(){
       const dow = new Date(gy, gm-1, d).getDay();
       const stack = cellStackHtml(s.id, dateStr);
       const wknd = (dow===0||dow===6) ? ' weekend' : '';
+      const today = (dateStr===TODAY) ? ' today-col' : '';
       if(stack){
-        cells += `<td class="daycell${wknd}" onclick="openDayModal('${s.id}','${dateStr}')">${stack}</td>`;
+        cells += `<td class="daycell${wknd}${today}" onclick="openDayModal('${s.id}','${dateStr}')">${stack}</td>`;
       } else {
-        cells += `<td class="daycell empty-cell${wknd}" title="Bấm để phân công" onclick="openDayModal('${s.id}','${dateStr}')">·</td>`;
+        cells += `<td class="daycell empty-cell${wknd}${today}" title="Bấm để phân công" onclick="openDayModal('${s.id}','${dateStr}')">·</td>`;
       }
     }
     return `<tr>
@@ -978,6 +984,12 @@ function renderGrid(){
     <h2 class="sec" style="margin-top:30px"><span class="bar"></span>📦 ${t('tab_orders')}</h2>
     ${ordersSectionHtml()}
   `;
+  // Tự cuộn lịch sao cho cột HÔM NAY nằm giữa khung nhìn
+  setTimeout(()=>{
+    const col = document.getElementById('todayCol');
+    const wrap = el.querySelector('.gridwrap');
+    if(col && wrap){ wrap.scrollLeft = Math.max(0, col.offsetLeft - wrap.clientWidth/2); }
+  }, 30);
 }
 function kpiCard(label, value, sub, accent){
   return `<div class="card kpi" style="${accent?'border-left:4px solid '+accent:''}">
@@ -1429,6 +1441,12 @@ function addAttachment(){ editingAtts.push({label:'',url:''}); renderAttEditor()
 function updAtt(i,k,v){ if(editingAtts[i]) editingAtts[i][k]=v; }
 function rmAtt(i){ editingAtts.splice(i,1); renderAttEditor(); }
 
+// Mã đơn tự sinh = số lớn nhất hiện có + 1 (mã chỉ là số cho gọn)
+function nextOrderCode(){
+  let mx = 0;
+  (DATA.orders||[]).forEach(o=>{ const n=parseInt(String(o.code||'').replace(/\D/g,''),10); if(!isNaN(n)&&n>mx) mx=n; });
+  return String(mx+1);
+}
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';
   const sSel = document.getElementById('ord_status');
@@ -1489,7 +1507,7 @@ function saveOrder(){
   let code = document.getElementById('ord_code').value.trim();
   const rec = {
     id: id || uid('DH', 'order'),
-    code: code || uid('CK368', 'order'),
+    code: code || nextOrderCode(),
     company: document.getElementById('ord_company').value.trim(),
     name,
     orderType: document.getElementById('ord_type').value,
@@ -1867,28 +1885,11 @@ function renderData(){
       <p class="small muted" style="margin-bottom:0">Đồng bộ các bảng: đơn hàng · nhân sự · phân công lịch · lô outsource · ghi nhận NCR. Đẩy lên = ghi đè bản ghi cùng id trên Sheet. Tải về = thay thế dữ liệu local bằng dữ liệu Sheet.</p>
     </div>
 
-    ${ (DATA.meta&&DATA.meta.hideHgc) ? `
-    <p class="small muted" style="margin:14px 0"><a onclick="DATA.meta.hideHgc=false;save()" style="cursor:pointer;color:var(--brand);font-weight:700">＋ Hiện lại mục “Cập nhật từ HANG-GIA-CONG”</a></p>
-    ` : `
-    <h2 class="sec"><span class="bar"></span>Nguồn HANG-GIA-CONG-2026 (nhập một chiều)</h2>
-    <div class="card" style="border-left:4px solid #16A34A">
-      <p class="small muted" style="margin-top:0">Đọc bảng theo dõi tiến độ <b>HANG-GIA-CONG-2026</b> trên Google Sheets và thêm các đơn mới vào database (mã đơn = <b>CK368-&lt;STT&gt;</b>). Chỉ đọc, không ghi đè sheet gốc. Đơn đã có sẽ bỏ qua.</p>
-      <div class="toolbar">
-        <button onclick="syncImportHGC()" style="background:#16A34A;border-color:#16A34A">🔄 Cập nhật từ HANG-GIA-CONG</button>
-        <a onclick="if(confirm('Ẩn mục này? Có thể hiện lại bất cứ lúc nào.')){DATA.meta.hideHgc=true;save();}" style="cursor:pointer;color:var(--muted);font-size:12px;font-weight:700;margin-left:auto">✕ Ẩn mục này</a>
-      </div>
-      <p class="small muted" style="margin-bottom:0">⚠️ Cần đã <b>Lưu URL</b> ở trên. Lần đầu chạy có thể mất 10–30 giây. Nếu báo lỗi quyền, vào Apps Script chạy thử hàm <code>doImportHGC</code> một lần để cấp quyền truy cập sheet đó.</p>
-    </div>
-    `}
-
-    <h2 class="sec"><span class="bar"></span>Nạp dữ liệu từ HANG-GIA-CONG-2026 (bản chốt 12/6)</h2>
+    <h2 class="sec"><span class="bar"></span>Nạp dữ liệu đơn hàng (từ file gia công)</h2>
     <div class="card" style="border-left:4px solid var(--brand)">
-      <p style="margin:0 0 10px;font-weight:700">📦 ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:'?'} đơn hàng tháng 6/2026 — trích sẵn từ file Excel, bấm 1 nút là có</p>
-      <p class="small muted" style="margin:0 0 12px">Mã đơn: <b>CK368-&lt;STT&gt;</b> (đúng STT trong bảng theo dõi). Chống trùng theo mã — bấm nhiều lần không nhân đôi. Dữ liệu cũ trong app <b>không bị xóa</b>.</p>
-      <div class="toolbar">
-        <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Nạp đơn hàng tháng 6/2026</button>
-        <button class="ghost" onclick="deleteOldMonths()" style="border-color:var(--st-late);color:var(--st-late)">🗑 Xóa nhanh đơn tháng cũ (T03–T05)</button>
-      </div>
+      <p style="margin:0 0 10px;font-weight:700">📦 ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:'?'} đơn đang/chưa gia công (tháng 6/2026) — trích sẵn từ file Excel, bấm 1 nút là có</p>
+      <p class="small muted" style="margin:0 0 12px">Mã đơn = <b>số STT</b> trong bảng theo dõi. Chống trùng theo mã — bấm nhiều lần không nhân đôi. Dữ liệu cũ trong app không bị xóa.</p>
+      <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Nạp đơn hàng</button>
     </div>
 
     <h2 class="sec"><span class="bar"></span>Xuất / Nhập dữ liệu (đồng bộ &amp; sao lưu)</h2>

@@ -2684,10 +2684,15 @@ renderAll();
 applyLang();
 autoPullOnStart(); // nếu đã cấu hình URL + bật tự đồng bộ → tự kéo dữ liệu chung về khi mở app
 
-/* ===== PWA: đăng ký service worker để chạy offline + cài ra màn hình chính ===== */
+/* ===== PWA: service worker network-only — luôn lấy bản mới, tự cập nhật ===== */
 if('serviceWorker' in navigator){
+  let _reloaded = false;
+  // Khi service worker mới chiếm quyền điều khiển → tải lại 1 lần để dùng bản mới
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(_reloaded) return; _reloaded = true; location.reload();
+  });
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    navigator.serviceWorker.register('service-worker.js').then(reg=>{ reg.update(); }).catch(()=>{});
   });
 }
 </script>

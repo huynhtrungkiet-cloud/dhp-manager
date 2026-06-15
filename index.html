@@ -379,6 +379,15 @@ function gateCheck(){
       <div id="ord_att_list"></div>
       <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
     </div>
+    <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#f0fdf4">
+      <label>📐 Nghiệm thu / Đo đạc thực tế <span class="muted small">— gõ tay kích thước sau khi đo, kết luận Đạt/Không. Ảnh đo đạc dán ở mục "Tài liệu/hình ảnh" phía trên.</span></label>
+      <div id="ord_measure_list"></div>
+      <div class="toolbar" style="margin-top:8px">
+        <button type="button" class="ghost sm" onclick="addMeasure()">＋ Thêm thông số đo</button>
+        <input id="ord_inspector" placeholder="Người đo / nghiệm thu" style="max-width:200px">
+        <input id="ord_inspectDate" type="date" title="Ngày nghiệm thu">
+      </div>
+    </div>
     <div class="field"><label>Ghi chú / Lưu ý</label><textarea id="ord_note" rows="2"></textarea></div>
     <div class="toolbar" style="justify-content:flex-end">
       <button class="ghost" onclick="closeModal('modalOrder')">Hủy</button>
@@ -1308,6 +1317,7 @@ function ordersTable(){
         if(o.items&&o.items.length) bits.push(`<span style="font-size:10px;font-weight:700;color:#6366F1">▦ ${o.items.length} ${t('lb_detail')}</span>`);
         if(o.driveFolder) bits.push(`<a href="${esc(o.driveFolder)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;font-weight:700;color:#0EA5E9">📁 Drive</a>`);
         if(o.attachments&&o.attachments.length) bits.push(`<span style="font-size:10px;color:var(--muted)">🔗 ${o.attachments.length}</span>`);
+        if(o.measures&&o.measures.length){ const fail=o.measures.filter(m=>m.pass==='fail').length; bits.push(`<span style="font-size:10px;font-weight:700;color:${fail?'var(--st-late)':'#16A34A'}" title="Nghiệm thu: ${o.measures.length} thông số${fail?', '+fail+' KHÔNG đạt':''}">📐 ${o.measures.length}${fail?' ⚠'+fail:''}</span>`); }
         return bits.length?`<div style="margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">${bits.join('')}</div>`:'';
       })()}${stageChainHtml(o)}</td>
       <td style="min-width:150px;white-space:normal;word-break:break-word">${esc(o.company)}</td>
@@ -1490,6 +1500,29 @@ function addAttachment(){ editingAtts.push({label:'',url:''}); renderAttEditor()
 function updAtt(i,k,v){ if(editingAtts[i]) editingAtts[i][k]=v; }
 function rmAtt(i){ editingAtts.splice(i,1); renderAttEditor(); }
 
+/* ---- Trình soạn NGHIỆM THU / ĐO ĐẠC ---- */
+let editingMeasures = [];
+function renderMeasuresEditor(){
+  const wrap=document.getElementById('ord_measure_list'); if(!wrap) return;
+  if(!editingMeasures.length){ wrap.innerHTML='<div class="small muted">Chưa có thông số. Bấm “Thêm thông số đo” khi đo đạc xong.</div>'; return; }
+  wrap.innerHTML = `<div style="display:flex;gap:6px;font-size:10px;font-weight:800;color:var(--muted);padding:0 2px 3px">
+    <span style="flex:1">Thông số / kích thước</span><span style="width:110px">Yêu cầu (bản vẽ)</span><span style="width:110px">Thực đo</span><span style="width:78px">Kết luận</span><span style="width:14px"></span></div>` +
+    editingMeasures.map((m,i)=>`<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
+      <input style="flex:1;font-size:11px" value="${esc(m.param||'')}" placeholder="VD: Ø lỗ trục d1" oninput="updMeasure(${i},'param',this.value)">
+      <input style="width:110px;font-size:11px" value="${esc(m.spec||'')}" placeholder="42H7" oninput="updMeasure(${i},'spec',this.value)">
+      <input style="width:110px;font-size:11px" value="${esc(m.actual||'')}" placeholder="42.018" oninput="updMeasure(${i},'actual',this.value)">
+      <select style="width:78px;font-size:11px" onchange="updMeasure(${i},'pass',this.value)">
+        <option value="" ${!m.pass?'selected':''}>—</option>
+        <option value="pass" ${m.pass==='pass'?'selected':''}>Đạt ✓</option>
+        <option value="fail" ${m.pass==='fail'?'selected':''}>Không ✕</option>
+      </select>
+      <a onclick="rmMeasure(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
+    </div>`).join('');
+}
+function addMeasure(){ editingMeasures.push({param:'',spec:'',actual:'',pass:''}); renderMeasuresEditor(); }
+function updMeasure(i,k,v){ if(editingMeasures[i]){ editingMeasures[i][k]=v; if(k==='pass') renderMeasuresEditor(); } }
+function rmMeasure(i){ editingMeasures.splice(i,1); renderMeasuresEditor(); }
+
 // Tạo nhanh chuỗi công đoạn chuẩn xưởng CK368 (có thể sửa lại sau)
 function applyStageTemplate(){
   if(editingStages.length && !confirm('Thay chuỗi công đoạn hiện tại bằng MẪU CHUẨN?\n(L Mua phôi → A Tiện → B Phay → K Đo/QC → N Đóng gói & nghiệm thu → X Xuất xưởng)')) return;
@@ -1535,12 +1568,18 @@ function openOrderModal(id){
     editingItems = (o.items||[]).map(x=>({...x}));
     editingAtts = (o.attachments||[]).map(x=>({...x}));
     editingStages = (o.stages||[]).map(x=>({...x}));
+    editingMeasures = (o.measures||[]).map(x=>({...x}));
+    document.getElementById('ord_inspector').value = o.inspector||'';
+    document.getElementById('ord_inspectDate').value = o.inspectDate||'';
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
     ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
     editingItems = [];
     editingAtts = [];
     editingStages = [];
+    editingMeasures = [];
+    document.getElementById('ord_inspector').value = '';
+    document.getElementById('ord_inspectDate').value = '';
     document.getElementById('ord_priority').value = '';
     document.getElementById('ord_type').value = 'Gia công';
     document.getElementById('ord_status').value = 'new';
@@ -1550,6 +1589,7 @@ function openOrderModal(id){
   renderItemsEditor();
   renderAttEditor();
   renderStagesEditor();
+  renderMeasuresEditor();
   toggleOutsourceField();
   openModal('modalOrder');
 }
@@ -1586,6 +1626,9 @@ function saveOrder(){
     items: editingItems.filter(it=>(it.name||'').trim()),
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
     stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()),
+    measures: editingMeasures.filter(m=>(m.param||'').trim()||(m.actual||'').trim()),
+    inspector: document.getElementById('ord_inspector').value.trim(),
+    inspectDate: document.getElementById('ord_inspectDate').value || null,
     note: document.getElementById('ord_note').value.trim(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),
@@ -1629,20 +1672,41 @@ function computeForecast(o){
   }
   return null;
 }
+// % hoàn thành theo công đoạn: số công đoạn ĐÃ XONG / tổng công đoạn
+function stageDonePct(stages){
+  if(!stages || !stages.length) return null;
+  const done = stages.filter(s=>stageState(s)==='done').length;
+  return Math.round(done/stages.length*100);
+}
+// % của 1 chi tiết con: ưu tiên theo công đoạn của nó, sau đó tới % nhập tay
+function itemProgress(it){
+  if(it.status==='delivered') return 100;
+  const sp = stageDonePct(it.stages);
+  if(sp!=null) return sp;
+  return parseFloat(it.progress)||0;
+}
+// % tổng của đơn: nếu có chi tiết con → trung bình các chi tiết; nếu không → theo công đoạn đơn; cuối cùng % tay
 function orderOverallProgress(o){
   if(o.status==='delivered') return 100;
   if(o.items && o.items.length){
-    const vals=o.items.map(it=> it.status==='delivered'?100:(parseFloat(it.progress)||0));
+    const vals=o.items.map(itemProgress);
     return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
   }
+  const sp = stageDonePct(o.stages);
+  if(sp!=null) return sp;
   return parseFloat(o.progress)||0;
 }
 function progressCellHtml(o){
   const p = orderOverallProgress(o);
   const color = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
+  // Đếm tổng công đoạn (gồm cả của chi tiết con) để hiện "đã xong / tổng"
+  let allStages = (o.stages||[]).slice();
+  (o.items||[]).forEach(it=> allStages = allStages.concat(it.stages||[]));
+  const nAll = allStages.length, nDone = allStages.filter(s=>stageState(s)==='done').length;
   return `<div style="display:flex;align-items:center;gap:6px">
     <div class="bar-track" style="width:60px;margin:0"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
     <span style="font-size:11px;font-weight:700;min-width:30px">${p}%</span>
+    ${nAll?`<span style="font-size:9px;color:var(--muted)" title="Công đoạn đã xong / tổng (cả chi tiết con)">${nDone}/${nAll} CĐ</span>`:''}
   </div>`;
 }
 // Nhãn nơi thực hiện của chi tiết con: nội bộ / outsource / mua hàng
@@ -1657,7 +1721,9 @@ function itemsSubRow(o, rowBg){
   const lines = o.items.map(it=>{
     const st = statusByKey(it.status||'new');
     const al = itemAssignLabel(it.assignment);
-    const p = it.status==='delivered' ? 100 : (parseFloat(it.progress)||0);
+    const p = itemProgress(it);
+    const nStage = (it.stages||[]).length;
+    const nDone = (it.stages||[]).filter(s=>stageState(s)==='done').length;
     const pColor = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
     return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px dashed #eef1f5">
       <i style="width:9px;height:9px;border-radius:3px;background:${st.color};flex-shrink:0" title="${esc(stLabel(st))}"></i>
@@ -1665,6 +1731,7 @@ function itemsSubRow(o, rowBg){
       <span style="color:var(--muted);white-space:nowrap">${it.qty!=null?it.qty:''} ${esc(it.unit||'')}</span>
       <span style="font-size:9px;font-weight:800;color:#fff;background:${al.bg};border-radius:4px;padding:1px 6px;white-space:nowrap">${al.txt}</span>
       <span class="pill" style="background:${st.color};font-size:9.5px;padding:2px 7px">${esc(stLabel(st).replace(/^\d+\.\s*/,''))}</span>
+      ${nStage?`<span style="font-size:9px;color:var(--muted);white-space:nowrap" title="Số công đoạn đã xong / tổng">${nDone}/${nStage} CĐ</span>`:''}
       <div class="bar-track" style="width:46px;margin:0;height:7px"><div class="bar-fill" style="width:${p}%;background:${pColor}"></div></div>
       <b style="font-size:10px;min-width:28px;text-align:right">${p}%</b>
     </div>${(it.stages&&it.stages.length)?`<div style="padding:0 0 4px 19px;margin-top:-2px">${stageChainHtml({stages:it.stages})}</div>`:''}`;
@@ -2068,7 +2135,8 @@ async function pushToSheets(){
       records = records.map(o=>({...o,
         itemsJson: JSON.stringify(o.items||[]),
         attachmentsJson: JSON.stringify(o.attachments||[]),
-        stagesJson: JSON.stringify(o.stages||[])}));
+        stagesJson: JSON.stringify(o.stages||[]),
+        measuresJson: JSON.stringify(o.measures||[])}));
     }
     // KHÔNG đặt Content-Type để tránh preflight CORS với Apps Script
     const res = await fetch(url, {method:'POST', body: JSON.stringify({action:'bulkUpsert', table, records})});
@@ -2156,6 +2224,7 @@ async function pullFromSheets(){
             try{ r.items = r.itemsJson ? JSON.parse(r.itemsJson) : []; }catch(e){ r.items=[]; }
             try{ r.attachments = r.attachmentsJson ? JSON.parse(r.attachmentsJson) : []; }catch(e){ r.attachments=[]; }
             try{ r.stages = r.stagesJson ? JSON.parse(r.stagesJson) : []; }catch(e){ r.stages=[]; }
+            try{ r.measures = r.measuresJson ? JSON.parse(r.measuresJson) : []; }catch(e){ r.measures=[]; }
             if(r.progress!=null && r.progress!=='') r.progress = parseFloat(r.progress);
           }
           return r;

@@ -16,6 +16,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<!-- Supabase client (đồng bộ real-time) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --brand:#C8102E; --brand-dark:#8B0A1F; --ink:#1f2937; --muted:#6b7280;
@@ -557,6 +559,7 @@ const STAGE_PRESETS = [
   {c:'M', n:'Hợp đồng / Thủ tục'},{c:'N', n:'Vận chuyển / Giao nhận'},{c:'X', n:'Khác'},
 ];
 function stageState(s){
+  if(!s || typeof s!=='object') return 'pending';
   if(s.status==='done' || s.doneDate) return 'done';
   if(s.status==='doing') {
     if(s.startDate && s.plannedDays && daysBetween(s.startDate, todayStr()) > s.plannedDays) return 'late';
@@ -568,7 +571,7 @@ const STAGE_COLORS = { done:'#22C55E', doing:'#F59E0B', late:'#EF4444', pending:
 // Chuỗi chip công đoạn hiển thị trong bảng: A✓ B(đang) C...
 function stageChainHtml(o){
   if(!o.stages || !o.stages.length) return '';
-  const chips = o.stages.map(s=>{
+  const chips = o.stages.filter(Boolean).map(s=>{
     const st = stageState(s);
     const days = (st==='doing'||st==='late') && s.startDate ? daysBetween(s.startDate, todayStr()) : null;
     const tip = `${s.code} ${s.name||''}${s.location?' @'+s.location:''}${s.plannedDays?' · KH '+s.plannedDays+'n':''}${days!=null?' · đã '+days+'n':''}`;
@@ -1287,7 +1290,7 @@ function ordersTable(){
   return `<table><thead><tr>
     ${sortHeader('code',t('th_code'))}${sortHeader('name',t('th_name'))}${sortHeader('company',t('th_customer'))}${sortHeader('dueDate',t('th_due'))}${sortHeader('status',t('th_status'))}<th>${t('th_pct')}</th>${sortHeader('assignment',t('th_assign'))}${sortHeader('progress',t('th_progress'))}<th></th>
   </tr></thead><tbody>
-  ${rows.map(o=>{
+  ${rows.map(o=>{ try{
     const dueRef = o.requestedDate || o.dueDate;
     const onHold = o.status==='hold';
     const overdue = !onHold && o.status!=='delivered' && dueRef && dueRef < todayStr();
@@ -1334,7 +1337,10 @@ function ordersTable(){
       <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 ${t('lb_forecast')}: ${fmtDate(fc.date)}${fc.kind==='manual'?' '+t('lb_manual'):''}${late?' · '+t('lb_lateKH'):''}</span></div>`;})()}</td>
       <td class="actions"><a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a></td>
     </tr>${itemsSubRow(o, rowBg)}`;
-  }).join('')}
+  }catch(err){
+    console.error('Lỗi hiển thị đơn', o && o.code, err);
+    return `<tr style="background:#fff5f5"><td><b>${esc((o&&o.code)||'?')}</b></td><td colspan="7" style="color:var(--st-late);font-size:11px">⚠ Đơn này có dữ liệu lỗi nên tạm bỏ qua hiển thị (${esc(err.message)}). Bấm Sửa để kiểm tra.</td><td class="actions"><a onclick="openOrderModal('${o&&o.id}')">Sửa</a><a onclick="deleteOrder('${o&&o.id}')" style="color:var(--st-late)">Xóa</a></td></tr>`;
+  } }).join('')}
   </tbody></table>`;
 }
 /* ---- Trình soạn chi tiết con (line items) & đính kèm trong form đơn ---- */
@@ -1674,12 +1680,15 @@ function computeForecast(o){
 }
 // % hoàn thành theo công đoạn: số công đoạn ĐÃ XONG / tổng công đoạn
 function stageDonePct(stages){
-  if(!stages || !stages.length) return null;
-  const done = stages.filter(s=>stageState(s)==='done').length;
-  return Math.round(done/stages.length*100);
+  if(!Array.isArray(stages)) return null;
+  const valid = stages.filter(s=>s && typeof s==='object');
+  if(!valid.length) return null;
+  const done = valid.filter(s=>stageState(s)==='done').length;
+  return Math.round(done/valid.length*100);
 }
 // % của 1 chi tiết con: ưu tiên theo công đoạn của nó, sau đó tới % nhập tay
 function itemProgress(it){
+  if(!it || typeof it!=='object') return 0;
   if(it.status==='delivered') return 100;
   const sp = stageDonePct(it.stages);
   if(sp!=null) return sp;
@@ -1689,7 +1698,8 @@ function itemProgress(it){
 function orderOverallProgress(o){
   if(o.status==='delivered') return 100;
   if(o.items && o.items.length){
-    const vals=o.items.map(itemProgress);
+    const vals=o.items.filter(Boolean).map(itemProgress);
+    if(!vals.length) return parseFloat(o.progress)||0;
     return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
   }
   const sp = stageDonePct(o.stages);
@@ -1700,8 +1710,8 @@ function progressCellHtml(o){
   const p = orderOverallProgress(o);
   const color = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
   // Đếm tổng công đoạn (gồm cả của chi tiết con) để hiện "đã xong / tổng"
-  let allStages = (o.stages||[]).slice();
-  (o.items||[]).forEach(it=> allStages = allStages.concat(it.stages||[]));
+  let allStages = (o.stages||[]).filter(Boolean).slice();
+  (o.items||[]).filter(Boolean).forEach(it=> allStages = allStages.concat((it.stages||[]).filter(Boolean)));
   const nAll = allStages.length, nDone = allStages.filter(s=>stageState(s)==='done').length;
   return `<div style="display:flex;align-items:center;gap:6px">
     <div class="bar-track" style="width:60px;margin:0"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
@@ -1718,7 +1728,7 @@ function itemAssignLabel(a){
 // Dòng phụ dưới mỗi đơn: liệt kê TẤT CẢ chi tiết con với trạng thái + nơi làm + % riêng
 function itemsSubRow(o, rowBg){
   if(!o.items || !o.items.length) return '';
-  const lines = o.items.map(it=>{
+  const lines = o.items.filter(Boolean).map(it=>{
     const st = statusByKey(it.status||'new');
     const al = itemAssignLabel(it.assignment);
     const p = itemProgress(it);
@@ -1741,7 +1751,7 @@ function itemsSubRow(o, rowBg){
   </td></tr>`;
 }
 /* ===== DASHBOARD NÚT THẮT — công đoạn đang treo lâu nhất & hiệu suất nơi làm ===== */
-function renderBottleneckHtml(){
+function renderBottleneckHtml(){ try{
   const today = todayStr();
   const stuck = [];
   const byWho = {};
@@ -1757,8 +1767,8 @@ function renderBottleneckHtml(){
     }
   }
   (DATA.orders||[]).filter(o=>o.status!=='delivered' && o.status!=='hold').forEach(o=>{
-    (o.stages||[]).forEach(st=>scan(o, st, null));
-    (o.items||[]).forEach(it=>(it.stages||[]).forEach(st=>scan(o, st, it.name)));
+    (o.stages||[]).filter(Boolean).forEach(st=>scan(o, st, null));
+    (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(st=>scan(o, st, it.name)));
   });
   stuck.sort((a,b)=>b.days-a.days);
   const whoList = Object.values(byWho).sort((a,b)=> (b.late-a.late) || (b.maxDays-a.maxDays));
@@ -1790,7 +1800,7 @@ function renderBottleneckHtml(){
         : '<div class="empty">Chưa có công đoạn ở nơi ngoài nào đang chạy.</div>' }
       </div>
     </div>`;
-}
+}catch(e){ console.error('bottleneck', e); return ''; } }
 function quickStatusChange(id, newStatus){
   const o = DATA.orders.find(x=>x.id===id);
   if(!o || o.status===newStatus) return;
@@ -2032,6 +2042,20 @@ function renderData(){
       </div>
     </div>
 
+    <h2 class="sec"><span class="bar"></span>⚡ Supabase — đồng bộ real-time (khuyên dùng)</h2>
+    <div class="card" style="border-left:4px solid #16A34A">
+      <p class="small muted" style="margin-top:0">Database thật, đồng bộ <b>tức thì</b> giữa các máy (không cần F5), nhanh hơn Google Sheets. Hướng dẫn tạo: xem file <i>SUPABASE_SETUP.md</i>. Dán <b>Project URL</b> + <b>anon key</b> rồi bấm Kết nối.</p>
+      <div class="field"><label>Supabase Project URL</label><input id="supaUrl" value="${esc((DATA.meta&&DATA.meta.supaUrl)||'')}" placeholder="https://xxxxx.supabase.co" style="width:100%"></div>
+      <div class="field"><label>anon public key</label><input id="supaKey" value="${esc((DATA.meta&&DATA.meta.supaKey)||'')}" placeholder="eyJ..." style="width:100%"></div>
+      <div class="toolbar">
+        <button onclick="setSupaConfig()" style="background:#16A34A;border-color:#16A34A">💾 Lưu &amp; Kết nối</button>
+        <button class="secondary" onclick="(async()=>{try{setSupaStatus('Đang đẩy lên...');await supaPush();setSupaStatus('✓ Đã đẩy toàn bộ lên Supabase '+new Date().toLocaleTimeString('vi-VN'));}catch(e){setSupaStatus('Lỗi: '+e.message,true);}})()">⬆ Đẩy toàn bộ lên Supabase</button>
+        <button class="secondary" onclick="(async()=>{if(!confirm('Tải từ Supabase về (thay dữ liệu local)?'))return;try{setSupaStatus('Đang tải về...');await supaPull();_suppressAutoPush=true;save();_suppressAutoPush=false;renderAll();setSupaStatus('✓ Đã tải về từ Supabase');}catch(e){setSupaStatus('Lỗi: '+e.message,true);}})()">⬇ Tải về từ Supabase</button>
+        <span id="supaStatus" class="small" style="font-weight:700;color:#16A34A">${supaConfigured()?'Đã cấu hình — mở app sẽ tự kết nối.':'Chưa kết nối.'}</span>
+      </div>
+      <p class="small muted" style="margin-bottom:0">Khi đã kết nối: sửa ở máy này → máy khác (cùng URL+key) thấy NGAY. Nếu dùng Supabase thì khỏi cần Google Sheets bên dưới.</p>
+    </div>
+
     <h2 class="sec"><span class="bar"></span>Đồng bộ Google Sheets (database chung)</h2>
     <div class="card" style="border-left:4px solid #0EA5E9">
       <p class="small muted" style="margin-top:0">Dán <b>Web app URL</b> từ Google Apps Script (xem <i>HUONG_DAN_SETUP_GoogleSheets.md</i>). Sau đó dùng 2 nút để đẩy/tải dữ liệu giữa máy này và Google Sheets — đây là cách nhiều app dùng chung một database.</p>
@@ -2108,6 +2132,93 @@ function renderData(){
 // Các bảng đồng bộ 2 chiều với Google Sheets (khớp schema chung)
 const SYNC_TABLES = ['orders','customers','staff','assignments','outsourceShipments','ncrRecords'];
 
+/* ============================================================
+   SUPABASE — đồng bộ real-time (ưu tiên hơn Google Sheets nếu đã cấu hình)
+   ============================================================ */
+// map tên bảng trong app  →  tên bảng trong Supabase (snake_case)
+const SUPA_TABLES = {
+  orders:'orders', customers:'customers', staff:'staff', assignments:'assignments',
+  outsourceShipments:'outsource_shipments', ncrRecords:'ncr_records'
+};
+let _sb = null;            // client Supabase
+let _sbChannels = [];      // các kênh real-time đang lắng nghe
+function supaConfigured(){ return !!(DATA.meta && DATA.meta.supaUrl && DATA.meta.supaKey); }
+function setSupaStatus(msg, err){ const el=document.getElementById('supaStatus'); if(el){ el.textContent=msg; el.style.color=err?'var(--st-late)':'#16A34A'; } }
+function initSupabase(){
+  if(!supaConfigured()) return false;
+  if(typeof supabase==='undefined'){ setSupaStatus('Chưa tải được thư viện Supabase (cần internet).', true); return false; }
+  try{ _sb = supabase.createClient(DATA.meta.supaUrl.trim(), DATA.meta.supaKey.trim()); return true; }
+  catch(e){ setSupaStatus('Lỗi khởi tạo: '+e.message, true); return false; }
+}
+// Đẩy toàn bộ dữ liệu local lên Supabase (upsert theo id)
+async function supaPush(){
+  if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
+  for(const appT of Object.keys(SUPA_TABLES)){
+    const rows = (DATA[appT]||[]).filter(r=>r&&r.id).map(r=>({id:String(r.id), data:r, updated_at:new Date().toISOString()}));
+    if(!rows.length) continue;
+    const { error } = await _sb.from(SUPA_TABLES[appT]).upsert(rows);
+    if(error) throw new Error(SUPA_TABLES[appT]+': '+error.message);
+  }
+}
+// Tải toàn bộ từ Supabase về (thay thế local)
+async function supaPull(){
+  if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
+  for(const appT of Object.keys(SUPA_TABLES)){
+    const { data, error } = await _sb.from(SUPA_TABLES[appT]).select('id,data');
+    if(error) throw new Error(SUPA_TABLES[appT]+': '+error.message);
+    DATA[appT] = (data||[]).map(row=>row.data).filter(Boolean);
+  }
+  rebuildPartners(); sanitizeOrderDates(); ensureCustomersFromOrders();
+}
+// Lắng nghe thay đổi real-time → cập nhật ngay không cần F5
+function supaSubscribe(){
+  if(!_sb) return;
+  _sbChannels.forEach(ch=>{ try{ _sb.removeChannel(ch); }catch(e){} }); _sbChannels=[];
+  Object.keys(SUPA_TABLES).forEach(appT=>{
+    const dbT = SUPA_TABLES[appT];
+    const ch = _sb.channel('rt-'+dbT)
+      .on('postgres_changes', { event:'*', schema:'public', table:dbT }, payload=>{
+        try{
+          const arr = (DATA[appT] = DATA[appT]||[]);
+          if(payload.eventType==='DELETE'){
+            const id = payload.old && payload.old.id; const i=arr.findIndex(r=>r&&String(r.id)===String(id)); if(i>=0) arr.splice(i,1);
+          } else if(payload.new && payload.new.data){
+            const rec = payload.new.data; const i=arr.findIndex(r=>r&&String(r.id)===String(rec.id));
+            if(i>=0) arr[i]=rec; else arr.push(rec);
+          }
+          if(appT==='orders'){ sanitizeOrderDates(); }
+          rebuildPartners();
+          try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+          renderAll();
+          setSupaStatus('✓ Nhận cập nhật real-time lúc '+new Date().toLocaleTimeString('vi-VN'));
+        }catch(e){ console.error('realtime', e); }
+      })
+      .subscribe();
+    _sbChannels.push(ch);
+  });
+}
+async function setSupaConfig(){
+  DATA.meta.supaUrl = document.getElementById('supaUrl').value.trim();
+  DATA.meta.supaKey = document.getElementById('supaKey').value.trim();
+  _suppressAutoPush=true; save(); _suppressAutoPush=false;
+  if(!supaConfigured()){ setSupaStatus('Đã xóa cấu hình Supabase.'); return; }
+  setSupaStatus('Đang kết nối Supabase...');
+  if(!initSupabase()) return;
+  try{
+    // Nếu Supabase trống mà máy có dữ liệu → đẩy lên; ngược lại tải về
+    const { count, error } = await _sb.from('orders').select('id', { count:'exact', head:true });
+    if(error) throw new Error(error.message);
+    if((count||0)===0 && (DATA.orders||[]).length>0){
+      setSupaStatus('Kho trống — đang đưa dữ liệu máy này lên...'); await supaPush();
+    } else {
+      setSupaStatus('Đang tải dữ liệu chung về...'); await supaPull();
+      _suppressAutoPush=true; save(); _suppressAutoPush=false; renderAll();
+    }
+    supaSubscribe();
+    setSupaStatus('✓ Đã kết nối Supabase + bật real-time '+new Date().toLocaleTimeString('vi-VN'));
+  }catch(e){ setSupaStatus('Lỗi kết nối: '+e.message, true); }
+}
+
 function getSheetUrl(){ return (DATA.meta && DATA.meta.sheetUrl) ? DATA.meta.sheetUrl.trim() : ''; }
 function setSheetUrl(){
   const url = document.getElementById('sheetUrl').value.trim();
@@ -2160,24 +2271,40 @@ async function syncPush(){
 }
 /* ===== TỰ ĐỘNG ĐỒNG BỘ — bật khi có URL & meta.autoSync ===== */
 let _autoPushTimer = null;
-function autoSyncEnabled(){ return getSheetUrl() && DATA.meta && DATA.meta.autoSync !== false; }
+function autoSyncEnabled(){ return (supaConfigured() || getSheetUrl()) && DATA.meta && DATA.meta.autoSync !== false; }
 function setAutoBadge(txt, err){
   const el = document.getElementById('autoSyncBadge');
   if(el){ el.textContent = txt; el.style.color = err ? 'var(--st-late)' : '#16A34A'; }
+  if(supaConfigured()) setSupaStatus(txt, err);
 }
-// Gọi sau mỗi save() — gom nhiều thay đổi rồi đẩy 1 lần (chống spam mạng)
+// Gọi sau mỗi save() — gom nhiều thay đổi rồi đẩy 1 lần (chống spam mạng). Ưu tiên Supabase.
 function scheduleAutoPush(){
   if(!autoSyncEnabled()) return;
   clearTimeout(_autoPushTimer);
   setAutoBadge('● đang chờ đồng bộ...');
   _autoPushTimer = setTimeout(async ()=>{
-    try{ setAutoBadge('● đang đẩy lên...'); await pushToSheets(); setAutoBadge('✓ đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN')); }
-    catch(e){ setAutoBadge('⚠ lỗi đồng bộ: ' + e.message, true); }
+    try{
+      setAutoBadge('● đang đẩy lên...');
+      if(supaConfigured()) await supaPush(); else await pushToSheets();
+      setAutoBadge('✓ đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN'));
+    }catch(e){ setAutoBadge('⚠ lỗi đồng bộ: ' + e.message, true); }
   }, 2000);
 }
 // Gọi khi mở app — tự kéo dữ liệu mới nhất về (an toàn: KHÔNG xóa local nếu Sheet trống)
 async function autoPullOnStart(){
   if(!autoSyncEnabled()) return;
+  // Ưu tiên Supabase nếu đã cấu hình
+  if(supaConfigured()){
+    setAutoBadge('● đang kết nối Supabase...');
+    try{
+      if(!initSupabase()) return;
+      const { count } = await _sb.from('orders').select('id',{count:'exact',head:true});
+      if((count||0)===0 && (DATA.orders||[]).length>0){ await supaPush(); setAutoBadge('✓ đã khởi tạo kho Supabase từ máy này'); }
+      else { await supaPull(); _suppressAutoPush=true; save(); _suppressAutoPush=false; renderAll(); setAutoBadge('✓ đã tải dữ liệu chung (Supabase) '+new Date().toLocaleTimeString('vi-VN')); }
+      supaSubscribe();
+    }catch(e){ setAutoBadge('⚠ Supabase: '+e.message, true); }
+    return;
+  }
   setAutoBadge('● đang kết nối kho chung...');
   try{
     const res = await fetch(getSheetUrl() + '?action=readAll');
@@ -2667,18 +2794,33 @@ function renderAlertBar(){
 /* ---------------- INIT ---------------- */
 function renderAll(){
   document.getElementById('topStamp').textContent = 'Cập nhật lúc ' + new Date().toLocaleString('vi-VN');
-  renderAlertBar();
+  try{ renderAlertBar(); }catch(e){ console.error('alertBar', e); }
   const active = document.querySelector('.view.active');
   if(!active) return;
   const id = active.id;
-  if(id==='view-grid') renderGrid();
-  else if(id==='view-customers') renderCustomers();
-  else if(id==='view-kpi') renderKpi();
-  else if(id==='view-outsource') renderOutsource();
-  else if(id==='view-ncr') renderNcr();
-  else if(id==='view-data') renderData();
-  document.getElementById('topUser').textContent = DATA.meta.user ? ('Xin chào, '+DATA.meta.user) : 'DHP Process Hub';
+  try{
+    if(id==='view-grid') renderGrid();
+    else if(id==='view-customers') renderCustomers();
+    else if(id==='view-kpi') renderKpi();
+    else if(id==='view-outsource') renderOutsource();
+    else if(id==='view-ncr') renderNcr();
+    else if(id==='view-data') renderData();
+  }catch(e){
+    console.error('render view '+id, e);
+    active.innerHTML = `<div class="card" style="border-left:4px solid var(--st-late);margin-top:14px">
+      <b style="color:var(--st-late)">⚠ Có lỗi khi hiển thị màn hình này — nhưng dữ liệu của bạn vẫn an toàn.</b>
+      <div class="small muted" style="margin:6px 0">Chi tiết kỹ thuật: ${esc(e.message)}</div>
+      <div class="toolbar">
+        <button onclick="renderAll()">🔄 Thử lại</button>
+        <button class="secondary" onclick="goTab('data')">Sang tab Dữ liệu (sao lưu/đồng bộ)</button>
+      </div>
+      <p class="small muted" style="margin-bottom:0">Nếu lặp lại, vào tab Dữ liệu → Xuất file JSON gửi cho kỹ thuật để soi đơn bị lỗi.</p>
+    </div>`;
+  }
+  try{ document.getElementById('topUser').textContent = DATA.meta.user ? ('Xin chào, '+DATA.meta.user) : 'DHP Process Hub'; }catch(e){}
 }
+// Bắt mọi lỗi JS toàn cục — để không bao giờ "đứng hình" mà không biết lý do
+window.addEventListener('error', function(ev){ console.error('Lỗi toàn cục:', ev.message, ev.filename, ev.lineno); });
 load();
 renderAll();
 applyLang();

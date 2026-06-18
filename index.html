@@ -1269,7 +1269,7 @@ let orderFilter = { status:'', q:'', assignment:'', sortKey:'dueDate', sortDir:'
 // để sắp xếp theo ý mình (mã đơn, tên hàng, khách hàng, hạn giao, trạng thái, thực hiện, tiến độ...)
 function orderSortValue(o, key){
   switch(key){
-    case 'code': return (o.code||'');
+    case 'code': { const m=String(o.code||'').match(/(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):Infinity; } // sắp theo SỐ (hiểu hàng chục/trăm), không theo chữ
     case 'name': return (o.name||'').toLowerCase();
     case 'company': return (o.company||'').toLowerCase();
     case 'dueDate': return (o.dueDate||'');
@@ -1555,7 +1555,8 @@ function itemStagesHtml(it,i){
       <input style="flex:1;min-width:90px;font-size:11px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu?" oninput="updItemStage(${i},${si},'location',this.value)">
       <input type="number" style="width:44px;font-size:11px" value="${s.plannedDays!=null?s.plannedDays:''}" placeholder="KH" oninput="updItemStage(${i},${si},'plannedDays',this.value)" title="Ngày kế hoạch">
       <select style="width:80px;font-size:11px" onchange="updItemStage(${i},${si},'status',this.value)"><option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa</option><option value="doing" ${s.status==='doing'?'selected':''}>Đang</option><option value="done" ${s.status==='done'?'selected':''}>Xong</option></select>
-      <input type="date" style="width:118px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu">
+      <select style="width:120px;font-size:11px" onchange="updItemStage(${i},${si},'assignee',this.value)" title="Người làm → tự lên lịch"><option value="">👤 ai làm?</option>${(DATA.staff||[]).filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
+      <input type="date" style="width:118px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày dự kiến → tự lên lịch">
       <a onclick="rmItemStage(${i},${si})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
     </div>`;
   }).join('');
@@ -1568,7 +1569,7 @@ function itemStagesHtml(it,i){
     </div>
   </div>`;
 }
-function addItemStage(i){ if(!editingItems[i])return; editingItems[i].stages=editingItems[i].stages||[]; editingItems[i].stages.push({code:'',name:'',location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',note:''}); renderItemsEditor(); }
+function addItemStage(i){ if(!editingItems[i])return; editingItems[i].stages=editingItems[i].stages||[]; editingItems[i].stages.push({id:localId('IST'),code:'',name:'',location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,note:''}); renderItemsEditor(); }
 function updItemStage(i,si,k,v){
   const s = editingItems[i] && editingItems[i].stages && editingItems[i].stages[si]; if(!s) return;
   s[k] = (k==='plannedDays') ? (v===''?null:parseFloat(v)) : v;
@@ -1583,7 +1584,7 @@ function pickItemStagePreset(i,si,c){
 function itemStageTemplate(i){
   if((editingItems[i].stages||[]).length && !confirm('Thay công đoạn của chi tiết này bằng mẫu chuẩn?')) return;
   const tpl=[['L','Mua phôi / Vật tư'],['A','Tiện'],['B','Phay'],['K','Đo đạc / QC'],['N','Đóng gói & nghiệm thu'],['X','Xuất xưởng']];
-  editingItems[i].stages = tpl.map(([c,n])=>({code:c,name:n,location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',note:''}));
+  editingItems[i].stages = tpl.map(([c,n])=>({id:localId('IST'),code:c,name:n,location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,note:''}));
   renderItemsEditor();
 }
 function itemsSummaryText(){
@@ -2780,7 +2781,7 @@ function renderToday(){
         <div class="muted" style="font-size:13px;margin-top:2px">${o?esc(truncate(o.name,60)):''}</div>
         <div style="margin-top:4px"><span class="pill" style="background:${sColor};font-size:11px">${sLabel}</span> <span class="muted small">· ${a.hours||8}h${st&&st.location?' · @'+esc(st.location):''}</span></div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">${btns}</div>
+      <div style="display:flex;gap:8px;align-items:center">${btns}${o?`<button class="ghost sm" onclick="openOrderModal('${o.id}')" title="Mở/sửa đơn — thêm yêu cầu, ghi chú">✏ Đơn</button>`:''}</div>
     </div>`;
   }).join('');
   el.innerHTML = `

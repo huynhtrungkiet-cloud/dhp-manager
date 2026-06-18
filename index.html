@@ -754,12 +754,18 @@ function daysBetween(a,b){ a=normDate(a); b=normDate(b); if(!a||!b) return null;
 // Dọn các trường ngày trong orders (sửa dữ liệu dán tay bị kèm giờ ...T17:00:00.000Z)
 function sanitizeOrderDates(){
   (DATA.orders||[]).forEach(o=>{
+    if(!o) return;
+    // ép mã & text về chuỗi (Sheets/Supabase có thể trả mã dạng số → vỡ .replace)
+    if(o.code!=null && typeof o.code!=='string') o.code = String(o.code);
+    if(o.name!=null && typeof o.name!=='string') o.name = String(o.name);
+    if(o.company!=null && typeof o.company!=='string') o.company = String(o.company);
     ['receivedDate','requestedDate','dueDate','completedDate','deliveredDate','forecastDate'].forEach(k=>{
       if(o[k]) o[k] = normDate(o[k]);
     });
   });
+  (DATA.staff||[]).forEach(s=>{ if(s && s.name!=null && typeof s.name!=='string') s.name=String(s.name); });
 }
-function truncate(s,n){ s=s||''; return s.length>n? s.slice(0,n)+'…' : s; }
+function truncate(s,n){ s=(s==null?'':String(s)); return s.length>n? s.slice(0,n)+'…' : s; }
 function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(stLabel(s).replace(/^\d+\.\s*/,''))}</span>`; }
 function sevLabel(s){ return s=='1'?'Nghiêm trọng':(s=='2'?'Trung bình':'Nhẹ'); }
 function fillSelect(sel, items, valueKey, labelKey, placeholder){
@@ -895,7 +901,7 @@ function jobInfo(a){
         label:'(Đơn hàng đã bị xóa)', sub:`Giờ công: ${a.hours||8}h${a.note?' · '+a.note:''}`,
         title:'Đơn hàng đã bị xóa khỏi hệ thống'};
     }
-    const code = ord.code.replace(/^CK368-?/i,'') || ord.code;
+    const code = String(ord.code||'').replace(/^CK368-?/i,'') || ord.code;
     const stage = a.stage ? a.stage : '';
     return {
       shortCode: truncate(code,6),

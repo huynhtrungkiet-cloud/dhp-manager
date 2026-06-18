@@ -135,6 +135,7 @@
     <label style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:12px;font-size:11.5px;color:#6b7280;cursor:pointer">
       <input type="checkbox" id="gateRemember" checked> Ghi nhớ trên thiết bị này
     </label>
+    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">🛠 Quản đốc: thấy tất cả · 👷 Công nhân: chỉ "Việc hôm nay"</p>
   </div>
   <p style="color:rgba(255,255,255,.7);font-size:11px;margin-top:18px">Chỉ dành cho nội bộ Đại Hồng Phát</p>
 </div>
@@ -142,7 +143,9 @@
 /* ===== Cổng mật khẩu (self-contained) =====
    ĐỔI MẬT KHẨU: sửa giá trị APP_PASSCODE bên dưới rồi upload lại index.html.
    Lưu ý: đây là lớp chặn cơ bản cho nội bộ — bảo vệ thật sự nằm ở URL Google Sheets (chìa khóa dữ liệu). */
-const APP_PASSCODE = 'dhp368';
+// ĐỔI MẬT KHẨU: sửa 2 giá trị này rồi upload lại index.html.
+const APP_PASSCODE    = 'dhp368';   // Quản đốc / quản lý — thấy TẤT CẢ
+const WORKER_PASSCODE = 'tho368';   // Công nhân — chỉ thấy "Việc hôm nay"
 (function(){
   if(localStorage.getItem('dhp_gate_ok')==='1' || sessionStorage.getItem('dhp_gate_ok')==='1'){
     document.getElementById('gate').style.display='none';
@@ -150,10 +153,13 @@ const APP_PASSCODE = 'dhp368';
 })();
 function gateCheck(){
   const v = document.getElementById('gatePass').value;
-  if(v === APP_PASSCODE){
-    if(document.getElementById('gateRemember').checked) localStorage.setItem('dhp_gate_ok','1');
-    else sessionStorage.setItem('dhp_gate_ok','1');
+  const role = (v===APP_PASSCODE) ? 'admin' : ((v===WORKER_PASSCODE) ? 'worker' : null);
+  if(role){
+    const store = document.getElementById('gateRemember').checked ? localStorage : sessionStorage;
+    store.setItem('dhp_gate_ok','1');
+    store.setItem('dhp_role', role);
     document.getElementById('gate').style.display='none';
+    if(window.applyRole) applyRole();
   } else {
     document.getElementById('gateErr').style.display='block';
     document.getElementById('gatePass').value='';
@@ -168,7 +174,11 @@ function gateCheck(){
     <div class="sub" data-i18n="appSub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets</div>
   </div>
   <div class="right">
-    <button class="ghost sm" onclick="toggleLang()" style="margin-bottom:4px" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:4px">
+      <span id="roleBadge" style="font-size:11px;font-weight:800;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px">🛠 Quản đốc</span>
+      <button class="ghost sm" onclick="toggleLang()" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
+      <button class="ghost sm" onclick="lockApp()" title="Đăng xuất / đổi vai trò">🔒</button>
+    </div>
     <div id="topUser">—</div>
     <div id="topStamp" class="small"></div>
   </div>
@@ -176,6 +186,8 @@ function gateCheck(){
 
 <div class="tabs">
   <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 <span data-i18n="tab_grid">Lịch phân công &amp; Đơn hàng</span></div>
+  <div class="tab" data-tab="today" onclick="goTab('today')">👷 <span data-i18n="tab_today">Việc hôm nay</span></div>
+  <div class="tab" data-tab="process" onclick="goTab('process')">🔧 <span data-i18n="tab_process">Quy trình</span></div>
   <div class="tab" data-tab="customers" onclick="goTab('customers')">🏢 <span data-i18n="tab_customers">Khách hàng</span></div>
   <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 <span data-i18n="tab_kpi">KPI &amp; Báo cáo</span></div>
   <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 <span data-i18n="tab_outsource">Outsource</span></div>
@@ -188,6 +200,10 @@ function gateCheck(){
 <main>
   <!-- ============ GRID / TIMESHEET (primary view) ============ -->
   <div class="view active" id="view-grid"></div>
+  <!-- ============ TODAY (việc của công nhân) ============ -->
+  <div class="view" id="view-today"></div>
+  <!-- ============ PROCESS (bảng follow quy trình) ============ -->
+  <div class="view" id="view-process"></div>
   <!-- ============ CUSTOMERS ============ -->
   <div class="view" id="view-customers"></div>
   <!-- ============ KPI ============ -->
@@ -703,6 +719,7 @@ function load(){
   if(!DATA.staff || !DATA.staff.length) DATA.staff = SEED_STAFF.map((s,i)=>({id:'NS-'+String(i+1).padStart(4,'0'), ...s}));
   if(!DATA.assignments) DATA.assignments = [];
   if(!DATA.customers) DATA.customers = [];
+  if(!DATA.routingTemplates) DATA.routingTemplates = [];
   if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0, cust:0 };
   ['order','ncr','out','staff','assign','cust'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
   sanitizeOrderDates();
@@ -757,6 +774,8 @@ const I18N = {
   appSub:      {vi:'Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets', en:'Orders · Schedule · Customers · KPI · Outsource · NCR — shared data via Google Sheets'},
   gateSub:     {vi:'Quản lý sản xuất CK368 — nhập mật khẩu để vào', en:'CK368 Production Management — enter password to continue'},
   tab_grid:    {vi:'Lịch phân công & Đơn hàng', en:'Schedule & Orders'},
+  tab_today:   {vi:'Việc hôm nay', en:'My jobs today'},
+  tab_process: {vi:'Quy trình', en:'Process board'},
   tab_orders:  {vi:'Đơn hàng & Tiến độ', en:'Orders & Progress'},
   tab_customers:{vi:'Khách hàng', en:'Customers'},
   tab_kpi:     {vi:'KPI & Báo cáo', en:'KPI & Reports'},
@@ -809,11 +828,32 @@ function toggleLang(){ LANG = (LANG==='vi'?'en':'vi'); localStorage.setItem('dhp
 /* ---------------- TAB NAV ---------------- */
 function goTab(name){
   if(name==='orders') name='grid'; // tab Đơn hàng đã gộp vào Lịch phân công
+  if(getRole()==='worker' && name!=='today') name='today'; // công nhân chỉ ở màn Việc hôm nay
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
   renderAll();
 }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+/* ===== VAI TRÒ: Quản đốc (admin) thấy hết · Công nhân (worker) chỉ Việc hôm nay ===== */
+function getRole(){ return localStorage.getItem('dhp_role') || sessionStorage.getItem('dhp_role') || 'admin'; }
+function applyRole(){
+  const worker = getRole()==='worker';
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.style.display = (!worker || t.dataset.tab==='today') ? '' : 'none';
+  });
+  const rb = document.getElementById('roleBadge');
+  if(rb) rb.textContent = worker ? '👷 Công nhân' : '🛠 Quản đốc';
+  if(worker){
+    const active = document.querySelector('.view.active');
+    if(!active || active.id!=='view-today') goTab('today');
+  }
+}
+function lockApp(){
+  if(!confirm('Đăng xuất / đổi vai trò? (Sẽ hỏi lại mật khẩu)')) return;
+  ['dhp_gate_ok','dhp_role'].forEach(k=>{ localStorage.removeItem(k); sessionStorage.removeItem(k); });
+  location.reload();
+}
 function openModal(id){ document.getElementById(id).classList.add('show'); }
 
 /* ============================================================
@@ -1347,12 +1387,22 @@ function ordersTable(){
 let editingItems = [];
 let editingAtts = [];
 let editingStages = [];
+function stageTplBarHtml(){
+  const tpls = DATA.routingTemplates||[];
+  return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;background:#eef2ff;border-radius:8px;padding:6px 10px">
+    <span class="small" style="font-weight:700;color:#3730a3">📋 Mẫu quy trình:</span>
+    <select id="stageTplSel" style="font-size:11.5px;max-width:240px"><option value="">— chọn mẫu đã lưu —</option>${tpls.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} (${(t.stages||[]).length} CĐ)</option>`).join('')}</select>
+    <a onclick="applyNamedTemplate()" style="cursor:pointer;color:#6366F1;font-weight:700;font-size:11.5px">▶ Áp dụng</a>
+    <a onclick="saveAsTemplate()" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11.5px">💾 Lưu chuỗi này thành mẫu</a>
+    ${tpls.length?'<a onclick="deleteTemplate()" style="cursor:pointer;color:var(--muted);font-size:11.5px">🗑 Xóa mẫu đang chọn</a>':''}
+  </div>`;
+}
 function renderStagesEditor(){
   const wrap = document.getElementById('ord_stages_list');
   if(!wrap) return;
-  if(!editingStages.length){ wrap.innerHTML = '<div class="small muted">Chưa có công đoạn. Thêm theo thứ tự thực hiện — kể cả khâu mua phôi / hợp đồng / vận chuyển.</div>'; return; }
+  if(!editingStages.length){ wrap.innerHTML = stageTplBarHtml() + '<div class="small muted">Chưa có công đoạn. Chọn mẫu ở trên, hoặc bấm “Thêm công đoạn”.</div>'; return; }
   const locs = ['CK368', ...DATA.partners.map(p=>p.name)];
-  wrap.innerHTML = `<datalist id="stageLocs">${locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>` +
+  wrap.innerHTML = stageTplBarHtml() + `<datalist id="stageLocs">${locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>` +
     editingStages.map((s,i)=>{
       const st = stageState(s);
       return `<div style="border:1px solid var(--line);border-left:4px solid ${STAGE_COLORS[st]};border-radius:8px;padding:7px;margin-bottom:6px;background:#fafcff">
@@ -1369,14 +1419,38 @@ function renderStagesEditor(){
           <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
           <option value="done" ${s.status==='done'?'selected':''}>Xong ✓</option>
         </select>
-        <input type="date" style="width:128px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value)" title="Ngày bắt đầu">
+        <input type="date" style="width:128px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value)" title="Ngày dự kiến làm">
         <span style="display:flex;gap:4px">
           <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Lên">↑</a>
           <a onclick="moveStage(${i},1)" style="cursor:pointer;font-weight:800" title="Xuống">↓</a>
           <a onclick="rmStage(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa">✕</a>
         </span>
       </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <span style="font-size:11px;color:#6366F1;font-weight:700;min-width:64px">👤 Người làm:</span>
+        <select style="width:210px" onchange="updStage(${i},'assignee',this.value);renderStagesEditor()" title="Gán người làm → tự lên Lịch phân công">
+          <option value="">— chọn người / đối tác —</option>
+          ${DATA.staff.filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}${x.type==='outsource'?' (outsource)':''}</option>`).join('')}
+        </select>
+        <input type="number" style="width:56px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updStage(${i},'hours',this.value)" title="Số giờ công cho công đoạn này (mặc định 8)">
+        ${workloadHintHtml(s)}
+      </div>
     </div>`;}).join('');
+}
+function staffName(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return s?s.name:'(?)'; }
+// Tổng giờ đã xếp cho 1 người trong 1 ngày (gồm việc đã lưu + công đoạn đang soạn của đơn này)
+function plannedHoursOnDay(staffId, date, orderId){
+  let h=0;
+  (DATA.assignments||[]).forEach(a=>{ if(a&&a.staffId===staffId && a.date===date && !(a.fromStage && a.orderId===orderId)) h+=parseFloat(a.hours)||8; });
+  (editingStages||[]).forEach(st=>{ if(st&&st.assignee===staffId && normDate(st.startDate)===date) h+=parseFloat(st.hours)||8; });
+  return h;
+}
+function workloadHintHtml(s){
+  if(!s.assignee || !s.startDate) return '<span class="small muted">↪ chọn người + ngày để TỰ lên lịch</span>';
+  const d=normDate(s.startDate);
+  const h=plannedHoursOnDay(s.assignee, d, (document.getElementById('ord_id')||{}).value||'');
+  const over=h>8;
+  return `<span class="small" style="color:${over?'var(--st-late)':'#16A34A'};font-weight:700">✓ sẽ lên lịch · ${esc(staffName(s.assignee))} ngày ${fmtDate(d)}: ${h}h${over?' ⚠ QUÁ TẢI':''}</span>`;
 }
 function pickStagePreset(i, c){
   const p = STAGE_PRESETS.find(x=>x.c===c);
@@ -1389,12 +1463,12 @@ function pickStagePreset(i, c){
   renderStagesEditor();
 }
 function addStage(){
-  editingStages.push({code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', note:''});
+  editingStages.push({id:localId('ST'), code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:null, note:''});
   renderStagesEditor();
 }
 function updStage(i,k,v){
   if(!editingStages[i]) return;
-  editingStages[i][k] = (k==='plannedDays') ? (v===''?null:parseFloat(v)) : v;
+  editingStages[i][k] = (k==='plannedDays'||k==='hours') ? (v===''?null:parseFloat(v)) : v;
   if(k==='status'){
     if(v==='done' && !editingStages[i].doneDate) editingStages[i].doneDate = todayStr();
     if(v==='doing' && !editingStages[i].startDate) editingStages[i].startDate = todayStr();
@@ -1533,8 +1607,66 @@ function rmMeasure(i){ editingMeasures.splice(i,1); renderMeasuresEditor(); }
 function applyStageTemplate(){
   if(editingStages.length && !confirm('Thay chuỗi công đoạn hiện tại bằng MẪU CHUẨN?\n(L Mua phôi → A Tiện → B Phay → K Đo/QC → N Đóng gói & nghiệm thu → X Xuất xưởng)')) return;
   const tpl = [['L','Mua phôi / Vật tư'],['A','Tiện'],['B','Phay'],['K','Đo đạc / QC'],['N','Đóng gói & nghiệm thu'],['X','Xuất xưởng']];
-  editingStages = tpl.map(([c,n])=>({code:c, name:n, location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', note:''}));
+  editingStages = tpl.map(([c,n])=>({id:localId('ST'), code:c, name:n, location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:null, note:''}));
   renderStagesEditor();
+}
+// Áp dụng mẫu đã lưu vào chuỗi công đoạn hiện tại
+function applyNamedTemplate(){
+  const id=(document.getElementById('stageTplSel')||{}).value;
+  const t=(DATA.routingTemplates||[]).find(x=>x.id===id);
+  if(!t){ alert('Chọn một mẫu trong danh sách trước.'); return; }
+  if(editingStages.length && !confirm('Thay chuỗi công đoạn hiện tại bằng mẫu "'+t.name+'"?')) return;
+  editingStages = (t.stages||[]).map(s=>({id:localId('ST'), code:s.code||'', name:s.name||'', location:'', plannedDays:s.plannedDays!=null?s.plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:s.hours!=null?s.hours:null, note:''}));
+  renderStagesEditor();
+}
+// Lưu chuỗi công đoạn hiện tại thành mẫu để tái dùng
+function saveAsTemplate(){
+  const stages=editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim());
+  if(!stages.length){ alert('Chưa có công đoạn để lưu.'); return; }
+  const name=prompt('Tên mẫu (vd: Khớp nối tiêu chuẩn · Tấm cách nhiệt · Puly...):');
+  if(!name||!name.trim()) return;
+  DATA.routingTemplates=DATA.routingTemplates||[];
+  DATA.routingTemplates.push({ id:localId('TPL'), name:name.trim(),
+    stages: stages.map(s=>({code:s.code||'', name:s.name||'', plannedDays:s.plannedDays!=null?s.plannedDays:null, hours:s.hours!=null?s.hours:null})) });
+  save();
+  renderStagesEditor();
+  alert('Đã lưu mẫu "'+name.trim()+'". Lần sau chọn ở ô "Mẫu quy trình" là ra ngay.');
+}
+function deleteTemplate(){
+  const id=(document.getElementById('stageTplSel')||{}).value;
+  const t=(DATA.routingTemplates||[]).find(x=>x.id===id);
+  if(!t){ alert('Chọn mẫu cần xóa trong danh sách trước.'); return; }
+  if(!confirm('Xóa mẫu "'+t.name+'"? (Các đơn đã dùng mẫu không bị ảnh hưởng.)')) return;
+  DATA.routingTemplates=DATA.routingTemplates.filter(x=>x.id!==id);
+  save(); renderStagesEditor();
+}
+// TỰ tạo ô việc trên Lịch phân công từ công đoạn có người làm + ngày (gỡ nhập tay 2 lần)
+function syncAssignmentsFromOrder(o){
+  if(!o || !o.id) return;
+  // Xóa các việc CŨ do công đoạn của đơn này tự sinh (giữ lại việc gán tay)
+  DATA.assignments = (DATA.assignments||[]).filter(a => !(a && a.fromStage && a.orderId===o.id));
+  const mk = (st, label, itemId)=>{
+    if(!st || !st.assignee || !st.startDate) return;
+    if(!st.id) st.id = localId('ST');   // đảm bảo có id để công nhân tick đúng công đoạn
+    DATA.assignments.push({
+      id: localId('PCS'),
+      staffId: st.assignee,
+      date: normDate(st.startDate),
+      kind: 'order',
+      orderId: o.id,
+      stageId: st.id,
+      stageCode: st.code||'',
+      itemId: itemId||'',
+      stage: (st.code? st.code+' · ':'') + (st.name||'') + (label?' ['+label+']':''),
+      hours: parseFloat(st.hours)||8,
+      note: '',
+      fromStage: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+  (o.stages||[]).filter(Boolean).forEach(st=>mk(st, '', ''));
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(st=>mk(st, truncate(it.name||'',16), it.id||'')));
 }
 
 // Mã đơn tự sinh = số lớn nhất hiện có + 1 (mã chỉ là số cho gọn)
@@ -1652,6 +1784,7 @@ function saveOrder(){
     DATA.orders.push(rec);
   }
   ensureCustomersFromOrders();
+  syncAssignmentsFromOrder(rec);
   closeModal('modalOrder');
   save();
   goTab('orders');
@@ -1659,6 +1792,8 @@ function saveOrder(){
 function deleteOrder(id){
   if(!confirm('Xóa đơn hàng này? (Các ghi nhận NCR/outsource/phân công liên quan vẫn được giữ lại nhưng sẽ mất liên kết — ô lịch tương ứng sẽ hiển thị "?".)')) return;
   DATA.orders = DATA.orders.filter(o=>o.id!==id);
+  // dọn việc tự sinh từ công đoạn của đơn này khỏi lịch
+  DATA.assignments = (DATA.assignments||[]).filter(a => !(a && a.fromStage && a.orderId===id));
   save(); goTab('orders');
 }
 // Dự báo ngày có thể giao: ưu tiên ngày nhập tay, sau đó suy ra từ % hoàn thành + ngày nhận đơn
@@ -2513,6 +2648,153 @@ function importPaste(){
 }
 
 /* ============================================================
+   VIỆC HÔM NAY (màn cho công nhân — chỉ Bắt đầu / Xong / Báo lỗi)
+   ============================================================ */
+let todayWho = '';
+let todayDate = '';
+// Tìm công đoạn gắn với 1 việc (assignment fromStage)
+function findStageForAssign(a){
+  const o = (DATA.orders||[]).find(x=>x && x.id===a.orderId);
+  if(!o) return null;
+  let host = o;
+  if(a.itemId){ const it=(o.items||[]).find(x=>x && x.id===a.itemId); if(it) host=it; }
+  const list = host.stages || [];
+  let st = list.find(s=>s && s.id===a.stageId);
+  if(!st && a.stageCode) st = list.find(s=>s && s.code===a.stageCode);
+  return st ? {order:o, host, stage:st} : {order:o, host, stage:null};
+}
+function workerSetStage(assignId, newStatus){
+  const a = (DATA.assignments||[]).find(x=>x && x.id===assignId); if(!a) return;
+  const f = findStageForAssign(a);
+  if(!f || !f.stage){ alert('Không tìm thấy công đoạn (đơn có thể đã đổi). Báo quản đốc.'); return; }
+  const st = f.stage;
+  st.status = newStatus;
+  const today = todayStr();
+  if(newStatus==='doing' && !st.startDate) st.startDate = today;
+  if(newStatus==='done'){ st.doneDate = today; if(!st.startDate) st.startDate = today; }
+  if(newStatus==='pending'){ st.doneDate = ''; }
+  f.order.updatedAt = new Date().toISOString();
+  save();           // → % tự nhảy + đẩy lên Supabase (quản đốc thấy real-time)
+  renderToday();
+}
+function workerReport(assignId){
+  const a = (DATA.assignments||[]).find(x=>x && x.id===assignId); if(!a) return;
+  openNcrModal();   // mở phiếu NCR
+  setTimeout(()=>{ const sel=document.getElementById('ncr_order'); if(sel) sel.value=a.orderId; }, 50);
+}
+function renderToday(){
+  const el = document.getElementById('view-today');
+  if(!todayDate) todayDate = todayStr();
+  if(!todayWho) todayWho = (DATA.meta&&DATA.meta.workerId) || ((DATA.staff[0]||{}).id) || '';
+  const staffOpts = (DATA.staff||[]).filter(s=>s&&s.active!==false)
+    .map(s=>`<option value="${esc(s.id)}" ${s.id===todayWho?'selected':''}>${esc(s.name)}</option>`).join('');
+  const jobs = (DATA.assignments||[]).filter(a=>a && a.staffId===todayWho && a.date===todayDate && a.kind==='order')
+    .sort((a,b)=>(a.stageCode||'').localeCompare(b.stageCode||''));
+  const totalH = jobs.reduce((s,a)=>s+(parseFloat(a.hours)||8),0);
+  const cards = jobs.map(a=>{
+    const f = findStageForAssign(a);
+    const o = f && f.order;
+    const st = f && f.stage;
+    const status = st ? (st.status||'pending') : 'pending';
+    const sLabel = {pending:'Chưa làm', doing:'Đang làm', done:'Xong ✓'}[status]||'Chưa làm';
+    const sColor = {pending:'#9CA3AF', doing:'#F59E0B', done:'#22C55E'}[status]||'#9CA3AF';
+    let btns = '';
+    if(status==='done'){
+      btns = `<button class="ghost" onclick="workerSetStage('${a.id}','doing')" style="font-size:13px">↩ Mở lại</button>`;
+    } else if(status==='doing'){
+      btns = `<button onclick="workerSetStage('${a.id}','done')" style="background:#16A34A;border-color:#16A34A;font-size:15px;padding:11px 20px">✓ XONG</button>
+              <button class="ghost" onclick="workerReport('${a.id}')" style="border-color:var(--st-late);color:var(--st-late);font-size:13px">⚠ Báo lỗi</button>`;
+    } else {
+      btns = `<button onclick="workerSetStage('${a.id}','doing')" style="background:var(--st-prod);border-color:var(--st-prod);font-size:15px;padding:11px 20px">▶ BẮT ĐẦU</button>`;
+    }
+    return `<div class="card" style="border-left:6px solid ${sColor};display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:16px;font-weight:800">${o?esc(o.code):'?'} · ${esc((st&&(st.code+' '+(st.name||'')))||a.stage||'')}</div>
+        <div class="muted" style="font-size:13px;margin-top:2px">${o?esc(truncate(o.name,60)):''}</div>
+        <div style="margin-top:4px"><span class="pill" style="background:${sColor};font-size:11px">${sLabel}</span> <span class="muted small">· ${a.hours||8}h${st&&st.location?' · @'+esc(st.location):''}</span></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">${btns}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="card" style="background:#fff;border-left:4px solid var(--brand)">
+      <div class="toolbar" style="margin:0;align-items:center">
+        <b style="font-size:15px">👷 Tôi là:</b>
+        <select onchange="todayWho=this.value;DATA.meta.workerId=this.value;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA))}catch(e){};renderToday()" style="font-size:15px;font-weight:700;min-width:200px">${staffOpts}</select>
+        <input type="date" value="${esc(todayDate)}" onchange="todayDate=this.value;renderToday()" style="font-size:14px">
+        <button class="ghost sm" onclick="todayDate=todayStr();renderToday()">Hôm nay</button>
+        <span class="muted small" style="margin-left:auto">${jobs.length} việc · tổng ${totalH}h${totalH>8?' <b style="color:var(--st-late)">⚠ quá 8h</b>':''}</span>
+      </div>
+    </div>
+    ${ jobs.length ? cards : '<div class="card empty">Hôm nay chưa có việc nào được giao cho người này. Quản đốc gán công đoạn (có người + ngày) thì việc sẽ tự hiện ở đây.</div>' }
+    <p class="small muted" style="margin-top:10px">Bấm <b>BẮT ĐẦU</b> khi vào làm, <b>XONG</b> khi hoàn thành công đoạn — tiến độ đơn tự cập nhật, quản đốc thấy ngay. Có sai lệch thì bấm <b>Báo lỗi</b> để ghi NCR.</p>`;
+}
+
+/* ============================================================
+   BẢNG FOLLOW QUY TRÌNH — cả xưởng đang ở khâu nào (Kanban theo công đoạn)
+   ============================================================ */
+function currentStage(o){
+  const list=(o.stages||[]).filter(Boolean);
+  if(!list.length) return undefined;            // chưa vạch công đoạn
+  return list.find(s=>stageState(s)!=='done') || null;  // null = đã xong hết công đoạn
+}
+function renderProcessBoard(){
+  const el=document.getElementById('view-process');
+  const today=todayStr();
+  const open=(DATA.orders||[]).filter(o=>o && o.status!=='delivered');
+  const cols={}; // key -> {code,name,orders:[]}
+  const NOSTAGE='__none__', DONE='__done__';
+  open.forEach(o=>{
+    const cs=currentStage(o);
+    let key, code, name;
+    if(cs===undefined){ key=NOSTAGE; code='—'; name='Chưa vạch công đoạn'; }
+    else if(cs===null){ key=DONE; code='✓'; name='Đã xong công đoạn (chờ giao)'; }
+    else { key=cs.code||'?'; code=cs.code||'?'; name=cs.name||''; }
+    (cols[key]=cols[key]||{code,name,key,orders:[]}).orders.push({o,cs});
+  });
+  // sắp cột theo thứ tự công đoạn chuẩn, rồi tới NOSTAGE/DONE
+  const presetOrder={}; STAGE_PRESETS.forEach((p,i)=>presetOrder[p.c]=i);
+  const keys=Object.keys(cols).sort((a,b)=>{
+    const rank=k=> k===NOSTAGE? -1 : (k===DONE? 999 : (presetOrder[cols[k].code]!=null?presetOrder[cols[k].code]:500));
+    return rank(a)-rank(b);
+  });
+  const colHtml=keys.map(k=>{
+    const c=cols[k];
+    const accent = k===DONE?'#22C55E':(k===NOSTAGE?'#9CA3AF':'#6366F1');
+    const cards=c.orders.sort((x,y)=>{
+      const dx=x.cs&&x.cs.startDate?daysBetween(x.cs.startDate,today):-1, dy=y.cs&&y.cs.startDate?daysBetween(y.cs.startDate,today):-1;
+      return dy-dx;
+    }).map(({o,cs})=>{
+      const ref=o.requestedDate||o.dueDate;
+      const overdue=ref&&ref<today;
+      const days=cs&&cs.startDate?daysBetween(cs.startDate,today):null;
+      const late=cs&&stageState(cs)==='late';
+      const who=cs&&(cs.assignee?staffName(cs.assignee):cs.location)||'';
+      return `<div onclick="openOrderModal('${o.id}')" style="cursor:pointer;background:#fff;border:1px solid var(--line);${overdue?'border-left:3px solid var(--st-late);':''}border-radius:8px;padding:8px 10px;margin-bottom:7px">
+        <div style="font-weight:800;font-size:12.5px">${esc(o.code)}</div>
+        <div class="small muted" style="margin:1px 0 3px;white-space:normal">${esc(truncate(o.name,42))}</div>
+        ${who?`<div style="font-size:10.5px;color:#0EA5E9;font-weight:700">👤 ${esc(truncate(who,18))}</div>`:''}
+        <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
+          ${days!=null?`<span style="font-size:10px;font-weight:700;color:${late?'var(--st-late)':'var(--muted)'}">${late?'⛔ ':''}${days}n tại khâu</span>`:''}
+          ${overdue?'<span style="font-size:10px;color:var(--st-late);font-weight:700">· quá hạn</span>':''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="min-width:210px;max-width:240px;flex:0 0 auto;background:#f4f6f9;border-radius:10px;padding:8px;border-top:3px solid ${accent}">
+      <div style="font-weight:800;font-size:12.5px;margin-bottom:8px;display:flex;justify-content:space-between">
+        <span><span style="background:${accent};color:#fff;border-radius:5px;padding:1px 7px;margin-right:5px">${esc(c.code)}</span>${esc(c.name)}</span>
+        <span class="muted">${c.orders.length}</span>
+      </div>
+      ${cards||'<div class="small muted" style="padding:6px">—</div>'}
+    </div>`;
+  }).join('');
+  el.innerHTML=`
+    <h2 class="sec"><span class="bar"></span>🔧 Bảng theo dõi quy trình — cả xưởng đang ở khâu nào</h2>
+    <p class="small muted" style="margin:0 0 12px">Mỗi cột là một công đoạn · mỗi thẻ là một đơn đang nằm ở công đoạn đó (khâu đầu tiên chưa xong). Bấm thẻ để mở/sửa đơn. ⛔/đỏ = đang trễ. Cập nhật khi công nhân tick Xong.</p>
+    ${ open.length? `<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:flex-start">${colHtml}</div>` : '<div class="card empty">Chưa có đơn nào đang mở. Tạo đơn + vạch công đoạn để theo dõi tại đây.</div>' }`;
+}
+
+/* ============================================================
    KHÁCH HÀNG (CUSTOMERS)
    ============================================================ */
 let custFilter = { q:'' };
@@ -2800,6 +3082,8 @@ function renderAll(){
   const id = active.id;
   try{
     if(id==='view-grid') renderGrid();
+    else if(id==='view-today') renderToday();
+    else if(id==='view-process') renderProcessBoard();
     else if(id==='view-customers') renderCustomers();
     else if(id==='view-kpi') renderKpi();
     else if(id==='view-outsource') renderOutsource();
@@ -2824,6 +3108,7 @@ window.addEventListener('error', function(ev){ console.error('Lỗi toàn cục:
 load();
 renderAll();
 applyLang();
+applyRole();
 autoPullOnStart(); // nếu đã cấu hình URL + bật tự đồng bộ → tự kéo dữ liệu chung về khi mở app
 
 /* ===== PWA: service worker network-only — luôn lấy bản mới, tự cập nhật ===== */

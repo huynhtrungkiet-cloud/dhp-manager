@@ -780,6 +780,17 @@ function sanitizeOrderDates(){
   (DATA.staff||[]).forEach(s=>{ if(s && s.name!=null && typeof s.name!=='string') s.name=String(s.name); });
 }
 function truncate(s,n){ s=(s==null?'':String(s)); return s.length>n? s.slice(0,n)+'…' : s; }
+// Danh sách N NGÀY LÀM VIỆC từ ngày bắt đầu (bỏ Chủ Nhật). VD start 18/6 + 3 ngày → [18,19,20] (nếu CN thì nhảy qua)
+function ymdLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function workingDaysFrom(startStr, count){
+  startStr = normDate(startStr); if(!startStr) return [];
+  const out=[]; const d=new Date(startStr+'T00:00:00'); count=Math.max(1, count||1);
+  let guard=0;
+  while(out.length<count && guard<400){ if(d.getDay()!==0) out.push(ymdLocal(d)); d.setDate(d.getDate()+1); guard++; }
+  return out;
+}
+// Ngày XONG dự kiến = ngày làm việc cuối cùng
+function stageFinishDate(startStr, plannedDays){ const a=workingDaysFrom(startStr, plannedDays); return a.length? a[a.length-1] : normDate(startStr); }
 function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(stLabel(s).replace(/^\d+\.\s*/,''))}</span>`; }
 function sevLabel(s){ return s=='1'?'Nghiêm trọng':(s=='2'?'Trung bình':'Nhẹ'); }
 function fillSelect(sel, items, valueKey, labelKey, placeholder){
@@ -1482,9 +1493,11 @@ function plannedHoursOnDay(staffId, date, orderId){
 function workloadHintHtml(s){
   if(!s.assignee || !s.startDate) return '<span class="small muted">↪ chọn người + ngày để TỰ lên lịch</span>';
   const d=normDate(s.startDate);
+  const n=Math.max(1, parseInt(s.plannedDays)||1);
+  const fin=stageFinishDate(d, n);
   const h=plannedHoursOnDay(s.assignee, d, (document.getElementById('ord_id')||{}).value||'');
   const over=h>8;
-  return `<span class="small" style="color:${over?'var(--st-late)':'#16A34A'};font-weight:700">✓ sẽ lên lịch · ${esc(staffName(s.assignee))} ngày ${fmtDate(d)}: ${h}h${over?' ⚠ QUÁ TẢI':''}</span>`;
+  return `<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${fmtDate(d)}${n>1?' → xong '+fmtDate(fin)+' ('+n+' ngày, bỏ CN)':''}</span>${over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày đầu '+h+'h quá tải</span>':''}`;
 }
 function pickStagePreset(i, c){
   const p = STAGE_PRESETS.find(x=>x.c===c);
@@ -1558,11 +1571,11 @@ function itemStagesHtml(it,i){
     return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;border-left:3px solid ${STAGE_COLORS[st]};padding-left:5px">
       <select style="width:120px;font-size:11px" onchange="pickItemStagePreset(${i},${si},this.value)" title="Loại công đoạn"><option value="">— loại —</option>${STAGE_PRESETS.map(p=>`<option value="${p.c}" ${String(s.code||'').replace(/\d+$/,'')===p.c?'selected':''}>${p.c} ${p.n}</option>`).join('')}</select>
       <input style="width:38px;font-weight:800;font-size:11px" value="${esc(s.code||'')}" oninput="updItemStage(${i},${si},'code',this.value)" placeholder="Mã" title="Mã">
-      <input style="flex:1;min-width:90px;font-size:11px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu?" oninput="updItemStage(${i},${si},'location',this.value)">
-      <input type="number" style="width:44px;font-size:11px" value="${s.plannedDays!=null?s.plannedDays:''}" placeholder="KH" oninput="updItemStage(${i},${si},'plannedDays',this.value)" title="Ngày kế hoạch">
+      <input type="number" style="width:60px;font-size:11px" min="0" step="0.5" value="${s.plannedDays!=null?s.plannedDays:''}" placeholder="số ngày" oninput="updItemStage(${i},${si},'plannedDays',this.value)" title="Số ngày dự tính làm (tự dàn lên lịch, bỏ CN)">
       <select style="width:80px;font-size:11px" onchange="updItemStage(${i},${si},'status',this.value)"><option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa</option><option value="doing" ${s.status==='doing'?'selected':''}>Đang</option><option value="done" ${s.status==='done'?'selected':''}>Xong</option></select>
       <select style="width:120px;font-size:11px" onchange="updItemStage(${i},${si},'assignee',this.value)" title="Người làm → tự lên lịch"><option value="">👤 ai làm?</option>${(DATA.staff||[]).filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
-      <input type="date" style="width:118px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày dự kiến → tự lên lịch">
+      <input type="date" style="width:118px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu → tự lên lịch">
+      ${(s.startDate && (parseInt(s.plannedDays)||1)>1)?`<span class="small" style="color:#16A34A;white-space:nowrap" title="Tự dàn ${parseInt(s.plannedDays)} ngày làm việc, bỏ CN">→ ${fmtDate(stageFinishDate(s.startDate,s.plannedDays))}</span>`:''}
       <a onclick="rmItemStage(${i},${si})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
     </div>`;
   }).join('');
@@ -1706,21 +1719,25 @@ function syncAssignmentsFromOrder(o){
   const mk = (st, label, itemId)=>{
     if(!st || !st.assignee || !st.startDate) return;
     if(!st.id) st.id = localId('ST');   // đảm bảo có id để công nhân tick đúng công đoạn
-    DATA.assignments.push({
-      id: localId('PCS'),
-      staffId: st.assignee,
-      date: normDate(st.startDate),
-      kind: 'order',
-      orderId: o.id,
-      stageId: st.id,
-      stageCode: st.code||'',
-      itemId: itemId||'',
-      stage: (st.code? st.code+' · ':'') + (st.name||'') + (label?' ['+label+']':''),
-      hours: parseFloat(st.hours)||8,
-      note: '',
-      fromStage: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    const n = Math.max(1, parseInt(st.plannedDays)||1);
+    const days = workingDaysFrom(st.startDate, n);   // dàn qua N ngày làm việc, bỏ CN
+    days.forEach((dy,di)=>{
+      DATA.assignments.push({
+        id: localId('PCS'),
+        staffId: st.assignee,
+        date: dy,
+        kind: 'order',
+        orderId: o.id,
+        stageId: st.id,
+        stageCode: st.code||'',
+        itemId: itemId||'',
+        stage: (st.code? st.code+' · ':'') + (st.name||'') + (label?' ['+label+']':'') + (n>1?' ('+(di+1)+'/'+n+')':''),
+        hours: parseFloat(st.hours)|| (n>1? 8 : 8),
+        note: '',
+        fromStage: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
     });
   };
   (o.stages||[]).filter(Boolean).forEach(st=>mk(st, '', ''));

@@ -135,7 +135,7 @@
     <label style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:12px;font-size:11.5px;color:#6b7280;cursor:pointer">
       <input type="checkbox" id="gateRemember" checked> Ghi nhớ trên thiết bị này
     </label>
-    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">🛠 Quản đốc: thấy tất cả · 👷 Công nhân: chỉ "Việc hôm nay"</p>
+    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">👁 Mật khẩu xem: cho mọi người · 🔓 Mật khẩu sửa: chỉ TPKT &amp; điều phối</p>
   </div>
   <p style="color:rgba(255,255,255,.7);font-size:11px;margin-top:18px">Chỉ dành cho nội bộ Đại Hồng Phát</p>
 </div>
@@ -144,8 +144,8 @@
    ĐỔI MẬT KHẨU: sửa giá trị APP_PASSCODE bên dưới rồi upload lại index.html.
    Lưu ý: đây là lớp chặn cơ bản cho nội bộ — bảo vệ thật sự nằm ở URL Google Sheets (chìa khóa dữ liệu). */
 // ĐỔI MẬT KHẨU: sửa 2 giá trị này rồi upload lại index.html.
-const APP_PASSCODE    = 'dhp368';   // Quản đốc / quản lý — thấy TẤT CẢ
-const WORKER_PASSCODE = 'tho368';   // Công nhân — chỉ thấy "Việc hôm nay"
+window.VIEW_PASSCODE = 'dhp368';    // XEM — cho mọi người trong công ty
+window.EDIT_PASSCODE = 'edit368';   // SỬA — chỉ TPKT & điều phối
 (function(){
   if(localStorage.getItem('dhp_gate_ok')==='1' || sessionStorage.getItem('dhp_gate_ok')==='1'){
     document.getElementById('gate').style.display='none';
@@ -153,7 +153,7 @@ const WORKER_PASSCODE = 'tho368';   // Công nhân — chỉ thấy "Việc hôm
 })();
 function gateCheck(){
   const v = document.getElementById('gatePass').value;
-  const role = (v===APP_PASSCODE) ? 'admin' : ((v===WORKER_PASSCODE) ? 'worker' : null);
+  const role = (v===window.EDIT_PASSCODE) ? 'editor' : ((v===window.VIEW_PASSCODE) ? 'viewer' : null);
   if(role){
     const store = document.getElementById('gateRemember').checked ? localStorage : sessionStorage;
     store.setItem('dhp_gate_ok','1');
@@ -175,9 +175,11 @@ function gateCheck(){
   </div>
   <div class="right">
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:4px">
-      <span id="roleBadge" style="font-size:11px;font-weight:800;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px">🛠 Quản đốc</span>
+      <span id="roleBadge" style="font-size:11px;font-weight:800;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px">👁 Chỉ xem</span>
+      <button id="unlockBtn" class="ghost sm" onclick="unlockEdit()" title="Mở khóa chỉnh sửa (TPKT & điều phối)">🔓 Mở khóa sửa</button>
+      <button id="lockEditBtn" class="ghost sm" onclick="lockEdit()" title="Khóa sửa (về chỉ xem)" style="display:none">🔒 Khóa sửa</button>
       <button class="ghost sm" onclick="toggleLang()" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
-      <button class="ghost sm" onclick="lockApp()" title="Đăng xuất / đổi vai trò">🔒</button>
+      <button class="ghost sm" onclick="lockApp()" title="Đăng xuất">⎋</button>
     </div>
     <div id="topUser">—</div>
     <div id="topStamp" class="small"></div>
@@ -328,12 +330,17 @@ function gateCheck(){
     </div>
     <div class="field"><label>Tên hàng / sản phẩm</label><textarea id="ord_name" rows="2" placeholder="Tên hàng, mô tả ngắn"></textarea></div>
     <div class="field"><label>Loại đơn</label>
-      <select id="ord_type">
+      <select id="ord_type" onchange="toggleTargetField()">
         <option value="Gia công">Gia công cơ khí</option>
         <option value="Lắp đặt / Dịch vụ">Lắp đặt / Dịch vụ / Cân chỉnh</option>
         <option value="Thương mại">Thương mại (mua – bán)</option>
         <option value="Dự án">Dự án (nhiều chi tiết)</option>
+        <option value="Nội bộ">Công việc nội bộ / Giao thêm (không có KH)</option>
       </select>
+    </div>
+    <div class="field" id="ord_target_field" style="display:none">
+      <label>🎯 Mục tiêu / Target <span class="muted small">(cho công việc nội bộ — vd: "Gia công 20 đồ gá", "Tồn kho 50 ống lót", "Bảo trì máy tiện trước 30/6")</span></label>
+      <input id="ord_target" placeholder="Mục tiêu cần đạt + mốc thời gian">
     </div>
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff">
       <label>🔧 Công đoạn (routing) <span class="muted small">— mã cố định: A=Tiện, B=Phay, C=Cắt dây... L=Mua phôi, M=Hợp đồng/Thủ tục. Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
@@ -643,6 +650,7 @@ const SEED_ORDERS_JUNE2026 = [
 ];
 
 function loadSeedOrders(){
+  if(!requireEdit()) return;
   if(typeof SEED_ORDERS_ALL === 'undefined'){ alert('Thiếu file seed_orders.js — hãy upload file đó cùng index.html.'); return; }
   // Chống trùng theo mã đơn — bấm nhiều lần không bị nhân đôi
   const existCodes = new Set(DATA.orders.map(o=>o.code));
@@ -834,29 +842,40 @@ function toggleLang(){ LANG = (LANG==='vi'?'en':'vi'); localStorage.setItem('dhp
 /* ---------------- TAB NAV ---------------- */
 function goTab(name){
   if(name==='orders') name='grid'; // tab Đơn hàng đã gộp vào Lịch phân công
-  if(getRole()==='worker' && name!=='today') name='today'; // công nhân chỉ ở màn Việc hôm nay
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
   renderAll();
 }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
-/* ===== VAI TRÒ: Quản đốc (admin) thấy hết · Công nhân (worker) chỉ Việc hôm nay ===== */
-function getRole(){ return localStorage.getItem('dhp_role') || sessionStorage.getItem('dhp_role') || 'admin'; }
+/* ===== VAI TRÒ: ai cũng XEM · chỉ "editor" (2 người) mới SỬA ===== */
+function getRole(){ return localStorage.getItem('dhp_role') || sessionStorage.getItem('dhp_role') || 'viewer'; }
+function canEdit(){ return getRole()==='editor'; }
+// Chặn thao tác sửa khi đang ở chế độ Chỉ xem — gọi đầu các hàm sửa
+function requireEdit(){
+  if(canEdit()) return true;
+  alert('Bạn đang ở chế độ 👁 CHỈ XEM.\nBấm "🔓 Mở khóa sửa" (góc trên phải) và nhập mật khẩu sửa — chỉ TPKT & điều phối.');
+  return false;
+}
 function applyRole(){
-  const worker = getRole()==='worker';
-  document.querySelectorAll('.tab').forEach(t=>{
-    t.style.display = (!worker || t.dataset.tab==='today') ? '' : 'none';
-  });
+  document.querySelectorAll('.tab').forEach(t=>{ t.style.display=''; }); // mọi người xem hết
   const rb = document.getElementById('roleBadge');
-  if(rb) rb.textContent = worker ? '👷 Công nhân' : '🛠 Quản đốc';
-  if(worker){
-    const active = document.querySelector('.view.active');
-    if(!active || active.id!=='view-today') goTab('today');
-  }
+  if(rb) rb.textContent = canEdit() ? '🔓 Quản lý' : '👁 Chỉ xem';
+  const ub = document.getElementById('unlockBtn'); if(ub) ub.style.display = canEdit() ? 'none' : '';
+  const kb = document.getElementById('lockEditBtn'); if(kb) kb.style.display = canEdit() ? '' : 'none';
+  renderAll();
+}
+function unlockEdit(){
+  const v = prompt('Nhập MẬT KHẨU SỬA (chỉ TPKT & điều phối):');
+  if(v===null) return;
+  if(v===window.EDIT_PASSCODE){ sessionStorage.setItem('dhp_role','editor'); localStorage.setItem('dhp_role','editor'); applyRole(); }
+  else alert('Sai mật khẩu sửa.');
+}
+function lockEdit(){ // hạ về chỉ xem (không đăng xuất)
+  localStorage.setItem('dhp_role','viewer'); sessionStorage.setItem('dhp_role','viewer'); applyRole();
 }
 function lockApp(){
-  if(!confirm('Đăng xuất / đổi vai trò? (Sẽ hỏi lại mật khẩu)')) return;
+  if(!confirm('Đăng xuất hoàn toàn? (Sẽ hỏi lại mật khẩu khi vào)')) return;
   ['dhp_gate_ok','dhp_role'].forEach(k=>{ localStorage.removeItem(k); sessionStorage.removeItem(k); });
   location.reload();
 }
@@ -1217,6 +1236,7 @@ function openStaffEdit(id){
   openModal('modalStaffEdit');
 }
 function saveStaff(){
+  if(!requireEdit()) return;
   const name = document.getElementById('st_name').value.trim();
   if(!name){ alert('Vui lòng nhập họ tên / tên đối tác.'); return; }
   const id = document.getElementById('st_id').value;
@@ -1291,7 +1311,7 @@ function refreshOrders(){
 function ordersSectionHtml(){
   return `
     <div class="toolbar">
-      <button onclick="openOrderModal()">${t('btn_addOrder')}</button>
+      ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
       <input id="ofQ" placeholder="${t('search_ph')}" style="min-width:240px" oninput="orderFilter.q=this.value;refreshOrders()" value="${esc(orderFilter.q)}">
       <select onchange="orderFilter.status=this.value;refreshOrders()">
         <option value="">${t('f_allStatus')}</option>
@@ -1367,6 +1387,7 @@ function ordersTable(){
         if(o.driveFolder) bits.push(`<a href="${esc(o.driveFolder)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;font-weight:700;color:#0EA5E9">📁 Drive</a>`);
         if(o.attachments&&o.attachments.length) bits.push(`<span style="font-size:10px;color:var(--muted)">🔗 ${o.attachments.length}</span>`);
         if(o.measures&&o.measures.length){ const fail=o.measures.filter(m=>m.pass==='fail').length; bits.push(`<span style="font-size:10px;font-weight:700;color:${fail?'var(--st-late)':'#16A34A'}" title="Nghiệm thu: ${o.measures.length} thông số${fail?', '+fail+' KHÔNG đạt':''}">📐 ${o.measures.length}${fail?' ⚠'+fail:''}</span>`); }
+        if(o.target) bits.push(`<span style="font-size:10px;font-weight:700;color:#D97706" title="Mục tiêu">🎯 ${esc(truncate(o.target,40))}</span>`);
         return bits.length?`<div style="margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">${bits.join('')}</div>`:'';
       })()}${stageChainHtml(o)}</td>
       <td style="min-width:150px;white-space:normal;word-break:break-word">${esc(o.company)}</td>
@@ -1399,6 +1420,7 @@ function stageTplBarHtml(){
     <span class="small" style="font-weight:700;color:#3730a3">📋 Mẫu quy trình:</span>
     <select id="stageTplSel" style="font-size:11.5px;max-width:240px"><option value="">— chọn mẫu đã lưu —</option>${tpls.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} (${(t.stages||[]).length} CĐ)</option>`).join('')}</select>
     <a onclick="applyNamedTemplate()" style="cursor:pointer;color:#6366F1;font-weight:700;font-size:11.5px">▶ Áp dụng</a>
+    <a onclick="suggestRoutingFromSimilar()" style="cursor:pointer;color:#0EA5E9;font-weight:700;font-size:11.5px">💡 Gợi ý từ đơn giống</a>
     <a onclick="saveAsTemplate()" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11.5px">💾 Lưu chuỗi này thành mẫu</a>
     ${tpls.length?'<a onclick="deleteTemplate()" style="cursor:pointer;color:var(--muted);font-size:11.5px">🗑 Xóa mẫu đang chọn</a>':''}
   </div>`;
@@ -1638,6 +1660,29 @@ function saveAsTemplate(){
   renderStagesEditor();
   alert('Đã lưu mẫu "'+name.trim()+'". Lần sau chọn ở ô "Mẫu quy trình" là ra ngay.');
 }
+// Gợi ý quy trình từ đơn CŨ có tên giống (không cần AI — dò trùng từ khóa)
+function nameWords(s){
+  return String(s||'').toLowerCase().replace(/[^a-z0-9à-ỹ\s]/gi,' ').split(/\s+/)
+    .filter(w=>w.length>=2 && !['cho','và','các','bộ','cái','theo','lỗ','trục','then','mm','d1','d2'].includes(w));
+}
+function suggestRoutingFromSimilar(){
+  const myName=(document.getElementById('ord_name')||{}).value||'';
+  const myId=(document.getElementById('ord_id')||{}).value||'';
+  const myW=nameWords(myName);
+  if(!myW.length){ alert('Nhập "Tên hàng / sản phẩm" trước để app dò đơn giống.'); return; }
+  let best=null, bestScore=0;
+  (DATA.orders||[]).forEach(o=>{
+    if(!o || o.id===myId) return;
+    if(!(o.stages||[]).filter(Boolean).length) return;   // chỉ xét đơn ĐÃ có quy trình
+    const w=nameWords(o.name);
+    const score=myW.filter(x=>w.includes(x)).length;
+    if(score>bestScore){ bestScore=score; best=o; }
+  });
+  if(!best || bestScore<1){ alert('Chưa tìm thấy đơn cũ nào giống (có quy trình) để gợi ý.\nGợi ý: dùng "Mẫu quy trình" đã lưu, hoặc tự thêm công đoạn.'); return; }
+  if(!confirm('Tìm thấy đơn giống nhất:\n\n'+best.code+' — '+best.name+'\n('+ (best.stages.filter(Boolean).length) +' công đoạn, khớp '+bestScore+' từ khóa)\n\nÁp dụng quy trình của đơn này vào đây?')) return;
+  editingStages = best.stages.filter(Boolean).map(s=>({id:localId('ST'), code:s.code||'', name:s.name||'', location:s.location||'', plannedDays:s.plannedDays!=null?s.plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:s.hours!=null?s.hours:null, note:''}));
+  renderStagesEditor();
+}
 function deleteTemplate(){
   const id=(document.getElementById('stageTplSel')||{}).value;
   const t=(DATA.routingTemplates||[]).find(x=>x.id===id);
@@ -1693,6 +1738,7 @@ function openOrderModal(id){
     document.getElementById('ord_company').value = o.company||'';
     document.getElementById('ord_name').value = o.name||'';
     document.getElementById('ord_type').value = o.orderType||'Gia công';
+    document.getElementById('ord_target').value = o.target||'';
     document.getElementById('ord_qty').value = o.qty||'';
     document.getElementById('ord_unit').value = o.unit||'';
     document.getElementById('ord_priority').value = o.priority||'';
@@ -1725,6 +1771,7 @@ function openOrderModal(id){
     document.getElementById('ord_inspector').value = '';
     document.getElementById('ord_inspectDate').value = '';
     document.getElementById('ord_priority').value = '';
+    document.getElementById('ord_target').value = '';
     document.getElementById('ord_type').value = 'Gia công';
     document.getElementById('ord_status').value = 'new';
     document.getElementById('ord_assignment').value = 'inhouse';
@@ -1735,13 +1782,19 @@ function openOrderModal(id){
   renderStagesEditor();
   renderMeasuresEditor();
   toggleOutsourceField();
+  toggleTargetField();
   openModal('modalOrder');
+}
+function toggleTargetField(){
+  const f=document.getElementById('ord_target_field');
+  if(f) f.style.display = (document.getElementById('ord_type').value==='Nội bộ') ? 'block' : 'none';
 }
 function toggleOutsourceField(){
   const v = document.getElementById('ord_assignment').value;
   document.getElementById('ord_partner_field').style.display = (v==='outsource'||v==='mixed') ? 'block':'none';
 }
 function saveOrder(){
+  if(!requireEdit()) return;
   const id = document.getElementById('ord_id').value;
   const name = document.getElementById('ord_name').value.trim();
   if(!name){ alert('Vui lòng nhập tên hàng / sản phẩm.'); return; }
@@ -1752,6 +1805,7 @@ function saveOrder(){
     company: document.getElementById('ord_company').value.trim(),
     name,
     orderType: document.getElementById('ord_type').value,
+    target: document.getElementById('ord_target').value.trim(),
     qty: parseFloat(document.getElementById('ord_qty').value)||null,
     unit: document.getElementById('ord_unit').value.trim(),
     priority: document.getElementById('ord_priority').value,
@@ -1796,6 +1850,7 @@ function saveOrder(){
   goTab('orders');
 }
 function deleteOrder(id){
+  if(!requireEdit()) return;
   if(!confirm('Xóa đơn hàng này? (Các ghi nhận NCR/outsource/phân công liên quan vẫn được giữ lại nhưng sẽ mất liên kết — ô lịch tương ứng sẽ hiển thị "?".)')) return;
   DATA.orders = DATA.orders.filter(o=>o.id!==id);
   // dọn việc tự sinh từ công đoạn của đơn này khỏi lịch
@@ -1943,6 +1998,7 @@ function renderBottleneckHtml(){ try{
     </div>`;
 }catch(e){ console.error('bottleneck', e); return ''; } }
 function quickStatusChange(id, newStatus){
+  if(!requireEdit()){ renderAll(); return; }
   const o = DATA.orders.find(x=>x.id===id);
   if(!o || o.status===newStatus) return;
   if(newStatus==='hold'){
@@ -2048,6 +2104,7 @@ function openOutModal(id){
   openModal('modalOut');
 }
 function saveOutsource(){
+  if(!requireEdit()) return;
   const orderId = document.getElementById('out_order').value;
   const partner = document.getElementById('out_partner').value;
   if(!orderId || !partner){ alert('Vui lòng chọn đơn hàng và đối tác.'); return; }
@@ -2138,6 +2195,7 @@ function openNcrModal(id){
   openModal('modalNcr');
 }
 function saveNcr(){
+  if(!requireEdit()) return;
   const orderId = document.getElementById('ncr_order').value;
   const description = document.getElementById('ncr_desc').value.trim();
   if(!orderId){ alert('Vui lòng chọn đơn hàng liên quan.'); return; }
@@ -2285,10 +2343,12 @@ let _sb = null;            // client Supabase
 let _sbChannels = [];      // các kênh real-time đang lắng nghe
 function supaConfigured(){ return !!(DATA.meta && DATA.meta.supaUrl && DATA.meta.supaKey); }
 function setSupaStatus(msg, err){ const el=document.getElementById('supaStatus'); if(el){ el.textContent=msg; el.style.color=err?'var(--st-late)':'#16A34A'; } }
+// Cắt phần dư người dùng hay dán nhầm: /rest/v1, dấu / cuối...
+function cleanSupaUrl(u){ return String(u||'').trim().replace(/\/rest\/v1\/?$/i,'').replace(/\/+$/,''); }
 function initSupabase(){
   if(!supaConfigured()) return false;
   if(typeof supabase==='undefined'){ setSupaStatus('Chưa tải được thư viện Supabase (cần internet).', true); return false; }
-  try{ _sb = supabase.createClient(DATA.meta.supaUrl.trim(), DATA.meta.supaKey.trim()); return true; }
+  try{ _sb = supabase.createClient(cleanSupaUrl(DATA.meta.supaUrl), DATA.meta.supaKey.trim()); return true; }
   catch(e){ setSupaStatus('Lỗi khởi tạo: '+e.message, true); return false; }
 }
 // Đẩy toàn bộ dữ liệu local lên Supabase (upsert theo id)
@@ -2339,7 +2399,7 @@ function supaSubscribe(){
   });
 }
 async function setSupaConfig(){
-  DATA.meta.supaUrl = document.getElementById('supaUrl').value.trim();
+  DATA.meta.supaUrl = cleanSupaUrl(document.getElementById('supaUrl').value);
   DATA.meta.supaKey = document.getElementById('supaKey').value.trim();
   _suppressAutoPush=true; save(); _suppressAutoPush=false;
   if(!supaConfigured()){ setSupaStatus('Đã xóa cấu hình Supabase.'); return; }
@@ -2670,6 +2730,7 @@ function findStageForAssign(a){
   return st ? {order:o, host, stage:st} : {order:o, host, stage:null};
 }
 function workerSetStage(assignId, newStatus){
+  if(!requireEdit()) return;
   const a = (DATA.assignments||[]).find(x=>x && x.id===assignId); if(!a) return;
   const f = findStageForAssign(a);
   if(!f || !f.stage){ alert('Không tìm thấy công đoạn (đơn có thể đã đổi). Báo quản đốc.'); return; }
@@ -2857,6 +2918,7 @@ function openCustomerModal(id){
   openModal('modalCustomer');
 }
 function saveCustomer(){
+  if(!requireEdit()) return;
   const name = document.getElementById('cust_name').value.trim();
   if(!name){ alert('Vui lòng nhập tên công ty.'); return; }
   const id = document.getElementById('cust_id').value;

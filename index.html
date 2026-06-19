@@ -959,11 +959,24 @@ function jobInfo(a){
 function cellStackHtml(staffId, dateStr){
   const jobs = assignmentsForCell(staffId, dateStr);
   if(!jobs.length) return null;
-  const items = jobs.map(a=>{
-    const info = jobInfo(a);
-    return `<div class="jobchip" style="background:${info.color}" title="${esc(info.title)}">${esc(info.shortCode)}</div>`;
-  }).join('');
-  return `<div class="joblist">${items}</div>`;
+  // GOM theo đơn (kind=order) để khỏi "nhảy quá trời": 1 đơn = 1 chip + số việc trong ngày
+  const groups = {};      // key -> {color, shortCode, count, titles[]}
+  const others = [];      // việc không phải đơn (nghỉ, đào tạo...) giữ riêng
+  jobs.forEach(a=>{
+    const info = jobInfo(a); if(!info) return;
+    if(a.kind==='order' && a.orderId){
+      const g = groups[a.orderId] = groups[a.orderId] || {color:info.color, shortCode:info.shortCode, count:0, titles:[]};
+      g.count++; g.titles.push(info.title);
+    } else {
+      others.push(info);
+    }
+  });
+  let items = Object.keys(groups).map(oid=>{
+    const g = groups[oid];
+    return `<div class="jobchip" style="background:${g.color}" title="${esc(g.titles.join('\n— '))}">${esc(g.shortCode)}${g.count>1?' ×'+g.count:''}</div>`;
+  });
+  others.forEach(info=> items.push(`<div class="jobchip" style="background:${info.color}" title="${esc(info.title)}">${esc(info.shortCode)}</div>`));
+  return `<div class="joblist">${items.join('')}</div>`;
 }
 
 function renderGrid(){

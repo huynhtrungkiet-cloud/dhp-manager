@@ -419,6 +419,15 @@ function gateCheck(){
         <input id="ord_inspectDate" type="date" title="Ngày nghiệm thu">
       </div>
     </div>
+    <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff7ed">
+      <label>📦 Vật tư cần mua / phôi chế tạo <span class="muted small">— gửi kế toán đặt mua. Bấm "Copy gửi kế toán" để dán vào Zalo nhóm kế toán–GĐ.</span></label>
+      <div id="ord_mat_list"></div>
+      <div class="toolbar" style="margin-top:8px">
+        <button type="button" class="ghost sm" onclick="addMaterial()">＋ Thêm vật tư</button>
+        <button type="button" class="ghost sm" onclick="copyMaterialsForAccounting()">📋 Copy gửi kế toán</button>
+        <button type="button" class="ghost sm" onclick="exportMaterialsExcel()">📊 Xuất vật tư ra Excel</button>
+      </div>
+    </div>
     <div class="field"><label>Ghi chú / Lưu ý</label><textarea id="ord_note" rows="2"></textarea></div>
     <div class="toolbar" style="justify-content:flex-end">
       <button class="ghost" onclick="closeModal('modalOrder')">Hủy</button>
@@ -1664,6 +1673,60 @@ function addMeasure(){ editingMeasures.push({param:'',spec:'',actual:'',pass:''}
 function updMeasure(i,k,v){ if(editingMeasures[i]){ editingMeasures[i][k]=v; if(k==='pass') renderMeasuresEditor(); } }
 function rmMeasure(i){ editingMeasures.splice(i,1); renderMeasuresEditor(); }
 
+/* ---- Trình soạn VẬT TƯ MUA / PHÔI (gửi kế toán) ---- */
+let editingMaterials = [];
+function renderMaterialsEditor(){
+  const wrap=document.getElementById('ord_mat_list'); if(!wrap) return;
+  if(!editingMaterials.length){ wrap.innerHTML='<div class="small muted">Chưa có vật tư. Bấm "Thêm vật tư" nếu đơn cần mua phôi/vật liệu.</div>'; return; }
+  wrap.innerHTML = `<div style="display:flex;gap:6px;font-size:10px;font-weight:800;color:var(--muted);padding:0 2px 3px">
+    <span style="flex:1">Vật liệu</span><span style="width:120px">Quy cách</span><span style="width:60px">SL</span><span style="width:50px">ĐVT</span><span style="width:120px">NCC dự kiến</span><span style="width:14px"></span></div>` +
+    editingMaterials.map((m,i)=>`<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
+      <input style="flex:1;font-size:11px" value="${esc(m.material||'')}" placeholder="VD: Thép C45" oninput="updMaterial(${i},'material',this.value)">
+      <input style="width:120px;font-size:11px" value="${esc(m.spec||'')}" placeholder="Ø80×200" oninput="updMaterial(${i},'spec',this.value)">
+      <input style="width:60px;font-size:11px" value="${esc(m.qty||'')}" placeholder="2" oninput="updMaterial(${i},'qty',this.value)">
+      <input style="width:50px;font-size:11px" value="${esc(m.unit||'')}" placeholder="cây" oninput="updMaterial(${i},'unit',this.value)">
+      <input style="width:120px;font-size:11px" value="${esc(m.supplier||'')}" placeholder="NCC" oninput="updMaterial(${i},'supplier',this.value)">
+      <a onclick="rmMaterial(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
+    </div>`).join('');
+}
+function addMaterial(){ editingMaterials.push({material:'',spec:'',qty:'',unit:'',supplier:''}); renderMaterialsEditor(); }
+function updMaterial(i,k,v){ if(editingMaterials[i]) editingMaterials[i][k]=v; }
+function rmMaterial(i){ editingMaterials.splice(i,1); renderMaterialsEditor(); }
+function currentMaterials(){ return editingMaterials.filter(m=>(m.material||'').trim()||(m.spec||'').trim()); }
+function copyMaterialsForAccounting(){
+  const mats=currentMaterials();
+  if(!mats.length){ alert('Chưa có vật tư nào để gửi. Bấm "Thêm vật tư" trước.'); return; }
+  const code=document.getElementById('ord_code').value.trim()||'(chưa có mã)';
+  const name=document.getElementById('ord_name').value.trim()||'';
+  const cust=document.getElementById('ord_company').value.trim()||'';
+  const due=document.getElementById('ord_due').value||document.getElementById('ord_requested').value||'';
+  const lines=mats.map((m,i)=>`${i+1}. ${m.material||''}${m.spec?' — '+m.spec:''}${m.qty?' × '+m.qty+(m.unit?' '+m.unit:''):''}${m.supplier?' (NCC: '+m.supplier+')':''}`);
+  const txt=`📦 ĐỀ NGHỊ MUA VẬT TƯ — Xưởng CK368\n`+
+    `Đơn: ${code}${name?' — '+name:''}\n`+(cust?`Khách: ${cust}\n`:'')+(due?`Cần trước: ${fmtDate(due)}\n`:'')+
+    `--------------------\n`+lines.join('\n')+`\n--------------------\n`+
+    `Kính gửi Kế toán đặt mua, CC GĐ duyệt. Cảm ơn.`;
+  const done=()=>alert('✓ Đã copy. Dán (Ctrl+V) vào Zalo nhóm kế toán–GĐ để gửi.');
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt,done)); }
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,cb){
+  const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); if(cb)cb(); }catch(e){ prompt('Copy đoạn dưới đây gửi kế toán:', txt); }
+  ta.remove();
+}
+function exportMaterialsExcel(){
+  const mats=currentMaterials();
+  if(!mats.length){ alert('Chưa có vật tư nào để xuất.'); return; }
+  const code=document.getElementById('ord_code').value.trim()||'don';
+  const head=['STT','Vật liệu','Quy cách','SL','ĐVT','NCC dự kiến'];
+  const rows=mats.map((m,i)=>[i+1,m.material||'',m.spec||'',m.qty||'',m.unit||'',m.supplier||'']);
+  const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
+  const blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='DHP_vattu_'+code+'_'+todayStr()+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
 // Tạo nhanh chuỗi công đoạn chuẩn xưởng CK368 (có thể sửa lại sau)
 function applyStageTemplate(){
   if(editingStages.length && !confirm('Thay chuỗi công đoạn hiện tại bằng MẪU CHUẨN?\n(L Mua phôi → A Tiện → B Phay → K Đo/QC → N Đóng gói & nghiệm thu → X Xuất xưởng)')) return;
@@ -1796,6 +1859,7 @@ function openOrderModal(id){
     editingAtts = (o.attachments||[]).map(x=>({...x}));
     editingStages = (o.stages||[]).map(x=>({...x}));
     editingMeasures = (o.measures||[]).map(x=>({...x}));
+    editingMaterials = (o.materials||[]).map(x=>({...x}));
     document.getElementById('ord_inspector').value = o.inspector||'';
     document.getElementById('ord_inspectDate').value = o.inspectDate||'';
   } else {
@@ -2289,76 +2353,49 @@ function renderData(){
         <button class="secondary" onclick="(async()=>{if(!confirm('Tải từ Supabase về (thay dữ liệu local)?'))return;try{setSupaStatus('Đang tải về...');await supaPull();_suppressAutoPush=true;save();_suppressAutoPush=false;renderAll();setSupaStatus('✓ Đã tải về từ Supabase');}catch(e){setSupaStatus('Lỗi: '+e.message,true);}})()">⬇ Tải về từ Supabase</button>
         <span id="supaStatus" class="small" style="font-weight:700;color:#16A34A">${supaConfigured()?'Đã cấu hình — mở app sẽ tự kết nối.':'Chưa kết nối.'}</span>
       </div>
-      <p class="small muted" style="margin-bottom:0">Khi đã kết nối: sửa ở máy này → máy khác (cùng URL+key) thấy NGAY. Nếu dùng Supabase thì khỏi cần Google Sheets bên dưới.</p>
-    </div>
-
-    <h2 class="sec"><span class="bar"></span>Đồng bộ Google Sheets (database chung)</h2>
-    <div class="card" style="border-left:4px solid #0EA5E9">
-      <p class="small muted" style="margin-top:0">Dán <b>Web app URL</b> từ Google Apps Script (xem <i>HUONG_DAN_SETUP_GoogleSheets.md</i>). Sau đó dùng 2 nút để đẩy/tải dữ liệu giữa máy này và Google Sheets — đây là cách nhiều app dùng chung một database.</p>
-      <div class="field">
-        <label>Google Apps Script Web App URL</label>
-        <input id="sheetUrl" value="${esc((DATA.meta&&DATA.meta.sheetUrl)||'')}" placeholder="https://script.google.com/macros/s/XXXX/exec" style="width:100%">
-      </div>
-      <div class="toolbar">
-        <button class="secondary" onclick="setSheetUrl()">💾 Lưu URL</button>
-        <button onclick="syncPush()" style="background:#0EA5E9;border-color:#0EA5E9">⬆ Đẩy lên Sheets</button>
-        <button onclick="syncPull()" style="background:#0284C7;border-color:#0284C7">⬇ Tải về từ Sheets</button>
-        <span id="syncStatus" class="small muted">${DATA.meta&&DATA.meta.lastSync?('Đồng bộ lần cuối: '+new Date(DATA.meta.lastSync).toLocaleString('vi-VN')):'Chưa đồng bộ lần nào.'}</span>
-      </div>
       <div style="margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin:0">
           <input type="checkbox" id="autoSyncChk" ${(DATA.meta&&DATA.meta.autoSync!==false)?'checked':''} onchange="DATA.meta.autoSync=this.checked;save();if(this.checked)autoPullOnStart()" style="width:auto">
           🔄 Tự động đồng bộ (khuyên bật)
         </label>
-        <span class="small muted">Mở app → tự tải dữ liệu chung về · sửa gì → tự đẩy lên sau 2 giây. Mọi máy dán cùng URL là dùng chung.</span>
+        <span class="small muted">Mở app → tự tải về · sửa gì → tự đẩy lên. Mọi máy dán cùng URL+key là dùng chung, thấy NGAY.</span>
         <span id="autoSyncBadge" class="small" style="margin-left:auto;font-weight:700;color:#16A34A"></span>
       </div>
-      <div style="margin-top:10px">
-        <button onclick="resetSharedSheet()" style="background:#fff;color:var(--st-late);border-color:var(--st-late)">🧹 Làm sạch kho chung &amp; đồng bộ lại (từ máy này)</button>
-        <span class="small muted" style="margin-left:8px">Dùng khi Sheet bị rác/trùng. Xóa sạch Sheet rồi đẩy dữ liệu máy này lên làm chuẩn — máy khác F5 tải lại theo.</span>
-      </div>
-      <p class="small muted" style="margin-bottom:0">Đồng bộ các bảng: đơn hàng · nhân sự · phân công lịch · lô outsource · ghi nhận NCR. Đẩy lên = ghi đè bản ghi cùng id trên Sheet. Tải về = thay thế dữ liệu local bằng dữ liệu Sheet.</p>
     </div>
 
-    <h2 class="sec"><span class="bar"></span>Nạp dữ liệu đơn hàng (từ file gia công)</h2>
-    <div class="card" style="border-left:4px solid var(--brand)">
-      <p style="margin:0 0 10px;font-weight:700">📦 ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:'?'} đơn đang/chưa gia công (tháng 6/2026) — trích sẵn từ file Excel, bấm 1 nút là có</p>
-      <p class="small muted" style="margin:0 0 12px">Mã đơn = <b>số STT</b> trong bảng theo dõi. Chống trùng theo mã — bấm nhiều lần không nhân đôi. Dữ liệu cũ trong app không bị xóa.</p>
-      <button onclick="loadSeedOrders()" style="background:var(--brand)">📥 Nạp đơn hàng</button>
-    </div>
-
-    <h2 class="sec"><span class="bar"></span>Xuất / Nhập dữ liệu (đồng bộ &amp; sao lưu)</h2>
+    <h2 class="sec"><span class="bar"></span>Xuất dữ liệu &amp; Sao lưu</h2>
     <div class="card">
       <div class="toolbar">
-        <button onclick="exportJson()">⬇ Xuất ra file JSON</button>
-        <button class="secondary" onclick="document.getElementById('importFile').click()">⬆ Nhập từ file JSON</button>
+        <button onclick="exportOrdersExcel()" style="background:#16A34A;border-color:#16A34A">📊 Xuất đơn hàng ra Excel</button>
+        <button class="secondary" onclick="exportJson()">⬇ Sao lưu JSON (toàn bộ)</button>
+        <button class="secondary" onclick="document.getElementById('importFile').click()">⬆ Nhập từ JSON</button>
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importJsonFile(this.files[0])">
-        <button class="ghost" onclick="if(confirm('Xóa toàn bộ dữ liệu hiện tại trong công cụ này? Hãy xuất file JSON sao lưu trước nếu cần.')){DATA=defaultData();save();}">🗑 Xóa toàn bộ &amp; làm lại</button>
+        <button class="ghost" onclick="if(confirm('Xóa toàn bộ dữ liệu trên MÁY NÀY?\n(Nếu đã đồng bộ Supabase thì dữ liệu chung vẫn còn — máy này F5 sẽ tải lại.)')){DATA=defaultData();save();}">🗑 Xóa máy này</button>
       </div>
-      <p class="small muted">Khuyến nghị: cuối mỗi tuần, xuất một bản JSON sao lưu và lưu vào thư mục dùng chung — vừa là bản dự phòng, vừa là điểm khởi đầu để sau này kết nối dữ liệu với Coding System / Process App qua cùng một định dạng.</p>
+      <p class="small muted" style="margin-bottom:0">📊 <b>Xuất Excel</b> = bảng đơn hàng (mã · tên · khách · SL · ngày · trạng thái · % · công đoạn) để làm báo cáo. ⬇ <b>JSON</b> = sao lưu nguyên vẹn toàn bộ. Khuyến nghị xuất JSON sao lưu cuối tuần.</p>
     </div>
 
-    <h2 class="sec"><span class="bar"></span>Nhập nhanh đơn hàng từ bảng Excel theo dõi tiến độ hiện có</h2>
-    <div class="card">
-      <p class="small muted">Dán các dòng sao chép từ Excel (mỗi dòng một đơn, các cột cách nhau bằng <b>Tab</b> — tức là bôi đen rồi Copy/Paste trực tiếp từ Excel) theo đúng thứ tự cột:<br>
-      <code>Tên hàng | SL | ĐVT | Công ty | Ngày nhận đơn (yyyy-mm-dd) | Hạn giao hàng (yyyy-mm-dd) | Ngày giao hàng thực tế (yyyy-mm-dd, để trống nếu chưa giao) | Tình trạng (text bất kỳ — hệ thống sẽ map về 1 trong 6 trạng thái chuẩn)</code></p>
-      <textarea id="pasteArea" rows="6" placeholder="Dán dữ liệu copy từ Excel vào đây..."></textarea>
-      <div class="toolbar"><button onclick="importPaste()">📥 Nhập các dòng trên thành đơn hàng</button>
-      <span id="pasteResult" class="small muted"></span></div>
-    </div>
-
-    <h2 class="sec"><span class="bar"></span>Cấu trúc dữ liệu (để tham khảo khi kết nối với công cụ khác)</h2>
-    <div class="card">
-      <p class="small muted">Toàn bộ dữ liệu của công cụ này được lưu dưới một đối tượng JSON duy nhất — đây chính là "từ điển dữ liệu chung" đề xuất ở mục 6.2 trong báo cáo:</p>
-      <ul class="small muted" style="line-height:1.9">
-        <li><b>orders[]</b> — đơn hàng: mã đơn, tên hàng, khách hàng, các mốc ngày, <b>trạng thái (1 trong 6 chuẩn)</b>, phân công nội bộ/outsource</li>
-        <li><b>staff[]</b> — danh sách nhân sự nội bộ &amp; đối tác outsource hiển thị trên Lịch phân công (badge, tên, loại, vai trò)</li>
-        <li><b>assignments[]</b> — từng lượt phân công trên lịch: người + ngày + (mã đơn hàng <i>hoặc</i> loại công việc khác như nghỉ phép/đào tạo) + số giờ công</li>
-        <li><b>outsourceShipments[]</b> — lô hàng gửi gia công ngoài: liên kết tới đơn hàng gốc, đối tác, ngày gửi/nhận, kết quả kiểm tra đầu vào</li>
-        <li><b>ncrRecords[]</b> — ghi nhận sai lệch: liên kết tới đơn hàng, công đoạn phát hiện, mức độ, mô tả, hướng xử lý</li>
-        <li><b>partners[]</b> — danh sách đối tác outsource (khởi tạo sẵn “CK Tuyết Vinh”, có thể thêm)</li>
-      </ul>
-    </div>
+    <details style="margin-top:18px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;font-weight:700">⚙ Nâng cao / ít dùng (nạp đơn mẫu · dán nhanh từ Excel · Google Sheets dự phòng)</summary>
+      <div class="card" style="margin-top:8px">
+        <p class="small" style="margin-top:0;font-weight:700">📥 Nạp đơn mẫu — chỉ dùng khi thiết lập máy ĐẦU TIÊN chưa có dữ liệu</p>
+        <button class="ghost sm" onclick="loadSeedOrders()">📥 Nạp ${typeof SEED_ORDERS_ALL!=='undefined'?SEED_ORDERS_ALL.length:''} đơn mẫu</button>
+        <span class="small muted" style="margin-left:6px">Đã kết nối Supabase thì KHÔNG cần — dữ liệu tự về. Bấm nút này nhiều lần dễ nhân đôi.</span>
+        <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+        <p class="small" style="margin:0 0 6px;font-weight:700">📋 Dán nhanh đơn từ Excel (mỗi dòng 1 đơn, cột cách bằng Tab)</p>
+        <textarea id="pasteArea" rows="4" placeholder="STT  Tên hàng  SL  ĐVT  Công ty  Ngày nhận  Hạn giao  Ngày giao  Tình trạng"></textarea>
+        <div class="toolbar"><button class="ghost sm" onclick="importPaste()">Nhập các dòng thành đơn</button><span id="pasteResult" class="small muted"></span></div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+        <p class="small" style="margin:0 0 6px;font-weight:700">🟦 Google Sheets (dự phòng — đã thay bằng Supabase)</p>
+        <input id="sheetUrl" value="${esc((DATA.meta&&DATA.meta.sheetUrl)||'')}" placeholder="https://script.google.com/macros/s/XXXX/exec" style="width:100%;margin-bottom:6px">
+        <div class="toolbar">
+          <button class="ghost sm" onclick="setSheetUrl()">Lưu URL</button>
+          <button class="ghost sm" onclick="syncPush()">⬆ Đẩy lên Sheets</button>
+          <button class="ghost sm" onclick="syncPull()">⬇ Tải về Sheets</button>
+          <span id="syncStatus" class="small muted"></span>
+        </div>
+      </div>
+    </details>
   `;
   document.getElementById('topUser').textContent = DATA.meta.user ? ('Xin chào, '+DATA.meta.user) : 'DHP Process Hub';
 }
@@ -2648,6 +2685,20 @@ function rebuildPartners(){
   DATA.partners = [...names].filter(Boolean).map(n=>({name:n, notes:''}));
 }
 
+// Xuất đơn hàng ra Excel (CSV có BOM — Excel/Google Sheets mở đúng tiếng Việt)
+function csvCell(v){ v=(v==null?'':String(v)); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function exportOrdersExcel(){
+  const head=['Mã đơn','Tên hàng','Khách hàng','Loại','SL','ĐVT','Ngày nhận','Hạn giao','Trạng thái','% HT','Thực hiện','Chuỗi công đoạn','Mục tiêu','Ghi chú'];
+  const rows=(DATA.orders||[]).slice().sort((a,b)=>orderSortValue(a,'code')-orderSortValue(b,'code')).map(o=>{
+    const stagesTxt=(o.stages||[]).filter(Boolean).map(s=>(s.code||'')+' '+(s.name||'')+(s.assignee?'@'+staffName(s.assignee):'')+(stageState(s)==='done'?'✓':'')).join(' → ');
+    const exec=o.assignment==='outsource'?('Outsource '+(o.outsourcePartner||'')):(o.assignment==='mixed'?'Hỗn hợp':'Nội bộ');
+    return [o.code,o.name,o.company,o.orderType||'',o.qty,o.unit,fmtDate(o.receivedDate),fmtDate(o.requestedDate||o.dueDate),stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''),orderOverallProgress(o)+'%',exec,stagesTxt,o.target||'',o.note||''];
+  });
+  const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
+  const blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='DHP_donhang_'+todayStr()+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
 function exportJson(){
   const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
   const a = document.createElement('a');

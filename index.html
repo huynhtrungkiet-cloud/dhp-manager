@@ -1869,6 +1869,7 @@ function openOrderModal(id){
     editingAtts = [];
     editingStages = [];
     editingMeasures = [];
+    editingMaterials = [];
     document.getElementById('ord_inspector').value = '';
     document.getElementById('ord_inspectDate').value = '';
     document.getElementById('ord_priority').value = '';
@@ -1882,6 +1883,7 @@ function openOrderModal(id){
   renderAttEditor();
   renderStagesEditor();
   renderMeasuresEditor();
+  renderMaterialsEditor();
   toggleOutsourceField();
   toggleTargetField();
   openModal('modalOrder');
@@ -1926,6 +1928,7 @@ function saveOrder(){
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
     stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()),
     measures: editingMeasures.filter(m=>(m.param||'').trim()||(m.actual||'').trim()),
+    materials: editingMaterials.filter(m=>(m.material||'').trim()||(m.spec||'').trim()),
     inspector: document.getElementById('ord_inspector').value.trim(),
     inspectDate: document.getElementById('ord_inspectDate').value || null,
     note: document.getElementById('ord_note').value.trim(),
@@ -2688,11 +2691,12 @@ function rebuildPartners(){
 // Xuất đơn hàng ra Excel (CSV có BOM — Excel/Google Sheets mở đúng tiếng Việt)
 function csvCell(v){ v=(v==null?'':String(v)); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
 function exportOrdersExcel(){
-  const head=['Mã đơn','Tên hàng','Khách hàng','Loại','SL','ĐVT','Ngày nhận','Hạn giao','Trạng thái','% HT','Thực hiện','Chuỗi công đoạn','Mục tiêu','Ghi chú'];
+  const head=['Mã đơn','Tên hàng','Khách hàng','Loại','SL','ĐVT','Ngày nhận','Hạn giao','Trạng thái','% HT','Thực hiện','Chuỗi công đoạn','Vật tư mua/phôi','Mục tiêu','Ghi chú'];
   const rows=(DATA.orders||[]).slice().sort((a,b)=>orderSortValue(a,'code')-orderSortValue(b,'code')).map(o=>{
     const stagesTxt=(o.stages||[]).filter(Boolean).map(s=>(s.code||'')+' '+(s.name||'')+(s.assignee?'@'+staffName(s.assignee):'')+(stageState(s)==='done'?'✓':'')).join(' → ');
+    const matTxt=(o.materials||[]).filter(Boolean).map(m=>(m.material||'')+(m.spec?' '+m.spec:'')+(m.qty?' ×'+m.qty+(m.unit?m.unit:''):'')).join('; ');
     const exec=o.assignment==='outsource'?('Outsource '+(o.outsourcePartner||'')):(o.assignment==='mixed'?'Hỗn hợp':'Nội bộ');
-    return [o.code,o.name,o.company,o.orderType||'',o.qty,o.unit,fmtDate(o.receivedDate),fmtDate(o.requestedDate||o.dueDate),stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''),orderOverallProgress(o)+'%',exec,stagesTxt,o.target||'',o.note||''];
+    return [o.code,o.name,o.company,o.orderType||'',o.qty,o.unit,fmtDate(o.receivedDate),fmtDate(o.requestedDate||o.dueDate),stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''),orderOverallProgress(o)+'%',exec,stagesTxt,matTxt,o.target||'',o.note||''];
   });
   const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
   const blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'});

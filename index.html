@@ -2418,6 +2418,10 @@ const SUPA_TABLES = {
 };
 let _sb = null;            // client Supabase
 let _sbChannels = [];      // các kênh real-time đang lắng nghe
+let _syncSnap = {};        // table -> { id: JSON } trạng thái ĐÃ đồng bộ gần nhất (để chỉ đẩy phần THAY ĐỔI)
+let _syncReady = false;    // chỉ cho phép tự-đẩy SAU khi đã tải kho chung về lần đầu (tránh đè bản cũ lúc khởi động)
+function _snapOf(appT){ const m={}; (DATA[appT]||[]).forEach(r=>{ if(r&&r.id!=null) m[String(r.id)]=JSON.stringify(r); }); return m; }
+function resetSyncSnap(){ Object.keys(SUPA_TABLES).forEach(t=>{ _syncSnap[t]=_snapOf(t); }); _syncReady=true; }
 function supaConfigured(){ return !!(DATA.meta && DATA.meta.supaUrl && DATA.meta.supaKey); }
 function setSupaStatus(msg, err){ const el=document.getElementById('supaStatus'); if(el){ el.textContent=msg; el.style.color=err?'var(--st-late)':'#16A34A'; } }
 // Cắt phần dư người dùng hay dán nhầm: /rest/v1, dấu / cuối...
@@ -2428,15 +2432,28 @@ function initSupabase(){
   try{ _sb = supabase.createClient(cleanSupaUrl(DATA.meta.supaUrl), DATA.meta.supaKey.trim()); return true; }
   catch(e){ setSupaStatus('Lỗi khởi tạo: '+e.message, true); return false; }
 }
-// Đẩy toàn bộ dữ liệu local lên Supabase (upsert theo id)
-async function supaPush(){
+// Đẩy dữ liệu lên Supabase.
+//  changedOnly=true  → CHỈ đẩy bản ghi đã sửa/mới + xóa bản đã xóa (dùng cho tự-đồng-bộ, tránh đè đơn người khác)
+//  changedOnly=false → đẩy TOÀN BỘ (nút "Đẩy toàn bộ" — coi máy này là nguồn chuẩn)
+async function supaPush(changedOnly){
   if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
   for(const appT of Object.keys(SUPA_TABLES)){
-    const rows = (DATA[appT]||[]).filter(r=>r&&r.id).map(r=>({id:String(r.id), data:r, updated_at:new Date().toISOString()}));
-    if(!rows.length) continue;
-    const { error } = await _sb.from(SUPA_TABLES[appT]).upsert(rows);
-    if(error) throw new Error(SUPA_TABLES[appT]+': '+error.message);
+    const cur = _snapOf(appT), prev = _syncSnap[appT]||{};
+    let ids;
+    if(changedOnly){ ids = Object.keys(cur).filter(id=>cur[id]!==prev[id]); }
+    else { ids = Object.keys(cur); }
+    if(ids.length){
+      const rows = ids.map(id=>{ const rec=(DATA[appT]||[]).find(r=>r&&String(r.id)===id); return rec?{id, data:rec, updated_at:new Date().toISOString()}:null; }).filter(Boolean);
+      const { error } = await _sb.from(SUPA_TABLES[appT]).upsert(rows);
+      if(error) throw new Error(SUPA_TABLES[appT]+': '+error.message);
+    }
+    if(changedOnly){
+      const delIds = Object.keys(prev).filter(id=>!(id in cur));
+      if(delIds.length){ const { error } = await _sb.from(SUPA_TABLES[appT]).delete().in('id', delIds); if(error) throw new Error(SUPA_TABLES[appT]+' (xóa): '+error.message); }
+    }
+    _syncSnap[appT]=cur; // máy này giờ đã đồng bộ bảng này
   }
+  _syncReady=true;
 }
 // Tải toàn bộ từ Supabase về (thay thế local)
 async function supaPull(){
@@ -2447,6 +2464,7 @@ async function supaPull(){
     DATA[appT] = (data||[]).map(row=>row.data).filter(Boolean);
   }
   rebuildPartners(); sanitizeOrderDates(); ensureCustomersFromOrders();
+  resetSyncSnap(); // kho chung vừa tải về = mốc đồng bộ; từ giờ chỉ đẩy phần thay đổi
 }
 // Lắng nghe thay đổi real-time → cập nhật ngay không cần F5
 function supaSubscribe(){
@@ -2458,11 +2476,14 @@ function supaSubscribe(){
       .on('postgres_changes', { event:'*', schema:'public', table:dbT }, payload=>{
         try{
           const arr = (DATA[appT] = DATA[appT]||[]);
+          const snap = (_syncSnap[appT] = _syncSnap[appT]||{});
           if(payload.eventType==='DELETE'){
             const id = payload.old && payload.old.id; const i=arr.findIndex(r=>r&&String(r.id)===String(id)); if(i>=0) arr.splice(i,1);
+            if(id!=null) delete snap[String(id)];
           } else if(payload.new && payload.new.data){
             const rec = payload.new.data; const i=arr.findIndex(r=>r&&String(r.id)===String(rec.id));
             if(i>=0) arr[i]=rec; else arr.push(rec);
+            if(rec&&rec.id!=null) snap[String(rec.id)]=JSON.stringify(rec); // đã đồng bộ → không đẩy ngược
           }
           if(appT==='orders'){ sanitizeOrderDates(); }
           rebuildPartners();
@@ -2558,12 +2579,16 @@ function setAutoBadge(txt, err){
 // Gọi sau mỗi save() — gom nhiều thay đổi rồi đẩy 1 lần (chống spam mạng). Ưu tiên Supabase.
 function scheduleAutoPush(){
   if(!autoSyncEnabled()) return;
+  // Chỉ máy có quyền SỬA mới được ghi lên kho chung (máy Xem chỉ tải về) → tránh đè bản cũ
+  if(typeof canEdit==='function' && !canEdit()) return;
+  // Với Supabase: chưa tải kho chung về lần đầu thì KHÔNG đẩy (tránh đè dữ liệu cũ của máy này)
+  if(supaConfigured() && !_syncReady) return;
   clearTimeout(_autoPushTimer);
   setAutoBadge('● đang chờ đồng bộ...');
   _autoPushTimer = setTimeout(async ()=>{
     try{
       setAutoBadge('● đang đẩy lên...');
-      if(supaConfigured()) await supaPush(); else await pushToSheets();
+      if(supaConfigured()) await supaPush(true); else await pushToSheets(); // true = chỉ đẩy phần thay đổi
       setAutoBadge('✓ đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN'));
     }catch(e){ setAutoBadge('⚠ lỗi đồng bộ: ' + e.message, true); }
   }, 2000);

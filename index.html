@@ -108,6 +108,10 @@
   table.tg td.today-col{background:#fff5f6;box-shadow:inset 2px 0 0 var(--brand),inset -2px 0 0 var(--brand);}
   .joblist{display:flex;flex-direction:column;gap:1.5px;height:100%;justify-content:center;}
   .jobchip{font-size:8px;font-weight:800;color:#fff;border-radius:2px;line-height:12px;padding:0 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:left;}
+  .dayload{position:absolute;right:1px;bottom:0;font-size:7.5px;font-weight:800;color:#475569;background:rgba(255,255,255,.82);border-radius:2px;padding:0 2px;line-height:10px;pointer-events:none;}
+  .dayload.full{color:#15803D;}
+  .dayload.over{color:#fff;background:var(--st-late);}
+  table.tg td.daycell{position:relative;}
   .daylist{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;}
   .dayjob{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
   .dayjob .dot{width:14px;height:14px;border-radius:4px;flex-shrink:0;display:inline-block;}
@@ -592,16 +596,21 @@ const PRODUCTION_STAGES = [
 // Bao gồm cả khâu PHI GIA CÔNG (L=Mua phôi, M=Hợp đồng/Thủ tục, N=Vận chuyển) — vì kẹt thường nằm ở đó
 const STAGE_PRESETS = [
   {c:'A', n:'Tiện'},            {c:'B', n:'Phay'},              {c:'C', n:'Cắt dây'},
-  {c:'D', n:'Khoan / Doa'},     {c:'E', n:'Hàn'},               {c:'F', n:'Mài / Đánh bóng'},
+  {c:'D', n:'Khoan'},           {c:'P', n:'Khoan + Taro'},      {c:'Q', n:'Taro / Ren'},
+  {c:'O', n:'Doa'},             {c:'E', n:'Hàn'},               {c:'F', n:'Mài / Đánh bóng'},
   {c:'G', n:'Gia công CNC'},    {c:'H', n:'Nhiệt luyện'},       {c:'I', n:'Sơn / Xử lý bề mặt'},
   {c:'J', n:'Lắp ráp'},         {c:'K', n:'QC / Kiểm tra'},     {c:'L', n:'Mua phôi / Vật tư'},
   {c:'M', n:'Hợp đồng / Thủ tục'},{c:'N', n:'Vận chuyển / Giao nhận'},{c:'X', n:'Khác'},
 ];
+// Quy đổi GIỜ ↔ NGÀY: 1 ngày công = 8h. Tự dàn công đoạn qua nhiều ngày, mỗi ngày tối đa 8h.
+const HOURS_PER_DAY = 8;
+function stageHours(s){ if(!s) return HOURS_PER_DAY; if(s.hours!=null && s.hours!=='') return parseFloat(s.hours)||0; if(s.plannedDays) return (parseFloat(s.plannedDays)||0)*HOURS_PER_DAY; return HOURS_PER_DAY; } // fallback đơn cũ
+function stageSpanDays(s){ return Math.max(1, Math.ceil(stageHours(s)/HOURS_PER_DAY)); }
 function stageState(s){
   if(!s || typeof s!=='object') return 'pending';
   if(s.status==='done' || s.doneDate) return 'done';
   if(s.status==='doing') {
-    if(s.startDate && s.plannedDays && daysBetween(s.startDate, todayStr()) > s.plannedDays) return 'late';
+    if(s.startDate && daysBetween(s.startDate, todayStr()) > stageSpanDays(s)) return 'late';
     return 'doing';
   }
   return 'pending';
@@ -613,7 +622,7 @@ function stageChainHtml(o){
   const chips = o.stages.filter(Boolean).map(s=>{
     const st = stageState(s);
     const days = (st==='doing'||st==='late') && s.startDate ? daysBetween(s.startDate, todayStr()) : null;
-    const tip = `${s.code} ${s.name||''}${s.location?' @'+s.location:''}${s.plannedDays?' · KH '+s.plannedDays+'n':''}${days!=null?' · đã '+days+'n':''}`;
+    const tip = `${s.code} ${s.name||''}${s.location?' @'+s.location:''} · KH ${stageHours(s)}h${days!=null?' · đã '+days+'n':''}`;
     const txt = s.code + (st==='done'?'✓':'') + ((st==='doing'||st==='late')&&days!=null?'·'+days+'n':'');
     return `<span title="${esc(tip)}" style="display:inline-block;font-size:9.5px;font-weight:800;color:${st==='pending'?'#475569':'#fff'};background:${STAGE_COLORS[st]};border-radius:4px;padding:1px 6px;margin:1px 2px 1px 0">${esc(txt)}</span>`;
   }).join('<span style="color:#cbd5e1;font-size:9px">→</span>');
@@ -1005,7 +1014,16 @@ function cellStackHtml(staffId, dateStr){
     return `<div class="jobchip" style="background:${g.color}" title="${esc(g.titles.join('\n— '))}">${esc(g.shortCode)}${g.count>1?' ×'+g.count:''}</div>`;
   });
   others.forEach(info=> items.push(`<div class="jobchip" style="background:${info.color}" title="${esc(info.title)}">${esc(info.shortCode)}</div>`));
-  return `<div class="joblist">${items.join('')}</div>`;
+  // Tổng giờ công trong ngày (chỉ tính việc đơn hàng) → đầy 8h / quá tải tăng ca
+  const totH = jobs.reduce((sum,a)=> sum + (a.hours!=null?parseFloat(a.hours): (a.kind==='order'?HOURS_PER_DAY:0)), 0);
+  let load='';
+  if(totH>0){
+    const r = Math.round(totH*10)/10;
+    if(totH>HOURS_PER_DAY) load=`<div class="dayload over" title="Vượt 8h → cần tăng ca">⚠ ${r}h</div>`;
+    else if(totH>=HOURS_PER_DAY) load=`<div class="dayload full" title="Đủ 8h">${r}h</div>`;
+    else load=`<div class="dayload" title="Còn trống ${Math.round((HOURS_PER_DAY-totH)*10)/10}h">${r}h</div>`;
+  }
+  return `<div class="joblist">${items.join('')}</div>${load}`;
 }
 
 function renderGrid(){
@@ -1495,7 +1513,6 @@ function renderStagesEditor(){
         </select>
         <input style="width:52px;font-weight:800" value="${esc(s.code||'')}" placeholder="Mã" oninput="updStage(${i},'code',this.value)" title="Mã (A, A2, B...)">
         <input style="flex:1;min-width:130px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)">
-        <input type="number" style="width:64px" min="0" step="0.5" value="${s.plannedDays!=null?s.plannedDays:''}" placeholder="KH (n)" oninput="updStage(${i},'plannedDays',this.value)" title="Số ngày kế hoạch">
         <select style="width:108px" onchange="updStage(${i},'status',this.value);renderStagesEditor()">
           <option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa làm</option>
           <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
@@ -1514,7 +1531,8 @@ function renderStagesEditor(){
           <option value="">— chọn người / đối tác —</option>
           ${DATA.staff.filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}${x.type==='outsource'?' (outsource)':''}</option>`).join('')}
         </select>
-        <input type="number" style="width:56px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updStage(${i},'hours',this.value)" title="Số giờ công cho công đoạn này (mặc định 8)">
+        <input type="number" style="width:64px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ (8)" oninput="updStage(${i},'hours',this.value)" title="Số GIỜ công cho công đoạn này — 8h = 1 ngày. Để trống = 8h. >8h tự dàn nhiều ngày.">
+        <span class="small muted">giờ</span>
         ${workloadHintHtml(s)}
       </div>
     </div>`;}).join('');
@@ -1523,18 +1541,19 @@ function staffName(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return s
 // Tổng giờ đã xếp cho 1 người trong 1 ngày (gồm việc đã lưu + công đoạn đang soạn của đơn này)
 function plannedHoursOnDay(staffId, date, orderId){
   let h=0;
-  (DATA.assignments||[]).forEach(a=>{ if(a&&a.staffId===staffId && a.date===date && !(a.fromStage && a.orderId===orderId)) h+=parseFloat(a.hours)||8; });
-  (editingStages||[]).forEach(st=>{ if(st&&st.assignee===staffId && normDate(st.startDate)===date) h+=parseFloat(st.hours)||8; });
+  (DATA.assignments||[]).forEach(a=>{ if(a&&a.staffId===staffId && a.date===date && !(a.fromStage && a.orderId===orderId)) h+=parseFloat(a.hours)||HOURS_PER_DAY; });
+  (editingStages||[]).forEach(st=>{ if(st&&st.assignee===staffId && normDate(st.startDate)===date) h+=Math.min(HOURS_PER_DAY, stageHours(st)); });
   return h;
 }
 function workloadHintHtml(s){
-  if(!s.assignee || !s.startDate) return '<span class="small muted">↪ chọn người + ngày để TỰ lên lịch</span>';
+  if(!s.assignee || !s.startDate) return '<span class="small muted">↪ chọn người + ngày để TỰ lên lịch (8h/ngày)</span>';
   const d=normDate(s.startDate);
-  const n=Math.max(1, parseInt(s.plannedDays)||1);
+  const totH=stageHours(s);
+  const n=stageSpanDays(s);
   const fin=stageFinishDate(d, n);
   const h=plannedHoursOnDay(s.assignee, d, (document.getElementById('ord_id')||{}).value||'');
-  const over=h>8;
-  return `<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${fmtDate(d)}${n>1?' → xong '+fmtDate(fin)+' ('+n+' ngày, bỏ CN)':''}</span>${over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày đầu '+h+'h quá tải</span>':''}`;
+  const over=h>HOURS_PER_DAY;
+  return `<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${totH}h${n>1?' → dàn '+n+' ngày (bỏ CN), xong '+fmtDate(fin):' · '+fmtDate(d)}</span>${over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày '+fmtDate(d)+' đã '+Math.round(h*10)/10+'h → tăng ca</span>':''}`;
 }
 function pickStagePreset(i, c){
   const p = STAGE_PRESETS.find(x=>x.c===c);
@@ -1608,11 +1627,11 @@ function itemStagesHtml(it,i){
     return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;border-left:3px solid ${STAGE_COLORS[st]};padding-left:5px">
       <select style="width:120px;font-size:11px" onchange="pickItemStagePreset(${i},${si},this.value)" title="Loại công đoạn"><option value="">— loại —</option>${STAGE_PRESETS.map(p=>`<option value="${p.c}" ${String(s.code||'').replace(/\d+$/,'')===p.c?'selected':''}>${p.c} ${p.n}</option>`).join('')}</select>
       <input style="width:38px;font-weight:800;font-size:11px" value="${esc(s.code||'')}" oninput="updItemStage(${i},${si},'code',this.value)" placeholder="Mã" title="Mã">
-      <input type="number" style="width:60px;font-size:11px" min="0" step="0.5" value="${s.plannedDays!=null?s.plannedDays:''}" placeholder="số ngày" oninput="updItemStage(${i},${si},'plannedDays',this.value)" title="Số ngày dự tính làm (tự dàn lên lịch, bỏ CN)">
+      <input type="number" style="width:54px;font-size:11px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updItemStage(${i},${si},'hours',this.value)" title="Số GIỜ công (8h=1 ngày, để trống=8h, >8h tự dàn nhiều ngày bỏ CN)">
       <select style="width:80px;font-size:11px" onchange="updItemStage(${i},${si},'status',this.value)"><option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa</option><option value="doing" ${s.status==='doing'?'selected':''}>Đang</option><option value="done" ${s.status==='done'?'selected':''}>Xong</option></select>
       <select style="width:120px;font-size:11px" onchange="updItemStage(${i},${si},'assignee',this.value)" title="Người làm → tự lên lịch"><option value="">👤 ai làm?</option>${(DATA.staff||[]).filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
       <input type="date" style="width:118px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu → tự lên lịch">
-      ${(s.startDate && (parseInt(s.plannedDays)||1)>1)?`<span class="small" style="color:#16A34A;white-space:nowrap" title="Tự dàn ${parseInt(s.plannedDays)} ngày làm việc, bỏ CN">→ ${fmtDate(stageFinishDate(s.startDate,s.plannedDays))}</span>`:''}
+      ${(s.startDate && stageSpanDays(s)>1)?`<span class="small" style="color:#16A34A;white-space:nowrap" title="${stageHours(s)}h → dàn ${stageSpanDays(s)} ngày làm việc, bỏ CN">→ ${fmtDate(stageFinishDate(s.startDate,stageSpanDays(s)))}</span>`:''}
       <a onclick="rmItemStage(${i},${si})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
     </div>`;
   }).join('');
@@ -1628,7 +1647,7 @@ function itemStagesHtml(it,i){
 function addItemStage(i){ if(!editingItems[i])return; editingItems[i].stages=editingItems[i].stages||[]; editingItems[i].stages.push({id:localId('IST'),code:'',name:'',location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,note:''}); renderItemsEditor(); }
 function updItemStage(i,si,k,v){
   const s = editingItems[i] && editingItems[i].stages && editingItems[i].stages[si]; if(!s) return;
-  s[k] = (k==='plannedDays') ? (v===''?null:parseFloat(v)) : v;
+  s[k] = (k==='hours'||k==='plannedDays') ? (v===''?null:parseFloat(v)) : v;
   if(k==='status'){ if(v==='done'&&!s.doneDate)s.doneDate=todayStr(); if(v==='doing'&&!s.startDate)s.startDate=todayStr(); if(v==='pending')s.doneDate=''; renderItemsEditor(); }
 }
 function rmItemStage(i,si){ editingItems[i].stages.splice(si,1); renderItemsEditor(); }
@@ -1810,9 +1829,12 @@ function syncAssignmentsFromOrder(o){
   const mk = (st, label, itemId)=>{
     if(!st || !st.assignee || !st.startDate) return;
     if(!st.id) st.id = localId('ST');   // đảm bảo có id để công nhân tick đúng công đoạn
-    const n = Math.max(1, parseInt(st.plannedDays)||1);
-    const days = workingDaysFrom(st.startDate, n);   // dàn qua N ngày làm việc, bỏ CN
+    const totH = stageHours(st);                       // tổng giờ công của công đoạn
+    const n = stageSpanDays(st);                       // số ngày = trần(giờ/8), mỗi ngày tối đa 8h
+    const days = workingDaysFrom(st.startDate, n);     // dàn qua N ngày làm việc, bỏ CN
+    let remain = totH;
     days.forEach((dy,di)=>{
+      const dayH = Math.min(HOURS_PER_DAY, remain); remain -= dayH;   // ngày cuối nhận phần lẻ
       DATA.assignments.push({
         id: localId('PCS'),
         staffId: st.assignee,
@@ -1823,7 +1845,7 @@ function syncAssignmentsFromOrder(o){
         stageCode: st.code||'',
         itemId: itemId||'',
         stage: (st.code? st.code+' · ':'') + (st.name||'') + (label?' ['+label+']':'') + (n>1?' ('+(di+1)+'/'+n+')':''),
-        hours: parseFloat(st.hours)|| (n>1? 8 : 8),
+        hours: dayH,
         note: '',
         fromStage: true,
         createdAt: new Date().toISOString(),
@@ -2089,13 +2111,13 @@ function renderBottleneckHtml(){ try{
   const whoList = Object.values(byWho).sort((a,b)=> (b.late-a.late) || (b.maxDays-a.maxDays));
   if(!stuck.length && !whoList.length) return '';
   const topStuck = stuck.slice(0,8).map(x=>{
-    const plan = x.st.plannedDays;
-    const over = plan!=null && x.days>plan;
+    const plan = stageSpanDays(x.st);
+    const over = x.days>plan;
     return `<tr>
       <td><b>${esc(x.o.code)}</b> <span class="muted">${esc(truncate(x.itemName||x.o.name,26))}</span>${x.itemName?' <span style="font-size:9px;color:#6366F1">▦ chi tiết</span>':''}</td>
       <td><span style="background:${x.late?'var(--st-late)':'var(--st-prod)'};color:#fff;border-radius:4px;padding:1px 6px;font-weight:700">${esc(x.st.code||'?')} ${esc(truncate(x.st.name,18))}</span></td>
       <td class="small">${esc(x.st.location||'Nội bộ')}</td>
-      <td style="${(x.late||over)?'color:var(--st-late);font-weight:800':'font-weight:700'}">${x.late?'⛔ ':''}${x.days} ngày${plan!=null?' / KH '+plan:''}</td>
+      <td style="${(x.late||over)?'color:var(--st-late);font-weight:800':'font-weight:700'}">${x.late?'⛔ ':''}${x.days} ngày / KH ${plan} (${stageHours(x.st)}h)</td>
     </tr>`;
   }).join('');
   return `
@@ -3180,7 +3202,7 @@ function renderKpi(){
         const cur = o.stages.find(s=>stageState(s)!=='done');
         if(!cur) return;
         const daysIn = cur.startDate ? daysBetween(cur.startDate, todayStr()) : null;
-        const isLate = cur.plannedDays!=null && daysIn!=null && daysIn > cur.plannedDays;
+        const isLate = daysIn!=null && daysIn > stageSpanDays(cur);
         stuck.push({o, cur, daysIn, isLate, loc: (cur.location||'(chưa ghi nơi làm)')});
       });
       if(!stuck.length) return '<div class="card empty">Chưa có đơn nào khai báo công đoạn. Mở từng đơn → mục "🔧 Công đoạn" để thêm chuỗi A/B/C... kèm nơi làm — sau đó bảng này sẽ tự chỉ ra chỗ kẹt.</div>';
@@ -3212,7 +3234,7 @@ function renderKpi(){
             <td><b>${esc(x.cur.code)}</b> ${esc(x.cur.name||'')}</td>
             <td>${esc(x.loc)}</td>
             <td style="font-weight:800;color:${x.isLate?'var(--st-late)':'var(--ink)'}">${x.daysIn}n</td>
-            <td class="muted">${x.cur.plannedDays!=null?x.cur.plannedDays+'n':'—'}</td>
+            <td class="muted">${stageSpanDays(x.cur)}n (${stageHours(x.cur)}h)</td>
           </tr>`).join('')}
           </tbody></table>
         </div>

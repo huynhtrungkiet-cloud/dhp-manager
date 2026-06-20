@@ -177,6 +177,7 @@ function gateCheck(){
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:4px">
       <span id="roleBadge" style="font-size:11px;font-weight:800;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px">👁 Chỉ xem</span>
       <button id="unlockBtn" class="ghost sm" onclick="unlockEdit()" title="Mở khóa chỉnh sửa (TPKT & điều phối)">🔓 Mở khóa sửa</button>
+      <button id="syncNowBtn" class="ghost sm" onclick="syncNow()" title="Lưu thay đổi & đồng bộ ngay lên kho chung" style="display:none">💾 Lưu &amp; Đồng bộ</button>
       <button id="lockEditBtn" class="ghost sm" onclick="lockEdit()" title="Khóa sửa (về chỉ xem)" style="display:none">🔒 Khóa sửa</button>
       <button class="ghost sm" onclick="toggleLang()" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
       <button class="ghost sm" onclick="lockApp()" title="Đăng xuất">⎋</button>
@@ -889,7 +890,26 @@ function applyRole(){
   if(rb) rb.textContent = canEdit() ? '🔓 Quản lý' : '👁 Chỉ xem';
   const ub = document.getElementById('unlockBtn'); if(ub) ub.style.display = canEdit() ? 'none' : '';
   const kb = document.getElementById('lockEditBtn'); if(kb) kb.style.display = canEdit() ? '' : 'none';
+  const sb = document.getElementById('syncNowBtn'); if(sb) sb.style.display = (canEdit() && supaConfigured()) ? '' : 'none';
   renderAll();
+}
+// Lưu & đồng bộ NGAY (không chờ 2s) — đẩy phần thay đổi lên kho chung
+async function syncNow(){
+  if(!requireEdit()) return;
+  const btn = document.getElementById('syncNowBtn'); const old = btn ? btn.innerHTML : '';
+  save(); // ghi localStorage
+  if(!supaConfigured()){ alert('Chưa kết nối Supabase. Vào tab Dữ liệu để kết nối.'); return; }
+  if(!_syncReady){ alert('Đang tải kho chung về, thử lại sau vài giây.'); return; }
+  clearTimeout(_autoPushTimer); // hủy hẹn 2s, đẩy luôn
+  try{
+    if(btn){ btn.innerHTML='⏳ Đang lưu...'; btn.disabled=true; }
+    await supaPush(true);
+    setAutoBadge('✓ đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN'));
+    if(btn){ btn.innerHTML='✓ Đã lưu'; setTimeout(()=>{ btn.innerHTML=old; btn.disabled=false; }, 1500); }
+  }catch(e){
+    if(btn){ btn.innerHTML=old; btn.disabled=false; }
+    alert('Lỗi đồng bộ: '+e.message);
+  }
 }
 function unlockEdit(){
   const v = prompt('Nhập MẬT KHẨU SỬA (chỉ TPKT & điều phối):');
@@ -1094,11 +1114,6 @@ function renderGrid(){
       </div>
       <p class="small muted" style="margin-top:8px">Mã hiển thị trên mỗi ô chính là <b>mã đơn hàng</b> (rút gọn) đã có trong tab “Đơn hàng &amp; Tiến độ” — không cần tra cứu chú giải riêng. Một ô có thể chứa <b>nhiều việc trong cùng 1 ngày</b> (xếp chồng) — bấm vào ô để xem/sửa từng việc. Khi cập nhật trạng thái đơn, màu/trạng thái trong chú giải tự đồng bộ theo.</p>`
       }
-      ${ stageEntries.length ? `
-      <h3 style="font-size:12.5px;margin:14px 0 8px">Khối lượng giờ công theo công đoạn trong tháng (để anh em xưởng nắm tổng quan các khâu)</h3>
-      <div class="legend">
-        ${stageEntries.map(([stage,hours])=>`<span class="chip"><b>${esc(stage)}</b> · <span class="muted">${hours}h</span></span>`).join('')}
-      </div>` : ''}
     </div>
 
     ${renderBottleneckHtml()}

@@ -444,6 +444,20 @@ function gateCheck(){
   </div>
 </div>
 
+<!-- ===== Modal: XEM nhanh đơn hàng (chỉ đọc) ===== -->
+<div class="modal-bg" id="modalView">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 id="viewModalTitle" style="margin:0">Chi tiết đơn hàng</h3>
+      <button class="ghost sm" onclick="closeModal('modalView')">✕ Đóng</button>
+    </div>
+    <div id="ord_view_body" style="margin-top:10px"></div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalView')">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Modal: Outsource shipment form ===== -->
 <div class="modal-bg" id="modalOut">
   <div class="modal">
@@ -1496,7 +1510,7 @@ function ordersTable(){
       <td>${progressCellHtml(o)}</td>
       <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'—') : (o.assignment==='mixed' ? `<span style="font-weight:700;color:#6366F1">${t('lb_mixed')}</span>`+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : t('lb_inhouse'))}${o.currentLocation?`<div style="margin-top:2px;font-size:10.5px;color:#0EA5E9;font-weight:700;white-space:normal">📍 ${esc(o.currentLocation)}</div>`:''}</td>
       <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 ${t('lb_forecast')}: ${fmtDate(fc.date)}${fc.kind==='manual'?' '+t('lb_manual'):''}${late?' · '+t('lb_lateKH'):''}</span></div>`;})()}</td>
-      <td class="actions"><a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a></td>
+      <td class="actions"><a onclick="openOrderView('${o.id}')" style="color:#0EA5E9">👁 Xem</a>${canEdit()?`<a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a>`:''}</td>
     </tr>${itemsSubRow(o, rowBg)}`;
   }catch(err){
     console.error('Lỗi hiển thị đơn', o && o.code, err);
@@ -1884,6 +1898,53 @@ function nextOrderCode(){
   let mx = 0;
   (DATA.orders||[]).forEach(o=>{ const n=parseInt(String(o.code||'').replace(/\D/g,''),10); if(!isNaN(n)&&n>mx) mx=n; });
   return String(mx+1);
+}
+// XEM nhanh đơn hàng (chỉ đọc) — ai cũng mở được, không sửa gì
+function openOrderView(id){
+  const o = (DATA.orders||[]).find(x=>x.id===id);
+  if(!o){ alert('Không tìm thấy đơn.'); return; }
+  document.getElementById('viewModalTitle').textContent = 'Đơn ' + (o.code||'') + (o.name?' — '+truncate(o.name,40):'');
+  const row=(lbl,val)=> val? `<tr><td style="color:var(--muted);white-space:nowrap;padding:3px 10px 3px 0;vertical-align:top">${lbl}</td><td style="padding:3px 0;font-weight:600">${val}</td></tr>`:'';
+  const ef = expectedFinishDate(o);
+  const ref = o.requestedDate||o.dueDate;
+  const exec = o.assignment==='outsource'?('Outsource — '+esc(o.outsourcePartner||'—')):(o.assignment==='mixed'?'Hỗn hợp'+(o.outsourcePartner?' — '+esc(o.outsourcePartner):''):'Nội bộ');
+  const stagesHtml = (function(){
+    let all=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
+    (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>all.push({s,it:it.name||''})));
+    if(!all.length) return '<span class="muted">— chưa khai báo công đoạn —</span>';
+    return all.map(({s,it})=>{ const st=stageState(s); const lbl={done:'Xong ✓',doing:'Đang làm',late:'TRỄ',pending:'Chưa'}[st];
+      return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;font-size:12px">
+        <span style="background:${STAGE_COLORS[st]};color:${st==='pending'?'#475569':'#fff'};border-radius:4px;padding:1px 6px;font-weight:800;min-width:26px;text-align:center">${esc(s.code||'?')}</span>
+        <span style="flex:1">${esc(s.name||'')}${it?' <span class="muted">▦ '+esc(truncate(it,16))+'</span>':''}${s.location?' <span style="color:#0EA5E9">@'+esc(s.location)+'</span>':''}${s.assignee?' · 👤 '+esc(staffName(s.assignee)):''}</span>
+        <span style="color:${st==='late'?'var(--st-late)':'var(--muted)'};font-weight:700">${lbl}${s.startDate?' · '+fmtDate(s.startDate):''} · ${stageHours(s)}h</span>
+      </div>`; }).join('');
+  })();
+  const matHtml = (o.materials||[]).filter(Boolean).length ? '<ul style="margin:4px 0;padding-left:18px">'+(o.materials||[]).filter(Boolean).map(m=>`<li>${esc(m.material||'')}${m.spec?' — '+esc(m.spec):''}${m.qty?' × '+esc(m.qty)+(m.unit?' '+esc(m.unit):''):''}${m.supplier?' <span class="muted">(NCC: '+esc(m.supplier)+')</span>':''}</li>`).join('')+'</ul>' : '';
+  const measHtml = (o.measures||[]).filter(Boolean).length ? '<ul style="margin:4px 0;padding-left:18px">'+(o.measures||[]).filter(Boolean).map(m=>`<li>${esc(m.param||'')}: KH ${esc(m.spec||'-')} / đo ${esc(m.actual||'-')} ${m.pass==='pass'?'✓ Đạt':m.pass==='fail'?'<span style="color:var(--st-late)">✕ Không đạt</span>':''}</li>`).join('')+'</ul>' : '';
+  const attHtml = (o.attachments||[]).filter(a=>a&&a.url).map(a=>`<a href="${esc(a.url)}" target="_blank" style="color:#0EA5E9;margin-right:10px">🔗 ${esc(a.label||'link')}</a>`).join('');
+  document.getElementById('ord_view_body').innerHTML = `
+    <table style="font-size:12.5px;border-collapse:collapse;width:100%">
+      ${row('Tên hàng', esc(o.name||''))}
+      ${row('Khách hàng', esc(o.company||''))}
+      ${row('Loại', esc(o.orderType||'Gia công'))}
+      ${row('Số lượng', (o.qty!=null?esc(String(o.qty)):'')+(o.unit?' '+esc(o.unit):''))}
+      ${row('Trạng thái', `<span style="background:${statusByKey(o.status).color};color:#fff;border-radius:5px;padding:1px 8px;font-weight:700">${esc(stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''))}</span>`)}
+      ${row('% hoàn thành', orderOverallProgress(o)+'%')}
+      ${row('Ngày nhận', fmtDate(o.receivedDate))}
+      ${row('Hạn KH', ref?fmtDate(ref):'')}
+      ${row('Dự kiến HT', ef? (fmtDate(ef)+(o.status!=='delivered'&&ref&&ef>ref?' <span style="color:var(--st-late);font-weight:700">⚠ trễ</span>':'')) : '')}
+      ${row('Ngày giao', fmtDate(o.deliveredDate))}
+      ${row('Thực hiện', exec)}
+      ${row('Vị trí hiện tại', o.currentLocation?('📍 '+esc(o.currentLocation)):'')}
+      ${row('Mục tiêu', o.target?('🎯 '+esc(o.target)):'')}
+      ${row('Ghi chú', o.note?esc(o.note):'')}
+    </table>
+    <div style="margin-top:10px"><b style="font-size:12px">🔧 Công đoạn</b>${stagesHtml}</div>
+    ${matHtml?`<div style="margin-top:8px"><b style="font-size:12px">📦 Vật tư mua/phôi</b>${matHtml}</div>`:''}
+    ${measHtml?`<div style="margin-top:8px"><b style="font-size:12px">📐 Nghiệm thu</b>${measHtml}</div>`:''}
+    ${(o.driveFolder||attHtml)?`<div style="margin-top:8px"><b style="font-size:12px">📁 Tài liệu</b><div style="margin-top:3px">${o.driveFolder?`<a href="${esc(o.driveFolder)}" target="_blank" style="color:#0EA5E9;margin-right:10px">📁 Thư mục Drive</a>`:''}${attHtml}</div></div>`:''}
+  `;
+  openModal('modalView');
 }
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';
@@ -3155,6 +3216,24 @@ function seedCustomersFromOrders(){
 /* ============================================================
    KPI & BÁO CÁO
    ============================================================ */
+// Đơn TRỄ quy về người làm: lấy người phụ trách công đoạn ĐANG kẹt (chưa xong đầu tiên);
+// nếu công đoạn đó chưa gán ai thì quy cho tất cả người đã tham gia đơn. Dùng cho KPI cá nhân.
+function lateOrderAttribution(){
+  const map = {}; // staffId -> { late:Set(orderId), codes:[] }
+  (DATA.orders||[]).forEach(o=>{
+    const ref = o.requestedDate||o.dueDate; if(!ref) return;
+    let late=false;
+    if(o.status==='delivered') late = !!(o.deliveredDate && daysBetween(ref,o.deliveredDate)>0);
+    else late = o.status!=='hold' && ref < todayStr();
+    if(!late) return;
+    let stages=(o.stages||[]).filter(Boolean).slice();
+    (o.items||[]).filter(Boolean).forEach(it=> stages=stages.concat((it.stages||[]).filter(Boolean)));
+    const cur = stages.find(s=>stageState(s)!=='done');
+    let who = (cur && cur.assignee) ? [cur.assignee] : stages.filter(s=>s.assignee).map(s=>s.assignee);
+    new Set(who).forEach(id=>{ const m=(map[id]=map[id]||{late:new Set(),codes:[]}); if(!m.late.has(o.id)){ m.late.add(o.id); m.codes.push(o.code||o.id); } });
+  });
+  return map;
+}
 function renderKpi(){
   const el = document.getElementById('view-kpi');
   const orders = DATA.orders;
@@ -3182,7 +3261,11 @@ function renderKpi(){
   DATA.assignments.filter(a=>a.kind==='order').forEach(a=>{
     staffHours[a.staffId] = (staffHours[a.staffId]||0) + (parseFloat(a.hours)||8);
   });
-  const staffRows = DATA.staff.map(s=>({s, hours: staffHours[s.id]||0})).filter(x=>x.hours>0).sort((a,b)=>b.hours-a.hours);
+  // Đơn TRỄ quy về từng người làm (KPI cá nhân)
+  const lateMap = lateOrderAttribution();
+  const staffRows = DATA.staff.map(s=>({s, hours: staffHours[s.id]||0, late:(lateMap[s.id]?lateMap[s.id].late.size:0), lateCodes:(lateMap[s.id]?lateMap[s.id].codes:[])}))
+    .filter(x=>x.hours>0 || x.late>0).sort((a,b)=> (b.late-a.late) || (b.hours-a.hours));
+  const lateStaffRows = staffRows.filter(x=>x.late>0);
 
   // NCR theo công đoạn
   const ncrByStage = {};
@@ -3215,11 +3298,12 @@ function renderKpi(){
         </div>
       </div>
       <div>
-        <h2 class="sec"><span class="bar"></span>Khối lượng giờ công theo nhân sự</h2>
+        <h2 class="sec"><span class="bar"></span>Giờ công &amp; đơn trễ theo nhân sự</h2>
         <div class="card" style="padding:0;overflow:auto">
-          ${staffRows.length? `<table><thead><tr><th>Nhân sự / Đối tác</th><th>Tổng giờ công</th></tr></thead><tbody>
-            ${staffRows.map(x=>`<tr><td>${esc(x.s.name)}${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td><td><b>${x.hours}h</b></td></tr>`).join('')}
+          ${staffRows.length? `<table><thead><tr><th>Nhân sự / Đối tác</th><th>Tổng giờ công</th><th title="Số đơn đang/đã trễ mà người này phụ trách công đoạn">⚠ Đơn trễ</th></tr></thead><tbody>
+            ${staffRows.map(x=>`<tr${x.late>0?' style="background:#fff5f5"':''}><td>${esc(x.s.name)}${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td><td><b>${x.hours}h</b></td><td>${x.late>0?`<b style="color:var(--st-late)">${x.late}</b> <span class="muted small" title="Mã đơn trễ">(${x.lateCodes.map(c=>esc(String(c))).join(', ')})</span>`:'<span class="muted">0</span>'}</td></tr>`).join('')}
           </tbody></table>`:'<div class="empty">Chưa có phân công nào trên lịch.</div>'}
+          <div class="small muted" style="padding:6px 10px">⚠ Đơn trễ tính theo người phụ trách <b>công đoạn đang kẹt</b> của đơn quá hạn (hoặc đã giao trễ).</div>
         </div>
       </div>
     </div>

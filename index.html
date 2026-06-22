@@ -1963,12 +1963,23 @@ function syncAssignmentsFromOrder(o){
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(st=>mk(st, truncate(it.name||'',16), it.id||'')));
 }
 
-// Mã đơn tự sinh = số lớn nhất hiện có + 1 (mã chỉ là số cho gọn)
-function nextOrderCode(){
+// Tiền tố mã đơn theo LOẠI (viết tắt EN, dùng lâu dài)
+const ORDERTYPE_PREFIX = { 'Gia công':'MFG', 'Dự án':'PRJ', 'Lắp đặt / Dịch vụ':'SVC', 'Thương mại':'TRD', 'Nội bộ':'INT' };
+function orderTypePrefix(t){ return ORDERTYPE_PREFIX[t] || 'MFG'; }
+// Mã đơn tự sinh theo loại: TYPE-YY-### (vd MFG-26-017). Số thứ tự đếm riêng từng loại/năm.
+function nextOrderCodeFor(orderType){
+  const pre = orderTypePrefix(orderType);
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const head = pre + '-' + yy + '-';
   let mx = 0;
-  (DATA.orders||[]).forEach(o=>{ const n=parseInt(String(o.code||'').replace(/\D/g,''),10); if(!isNaN(n)&&n>mx) mx=n; });
-  return String(mx+1);
+  (DATA.orders||[]).forEach(o=>{
+    const c = String(o.code||'');
+    if(c.startsWith(head)){ const n = parseInt(c.slice(head.length).replace(/\D/g,''),10); if(!isNaN(n)&&n>mx) mx=n; }
+  });
+  return head + String(mx+1).padStart(3,'0');
 }
+// Tương thích cũ: nếu gọi không có loại
+function nextOrderCode(){ return nextOrderCodeFor('Gia công'); }
 // XEM nhanh đơn hàng (chỉ đọc) — ai cũng mở được, không sửa gì
 function openOrderView(id){
   const o = (DATA.orders||[]).find(x=>x.id===id);
@@ -2219,7 +2230,7 @@ function saveOrder(){
   }
   const rec = {
     id: id || uid('DH', 'order'),
-    code: code || nextOrderCode(),
+    code: code || nextOrderCodeFor(document.getElementById('ord_type').value),
     company: document.getElementById('ord_company').value.trim(),
     name,
     orderType: document.getElementById('ord_type').value,

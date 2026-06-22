@@ -27,7 +27,7 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Play',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
-  .logo-img{height:46px;width:auto;max-width:190px;display:block;border-radius:8px;background:#fff;padding:4px 12px;object-fit:contain;box-shadow:0 1px 3px rgba(0,0,0,.18);}
+  .logo-img{height:52px;width:auto;max-width:230px;display:block;border-radius:10px;background:#fff;padding:6px 16px;object-fit:contain;}
   .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:12px 20px;}
   .topbar .logo{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   .topbar h1{font-size:17px;margin:0;font-weight:700;}
@@ -175,7 +175,7 @@ function gateCheck(){
 </script>
 
 <div class="topbar">
-  <img class="logo-img" src="logo.png" alt="DAI HONG PHAT" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='logo.svg';}else{this.outerHTML='<div class=\'logo\'>DHP</div>';}">
+  <img class="logo-img" src="logo.png" alt="DAI HONG PHAT" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';} else if(f===2){this.src='logo.svg';} else{this.outerHTML='<div class=\'logo\'>DHP</div>';}">
   <div>
     <h1 data-i18n="appTitle">DHP Manager — Quản lý sản xuất CK368</h1>
     <div class="sub" data-i18n="appSub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — đồng bộ real-time</div>

@@ -27,7 +27,7 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Play',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);}
-  .logo-img{height:40px;width:auto;display:block;border-radius:6px;background:#fff;padding:3px 6px;}
+  .logo-img{height:46px;width:auto;max-width:190px;display:block;border-radius:8px;background:#fff;padding:4px 12px;object-fit:contain;box-shadow:0 1px 3px rgba(0,0,0,.18);}
   .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:12px 20px;}
   .topbar .logo{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   .topbar h1{font-size:17px;margin:0;font-weight:700;}
@@ -178,7 +178,7 @@ function gateCheck(){
   <img class="logo-img" src="logo.png" alt="DAI HONG PHAT" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='logo.svg';}else{this.outerHTML='<div class=\'logo\'>DHP</div>';}">
   <div>
     <h1 data-i18n="appTitle">DHP Manager — Quản lý sản xuất CK368</h1>
-    <div class="sub" data-i18n="appSub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets</div>
+    <div class="sub" data-i18n="appSub">Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — đồng bộ real-time</div>
   </div>
   <div class="right">
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:4px">
@@ -862,7 +862,7 @@ function fillSelect(sel, items, valueKey, labelKey, placeholder){
 let LANG = localStorage.getItem('dhp_lang') || 'vi';
 const I18N = {
   appTitle:    {vi:'DHP Manager — Quản lý sản xuất CK368', en:'DHP Manager — CK368 Production Management'},
-  appSub:      {vi:'Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — dữ liệu chung qua Google Sheets', en:'Orders · Schedule · Customers · KPI · Outsource · NCR — shared data via Google Sheets'},
+  appSub:      {vi:'Đơn hàng · Lịch phân công · Khách hàng · KPI · Outsource · NCR — đồng bộ real-time', en:'Orders · Schedule · Customers · KPI · Outsource · NCR — shared data — real-time sync'},
   gateSub:     {vi:'Quản lý sản xuất CK368 — nhập mật khẩu để vào', en:'CK368 Production Management — enter password to continue'},
   tab_grid:    {vi:'Lịch phân công & Đơn hàng', en:'Schedule & Orders'},
   tab_today:   {vi:'Việc hôm nay', en:'My jobs today'},
@@ -1977,6 +1977,7 @@ function openOrderView(id){
   const certOk = o.qcResult==='pass';
   document.getElementById('ord_view_body').innerHTML += `
     <div class="toolbar" style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px">
+      <button class="ghost sm" onclick="printWorkOrder('${o.id}')" style="border-color:#6366F1;color:#6366F1">🖨 Phiếu gia công (phát cho thợ)</button>
       <button class="ghost sm" onclick="printQcSheet('${o.id}')">🖨 In phiếu kiểm QC/QA</button>
       <button class="ghost sm" onclick="printCertificate('${o.id}')" ${certOk?'':'disabled title="Chỉ in được khi QC = ĐẠT"'} style="${certOk?'border-color:#16A34A;color:#15803D':'opacity:.5;cursor:not-allowed'}">📜 Chứng nhận xuất xưởng${certOk?'':' (cần QC Đạt)'}</button>
     </div>`;
@@ -2024,6 +2025,35 @@ function printQcSheet(id){
       <div><b>Người kiểm QC</b><div class="line">${esc(o.inspector||'')}${o.inspectDate?'<br>'+fmtDate(o.inspectDate):''}</div></div>
       <div><b>Điều phối / TPKT</b><div class="line">(Ký, ghi rõ họ tên)</div></div></div>`;
   printDoc('Phieu QC '+(o.code||''), body);
+}
+// Phiếu GIA CÔNG + ĐO ĐẠC để PHÁT cho thợ tự ghi tay tại xưởng (không cần cấp quyền sửa app)
+function printWorkOrder(id){
+  const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
+  const ref=o.requestedDate||o.dueDate;
+  let stages=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>stages.push({s,it:it.name||''})));
+  const stageRows = stages.length ? stages.map(({s,it},i)=>`<tr>
+    <td>${i+1}</td><td><b>${esc(s.code||'')}</b> ${esc(s.name||'')}${it?' <span class="muted">('+esc(truncate(it,18))+')</span>':''}</td>
+    <td>${s.assignee?esc(staffName(s.assignee)):''}</td><td>${esc(s.location||'CK368')}</td>
+    <td style="text-align:center">${stageHours(s)}h</td><td></td><td></td></tr>`).join('')
+    : '<tr><td colspan="7" class="muted">Chưa khai báo công đoạn.</td></tr>';
+  // bảng đo đạc trống cho thợ điền (lấy thông số yêu cầu nếu đã có, thực đo để trống)
+  const specRows = (o.measures||[]).filter(Boolean).length
+    ? (o.measures||[]).filter(Boolean).map((m,i)=>`<tr><td>${i+1}</td><td>${esc(m.param||'')}</td><td>${esc(m.spec||'')}</td><td></td><td></td></tr>`).join('')
+    : Array.from({length:6}).map((_,i)=>`<tr><td>${i+1}</td><td></td><td></td><td></td><td></td></tr>`).join('');
+  const body=`${docHeader('PHIẾU GIA CÔNG & ĐO ĐẠC')}
+    <h1 style="text-align:center;margin-top:10px">Phiếu gia công</h1>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
+    <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}</td></tr>
+    <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn giao</th><td>${ref?fmtDate(ref):''}</td></tr></table>
+    <h2>Các công đoạn — thợ ghi giờ thực tế & ngày xong</h2>
+    <table><thead><tr><th style="width:30px">TT</th><th>Công đoạn</th><th>Người làm</th><th>Nơi làm</th><th style="width:60px">Giờ KH</th><th style="width:80px">Giờ TT</th><th style="width:90px">Ngày xong</th></tr></thead><tbody>${stageRows}</tbody></table>
+    <h2>Đo đạc thực tế (thợ tự đo & ghi)</h2>
+    <table><thead><tr><th style="width:30px">TT</th><th>Thông số / kích thước</th><th>Yêu cầu (bản vẽ)</th><th style="width:120px">Thực đo</th><th style="width:90px">Đạt/Không</th></tr></thead><tbody>${specRows}</tbody></table>
+    <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, ghi rõ họ tên)</div></div>
+      <div><b>Tổ trưởng / Điều phối</b><div class="line">(Ký)</div></div></div>
+    <p class="muted" style="margin-top:8px;font-size:11px">* Thợ ghi tay vào phiếu này tại xưởng. Sau khi xong, điều phối nhập số liệu vào app để lưu & in chứng nhận.</p>`;
+  printDoc('Phieu gia cong '+(o.code||''), body);
 }
 function printCertificate(id){
   const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;

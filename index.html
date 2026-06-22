@@ -840,6 +840,7 @@ const I18N = {
   th_name:     {vi:'Tên hàng', en:'Product'},
   th_customer: {vi:'Khách hàng', en:'Customer'},
   th_due:      {vi:'Hạn KH', en:'Due date'},
+  th_expFinish:{vi:'Dự kiến HT', en:'Est. finish'},
   th_status:   {vi:'Trạng thái', en:'Status'},
   th_pct:      {vi:'% HT', en:'% Done'},
   th_assign:   {vi:'Thực hiện', en:'Executed by'},
@@ -1343,7 +1344,14 @@ function deleteStaff(id){
 /* ============================================================
    ORDERS
    ============================================================ */
-let orderFilter = { status:'', q:'', assignment:'', sortKey:'dueDate', sortDir:'desc' };
+let orderFilter = { statuses:[], q:'', assignment:'', sortKey:'dueDate', sortDir:'desc' };
+// Bật/tắt 1 trạng thái trong bộ lọc (chọn được nhiều). Rỗng = xem tất cả.
+function toggleStatusFilter(k){
+  const i = orderFilter.statuses.indexOf(k);
+  if(i>=0) orderFilter.statuses.splice(i,1); else orderFilter.statuses.push(k);
+  refreshOrders();
+}
+function clearStatusFilter(){ orderFilter.statuses=[]; refreshOrders(); }
 // Giá trị dùng để so sánh/sắp xếp cho từng cột — cho phép người xem bấm vào tiêu đề cột
 // để sắp xếp theo ý mình (mã đơn, tên hàng, khách hàng, hạn giao, trạng thái, thực hiện, tiến độ...)
 function orderSortValue(o, key){
@@ -1352,6 +1360,7 @@ function orderSortValue(o, key){
     case 'name': return (o.name||'').toLowerCase();
     case 'company': return (o.company||'').toLowerCase();
     case 'dueDate': return (o.dueDate||'');
+    case 'expFinish': return (expectedFinishDate(o)||'9999-99-99');
     case 'status': { const i = ORDER_STATUSES.findIndex(s=>s.k===o.status); return i<0?99:i; }
     case 'assignment': return (o.assignment==='outsource' ? '1-'+(o.outsourcePartner||'') : '0-noi bo');
     case 'progress': {
@@ -1392,10 +1401,6 @@ function ordersSectionHtml(){
     <div class="toolbar">
       ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
       <input id="ofQ" placeholder="${t('search_ph')}" style="min-width:240px" oninput="orderFilter.q=this.value;refreshOrders()" value="${esc(orderFilter.q)}">
-      <select onchange="orderFilter.status=this.value;refreshOrders()">
-        <option value="">${t('f_allStatus')}</option>
-        ${ORDER_STATUSES.map(s=>`<option value="${s.k}" ${orderFilter.status===s.k?'selected':''}>${esc(stLabel(s))}</option>`).join('')}
-      </select>
       <select onchange="orderFilter.assignment=this.value;refreshOrders()">
         <option value="">${t('f_allAssign')}</option>
         <option value="inhouse" ${orderFilter.assignment==='inhouse'?'selected':''}>${t('f_inhouse')}</option>
@@ -1403,7 +1408,11 @@ function ordersSectionHtml(){
       </select>
       <span class="muted small" style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} ${t('lb_orders')}</span>
     </div>
-    <div class="legend">${ORDER_STATUSES.map(s=>`<span class="chip"><i style="background:${s.color}"></i>${esc(stLabel(s))}</span>`).join('')}</div>
+    <div class="legend" style="align-items:center">
+      <span class="small muted" style="font-weight:700;margin-right:2px">Lọc trạng thái (chọn nhiều):</span>
+      <span class="chip" onclick="clearStatusFilter()" style="cursor:pointer;${orderFilter.statuses.length===0?'outline:2px solid var(--brand);font-weight:800':''}" title="Xem tất cả">⭐ Tất cả</span>
+      ${ORDER_STATUSES.map(s=>{ const on=orderFilter.statuses.includes(s.k); return `<span class="chip" onclick="toggleStatusFilter('${s.k}')" style="cursor:pointer;${on?'outline:2px solid '+s.color+';font-weight:800;background:'+s.color+'1a':''}" title="${on?'Bỏ chọn':'Thêm vào lọc'}">${on?'✓ ':''}<i style="background:${s.color}"></i>${esc(stLabel(s))}</span>`; }).join('')}
+    </div>
     <div class="card" style="overflow:auto;padding:0">
       ${ DATA.orders.length===0 ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nạp dữ liệu.</div>' : ordersTable() }
     </div>`;
@@ -1415,7 +1424,7 @@ function renderOrders(){
 function filteredOrders(){
   const q = orderFilter.q.trim().toLowerCase();
   return DATA.orders.filter(o=>{
-    if(orderFilter.status && o.status!==orderFilter.status) return false;
+    if(orderFilter.statuses && orderFilter.statuses.length && !orderFilter.statuses.includes(o.status)) return false;
     if(orderFilter.assignment && (o.assignment||'inhouse')!==orderFilter.assignment) return false;
     if(q && !((o.code||'')+' '+(o.name||'')+' '+(o.company||'')).toLowerCase().includes(q)) return false;
     return true;
@@ -1433,7 +1442,7 @@ function ordersTable(){
   if(!rows.length) return '<div class="empty">Không có đơn nào khớp bộ lọc.</div>';
   const statusOpts = ORDER_STATUSES.map(s=>`<option value="${s.k}">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('');
   return `<table><thead><tr>
-    ${sortHeader('code',t('th_code'))}${sortHeader('name',t('th_name'))}${sortHeader('company',t('th_customer'))}${sortHeader('dueDate',t('th_due'))}${sortHeader('status',t('th_status'))}<th>${t('th_pct')}</th>${sortHeader('assignment',t('th_assign'))}${sortHeader('progress',t('th_progress'))}<th></th>
+    ${sortHeader('code',t('th_code'))}${sortHeader('name',t('th_name'))}${sortHeader('company',t('th_customer'))}${sortHeader('dueDate',t('th_due'))}${sortHeader('expFinish',t('th_expFinish'))}${sortHeader('status',t('th_status'))}<th>${t('th_pct')}</th>${sortHeader('assignment',t('th_assign'))}${sortHeader('progress',t('th_progress'))}<th></th>
   </tr></thead><tbody>
   ${rows.map(o=>{ try{
     const dueRef = o.requestedDate || o.dueDate;
@@ -1471,6 +1480,12 @@ function ordersTable(){
       })()}${stageChainHtml(o)}</td>
       <td style="min-width:150px;white-space:normal;word-break:break-word">${esc(o.company)}</td>
       <td>${fmtDate(dueRef)}</td>
+      <td class="small">${(function(){
+        const ef=expectedFinishDate(o); if(!ef) return '<span class="muted">—</span>';
+        if(o.status==='delivered') return `<span style="color:var(--st-done);font-weight:700">${fmtDate(ef)}</span>`;
+        const ref=o.requestedDate||o.dueDate; const late=ref&&ef>ref;
+        return `<span style="${late?'color:var(--st-late);font-weight:700':'font-weight:600'}" title="${late?'Trễ so với hạn KH':'Dự kiến làm xong công đoạn cuối'}">${fmtDate(ef)}${late?' ⚠':''}</span>`;
+      })()}</td>
       <td>
         <select style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:${statusByKey(o.status).color};color:#fff;font-weight:700;cursor:pointer"
           onchange="quickStatusChange('${o.id}',this.value)"
@@ -2021,6 +2036,19 @@ function computeForecast(o){
     }
   }
   return null;
+}
+// Ngày DỰ KIẾN HOÀN THÀNH = ngày làm xong công đoạn cuối theo lịch (start + số ngày dàn theo giờ, bỏ CN).
+// Ưu tiên: đã giao → ngày giao; có nhập forecast tay → dùng tay; nếu không → công đoạn muộn nhất.
+function expectedFinishDate(o){
+  if(!o) return null;
+  if(o.status==='delivered') return o.deliveredDate||null;
+  if(o.forecastDate) return o.forecastDate;
+  let last=null;
+  const consider=(st)=>{ if(st&&st.startDate){ const f=stageFinishDate(st.startDate, stageSpanDays(st)); if(!last||f>last) last=f; } };
+  (o.stages||[]).filter(Boolean).forEach(consider);
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(consider));
+  if(last) return last;
+  const fc=computeForecast(o); return fc?fc.date:null;
 }
 // % hoàn thành theo công đoạn: số công đoạn ĐÃ XONG / tổng công đoạn
 function stageDonePct(stages){

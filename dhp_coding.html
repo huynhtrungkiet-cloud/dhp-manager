@@ -29,6 +29,13 @@
   .prdcard img{width:100%;height:130px;object-fit:contain;background:#f8fafc;border-bottom:1px solid var(--line)}
   .prd-noimg{width:100%;height:130px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;color:#94a3b8;font-size:12px;border-bottom:1px solid var(--line)}
   .badge{display:inline-block;background:#eef2ff;color:#4338ca;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
+  /* Bảng danh sách gọn (nhẹ, xem nhiều SP) */
+  .ptbl{width:100%;border-collapse:collapse;font-size:13px}
+  .ptbl th{position:sticky;top:0;background:#f8fafc;text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569;white-space:nowrap}
+  .ptbl td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .ptbl tbody tr:hover{background:#fff7ed}
+  .ptbl .csku{font-family:ui-monospace,Consolas,monospace;font-weight:700;color:#0EA5E9;white-space:nowrap}
+  .ptbl .cact{text-align:right;color:var(--muted)}
   .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:24px}
   .modal-bg.show{display:flex}
   .modal{background:#fff;border-radius:14px;padding:18px;max-width:560px;width:100%}
@@ -63,6 +70,7 @@
     <span class="pill" id="connBadge">● chưa kết nối</span>
     <button class="ghost sm" id="unlockBtn" onclick="unlockEdit()">🔓 Mở khóa sửa</button>
     <button class="ghost sm" onclick="loadProducts()">🔄 Tải lại</button>
+    <a class="ghost sm" href="HUONG_DAN_DHP_CODING.html" target="_blank" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">❓ Hướng dẫn</a>
     <a class="ghost sm" href="index.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">↩ DHP Manager</a>
   </div>
 </div>
@@ -80,8 +88,9 @@
 
   <div class="toolbar">
     <input id="q" placeholder="🔎 Tìm mã / tên / series / hãng..." style="flex:1;min-width:240px;font-size:15px;padding:10px 12px" oninput="renderGrid()">
-    <select id="fBrand" onchange="renderGrid()"><option value="">— Tất cả hãng —</option></select>
+    <select id="fBrand" onchange="onBrandFilter()"><option value="">— Tất cả hãng —</option></select>
     <select id="fCat" onchange="renderGrid()"><option value="">— Tất cả nhóm —</option></select>
+    <select id="fKind" onchange="renderGrid()"><option value="">— Loại mã —</option><option value="brand">Sản phẩm hãng</option><option value="dhp">DHP tự chế (dự án/DV/GC)</option></select>
     <span id="editBtns" style="display:none;gap:6px">
       <button class="sm" onclick="openProduct()">＋ Thêm SKU</button>
       <button class="ghost sm" onclick="document.getElementById('csvIn').click()">📥 Nhập CSV</button>
@@ -99,21 +108,43 @@
     <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="mTitle" style="margin:0">Sản phẩm</h3><button class="ghost sm" onclick="closeModal()">✕</button></div>
     <input type="hidden" id="p_id">
     <div class="card" style="background:#fff7ed;border-color:#fbbf24;margin:10px 0;padding:10px">
-      <b class="small">🏷 Sinh mã SKU tự động</b>
-      <div class="row3" style="margin-top:6px">
-        <div class="field" style="margin:0"><label>Hãng</label><select id="p_brandSel" onchange="onBrandSel()"></select></div>
-        <div class="field" style="margin:0"><label>Series</label><input id="p_series" placeholder="ROTEX / RFN7012" oninput="genSku()"></div>
-        <div class="field" style="margin:0"><label>Cỡ / Size</label><input id="p_size" placeholder="28 / 60X90" oninput="genSku()"></div>
+      <div class="field" style="margin:0 0 8px"><label>🏷 Loại mã</label>
+        <select id="p_kind" onchange="toggleKind();genSku()" style="width:100%">
+          <option value="brand">Sản phẩm hãng (catalogue) → BRAND-SERIES-SIZE</option>
+          <option value="dhp">DHP tự chế (dự án / dịch vụ / gia công) → DHP-TYPE-###</option>
+        </select>
       </div>
-      <div class="row2" style="margin-top:6px">
-        <div class="field" style="margin:0"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / SST..." oninput="genSku()"></div>
-        <div class="field" style="margin:0"><label>→ Mã SKU (sửa được)</label><input id="p_sku" placeholder="KTR-ROTEX-28" style="font-weight:800"></div>
+      <!-- Mode: sản phẩm hãng -->
+      <div id="brandBox">
+        <div class="row3">
+          <div class="field" style="margin:0"><label>Hãng</label><select id="p_brandSel" onchange="refreshCats();refreshSeries();genSku()" style="width:100%"></select></div>
+          <div class="field" style="margin:0"><label>Nhóm</label><select id="p_catSel" onchange="catChanged()" style="width:100%"></select></div>
+          <div class="field" style="margin:0"><label>Series</label><select id="p_serSel" onchange="serChanged()" style="width:100%"></select></div>
+        </div>
+        <div class="row3" style="margin-top:6px">
+          <div class="field" style="margin:0"><label>Cỡ / Size</label><input id="p_size" placeholder="28 / 60X90" oninput="genSku()"></div>
+          <div class="field" style="margin:0"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / SST..." oninput="genSku()"></div>
+          <div class="field" style="margin:0"><label>→ Mã SKU (sửa được)</label><input id="p_sku" placeholder="KTR-ROTEX-28" style="font-weight:800"></div>
+        </div>
+      </div>
+      <!-- Mode: DHP tự chế -->
+      <div id="dhpBox" style="display:none">
+        <div class="row3">
+          <div class="field" style="margin:0"><label>Loại</label>
+            <select id="p_dhpType" onchange="genSku()" style="width:100%">
+              <option value="PRJ">Dự án (PRJ)</option><option value="SVC">Dịch vụ (SVC)</option>
+              <option value="MFG">Gia công (MFG)</option><option value="OTH">Khác (OTH)</option>
+            </select></div>
+          <div class="field" style="margin:0"><label>Tên ngắn chi tiết</label><input id="p_dhpName" placeholder="VD: Ống lót côn KH"></div>
+          <div class="field" style="margin:0"><label>→ Mã (sửa được)</label><input id="p_sku2" placeholder="DHP-PRJ-001" style="font-weight:800" oninput="document.getElementById('p_sku').value=this.value"></div>
+        </div>
       </div>
     </div>
-    <div class="field"><label>Tên sản phẩm</label><input id="p_name" placeholder="Tên / mô tả"></div>
+    <div id="simBox" class="small" style="margin:2px 0 10px"></div>
+    <div class="field"><label>Tên sản phẩm</label><input id="p_name" placeholder="Tên / mô tả" oninput="showSimilar()"></div>
     <div class="row2">
-      <div class="field"><label>Nhóm khớp nối</label><input id="p_category" list="dlCats" placeholder="Khớp nối linh hoạt..."></div>
       <div class="field"><label>Vật liệu</label><input id="p_material" placeholder="Gang / Thép..."></div>
+      <div class="field"><label>PN / Mã phụ</label><input id="p_pn" placeholder=""></div>
     </div>
     <div class="row2">
       <div class="field"><label>Giá tham khảo</label><input id="p_price"></div>
@@ -186,76 +217,185 @@ function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[
 function brandImg(p){ if(p.imageUrl) return p.imageUrl; const k=(p.brand||'')+'|'+(p.series||''); const sib=PRODUCTS.find(x=>x.imageUrl&&((x.brand||'')+'|'+(x.series||''))===k); return sib?sib.imageUrl:''; }
 function fillFilters(){
   const bs=[...new Set(PRODUCTS.map(p=>p.brand).filter(Boolean))].sort();
-  const cs=[...new Set(PRODUCTS.map(p=>p.category).filter(Boolean))].sort();
   document.getElementById('fBrand').innerHTML='<option value="">— Tất cả hãng —</option>'+bs.map(b=>`<option>${esc(b)}</option>`).join('');
-  document.getElementById('fCat').innerHTML='<option value="">— Tất cả nhóm —</option>'+cs.map(c=>`<option>${esc(c)}</option>`).join('');
+  refreshCatFilter();
+  const cs=[...new Set(PRODUCTS.map(p=>p.category).filter(Boolean))].sort();
   document.getElementById('dlCats').innerHTML=cs.map(c=>`<option value="${esc(c)}">`).join('');
 }
+// Chọn hãng → ô "Nhóm" chỉ hiện nhóm thực có của hãng đó
+function refreshCatFilter(){
+  const b=document.getElementById('fBrand').value;
+  const prev=document.getElementById('fCat').value;
+  const cs=[...new Set(PRODUCTS.filter(p=>!b||p.brand===b).map(p=>p.category).filter(Boolean))].sort();
+  const keep=cs.includes(prev)?prev:'';
+  document.getElementById('fCat').innerHTML='<option value="">— Tất cả nhóm —</option>'+cs.map(c=>`<option ${c===keep?'selected':''}>${esc(c)}</option>`).join('');
+}
+function onBrandFilter(){ refreshCatFilter(); renderGrid(); }
 function filtered(){
   const q=norm(document.getElementById('q').value), b=document.getElementById('fBrand').value, c=document.getElementById('fCat').value;
+  const k=document.getElementById('fKind')?document.getElementById('fKind').value:'';
   return PRODUCTS.filter(p=>{
     if(b&&p.brand!==b) return false; if(c&&p.category!==c) return false;
+    if(k){ const isDhp=/^DHP-/.test(p.sku||'')||p.kind==='dhp'; if(k==='dhp'&&!isDhp) return false; if(k==='brand'&&isDhp) return false; }
     if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
     return true;
   });
 }
 function renderGrid(){
-  const rows=filtered(), CAP=300, shown=rows.slice(0,CAP);
+  const rows=filtered(), CAP=600, shown=rows.slice(0,CAP);
   document.getElementById('count').textContent=`${rows.length} / ${PRODUCTS.length} sản phẩm`;
-  document.getElementById('grid').innerHTML = PRODUCTS.length===0
-    ? `<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm SKU</b>.':''}</div>`
-    : (rows.length===0?'<div class="card muted">Không khớp tìm kiếm.</div>'
-      : `<div class="prdgrid">${shown.map(card).join('')}</div>${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm để thu hẹp.</div>`:''}`);
+  const grid=document.getElementById('grid');
+  if(PRODUCTS.length===0){ grid.innerHTML=`<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm SKU</b>.':''}</div>`; return; }
+  if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
+  grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
+    <table class="ptbl"><thead><tr>
+      <th>Mã SKU</th><th>Tên sản phẩm</th><th>Hãng</th><th>Nhóm</th><th>Series</th><th>Cỡ</th>${canEdit()?'<th></th>':''}
+    </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
+    ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc hãng để thu hẹp.</div>`:''}`;
 }
-function card(p){
-  const im=brandImg(p);
-  const img=im?`<img src="${esc(im)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'prd-noimg',textContent:'🖼 chưa có ảnh'}))">`:`<div class="prd-noimg">🖼 chưa có ảnh</div>`;
-  const sp=[p.size&&('DN '+p.size),p.material].filter(Boolean).join(' · ');
-  return `<div class="prdcard" ${canEdit()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
-    ${img}<div style="padding:7px 9px">
-      <div style="font-weight:800;font-size:13px">${esc(p.name||p.sku)}</div>
-      <div style="font-size:11px;color:#0EA5E9;font-weight:700">${esc(p.sku||'')}</div>
-      <div class="muted" style="font-size:10.5px">${esc([p.brand,p.series].filter(Boolean).join(' · '))}</div>
-      ${sp?`<div style="font-size:10.5px;color:#334155">${esc(sp)}</div>`:''}
-      ${p.price?`<div style="font-size:11px;color:var(--ok);font-weight:700">${esc(p.price)}</div>`:''}
-    </div></div>`;
+function rowHtml(p){
+  return `<tr ${canEdit()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
+    <td class="csku">${esc(p.sku||'')}</td>
+    <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
+    <td>${esc(p.brand||'')}</td>
+    <td>${esc(p.category||'')}</td>
+    <td>${esc(p.series||'')}</td>
+    <td>${esc(p.size||'')}</td>
+    ${canEdit()?'<td class="cact">✎</td>':''}
+  </tr>`;
 }
 // ---- Sinh mã SKU ----
+const NEWOPT='__new__';
 function brandCode(name){ const f=BRANDS.find(b=>b[0]===name); if(f) return f[1]; return norm(name).replace(/[^a-z0-9]/g,'').slice(0,3).toUpperCase(); }
 function skuSlug(s){ return norm(s).replace(/[^a-z0-9]+/g,'').toUpperCase(); }
+function fillSel(el, values, current, newLabel){
+  const opts=['<option value="">— chọn —</option>']
+    .concat(values.map(v=>`<option ${current===v?'selected':''}>${esc(v)}</option>`))
+    .concat([`<option value="${NEWOPT}">➕ ${newLabel}</option>`]);
+  el.innerHTML=opts.join('');
+  if(current && !values.includes(current)){ // giá trị cũ chưa có trong list → thêm
+    const o=document.createElement('option'); o.textContent=current; o.selected=true; el.insertBefore(o, el.lastChild);
+  }
+}
+// chọn hãng → nhóm của hãng đó tự nhảy ra
+function refreshCats(){
+  const brand=document.getElementById('p_brandSel').value;
+  const cats=[...new Set(PRODUCTS.filter(p=>!brand||p.brand===brand).map(p=>p.category).filter(Boolean))].sort();
+  fillSel(document.getElementById('p_catSel'), cats, document.getElementById('p_catSel').dataset.val||'', 'Nhóm mới…');
+}
+function refreshSeries(){
+  const brand=document.getElementById('p_brandSel').value, cat=document.getElementById('p_catSel').value;
+  const ser=[...new Set(PRODUCTS.filter(p=>(!brand||p.brand===brand)&&(!cat||cat===NEWOPT||p.category===cat)).map(p=>p.series).filter(Boolean))].sort();
+  fillSel(document.getElementById('p_serSel'), ser, document.getElementById('p_serSel').dataset.val||'', 'Series mới…');
+}
+function catChanged(){
+  const el=document.getElementById('p_catSel');
+  if(el.value===NEWOPT){ const v=(prompt('Tên NHÓM mới:')||'').trim(); if(v){ const o=document.createElement('option'); o.textContent=v; o.selected=true; el.insertBefore(o, el.lastChild);} else el.value=''; }
+  el.dataset.val=el.value===NEWOPT?'':el.value;
+  refreshSeries(); genSku();
+}
+function serChanged(){
+  const el=document.getElementById('p_serSel');
+  if(el.value===NEWOPT){ const v=(prompt('Tên SERIES mới:')||'').trim(); if(v){ const o=document.createElement('option'); o.textContent=v; o.selected=true; el.insertBefore(o, el.lastChild);} else el.value=''; }
+  el.dataset.val=el.value===NEWOPT?'':el.value;
+  genSku();
+}
+function curVal(id){ const el=document.getElementById(id); return (el.value===NEWOPT)?'':el.value; }
+function toggleKind(){
+  const dhp=document.getElementById('p_kind').value==='dhp';
+  document.getElementById('brandBox').style.display=dhp?'none':'';
+  document.getElementById('dhpBox').style.display=dhp?'':'none';
+}
+// Tự kiểm tra mã đã có + gợi ý dùng lại (ngay khi đang nhập)
+function showSimilar(){
+  const box=document.getElementById('simBox'); if(!box) return;
+  const myId=document.getElementById('p_id').value;
+  const sku=(document.getElementById('p_sku').value||'').trim();
+  const isDhp=document.getElementById('p_kind').value==='dhp';
+  const brand=isDhp?'':document.getElementById('p_brandSel').value;
+  const series=isDhp?'':curVal('p_serSel');
+  const nmEl=document.getElementById(isDhp?'p_dhpName':'p_name');
+  const nm=norm(nmEl?nmEl.value:'');
+  let exact=PRODUCTS.find(p=>p.sku && norm(p.sku)===norm(sku) && p.id!==myId);
+  if(!exact && !isDhp){ // app thêm "-2" vì base trùng → tìm theo mã gốc để cảnh báo
+    const base=[brandCode(brand),skuSlug(curVal('p_serSel')),skuSlug(document.getElementById('p_size').value),skuSlug(document.getElementById('p_variant').value)].filter(Boolean).join('-');
+    if(base) exact=PRODUCTS.find(p=>p.sku && norm(p.sku)===norm(base) && p.id!==myId);
+  }
+  const cands=PRODUCTS.filter(p=>p.id!==myId).map(p=>{
+    let s=0;
+    if(brand&&p.brand===brand) s+=2;
+    if(series&&p.series===series) s+=3;
+    if(nm&&nm.length>=2){ const h=norm((p.name||'')+' '+(p.series||'')+' '+(p.sku||'')); if(h.includes(nm)) s+=2; }
+    return {p,s};
+  }).filter(o=>o.s>0).sort((a,b)=>b.s-a.s).slice(0,8).map(o=>o.p);
+  let html='';
+  if(exact){
+    html+=`<div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:6px 9px;border-radius:8px;margin-bottom:6px">
+      ⚠ Mã <b>${esc(exact.sku)}</b> ĐÃ TỒN TẠI — "${esc(exact.name||'')}". Nên dùng lại thay vì tạo mới.
+      <button type="button" class="ghost sm" style="margin-left:4px;padding:3px 8px" onclick="openProduct('${esc(exact.id)}')">↗ Mở mã này</button></div>`;
+  }
+  if(cands.length){
+    html+=`<div class="muted" style="margin:2px 0 3px">🔎 Mã tương tự đã có — cân nhắc dùng lại:</div>`
+      +cands.map(p=>`<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px dashed var(--line)">
+        <span class="csku" style="color:#0EA5E9">${esc(p.sku)}</span>
+        <span style="flex:1">${esc(p.name||'')} <span class="muted">· ${esc([p.brand,p.series].filter(Boolean).join(' · '))}</span></span>
+        <button type="button" class="ghost sm" style="padding:3px 8px" onclick="openProduct('${esc(p.id)}')">↗ Mở</button></div>`).join('');
+  }
+  box.innerHTML=html;
+}
 function genSku(){
-  const bn=document.getElementById('p_brandSel').value;
-  const parts=[brandCode(bn), skuSlug(document.getElementById('p_series').value), skuSlug(document.getElementById('p_size').value), skuSlug(document.getElementById('p_variant').value)].filter(Boolean);
-  let base=parts.join('-'); if(!base) return;
-  // chống trùng (trừ chính nó)
-  const myId=document.getElementById('p_id').value; let sku=base, n=2;
+  const myId=document.getElementById('p_id').value;
+  let base='';
+  if(document.getElementById('p_kind').value==='dhp'){
+    const t=document.getElementById('p_dhpType').value;
+    const head='DHP-'+t+'-'; let mx=0;
+    PRODUCTS.forEach(p=>{ if(p.id!==myId && String(p.sku||'').startsWith(head)){ const n=parseInt(String(p.sku).slice(head.length).replace(/\D/g,''),10); if(!isNaN(n)&&n>mx)mx=n; } });
+    const sku=head+String(mx+1).padStart(3,'0');
+    document.getElementById('p_sku2').value=sku; document.getElementById('p_sku').value=sku; showSimilar(); return;
+  }
+  const parts=[brandCode(document.getElementById('p_brandSel').value), skuSlug(curVal('p_serSel')), skuSlug(document.getElementById('p_size').value), skuSlug(document.getElementById('p_variant').value)].filter(Boolean);
+  base=parts.join('-'); if(!base) return;
+  let sku=base, n=2;
   while(PRODUCTS.some(p=>p.sku===sku && p.id!==myId)){ sku=base+'-'+n; n++; }
   document.getElementById('p_sku').value=sku;
+  showSimilar();
 }
-function onBrandSel(){ genSku(); }
 function openProduct(id){
   if(!canEdit()) return;
   const p=id?PRODUCTS.find(x=>x.id===id):null;
   document.getElementById('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm sản phẩm';
   document.getElementById('p_id').value=id||'';
+  const isDhp = p && /^DHP-/.test(p.sku||'');
+  document.getElementById('p_kind').value=isDhp?'dhp':'brand'; toggleKind();
+  // brand mode
   const bs=document.getElementById('p_brandSel'); bs.innerHTML='<option value="">— hãng —</option>'+BRANDS.map(b=>`<option ${p&&p.brand===b[0]?'selected':''}>${b[0]}</option>`).join('');
-  const set=(k,v)=>document.getElementById('p_'+k).value=v||'';
-  set('series',p&&p.series); set('size',p&&p.size); set('variant',p&&p.variant);
-  set('sku',p&&p.sku); set('name',p&&p.name); set('category',p&&p.category); set('material',p&&p.material);
+  document.getElementById('p_catSel').dataset.val=p&&p.category||''; refreshCats();
+  document.getElementById('p_serSel').dataset.val=p&&p.series||''; refreshSeries();
+  const set=(k,v)=>{ const el=document.getElementById('p_'+k); if(el) el.value=v||''; };
+  set('size',p&&p.size); set('variant',p&&p.variant); set('sku',p&&p.sku);
+  // dhp mode
+  if(isDhp){ const m=(p.sku||'').match(/^DHP-([A-Z]+)-/); document.getElementById('p_dhpType').value=m?m[1]:'PRJ'; set('dhpName',p&&p.name); set('sku2',p&&p.sku); }
+  else { set('dhpName',''); set('sku2',''); document.getElementById('p_dhpType').value='PRJ'; }
+  // common
+  set('name',p&&p.name); set('material',p&&p.material); set('pn',p&&p.pn);
   set('price',p&&p.price); set('image',p&&p.imageUrl); set('note',p&&p.note);
   const pv=document.getElementById('p_prev'); pv.src=p&&p.imageUrl?p.imageUrl:''; pv.style.display=p&&p.imageUrl?'inline-block':'none';
   document.getElementById('delBtn').style.display=p?'inline-block':'none';
+  showSimilar();
   document.getElementById('modal').classList.add('show');
 }
 function closeModal(){ document.getElementById('modal').classList.remove('show'); }
 async function saveProduct(){
   if(!canEdit()) return;
-  const g=k=>document.getElementById('p_'+k).value.trim();
-  const sku=g('sku'), name=g('name');
-  if(!sku && !name){ alert('Cần Mã SKU hoặc Tên.'); return; }
+  const g=k=>{ const el=document.getElementById('p_'+k); return el?el.value.trim():''; };
+  const isDhp=document.getElementById('p_kind').value==='dhp';
+  const sku=g('sku'), name=isDhp?g('dhpName'):g('name');
+  if(!sku){ alert('Chưa có mã. Hãy điền đủ thông tin để sinh mã.'); return; }
   const id=document.getElementById('p_id').value || ('PRD-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-  const rec={ id, sku, name:name||sku, brand:document.getElementById('p_brandSel').value, category:g('category'),
-    series:g('series'), size:g('size'), variant:g('variant'), material:g('material'), price:g('price'), imageUrl:g('image'), note:g('note'), updatedAt:new Date().toISOString() };
+  const rec={ id, sku, kind:isDhp?'dhp':'brand', name:name||sku,
+    brand:isDhp?'':document.getElementById('p_brandSel').value, category:isDhp?'':curVal('p_catSel'),
+    series:isDhp?'':curVal('p_serSel'), size:isDhp?'':g('size'), variant:isDhp?'':g('variant'),
+    material:g('material'), pn:g('pn'), price:g('price'), imageUrl:g('image'), note:g('note'), updatedAt:new Date().toISOString() };
   try{
     const {error}=await _sb.from('products').upsert({id, data:rec, updated_at:rec.updatedAt});
     if(error) throw new Error(error.message);

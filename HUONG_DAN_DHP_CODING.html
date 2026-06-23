@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn DHP Coding — Quy trình tạo mã</title>
+<style>
+  :root{--brand:#b91c1c;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#fff7ed;--ok:#16a34a}
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;margin:0;background:#f1f5f9;color:var(--ink);line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
+  header{background:var(--brand);color:#fff;padding:22px 16px;margin-bottom:18px}
+  header .in{max-width:860px;margin:0 auto}
+  header h1{margin:0;font-size:22px} header .sub{opacity:.9;font-size:13px;margin-top:3px}
+  h2{font-size:18px;border-bottom:2px solid var(--line);padding-bottom:6px;margin:28px 0 12px}
+  h3{font-size:15px;margin:18px 0 6px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  code,.mono{font-family:ui-monospace,Consolas,monospace;background:#f1f5f9;padding:1px 6px;border-radius:5px;font-weight:700;color:#0EA5E9}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f8fafc;font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:#475569}
+  ol li,ul li{margin:5px 0}
+  .step{background:var(--soft);border:1px solid #fdba74;border-radius:10px;padding:12px 14px;margin:10px 0}
+  .step b{color:var(--brand)}
+  .tip{background:#ecfeff;border-left:4px solid #06b6d4;padding:10px 14px;border-radius:8px;margin:10px 0}
+  .warn{background:#fef2f2;border-left:4px solid var(--brand);padding:10px 14px;border-radius:8px;margin:10px 0}
+  .pill{display:inline-block;background:#eef2ff;color:#4338ca;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700}
+  @media print{header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>Hướng dẫn sử dụng DHP Coding</h1>
+  <div class="sub">Catalogue sản phẩm · Sinh & tra cứu mã SKU · Quy trình tạo mã chuẩn cho Đại Hồng Phát</div>
+</div></header>
+
+<div class="wrap">
+
+<div class="card">
+  <b>App này để làm gì?</b>
+  <ul>
+    <li>Lưu <b>danh mục toàn bộ sản phẩm</b> (khớp nối, khớp khóa trục… của các hãng) — tra cứu nhanh, không nhầm.</li>
+    <li><b>Sinh mã SKU thống nhất</b> cho mọi mặt hàng và cho dự án / dịch vụ / gia công của DHP.</li>
+    <li>Mọi mã tạo ra được <b>lưu chung trên server (Supabase)</b> — ai cũng thấy, tránh trùng.</li>
+  </ul>
+</div>
+
+<h2>1. Đăng nhập & phân quyền</h2>
+<div class="card">
+  <table>
+    <tr><th>Mật khẩu</th><th>Quyền</th></tr>
+    <tr><td><code>dhp368</code></td><td><span class="pill">👁 Xem</span> — tra cứu, tìm mã, xem catalogue (không sửa được).</td></tr>
+    <tr><td><code>edit368</code></td><td><span class="pill">🔓 Quản lý</span> — thêm/sửa/xóa mã, nhập/xuất CSV.</td></tr>
+  </table>
+  <div class="tip">Thợ/nhân viên tra cứu chỉ cần <code>dhp368</code>. Người tạo mã dùng <code>edit368</code>.</div>
+</div>
+
+<h2>2. Quy ước mã (NHỚ KỸ)</h2>
+<div class="card">
+  <h3>a) Sản phẩm của hãng (catalogue)</h3>
+  <p>Cấu trúc: <code>HÃNG-SERIES-CỠ[-BIẾNTHỂ]</code> — app <b>tự ghép</b> khi bạn chọn Hãng → Series → Cỡ.</p>
+  <p>Ví dụ: <code>KTR-ROTEX-28</code> · <code>RF-RfN7012-100</code> · <code>WES-ROTOFLUID-CA</code></p>
+  <table>
+    <tr><th>Hãng</th><th>Mã</th><th>Hãng</th><th>Mã</th></tr>
+    <tr><td>KTR</td><td><code>KTR</code></td><td>Ringfeder</td><td><code>RF</code></td></tr>
+    <tr><td>Rathi-Ringfeder</td><td><code>RA</code></td><td>Westcar</td><td><code>WES</code></td></tr>
+    <tr><td>Cross+Morse</td><td><code>WC</code></td><td>Flender</td><td><code>FL</code></td></tr>
+    <tr><td>KBK</td><td><code>KBK</code></td><td>Italgiunti</td><td><code>ITG</code></td></tr>
+    <tr><td>… và các hãng khác</td><td colspan="3">app tự gợi mã hãng khi chọn trong danh sách.</td></tr>
+  </table>
+
+  <h3>b) Mã DHP tự chế (dự án / dịch vụ / gia công)</h3>
+  <p>Cấu trúc: <code>DHP-LOẠI-###</code> — app tự đánh số tăng dần, không trùng.</p>
+  <table>
+    <tr><th>Loại</th><th>Dùng cho</th><th>Ví dụ</th></tr>
+    <tr><td><code>PRJ</code></td><td>Dự án</td><td><code>DHP-PRJ-001</code></td></tr>
+    <tr><td><code>SVC</code></td><td>Dịch vụ / lắp đặt / cân chỉnh</td><td><code>DHP-SVC-014</code></td></tr>
+    <tr><td><code>MFG</code></td><td>Gia công cơ khí</td><td><code>DHP-MFG-027</code></td></tr>
+    <tr><td><code>OTH</code></td><td>Khác / nội bộ</td><td><code>DHP-OTH-003</code></td></tr>
+  </table>
+</div>
+
+<h2>3. Quy trình tạo mã mới (làm theo thứ tự)</h2>
+<div class="card">
+  <div class="step"><b>Bước 1.</b> Đăng nhập bằng <code>edit368</code> (vai trò 🔓 Quản lý) → bấm <b>＋ Thêm SKU</b>.</div>
+  <div class="step"><b>Bước 2.</b> Chọn <b>Loại mã</b>: "Sản phẩm hãng" hay "DHP tự chế".</div>
+  <div class="step"><b>Bước 3.</b>
+    <ul style="margin:4px 0">
+      <li><b>Sản phẩm hãng:</b> chọn <b>Hãng → Nhóm → Series</b> (chọn hãng nào, app chỉ hiện đúng nhóm/series của hãng đó), nhập <b>Cỡ</b> và <b>Biến thể</b> nếu có.</li>
+      <li><b>DHP tự chế:</b> chọn Loại (PRJ/SVC/MFG/OTH) và nhập tên ngắn.</li>
+    </ul>
+    App <b>tự sinh mã</b> ở ô "Mã SKU".
+  </div>
+  <div class="step"><b>Bước 4. ⭐ Quan trọng — KIỂM TRA TRÙNG.</b>
+    Ngay khi đang nhập, app hiện khung <b>"Mã tương tự đã có"</b> ngay dưới ô loại mã:
+    <ul style="margin:4px 0">
+      <li>Nếu báo <b style="color:#b91c1c">⚠ Mã đã tồn tại</b> → bấm <b>↗ Mở mã này</b> để <b>dùng lại</b>, KHÔNG tạo mới.</li>
+      <li>Nếu có mã gần giống → cân nhắc dùng lại để tránh tạo trùng cùng một thứ.</li>
+      <li>Nếu không có gì → đây là mã mới thật, đi tiếp.</li>
+    </ul>
+  </div>
+  <div class="step"><b>Bước 5.</b> Điền Tên, Vật liệu, Ghi chú (Giá/Ảnh tùy chọn) → bấm <b>💾 Lưu</b>. Mã được lưu lên server, mọi người thấy ngay.</div>
+  <div class="warn"><b>Nguyên tắc vàng:</b> Luôn TRA trước khi TẠO. Một thứ chỉ nên có một mã. Trùng mã = rối kho, rối phiếu.</div>
+</div>
+
+<h2>4. Tra cứu mã đã có (tránh tạo lại)</h2>
+<div class="card">
+  <p>Ở màn hình chính có sẵn công cụ tra cứu nhanh:</p>
+  <ul>
+    <li>🔎 <b>Ô tìm kiếm</b>: gõ mã / tên / series / hãng → lọc tức thì.</li>
+    <li><b>Lọc Hãng</b> → <b>Lọc Nhóm</b> (chỉ hiện nhóm của hãng đã chọn).</li>
+    <li><b>Lọc Loại mã</b>: "Sản phẩm hãng" hoặc "DHP tự chế" → xem nhanh <b>tất cả mã dự án/dịch vụ/gia công đã dùng</b>.</li>
+  </ul>
+  <div class="tip">Toàn bộ bảng đang hiện chính là <b>danh sách mã đã sử dụng</b>. Trước khi tạo mã mới, hãy gõ tìm ở đây trước.</div>
+</div>
+
+<h2>5. Nhập danh mục hàng loạt (CSV)</h2>
+<div class="card">
+  <ol>
+    <li>Vai trò 🔓 Quản lý → bấm <b>📥 Nhập CSV</b> → chọn file (vd <code>catalogue_full.csv</code>).</li>
+    <li>Cột: <code>SKU, Tên, Hãng, Nhóm, Series, KíchThước, PN, VậtLiệu, Giá, LinkẢnh, GhiChú</code>.</li>
+    <li>Nhập là <b>thêm/cập nhật theo mã</b> (không xóa). Muốn làm sạch hoàn toàn thì xóa dữ liệu cũ trước rồi mới nhập.</li>
+  </ol>
+  <p><b>📤 Xuất CSV</b>: tải toàn bộ danh mục về để backup hoặc sửa bằng Excel.</p>
+</div>
+
+<h2>6. Hỏi nhanh</h2>
+<div class="card">
+  <p><b>Tạo mã xong có tự lưu không?</b> — Có. Bấm 💾 Lưu là lên server ngay, không cần làm gì thêm.</p>
+  <p><b>Lỡ tạo trùng thì sao?</b> — App cảnh báo ngay khi nhập (mục 3 – Bước 4). Nếu vẫn lỡ, vào sửa/xóa mã thừa (vai trò Quản lý).</p>
+  <p><b>Mất mạng có dùng được không?</b> — Cần mạng để đồng bộ server. Có thể xem lại lần tải gần nhất, nhưng nên có mạng khi tạo/sửa.</p>
+</div>
+
+<p class="mono" style="text-align:center;color:var(--muted);margin-top:24px">Đại Hồng Phát · DHP Coding — In trang này dán ở xưởng cho tiện tra.</p>
+
+</div>
+</body>
+</html>

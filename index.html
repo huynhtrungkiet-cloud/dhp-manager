@@ -1626,8 +1626,34 @@ function renderStagesEditor(){
         <span class="small" style="color:#d97706;font-weight:700">OT</span>
         ${workloadHintHtml(s)}
       </div>
+      ${stageChecksHtml(s,i)}
     </div>`;}).join('');
 }
+const MEAS_TOOLS=['Thước cặp','Panme','Đồng hồ so','Calip','Thước lá','CMM','Dưỡng','Mắt thường','Khác'];
+// Bảng KÍCH THƯỚC CẦN KIỂM của 1 công đoạn (đo L1 + đo chéo L2 cho mẫu đầu)
+function stageChecksHtml(s,i){
+  const ck=s.checks||[];
+  const rows = ck.map((c,ci)=>`<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;flex-wrap:wrap">
+    <input style="flex:1;min-width:110px;font-size:11px" value="${esc(c.param||'')}" placeholder="Thông số (Ø lỗ d1)" oninput="updStageCheck(${i},${ci},'param',this.value)">
+    <input style="width:90px;font-size:11px" value="${esc(c.spec||'')}" placeholder="YC+dsai 42H7" oninput="updStageCheck(${i},${ci},'spec',this.value)">
+    <select style="width:96px;font-size:11px" onchange="updStageCheck(${i},${ci},'tool',this.value)" title="Dụng cụ đo"><option value="">— dụng cụ —</option>${MEAS_TOOLS.map(t=>`<option ${c.tool===t?'selected':''}>${t}</option>`).join('')}</select>
+    <input style="width:74px;font-size:11px" value="${esc(c.actual1||'')}" placeholder="đo L1" oninput="updStageCheck(${i},${ci},'actual1',this.value)" title="Đo lần 1 (người làm)">
+    <input style="width:74px;font-size:11px;border-color:#6366F1" value="${esc(c.actual2||'')}" placeholder="đo L2" oninput="updStageCheck(${i},${ci},'actual2',this.value)" title="Đo lần 2 — KIỂM CHÉO (người thứ 2) cho mẫu đầu">
+    <select style="width:70px;font-size:11px" onchange="updStageCheck(${i},${ci},'pass',this.value)"><option value="" ${!c.pass?'selected':''}>—</option><option value="pass" ${c.pass==='pass'?'selected':''}>Đạt</option><option value="fail" ${c.pass==='fail'?'selected':''}>Không</option></select>
+    <a onclick="rmStageCheck(${i},${ci})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
+  </div>`).join('');
+  return `<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:5px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+      <span style="font-size:10.5px;font-weight:800;color:#0EA5E9">📐 KÍCH THƯỚC CẦN KIỂM${ck.length?' ('+ck.length+')':''}</span>
+      <a onclick="addStageCheck(${i})" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11px">＋ Thêm kích thước</a>
+      ${ck.length?'<span class="small muted">đo L2 = kiểm chéo người thứ 2 (mẫu đầu)</span>':''}
+    </div>
+    ${rows}
+  </div>`;
+}
+function addStageCheck(i){ if(!editingStages[i])return; editingStages[i].checks=editingStages[i].checks||[]; editingStages[i].checks.push({param:'',spec:'',tool:'',actual1:'',actual2:'',pass:''}); renderStagesEditor(); }
+function rmStageCheck(i,ci){ if(editingStages[i]&&editingStages[i].checks){ editingStages[i].checks.splice(ci,1); renderStagesEditor(); } }
+function updStageCheck(i,ci,k,v){ const c=editingStages[i]&&editingStages[i].checks&&editingStages[i].checks[ci]; if(c) c[k]=v; }
 function staffName(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return s?s.name:'(?)'; }
 // Tổng giờ đã xếp cho 1 người trong 1 ngày (gồm việc đã lưu + công đoạn đang soạn của đơn này)
 function plannedHoursOnDay(staffId, date, orderId){
@@ -1657,7 +1683,7 @@ function pickStagePreset(i, c){
   renderStagesEditor();
 }
 function addStage(){
-  editingStages.push({id:localId('ST'), code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:null, note:''});
+  editingStages.push({id:localId('ST'), code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', endDate:'', assignee:'', hours:null, otHours:null, checks:[], doneDate:'', note:''});
   renderStagesEditor();
 }
 function updStage(i,k,v){
@@ -1985,9 +2011,11 @@ function openOrderView(id){
     (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>all.push({s,it:it.name||''})));
     if(!all.length) return '<span class="muted">— chưa khai báo công đoạn —</span>';
     return all.map(({s,it})=>{ const st=stageState(s); const lbl={done:'Xong ✓',doing:'Đang làm',late:'TRỄ',pending:'Chưa'}[st];
+      const ck=(s.checks||[]).filter(Boolean); const ckFail=ck.filter(c=>c.pass==='fail').length; const ckPass=ck.filter(c=>c.pass==='pass').length;
+      const ckTxt=ck.length?` <span style="color:${ckFail?'var(--st-late)':'#0EA5E9'};font-weight:700" title="${ck.map(c=>(c.param||'')+': YC '+(c.spec||'-')+(c.actual1?' / đo '+c.actual1:'')+(c.actual2?' (chéo '+c.actual2+')':'')+(c.pass==='pass'?' ✓':c.pass==='fail'?' ✕':'')).join('\n')}">📐 ${ckPass}/${ck.length}${ckFail?' ⚠'+ckFail:''}</span>`:'';
       return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;font-size:12px">
         <span style="background:${STAGE_COLORS[st]};color:${st==='pending'?'#475569':'#fff'};border-radius:4px;padding:1px 6px;font-weight:800;min-width:26px;text-align:center">${esc(s.code||'?')}</span>
-        <span style="flex:1">${esc(s.name||'')}${it?' <span class="muted">▦ '+esc(truncate(it,16))+'</span>':''}${s.location?' <span style="color:#0EA5E9">@'+esc(s.location)+'</span>':''}${s.assignee?' · 👤 '+esc(staffName(s.assignee)):''}</span>
+        <span style="flex:1">${esc(s.name||'')}${it?' <span class="muted">▦ '+esc(truncate(it,16))+'</span>':''}${s.location?' <span style="color:#0EA5E9">@'+esc(s.location)+'</span>':''}${s.assignee?' · 👤 '+esc(staffName(s.assignee)):''}${ckTxt}</span>
         <span style="color:${st==='late'?'var(--st-late)':'var(--muted)'};font-weight:700">${lbl}${s.startDate?' · '+fmtDate(s.startDate):''} · ${stageHours(s)}h</span>
       </div>`; }).join('');
   })();
@@ -2248,7 +2276,7 @@ function saveOrder(){
     currentLocation: document.getElementById('ord_location').value.trim(),
     items: editingItems.filter(it=>(it.name||'').trim()),
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
-    stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()),
+    stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()).map(s=>({...s, checks:(s.checks||[]).filter(c=>(c.param||'').trim()||(c.actual1||'').trim()||(c.spec||'').trim())})),
     measures: editingMeasures.filter(m=>(m.param||'').trim()||(m.actual||'').trim()),
     materials: editingMaterials.filter(m=>(m.material||'').trim()||(m.spec||'').trim()),
     inspector: document.getElementById('ord_inspector').value.trim(),

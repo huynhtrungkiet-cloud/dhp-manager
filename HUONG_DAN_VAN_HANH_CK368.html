@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Hướng dẫn vận hành & Quy trình bắt buộc — Xưởng CK368</title>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --red:#b91c1c; --ink:#111; --line:#cbd5e1; --g0:#D97706; --gc:#2563EB; --qc:#15803D; --ncr:#b91c1c; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;color:var(--ink);margin:0;background:#eef2f7}
+  .page{width:210mm;min-height:297mm;background:#fff;margin:10px auto;padding:13mm 14mm 12mm;box-shadow:0 2px 10px rgba(0,0,0,.15);position:relative;page-break-after:always}
+  .hd{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--red);padding-bottom:7px;margin-bottom:10px}
+  .lf{display:flex;align-items:center;gap:11px}
+  .logo{height:44px}
+  .co{font-weight:800;color:var(--red);font-size:15px;line-height:1.1}
+  .co small{display:block;color:#555;font-weight:600;font-size:10px;margin-top:2px}
+  h1{font-size:20px;text-align:center;margin:6px 0 2px;text-transform:uppercase}
+  .sub{text-align:center;color:#555;font-size:12px;margin-bottom:12px}
+  .rule{background:#fef2f2;border:1.5px solid var(--red);border-radius:10px;padding:9px 13px;margin:10px 0;font-weight:700;color:var(--red);text-align:center}
+  .step{border:1px solid var(--line);border-left:5px solid var(--gc);border-radius:10px;padding:9px 13px;margin:9px 0}
+  .step.g0{border-left-color:var(--g0)} .step.qc{border-left-color:var(--qc)} .step.out{border-left-color:#0f766e} .step.ncr{border-left-color:var(--ncr)}
+  .step h3{margin:0 0 4px;font-size:14px} .step .who{font-size:11px;color:#fff;background:#475569;border-radius:5px;padding:1px 7px;font-weight:700;margin-left:6px}
+  .step ul{margin:5px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55}
+  .gate{display:inline-block;background:var(--g0);color:#fff;border-radius:5px;padding:1px 8px;font-size:11px;font-weight:800}
+  .foot{position:absolute;bottom:8mm;left:14mm;right:14mm;border-top:1px solid var(--line);padding-top:5px;font-size:10px;color:#777;display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse;margin:6px 0} th,td{border:1px solid #999;padding:5px 7px;font-size:11.5px;text-align:left;vertical-align:top} th{background:#f1f5f9}
+  .k{display:inline-block;background:#eef2ff;color:#4338ca;border-radius:5px;padding:1px 6px;font-weight:700;font-size:11px}
+  .printbar{max-width:210mm;margin:10px auto;text-align:center}
+  .printbar button{padding:9px 22px;font-size:14px;background:var(--red);color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700}
+  @page{ size:A4; margin:0 } @media print{ body{background:#fff} .page{box-shadow:none;margin:0} .printbar{display:none} }
+</style>
+</head>
+<body>
+<div class="printbar"><button onclick="window.print()">🖨 In (A4)</button> &nbsp; <span style="font-size:12px;color:#555">Vừa là hướng dẫn dùng app, vừa là quy trình BẮT BUỘC để xuất xưởng.</span></div>
+
+<!-- TRANG 1 -->
+<div class="page">
+  <div class="hd"><div class="lf"><img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}"><div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CƠ KHÍ CHÍNH XÁC CK368</small></div></div>
+    <div style="text-align:right;font-size:11px;color:#444"><b>HD-CK368</b><br>Ban hành: ______<br>Phiên bản: 1.0</div></div>
+  <h1>Hướng dẫn vận hành &amp; Quy trình bắt buộc</h1>
+  <div class="sub">Cách dùng app DHP Manager theo đúng các bước — đơn hàng phải đi đủ các CỔNG mới được xuất xưởng</div>
+
+  <div class="rule">⛔ NGUYÊN TẮC: App là nguồn dữ liệu duy nhất. Đơn chỉ XUẤT XƯỞNG khi đã qua đủ 3 cổng: <span class="gate">G0 đầu vào</span> → <span class="gate" style="background:var(--gc)">Sản xuất + đo</span> → <span class="gate" style="background:var(--qc)">QC Đạt</span>. Thiếu 1 cổng → KHÔNG cấp chứng nhận.</div>
+
+  <div class="step"><h3>0. Đăng nhập <span class="who">Mọi người</span></h3>
+    <ul><li>Mở app → nhập mật khẩu: <span class="k">dhp368</span> = xem · <span class="k">edit368</span> = sửa (chỉ TPKT &amp; điều phối).</li>
+    <li>Kết nối Supabase 1 lần/thiết bị (tab Dữ liệu) để dùng chung kho real-time.</li></ul></div>
+
+  <div class="step g0"><h3>1. <span class="gate">CỔNG G0</span> — Nhận đơn &amp; kiểm tra đầu vào <span class="who">Điều phối (Kiệt)</span></h3>
+    <ul>
+      <li>Admin gửi đơn qua mail → bấm <b>＋ Thêm đơn hàng</b>: khách, tên hàng, SL, vật tư, hạn giao, <b>loại đơn</b> (mã tự sinh <span class="k">MFG/PRJ/SVC/TRD/INT-YY-###</span>).</li>
+      <li>Dán <b>link Drive</b> bản vẽ/catalogue vào ô đính kèm. So với <b>catalogue hãng</b> (app Coding) &amp; <b>hàng trong kho</b> (nếu chỉ móc lỗ). Kiểm <b>kích thước có xung đột</b> không.</li>
+      <li>Tick đủ <b>checklist G0</b>: ✔ Bản vẽ/Rev · ✔ Kích thước · ✔ Dung sai · ✔ Vật liệu · ✔ Số lượng + ghi <b>người kiểm + ngày</b>.</li>
+      <li><b>Thiếu thông tin</b> → đặt trạng thái <span class="k">Chờ phôi/vật tư</span> hoặc <span class="k">HOLD</span>, feedback phòng Sale/KT. <b>ĐỦ → feedback "OK"</b> mới xuống xưởng.</li>
+    </ul>
+    <div style="font-size:11px;color:var(--g0);font-weight:700">⚠ Chuyển sang "Đang gia công" khi G0 chưa đủ → app cảnh báo. Không cho xuống sàn khi đầu vào mập mờ.</div></div>
+
+  <div class="step"><h3>2. Lên quy trình sản xuất <span class="who">Điều phối</span></h3>
+    <ul>
+      <li>Trong đơn → mục <b>🔧 Công đoạn</b>: thêm chuỗi A/B/C… (Tiện, Phay, Cắt dây, Khoan, Cắt laser, Cân bằng động, QC…) hoặc <b>⚡ Dùng mẫu chuẩn</b>.</li>
+      <li>Mỗi công đoạn: chọn <b>người làm trống kế tiếp</b> + <b>số giờ</b>. <b>Nội bộ</b>: vượt 8h <b>tự nhảy ngày sau</b> (bỏ CN), không cần chọn ngày xong; cần làm thêm thì điền ô <b>OT</b>. <b>Outsource</b>: không quản OT/giờ.</li>
+      <li>App hiện ô <b>mini "ngày đó người này đã có việc gì"</b> → tránh xếp trùng.</li>
+      <li>Mỗi công đoạn khai <b>📐 Kích thước cần kiểm</b> (thông số · yêu cầu+dung sai · dụng cụ đo) — nền cho phiếu đo.</li>
+    </ul></div>
+
+  <div class="step"><h3>3. Sản xuất &amp; đo đạc — kiểm chéo mẫu đầu <span class="who">Công nhân</span></h3>
+    <ul>
+      <li>Điều phối in <b>📐 Bộ phiếu đo theo công đoạn</b> (mỗi công đoạn 1 tờ) phát cho thợ.</li>
+      <li>Thợ làm → đo <b>L1</b>; kích thước trọng yếu phải có <b>L2 do người thứ 2 đo</b> (kiểm chéo mẫu đầu). <b>Lệch → dừng, lập NCR</b>.</li>
+      <li>Điều phối nhập số đo + tick trạng thái công đoạn <span class="k">Đang → Xong</span> vào app → % tự tính.</li>
+    </ul></div>
+
+  <div class="foot"><span>HD-CK368 v1.0 — Đại Hồng Phát</span><span>Người soạn: ______ · GĐ duyệt: ______</span></div>
+</div>
+
+<!-- TRANG 2 -->
+<div class="page">
+  <div class="hd"><div class="lf"><img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}"><div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CK368</small></div></div>
+    <div style="text-align:right;font-size:11px;color:#444"><b>HD-CK368</b> · Trang 2/2</div></div>
+
+  <div class="step qc"><h3>4. <span class="gate" style="background:var(--qc)">CỔNG QC</span> — Kiểm tra chất lượng cuối <span class="who">Điều phối / QC (≠ người chạy máy)</span></h3>
+    <ul>
+      <li>Nhập đo nghiệm thu cuối + <b>Ghi chú QC</b>. App in <b>Phiếu QC/QA cuối (Final Inspection Report)</b>: gộp kích thước mọi công đoạn + đo cuối, có cột <b>dụng cụ đo + dung sai</b>.</li>
+      <li>Chọn kết luận <b>Đạt / Không đạt</b> + người kiểm + ngày.</li>
+      <li><span class="step ncr" style="display:inline;border:0;padding:0"><b style="color:var(--ncr)">Không đạt</b></span> → mở <b>NCR</b> (mức độ, nguyên nhân, công đoạn lỗi, hướng xử lý, người chịu trách nhiệm) → sửa/làm lại → đo lại.</li>
+    </ul>
+    <div style="font-size:11px;color:var(--qc);font-weight:700">⚠ Người QC phải KHÁC người chạy máy (kiểm chéo lớp cuối).</div></div>
+
+  <div class="step out"><h3>5. <span class="gate" style="background:#0f766e">XUẤT XƯỞNG</span> — chỉ khi QC ĐẠT <span class="who">Điều phối / GĐ</span></h3>
+    <ul>
+      <li><b>Chỉ khi QC = ĐẠT</b>, app mới mở nút <b>📜 Chứng nhận xuất xưởng</b> (liệt kê đủ kích thước đạt). QC chưa đạt → nút bị khóa.</li>
+      <li>In chứng nhận → ký 3 lớp (QC · Điều phối · GĐ) đóng dấu → giao hàng → đặt trạng thái <span class="k">Đã giao</span>.</li>
+    </ul>
+    <div class="rule" style="margin:6px 0">⛔ KHÔNG có "QC Đạt" trên app = CẤM xuất hàng. Không có chứng nhận = không giao.</div></div>
+
+  <h2 style="font-size:14px;color:var(--red);margin:14px 0 4px">3 phiếu app tự sinh cho mỗi đơn</h2>
+  <table><thead><tr><th style="width:34px">#</th><th>Phiếu</th><th>Khi nào</th><th>Nội dung</th></tr></thead><tbody>
+    <tr><td>1</td><td><b>Bộ phiếu đo theo công đoạn</b></td><td>Trước khi gia công</td><td>Mỗi công đoạn 1 tờ: kích thước cần kiểm + ô Đo L1/L2 + dụng cụ</td></tr>
+    <tr><td>2</td><td><b>Phiếu QC/QA cuối</b></td><td>Sau gia công</td><td>Gộp đủ kích thước các công đoạn + đo cuối, kết luận Đạt/Không, ký 3 lớp</td></tr>
+    <tr><td>3</td><td><b>Chứng nhận xuất xưởng</b></td><td>Chỉ khi QC Đạt</td><td>Liệt kê đủ kích thước đạt, tên hàng theo đơn, mã SP link app Coding</td></tr>
+  </tbody></table>
+  <p style="font-size:11.5px;color:#444">Tên hàng lấy theo đơn; <b>mã hàng hóa link sang app Coding</b> (DHP Coding) để tạo &amp; tra mã chuẩn — 5 năm sau lặp lại dùng chung mã, chống trùng.</p>
+
+  <h2 style="font-size:14px;color:var(--red);margin:14px 0 4px">Quy định chung (bắt buộc)</h2>
+  <ul style="font-size:12.5px;line-height:1.6">
+    <li>Mọi thao tác gắn tên người thực hiện. Cập nhật theo ngày, chốt sổ cuối ca.</li>
+    <li>Không khẩu lệnh suông — đo gì/kết quả QC gì phải lên app trong 1 giờ.</li>
+    <li>Đúng vai mới được chốt công đoạn/QC. Sai thì khai báo (NCR), KHÔNG giấu lỗi.</li>
+    <li>Cuối ngày điều phối rà KPI: ai chưa cập nhật · công đoạn "Đạt" có đủ số đo không · NCR đã có hướng xử lý chưa.</li>
+  </ul>
+
+  <div class="foot"><span>HD-CK368 v1.0 — Đại Hồng Phát · Áp dụng từ: __________</span><span>GĐ duyệt: __________</span></div>
+</div>
+</body>
+</html>

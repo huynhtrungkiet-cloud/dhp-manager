@@ -1081,6 +1081,7 @@ function cellStackHtml(staffId, dateStr){
   const totH = jobs.reduce((sum,a)=> sum + (a.hours!=null?parseFloat(a.hours): (a.kind==='order'?HOURS_PER_DAY:0)), 0);
   const otH = jobs.reduce((sum,a)=> sum + (parseFloat(a.otHours)||0), 0);   // tổng giờ tăng ca trong ngày
   let load='', fill='';
+  if(isOutsourceStaff(staffId)){ return `<div class="joblist">${items.join('')}</div>`; }   // outsource: không quản giờ/ngày → không hiện tải, không cảnh báo
   if(totH>0 || otH>0){
     const r = Math.round(totH*10)/10, ro=Math.round(otH*10)/10;
     const pct = Math.min(100, totH/HOURS_PER_DAY*100);          // tỷ lệ lấp đầy so với 8h
@@ -1590,6 +1591,7 @@ function renderStagesEditor(){
   wrap.innerHTML = stageTplBarHtml() + `<datalist id="stageLocs">${locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>` +
     editingStages.map((s,i)=>{
       const st = stageState(s);
+      const isOut = isOutsourceStaff(s.assignee);   // outsource: bỏ OT + không cảnh báo giờ
       return `<div style="border:1px solid var(--line);border-left:4px solid ${STAGE_COLORS[st]};border-radius:8px;padding:7px;margin-bottom:6px;background:#fafcff">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <select style="width:170px" onchange="pickStagePreset(${i},this.value)" title="Loại công đoạn">
@@ -1622,8 +1624,8 @@ function renderStagesEditor(){
         </select>
         <input type="number" style="width:60px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ (8)" oninput="updStage(${i},'hours',this.value)" title="Số GIỜ công thường — 8h = 1 ngày. Để trống = 8h. >8h tự dàn nhiều ngày.">
         <span class="small muted">giờ</span>
-        <input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường">
-        <span class="small" style="color:#d97706;font-weight:700">OT</span>
+        ${isOut ? `<input type="number" style="width:56px;opacity:.35" value="" placeholder="OT" disabled title="Outsource — không quản OT"><span class="small" style="color:#cbd5e1;font-weight:700">OT</span>`
+          : `<input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường"><span class="small" style="color:#d97706;font-weight:700">OT</span>`}
         ${workloadHintHtml(s)}
       </div>
       ${stageChecksHtml(s,i)}
@@ -1655,6 +1657,16 @@ function addStageCheck(i){ if(!editingStages[i])return; editingStages[i].checks=
 function rmStageCheck(i,ci){ if(editingStages[i]&&editingStages[i].checks){ editingStages[i].checks.splice(ci,1); renderStagesEditor(); } }
 function updStageCheck(i,ci,k,v){ const c=editingStages[i]&&editingStages[i].checks&&editingStages[i].checks[ci]; if(c) c[k]=v; }
 function staffName(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return s?s.name:'(?)'; }
+function isOutsourceStaff(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return !!(s && s.type==='outsource'); }
+// Việc người này ĐÃ có trong 1 ngày (từ các đơn khác) — để cảnh báo nhập trùng
+function dayJobsList(staffId, date, orderId){
+  const out=[];
+  (DATA.assignments||[]).forEach(a=>{ if(a&&a.staffId===staffId && a.date===date && !(a.fromStage && a.orderId===orderId)){
+    const ord=(DATA.orders||[]).find(o=>o.id===a.orderId);
+    out.push({label:(ord?ord.code:(a.kind||'?')), h:parseFloat(a.hours)||0});
+  }});
+  return out;
+}
 // Tổng giờ đã xếp cho 1 người trong 1 ngày (gồm việc đã lưu + công đoạn đang soạn của đơn này)
 function plannedHoursOnDay(staffId, date, orderId){
   let h=0;
@@ -1668,9 +1680,16 @@ function workloadHintHtml(s){
   const totH=stageHours(s);
   const days=stageWorkingDays(s); const n=days.length;
   const fin=stageEndDate(s);
-  const h=plannedHoursOnDay(s.assignee, d, (document.getElementById('ord_id')||{}).value||'');
+  const span=`<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${totH}h${n>1?' → '+fmtDate(d)+' đến '+fmtDate(fin)+' ('+n+' ngày, bỏ CN)':' · '+fmtDate(d)}</span>`;
+  // OUTSOURCE: không cảnh báo giờ/ngày, không hiện trùng (mình không quản lịch của họ)
+  if(isOutsourceStaff(s.assignee)) return span;
+  const orderId=(document.getElementById('ord_id')||{}).value||'';
+  const h=plannedHoursOnDay(s.assignee, d, orderId);
   const over=h>HOURS_PER_DAY;
-  return `<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${totH}h${n>1?' → '+fmtDate(d)+' đến '+fmtDate(fin)+' ('+n+' ngày, bỏ CN)':' · '+fmtDate(d)}</span>${over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày '+fmtDate(d)+' đã '+Math.round(h*10)/10+'h → tăng ca</span>':''}`;
+  // Ô MINI: ngày bắt đầu này người đó đã có việc gì → tránh nhập trùng
+  const others=dayJobsList(s.assignee, d, orderId);
+  const mini = others.length ? `<div class="small" style="color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:2px 7px;margin-top:3px;display:inline-block">📌 ${fmtDate(d)} — ${esc(staffName(s.assignee))} đã có: ${others.map(o=>esc(String(o.label))+' '+(Math.round(o.h*10)/10)+'h').join(' · ')} <b>(${Math.round(h*10)/10}h/8h)</b></div>` : '';
+  return span + (over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày '+fmtDate(d)+' đã '+Math.round(h*10)/10+'h → quá tải</span>':'') + mini;
 }
 function pickStagePreset(i, c){
   const p = STAGE_PRESETS.find(x=>x.c===c);
@@ -2052,7 +2071,8 @@ function openOrderView(id){
   document.getElementById('ord_view_body').innerHTML += `
     <div class="toolbar" style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px">
       <button class="ghost sm" onclick="printWorkOrder('${o.id}')" style="border-color:#6366F1;color:#6366F1">🖨 Phiếu gia công (phát cho thợ)</button>
-      <button class="ghost sm" onclick="printQcSheet('${o.id}')">🖨 In phiếu kiểm QC/QA</button>
+      <button class="ghost sm" onclick="printAllStageSheets('${o.id}')" style="border-color:#0EA5E9;color:#0EA5E9">📐 Bộ phiếu đo theo công đoạn</button>
+      <button class="ghost sm" onclick="printQcSheet('${o.id}')">🖨 Phiếu QC/QA cuối</button>
       <button class="ghost sm" onclick="printCertificate('${o.id}')" ${certOk?'':'disabled title="Chỉ in được khi QC = ĐẠT"'} style="${certOk?'border-color:#16A34A;color:#15803D':'opacity:.5;cursor:not-allowed'}">📜 Chứng nhận xuất xưởng${certOk?'':' (cần QC Đạt)'}</button>
     </div>`;
   openModal('modalView');
@@ -2085,16 +2105,25 @@ function docHeader(subtitle){
 function printQcSheet(id){
   const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
   const ref=o.requestedDate||o.dueDate;
-  const measRows=(o.measures||[]).filter(Boolean).map((m,i)=>`<tr><td>${i+1}</td><td>${esc(m.param||'')}</td><td>${esc(m.spec||'')}</td><td>${esc(m.actual||'')}</td><td class="${m.pass==='pass'?'pass':m.pass==='fail'?'fail':''}">${m.pass==='pass'?'Đạt':m.pass==='fail'?'Không đạt':'—'}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Chưa nhập thông số đo.</td></tr>';
+  // Gộp: kích thước theo từng công đoạn (đã có) + đo nghiệm thu cuối (measures)
+  const stageChecks=allOrderChecks(o);
+  let rowsArr=[];
+  stageChecks.forEach(c=> rowsArr.push({src:c.stage, param:c.param, spec:c.spec, tool:c.tool, actual:(c.a2||c.a1||''), pass:c.pass}));
+  (o.measures||[]).filter(Boolean).forEach(m=> rowsArr.push({src:'QC cuối', param:m.param||'', spec:m.spec||'', tool:m.tool||'', actual:m.actual||'', pass:m.pass}));
+  const measRows = rowsArr.length ? rowsArr.map((r,i)=>`<tr><td>${i+1}</td><td class="muted" style="font-size:10px">${esc(r.src)}</td><td>${esc(r.param)}</td><td>${esc(r.spec)}</td><td>${esc(r.tool)}</td><td>${esc(r.actual)}</td><td class="${r.pass==='pass'?'pass':r.pass==='fail'?'fail':''}">${r.pass==='pass'?'Đạt':r.pass==='fail'?'Không đạt':'—'}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="muted">Chưa nhập kích thước/thông số đo.</td></tr>';
+  const nPass=rowsArr.filter(r=>r.pass==='pass').length, nFail=rowsArr.filter(r=>r.pass==='fail').length;
   const res=o.qcResult==='pass'?'<span class="pass">✓ ĐẠT</span>':o.qcResult==='fail'?'<span class="fail">✕ KHÔNG ĐẠT</span>':'— Chưa kết luận —';
-  const body=`${docHeader('PHIẾU KIỂM TRA CHẤT LƯỢNG (QC/QA)')}
-    <h1 style="text-align:center;margin-top:10px">Phiếu kiểm tra chất lượng</h1>
-    <table><tr><th style="width:130px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:130px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
+  const body=`${docHeader('PHIẾU KIỂM TRA CHẤT LƯỢNG CUỐI (FINAL INSPECTION REPORT)')}
+    <h1 style="text-align:center;margin-top:10px">Phiếu kiểm tra chất lượng cuối</h1>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}</td></tr>
-    <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn KH</th><td>${ref?fmtDate(ref):''}</td></tr></table>
-    <h2>Kết quả đo đạc / nghiệm thu</h2>
-    <table><thead><tr><th style="width:34px">TT</th><th>Thông số / kích thước</th><th>Yêu cầu (bản vẽ)</th><th>Thực đo</th><th style="width:90px">Kết luận</th></tr></thead><tbody>${measRows}</tbody></table>
-    <h2>Kết luận QC: ${res}</h2>
+    <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn KH</th><td>${ref?fmtDate(ref):''}</td></tr>
+    <tr><th>Số bản vẽ / Rev</th><td>${esc((o.intake&&o.intake.note)||'')||'____________'}</td><th>Ngày kiểm</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td></tr></table>
+    <h2>Bảng kích thước kiểm tra (theo công đoạn + nghiệm thu cuối)</h2>
+    <table><thead><tr><th style="width:28px">TT</th><th style="width:64px">Công đoạn</th><th>Thông số / kích thước</th><th style="width:96px">Yêu cầu + dung sai</th><th style="width:80px">Dụng cụ đo</th><th style="width:80px">Thực đo</th><th style="width:70px">Đạt/Không</th></tr></thead><tbody>${measRows}</tbody></table>
+    <p class="muted" style="font-size:11px">Tổng: ${rowsArr.length} kích thước · Đạt ${nPass}${nFail?' · KHÔNG đạt '+nFail:''}.</p>
+    <h2>Kết luận QC/QA: ${res}</h2>
     ${o.qcNote?`<p style="white-space:pre-wrap"><b>Ghi chú QC:</b> ${esc(o.qcNote)}</p>`:''}
     <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, ghi rõ họ tên)</div></div>
       <div><b>Người kiểm QC</b><div class="line">${esc(o.inspector||'')}${o.inspectDate?'<br>'+fmtDate(o.inspectDate):''}</div></div>
@@ -2130,6 +2159,42 @@ function printWorkOrder(id){
     <p class="muted" style="margin-top:8px;font-size:11px">* Thợ ghi tay vào phiếu này tại xưởng. Sau khi xong, điều phối nhập số liệu vào app để lưu & in chứng nhận.</p>`;
   printDoc('Phieu gia cong '+(o.code||''), body);
 }
+// Gom TẤT CẢ kích thước cần kiểm của mọi công đoạn (kèm công đoạn nguồn)
+function allOrderChecks(o){
+  const out=[];
+  const add=(s,itName)=>{ (s.checks||[]).filter(Boolean).forEach(c=>out.push({stage:(s.code||'')+' '+(s.name||''), item:itName||'', param:c.param||'', spec:c.spec||'', tool:c.tool||'', a1:c.actual1||'', a2:c.actual2||'', pass:c.pass||''})); };
+  (o.stages||[]).filter(Boolean).forEach(s=>add(s,''));
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>add(s,it.name||'')));
+  return out;
+}
+// 1 tờ phiếu đo cho 1 công đoạn (kèm đúng kích thước cần kiểm của công đoạn đó + ô đo L1/L2 + dụng cụ)
+function stageSheetHtml(o, s, itName){
+  const ref=o.requestedDate||o.dueDate;
+  const ck=(s.checks||[]).filter(Boolean);
+  const rows = (ck.length?ck:[{},{},{},{}]).map((c,i)=>`<tr>
+    <td>${i+1}</td><td>${esc(c.param||'')}</td><td>${esc(c.spec||'')}</td><td>${esc(c.tool||'')}</td>
+    <td>${esc(c.a1||c.actual1||'')}</td><td>${esc(c.a2||c.actual2||'')}</td>
+    <td class="${c.pass==='pass'?'pass':c.pass==='fail'?'fail':''}">${c.pass==='pass'?'Đạt':c.pass==='fail'?'Không':''}</td></tr>`).join('');
+  return `${docHeader('PHIẾU ĐO ĐẠC CÔNG ĐOẠN')}
+    <h1 style="text-align:center;margin-top:8px">Phiếu đo đạc — Công đoạn ${esc(s.code||'')} ${esc(s.name||'')}</h1>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:110px">Khách</th><td>${esc(o.company||'')}</td></tr>
+    <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${itName?' — chi tiết: '+esc(itName):''}</td></tr>
+    <tr><th>Người làm</th><td>${s.assignee?esc(staffName(s.assignee)):'__________'}</td><th>Nơi làm</th><td>${esc(s.location||'CK368')}</td></tr>
+    <tr><th>Giờ KH</th><td>${stageHours(s)}h</td><th>Hạn giao</th><td>${ref?fmtDate(ref):''}</td></tr></table>
+    <h2>Kích thước cần kiểm — thợ tự đo & ghi</h2>
+    <table><thead><tr><th style="width:28px">TT</th><th>Thông số / kích thước</th><th style="width:110px">Yêu cầu + dung sai</th><th style="width:90px">Dụng cụ đo</th><th style="width:90px">Đo L1<br>(người làm)</th><th style="width:90px">Đo L2<br>(kiểm chéo)</th><th style="width:70px">Đạt/Không</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="muted" style="font-size:11px">* Kích thước trọng yếu phải có ĐO L2 do người thứ 2 đo độc lập (kiểm chéo mẫu đầu). Lệch → dừng, lập NCR.</p>
+    <div class="sign"><div><b>Người gia công</b><div class="line">(Ký)</div></div><div><b>Người kiểm chéo</b><div class="line">(Ký)</div></div><div><b>Tổ trưởng/Điều phối</b><div class="line">(Ký)</div></div></div>`;
+}
+// IN CẢ BỘ: mỗi công đoạn 1 tờ A4 (page-break giữa các tờ)
+function printAllStageSheets(id){
+  const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
+  let list=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>list.push({s,it:it.name||''})));
+  if(!list.length){ alert('Đơn chưa khai báo công đoạn nào.'); return; }
+  const body=list.map(({s,it},i)=>`<div style="${i<list.length-1?'page-break-after:always':''}">${stageSheetHtml(o,s,it)}</div>`).join('');
+  printDoc('Bo phieu do '+(o.code||''), body);
+}
 function printCertificate(id){
   const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
   if(o.qcResult!=='pass'){ alert('Chỉ cấp chứng nhận khi QC = ĐẠT. Hãy cập nhật kết luận QC trong đơn.'); return; }
@@ -2139,7 +2204,8 @@ function printCertificate(id){
     <table><tr><th style="width:140px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:140px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên sản phẩm</th><td colspan="3">${esc(o.name||'')}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Người kiểm QC</th><td>${esc(o.inspector||'')}</td></tr>
-    <tr><th>Ngày nghiệm thu</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td><th>Số thông số đạt</th><td>${(o.measures||[]).filter(m=>m&&m.pass==='pass').length}/${(o.measures||[]).filter(Boolean).length}</td></tr></table>
+    <tr><th>Ngày nghiệm thu</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td><th>Số kích thước đạt</th><td>${(function(){const all=allOrderChecks(o).concat((o.measures||[]).filter(Boolean).map(m=>({pass:m.pass})));return all.filter(c=>c.pass==='pass').length+'/'+all.length;})()}</td></tr></table>
+    ${(function(){const all=allOrderChecks(o).concat((o.measures||[]).filter(Boolean).map(m=>({param:m.param,spec:m.spec,actual:m.actual,pass:m.pass,stage:'QC cuối'})));return all.length?`<table style="margin-top:6px"><thead><tr><th style="width:28px">TT</th><th>Kích thước</th><th>Yêu cầu</th><th>Thực đo</th><th style="width:60px">KL</th></tr></thead><tbody>${all.map((c,i)=>`<tr><td>${i+1}</td><td>${esc(c.param||'')}</td><td>${esc(c.spec||'')}</td><td>${esc(c.a2||c.a1||c.actual||'')}</td><td class="${c.pass==='pass'?'pass':''}">${c.pass==='pass'?'Đạt':c.pass==='fail'?'Không':'—'}</td></tr>`).join('')}</tbody></table>`:'';})()}
     <p class="muted" style="margin-top:10px">Sản phẩm trên đã được kiểm tra theo bản vẽ/yêu cầu kỹ thuật của khách hàng và đạt yêu cầu chất lượng. Xưởng CK368 chứng nhận đủ điều kiện xuất xưởng.</p>
     <div class="sign"><div><b>Người kiểm QC</b><div class="line">${esc(o.inspector||'')}</div></div>
       <div><b>Điều phối / TPKT</b><div class="line">(Ký, ghi rõ họ tên)</div></div>

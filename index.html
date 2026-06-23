@@ -1079,16 +1079,17 @@ function cellStackHtml(staffId, dateStr){
   others.forEach(info=> items.push(`<div class="jobchip" style="background:${info.color}" title="${esc(info.title)}">${esc(info.shortCode)}</div>`));
   // Tổng giờ công trong ngày (chỉ tính việc đơn hàng) → đầy 8h / quá tải tăng ca
   const totH = jobs.reduce((sum,a)=> sum + (a.hours!=null?parseFloat(a.hours): (a.kind==='order'?HOURS_PER_DAY:0)), 0);
+  const otH = jobs.reduce((sum,a)=> sum + (parseFloat(a.otHours)||0), 0);   // tổng giờ tăng ca trong ngày
   let load='', fill='';
-  if(totH>0){
-    const r = Math.round(totH*10)/10;
+  if(totH>0 || otH>0){
+    const r = Math.round(totH*10)/10, ro=Math.round(otH*10)/10;
     const pct = Math.min(100, totH/HOURS_PER_DAY*100);          // tỷ lệ lấp đầy so với 8h
     const cls = totH>HOURS_PER_DAY?'over':(totH>=HOURS_PER_DAY?'full':'');
-    // Thanh đổ màu từ DƯỚI lên theo số giờ — nhìn là biết còn trống bao nhiêu
-    fill = `<div class="dayfill ${cls}" style="height:${pct}%" title="${r}h / 8h"></div>`;
-    if(totH>HOURS_PER_DAY) load=`<div class="dayload over" title="Vượt 8h → cần tăng ca">⚠ ${r}h</div>`;
-    else if(totH>=HOURS_PER_DAY) load=`<div class="dayload full" title="Đủ 8h">${r}h</div>`;
-    else load=`<div class="dayload" title="Còn trống ${Math.round((HOURS_PER_DAY-totH)*10)/10}h">${r}h</div>`;
+    const otTxt = otH>0?` <span style="color:#d97706">+${ro} OT</span>`:'';
+    fill = `<div class="dayfill ${cls}" style="height:${pct}%" title="${r}h / 8h${otH>0?' + '+ro+'h OT':''}"></div>`;
+    if(totH>HOURS_PER_DAY) load=`<div class="dayload over" title="Vượt 8h → quá tải">⚠ ${r}h${otTxt}</div>`;
+    else if(totH>=HOURS_PER_DAY) load=`<div class="dayload full" title="Đủ 8h">${r}h${otTxt}</div>`;
+    else load=`<div class="dayload" title="Còn trống ${Math.round((HOURS_PER_DAY-totH)*10)/10}h">${r}h${otTxt}</div>`;
   }
   return `${fill}<div class="joblist">${items.join('')}</div>${load}`;
 }
@@ -1619,8 +1620,10 @@ function renderStagesEditor(){
           <option value="">— chọn người / đối tác —</option>
           ${DATA.staff.filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}${x.type==='outsource'?' (outsource)':''}</option>`).join('')}
         </select>
-        <input type="number" style="width:64px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ (8)" oninput="updStage(${i},'hours',this.value)" title="Số GIỜ công cho công đoạn này — 8h = 1 ngày. Để trống = 8h. >8h tự dàn nhiều ngày.">
+        <input type="number" style="width:60px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ (8)" oninput="updStage(${i},'hours',this.value)" title="Số GIỜ công thường — 8h = 1 ngày. Để trống = 8h. >8h tự dàn nhiều ngày.">
         <span class="small muted">giờ</span>
+        <input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường">
+        <span class="small" style="color:#d97706;font-weight:700">OT</span>
         ${workloadHintHtml(s)}
       </div>
     </div>`;}).join('');
@@ -1659,7 +1662,7 @@ function addStage(){
 }
 function updStage(i,k,v){
   if(!editingStages[i]) return;
-  editingStages[i][k] = (k==='plannedDays'||k==='hours') ? (v===''?null:parseFloat(v)) : v;
+  editingStages[i][k] = (k==='plannedDays'||k==='hours'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
   if(k==='status'){
     if(v==='done' && !editingStages[i].doneDate) editingStages[i].doneDate = todayStr();
     if(v==='doing' && !editingStages[i].startDate) editingStages[i].startDate = todayStr();
@@ -1715,7 +1718,8 @@ function itemStagesHtml(it,i){
     return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;border-left:3px solid ${STAGE_COLORS[st]};padding-left:5px">
       <select style="width:120px;font-size:11px" onchange="pickItemStagePreset(${i},${si},this.value)" title="Loại công đoạn"><option value="">— loại —</option>${STAGE_PRESETS.map(p=>`<option value="${p.c}" ${String(s.code||'').replace(/\d+$/,'')===p.c?'selected':''}>${p.c} ${p.n}</option>`).join('')}</select>
       <input style="width:38px;font-weight:800;font-size:11px" value="${esc(s.code||'')}" oninput="updItemStage(${i},${si},'code',this.value)" placeholder="Mã" title="Mã">
-      <input type="number" style="width:54px;font-size:11px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updItemStage(${i},${si},'hours',this.value)" title="Số GIỜ công (8h=1 ngày, để trống=8h, >8h tự dàn nhiều ngày bỏ CN)">
+      <input type="number" style="width:50px;font-size:11px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updItemStage(${i},${si},'hours',this.value)" title="Số GIỜ công thường (8h=1 ngày)">
+      <input type="number" style="width:46px;font-size:11px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updItemStage(${i},${si},'otHours',this.value)" title="Giờ tăng ca (OT) — ngày đầu">
       <select style="width:80px;font-size:11px" onchange="updItemStage(${i},${si},'status',this.value)"><option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa</option><option value="doing" ${s.status==='doing'?'selected':''}>Đang</option><option value="done" ${s.status==='done'?'selected':''}>Xong</option></select>
       <select style="width:120px;font-size:11px" onchange="updItemStage(${i},${si},'assignee',this.value)" title="Người làm → tự lên lịch"><option value="">👤 ai làm?</option>${(DATA.staff||[]).filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
       <span class="small muted">từ</span><input type="date" style="width:112px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu">
@@ -1736,7 +1740,7 @@ function itemStagesHtml(it,i){
 function addItemStage(i){ if(!editingItems[i])return; editingItems[i].stages=editingItems[i].stages||[]; editingItems[i].stages.push({id:localId('IST'),code:'',name:'',location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,note:''}); renderItemsEditor(); }
 function updItemStage(i,si,k,v){
   const s = editingItems[i] && editingItems[i].stages && editingItems[i].stages[si]; if(!s) return;
-  s[k] = (k==='hours'||k==='plannedDays') ? (v===''?null:parseFloat(v)) : v;
+  s[k] = (k==='hours'||k==='plannedDays'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
   if(k==='status'){ if(v==='done'&&!s.doneDate)s.doneDate=todayStr(); if(v==='doing'&&!s.startDate)s.startDate=todayStr(); if(v==='pending')s.doneDate=''; renderItemsEditor(); }
 }
 function rmItemStage(i,si){ editingItems[i].stages.splice(si,1); renderItemsEditor(); }
@@ -1924,6 +1928,7 @@ function syncAssignmentsFromOrder(o){
     // Có khoảng từ→tới: chia ĐỀU tổng giờ cho số ngày (≤8h/ngày). Không có: 8h/ngày, ngày cuối nhận phần lẻ.
     const evenH = st.endDate ? Math.min(HOURS_PER_DAY, Math.round((totH/n)*10)/10) : null;
     let remain = totH;
+    const ot = parseFloat(st.otHours)||0;               // giờ tăng ca → dồn vào NGÀY ĐẦU
     days.forEach((dy,di)=>{
       let dayH; if(evenH!=null){ dayH=evenH; } else { dayH=Math.min(HOURS_PER_DAY, remain); remain-=dayH; }
       DATA.assignments.push({
@@ -1937,6 +1942,7 @@ function syncAssignmentsFromOrder(o){
         itemId: itemId||'',
         stage: (st.code? st.code+' · ':'') + (st.name||'') + (label?' ['+label+']':'') + (n>1?' ('+(di+1)+'/'+n+')':''),
         hours: dayH,
+        otHours: di===0 ? ot : 0,                        // OT ghi ở ngày đầu
         note: '',
         fromStage: true,
         createdAt: new Date().toISOString(),
@@ -3465,13 +3471,14 @@ function renderKpi(){
   const topCustomers = Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).slice(0,8);
 
   // Khối lượng giờ công theo nhân sự (từ phân công kind=order)
-  const staffHours = {};
+  const staffHours = {}, staffOt = {};
   DATA.assignments.filter(a=>a.kind==='order').forEach(a=>{
     staffHours[a.staffId] = (staffHours[a.staffId]||0) + (parseFloat(a.hours)||8);
+    if(a.otHours) staffOt[a.staffId] = (staffOt[a.staffId]||0) + (parseFloat(a.otHours)||0);
   });
   // Đơn TRỄ quy về từng người làm (KPI cá nhân)
   const lateMap = lateOrderAttribution();
-  const staffRows = DATA.staff.map(s=>({s, hours: staffHours[s.id]||0, late:(lateMap[s.id]?lateMap[s.id].late.size:0), lateCodes:(lateMap[s.id]?lateMap[s.id].codes:[])}))
+  const staffRows = DATA.staff.map(s=>({s, hours: staffHours[s.id]||0, ot: staffOt[s.id]||0, late:(lateMap[s.id]?lateMap[s.id].late.size:0), lateCodes:(lateMap[s.id]?lateMap[s.id].codes:[])}))
     .filter(x=>x.hours>0 || x.late>0).sort((a,b)=> (b.late-a.late) || (b.hours-a.hours));
   const lateStaffRows = staffRows.filter(x=>x.late>0);
 
@@ -3508,8 +3515,8 @@ function renderKpi(){
       <div>
         <h2 class="sec"><span class="bar"></span>Giờ công &amp; đơn trễ theo nhân sự</h2>
         <div class="card" style="padding:0;overflow:auto">
-          ${staffRows.length? `<table><thead><tr><th>Nhân sự / Đối tác</th><th>Tổng giờ công</th><th title="Số đơn đang/đã trễ mà người này phụ trách công đoạn">⚠ Đơn trễ</th></tr></thead><tbody>
-            ${staffRows.map(x=>`<tr${x.late>0?' style="background:#fff5f5"':''}><td>${esc(x.s.name)}${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td><td><b>${x.hours}h</b></td><td>${x.late>0?`<b style="color:var(--st-late)">${x.late}</b> <span class="muted small" title="Mã đơn trễ">(${x.lateCodes.map(c=>esc(String(c))).join(', ')})</span>`:'<span class="muted">0</span>'}</td></tr>`).join('')}
+          ${staffRows.length? `<table><thead><tr><th>Nhân sự / Đối tác</th><th>Giờ thường</th><th title="Giờ tăng ca">Giờ OT</th><th title="Số đơn đang/đã trễ mà người này phụ trách công đoạn">⚠ Đơn trễ</th></tr></thead><tbody>
+            ${staffRows.map(x=>`<tr${x.late>0?' style="background:#fff5f5"':''}><td>${esc(x.s.name)}${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td><td><b>${Math.round(x.hours*10)/10}h</b></td><td>${x.ot>0?`<b style="color:#d97706">${Math.round(x.ot*10)/10}h</b>`:'<span class="muted">0</span>'}</td><td>${x.late>0?`<b style="color:var(--st-late)">${x.late}</b> <span class="muted small" title="Mã đơn trễ">(${x.lateCodes.map(c=>esc(String(c))).join(', ')})</span>`:'<span class="muted">0</span>'}</td></tr>`).join('')}
           </tbody></table>`:'<div class="empty">Chưa có phân công nào trên lịch.</div>'}
           <div class="small muted" style="padding:6px 10px">⚠ Đơn trễ tính theo người phụ trách <b>công đoạn đang kẹt</b> của đơn quá hạn (hoặc đã giao trễ).</div>
         </div>

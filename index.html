@@ -202,12 +202,12 @@ function gateCheck(){
   <!-- TẠM ẨN: Quy trình
   <div class="tab" data-tab="process" onclick="goTab('process')">🔧 <span data-i18n="tab_process">Quy trình</span></div>
   -->
-  <div class="tab" data-tab="customers" onclick="goTab('customers')">🏢 <span data-i18n="tab_customers">Khách hàng</span></div>
   <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 <span data-i18n="tab_kpi">KPI &amp; Báo cáo</span></div>
   <!-- TẠM ẨN: Outsource
   <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 <span data-i18n="tab_outsource">Outsource</span></div>
   -->
   <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ <span data-i18n="tab_ncr">Ghi nhận NCR</span></div>
+  <div class="tab" data-tab="guide" onclick="goTab('guide')">📋 Quy trình &amp; Hướng dẫn</div>
   <div class="tab" data-tab="data" onclick="goTab('data')">⚙ <span data-i18n="tab_data">Dữ liệu &amp; Đồng bộ</span></div>
 </div>
 
@@ -222,6 +222,7 @@ function gateCheck(){
   <div class="view" id="view-process"></div>
   <!-- ============ CUSTOMERS ============ -->
   <div class="view" id="view-customers"></div>
+  <div class="view" id="view-guide"></div>
   <!-- ============ KPI ============ -->
   <div class="view" id="view-kpi"></div>
   <!-- ============ OUTSOURCE ============ -->
@@ -343,6 +344,15 @@ function gateCheck(){
       <div class="field"><label>Khách hàng / Công ty</label><input id="ord_company" placeholder="Tên công ty khách hàng"></div>
     </div>
     <div class="field"><label>Tên hàng / sản phẩm</label><textarea id="ord_name" rows="2" placeholder="Tên hàng, mô tả ngắn"></textarea></div>
+    <div class="field">
+      <label>🔗 Mã sản phẩm (từ app Coding) <span class="muted small">— gõ/chọn mã SKU để gắn ảnh + chuẩn hóa hàng hóa; tạo mã ở app DHP Coding</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="ord_product" list="prodDatalist" placeholder="VD: KTR-ROTEX-28" style="flex:1" oninput="onPickProduct()">
+        <img id="ord_product_img" src="" style="height:48px;max-width:90px;object-fit:contain;border:1px solid var(--line);border-radius:6px;display:none">
+        <a href="dhp_coding.html" target="_blank" class="small" style="color:#0EA5E9;white-space:nowrap">＋ tạo mã</a>
+      </div>
+      <datalist id="prodDatalist"></datalist>
+    </div>
     <div class="field"><label>Loại đơn</label>
       <select id="ord_type" onchange="toggleTargetField()">
         <option value="Gia công">Gia công cơ khí</option>
@@ -369,6 +379,11 @@ function gateCheck(){
         <input id="ord_g0_checker" placeholder="👤 Người kiểm đầu vào (điều phối)">
         <input type="date" id="ord_g0_date" title="Ngày kiểm đầu vào">
         <input id="ord_g0_note" placeholder="Ghi chú / feedback phòng ban (nếu thiếu)">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <input id="ord_g0_ref" placeholder="🔗 Tham chiếu catalogue (link Drive / ảnh snip)" style="flex:1;min-width:200px">
+        <button type="button" class="ghost sm" onclick="g0FeedbackOk()" id="g0OkBtn" style="border-color:#16A34A;color:#15803D">✅ Feedback: Đầu vào OK</button>
+        <span id="g0OkBadge" class="small" style="font-weight:700"></span>
       </div>
     </div>
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff">
@@ -2044,6 +2059,7 @@ function openOrderView(id){
   document.getElementById('ord_view_body').innerHTML = `
     <table style="font-size:12.5px;border-collapse:collapse;width:100%">
       ${row('Tên hàng', esc(o.name||''))}
+      ${row('Mã SP (Coding)', o.productSku?`<b style="color:#0EA5E9">${esc(o.productSku)}</b>${(function(){const im=productImageBySku(o.productSku);return im?` <img src="${esc(im)}" style="height:40px;max-width:70px;object-fit:contain;vertical-align:middle;border:1px solid var(--line);border-radius:5px;margin-left:6px">`:'';})()}`:'')}
       ${row('Khách hàng', esc(o.company||''))}
       ${row('Loại', esc(o.orderType||'Gia công'))}
       ${row('Số lượng', (o.qty!=null?esc(String(o.qty)):'')+(o.unit?' '+esc(o.unit):''))}
@@ -2117,7 +2133,7 @@ function printQcSheet(id){
   const body=`${docHeader('PHIẾU KIỂM TRA CHẤT LƯỢNG CUỐI (FINAL INSPECTION REPORT)')}
     <h1 style="text-align:center;margin-top:10px">Phiếu kiểm tra chất lượng cuối</h1>
     <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
-    <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}</td></tr>
+    <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn KH</th><td>${ref?fmtDate(ref):''}</td></tr>
     <tr><th>Số bản vẽ / Rev</th><td>${esc((o.intake&&o.intake.note)||'')||'____________'}</td><th>Ngày kiểm</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td></tr></table>
     <h2>Bảng kích thước kiểm tra (theo công đoạn + nghiệm thu cuối)</h2>
@@ -2148,7 +2164,7 @@ function printWorkOrder(id){
   const body=`${docHeader('PHIẾU GIA CÔNG & ĐO ĐẠC')}
     <h1 style="text-align:center;margin-top:10px">Phiếu gia công</h1>
     <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
-    <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}</td></tr>
+    <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn giao</th><td>${ref?fmtDate(ref):''}</td></tr></table>
     <h2>Các công đoạn — thợ ghi giờ thực tế & ngày xong</h2>
     <table><thead><tr><th style="width:30px">TT</th><th>Công đoạn</th><th>Người làm</th><th>Nơi làm</th><th style="width:60px">Giờ KH</th><th style="width:80px">Giờ TT</th><th style="width:90px">Ngày xong</th></tr></thead><tbody>${stageRows}</tbody></table>
@@ -2202,7 +2218,7 @@ function printCertificate(id){
     <h1 style="text-align:center;margin-top:16px">Giấy chứng nhận xuất xưởng</h1>
     <div class="big pass">✓ ĐẠT YÊU CẦU — ĐƯỢC PHÉP XUẤT XƯỞNG</div>
     <table><tr><th style="width:140px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:140px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
-    <tr><th>Tên sản phẩm</th><td colspan="3">${esc(o.name||'')}</td></tr>
+    <tr><th>Tên sản phẩm</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Người kiểm QC</th><td>${esc(o.inspector||'')}</td></tr>
     <tr><th>Ngày nghiệm thu</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td><th>Số kích thước đạt</th><td>${(function(){const all=allOrderChecks(o).concat((o.measures||[]).filter(Boolean).map(m=>({pass:m.pass})));return all.filter(c=>c.pass==='pass').length+'/'+all.length;})()}</td></tr></table>
     ${(function(){const all=allOrderChecks(o).concat((o.measures||[]).filter(Boolean).map(m=>({param:m.param,spec:m.spec,actual:m.actual,pass:m.pass,stage:'QC cuối'})));return all.length?`<table style="margin-top:6px"><thead><tr><th style="width:28px">TT</th><th>Kích thước</th><th>Yêu cầu</th><th>Thực đo</th><th style="width:60px">KL</th></tr></thead><tbody>${all.map((c,i)=>`<tr><td>${i+1}</td><td>${esc(c.param||'')}</td><td>${esc(c.spec||'')}</td><td>${esc(c.a2||c.a1||c.actual||'')}</td><td class="${c.pass==='pass'?'pass':''}">${c.pass==='pass'?'Đạt':c.pass==='fail'?'Không':'—'}</td></tr>`).join('')}</tbody></table>`:'';})()}
@@ -2214,22 +2230,60 @@ function printCertificate(id){
 }
 // ---- Cổng G0 (kiểm tra đầu vào) ----
 const G0_KEYS = ['drawing','dims','tol','mat','qty'];
+let _g0Feedback = null;   // {ok, by, at} của lần mở form hiện tại
 function setG0Fields(intake){
   G0_KEYS.forEach(k=>{ const el=document.getElementById('ord_g0_'+k); if(el) el.checked=!!intake[k]; });
   document.getElementById('ord_g0_checker').value = intake.checker||'';
   document.getElementById('ord_g0_date').value = intake.date||'';
   document.getElementById('ord_g0_note').value = intake.note||'';
+  document.getElementById('ord_g0_ref').value = intake.ref||'';
+  _g0Feedback = intake.feedbackOk ? {ok:true, by:intake.feedbackBy||'', at:intake.feedbackAt||''} : null;
+  renderG0Badge();
+}
+function renderG0Badge(){
+  const b=document.getElementById('g0OkBadge'); if(!b) return;
+  if(_g0Feedback && _g0Feedback.ok) b.innerHTML='<span style="color:#15803D">✓ Đã OK'+(_g0Feedback.by?' bởi '+esc(_g0Feedback.by):'')+(_g0Feedback.at?' · '+esc(_g0Feedback.at):'')+'</span>';
+  else b.innerHTML='<span style="color:#D97706">chưa feedback</span>';
+}
+function g0FeedbackOk(){
+  if(!intakeComplete(collectG0())){ alert('⚠ Chưa tick đủ 5 mục checklist G0 — chưa thể feedback "Đầu vào OK".'); return; }
+  const by=document.getElementById('ord_g0_checker').value.trim();
+  if(!by){ alert('Nhập "Người kiểm đầu vào" trước khi feedback OK.'); return; }
+  if(!document.getElementById('ord_g0_date').value) document.getElementById('ord_g0_date').value=todayStr();
+  _g0Feedback = {ok:true, by, at:new Date().toLocaleString('vi-VN')};
+  renderG0Badge();
 }
 function collectG0(){
   const o={}; G0_KEYS.forEach(k=>{ o[k]=document.getElementById('ord_g0_'+k).checked; });
   o.checker=document.getElementById('ord_g0_checker').value.trim();
   o.date=document.getElementById('ord_g0_date').value||'';
   o.note=document.getElementById('ord_g0_note').value.trim();
+  o.ref=document.getElementById('ord_g0_ref').value.trim();
+  if(_g0Feedback && _g0Feedback.ok){ o.feedbackOk=true; o.feedbackBy=_g0Feedback.by; o.feedbackAt=_g0Feedback.at; }
   return o;
 }
 function intakeComplete(intake){ if(!intake) return false; return G0_KEYS.every(k=>!!intake[k]); }
+function intakeApproved(intake){ return !!(intake && intake.feedbackOk && intakeComplete(intake)); }
+// ---- Liên kết sản phẩm (bảng products dùng chung với app Coding) ----
+function productBySku(sku){ if(!sku) return null; return (DATA.products||[]).find(p=>p&&String(p.sku||'').toLowerCase()===String(sku).toLowerCase())||null; }
+function productImageBySku(sku){
+  const p=productBySku(sku); if(!p) return '';
+  if(p.imageUrl) return p.imageUrl;
+  const sib=(DATA.products||[]).find(x=>x&&x.imageUrl&&(x.brand||'')+'|'+(x.series||'')===(p.brand||'')+'|'+(p.series||''));
+  return sib?sib.imageUrl:'';
+}
+function fillProdDatalist(){
+  const dl=document.getElementById('prodDatalist'); if(!dl) return;
+  dl.innerHTML=(DATA.products||[]).slice(0,1500).map(p=>`<option value="${esc(p.sku||'')}">${esc(p.name||'')}${p.brand?' · '+esc(p.brand):''}</option>`).join('');
+}
+function onPickProduct(){
+  const sku=document.getElementById('ord_product').value.trim();
+  const img=productImageBySku(sku); const el=document.getElementById('ord_product_img');
+  if(img){ el.src=img; el.style.display='inline-block'; } else { el.src=''; el.style.display='none'; }
+}
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';
+  fillProdDatalist();
   const sSel = document.getElementById('ord_status');
   sSel.innerHTML = ORDER_STATUSES.map(s=>`<option value="${s.k}">${esc(s.label)}</option>`).join('');
   fillSelect(document.getElementById('ord_partner'), DATA.partners, 'name', 'name', '— Chọn đối tác —');
@@ -2239,6 +2293,7 @@ function openOrderModal(id){
     document.getElementById('ord_code').value = o.code||'';
     document.getElementById('ord_company').value = o.company||'';
     document.getElementById('ord_name').value = o.name||'';
+    document.getElementById('ord_product').value = o.productSku||''; onPickProduct();
     document.getElementById('ord_type').value = o.orderType||'Gia công';
     document.getElementById('ord_target').value = o.target||'';
     document.getElementById('ord_qty').value = o.qty||'';
@@ -2269,7 +2324,8 @@ function openOrderModal(id){
     document.getElementById('ord_qc_note').value = o.qcNote||'';
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
-    ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
+    ['ord_code','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
+    onPickProduct();
     editingItems = [];
     editingAtts = [];
     editingStages = [];
@@ -2318,12 +2374,18 @@ function saveOrder(){
   if(newStatus==='in_production' && !intakeComplete(intake)){
     if(!confirm('⚠ Cổng G0 (kiểm tra đầu vào) CHƯA đủ:\n— '+G0_KEYS.filter(k=>!intake[k]).map(k=>({drawing:'Bản vẽ/catalogue',dims:'Kích thước',tol:'Dung sai',mat:'Vật liệu',qty:'Số lượng'}[k])).join(', ')+'\n\nVẫn cho xuống xưởng gia công?')) return;
   }
+  // CHẶN CỨNG: không lưu trạng thái "Đã giao" khi QC chưa ĐẠT
+  if(newStatus==='delivered' && qcResult!=='pass'){
+    alert('⛔ KHÔNG thể đặt "Đã giao" khi QC chưa = ĐẠT.\nChọn Cổng QC = "ĐẠT" trước (và in chứng nhận).');
+    return;
+  }
   const rec = {
     id: id || uid('DH', 'order'),
     code: code || nextOrderCodeFor(document.getElementById('ord_type').value),
     company: document.getElementById('ord_company').value.trim(),
     name,
     orderType: document.getElementById('ord_type').value,
+    productSku: document.getElementById('ord_product').value.trim(),
     target: document.getElementById('ord_target').value.trim(),
     qty: parseFloat(document.getElementById('ord_qty').value)||null,
     unit: document.getElementById('ord_unit').value.trim(),
@@ -2541,9 +2603,10 @@ function quickStatusChange(id, newStatus){
   if(newStatus==='in_production' && !intakeComplete(o.intake)){
     if(!confirm('⚠ Đơn '+(o.code||'')+': Cổng G0 (kiểm tra đầu vào) CHƯA đủ.\nVẫn cho xuống xưởng gia công?\n(Mở Sửa đơn để tick checklist đầu vào.)')){ renderOrders(); return; }
   }
-  // CHẶN MỀM cổng QC: chỉ cho "Hoàn thành/Đã giao" khi QC đã Đạt (nếu có khai báo công đoạn QC hoặc đo đạc)
-  if((newStatus==='done'||newStatus==='delivered') && o.qcResult==='fail'){
-    if(!confirm('⚠ Đơn '+(o.code||'')+' đang QC = KHÔNG ĐẠT.\nVẫn chuyển sang "'+stLabel(statusByKey(newStatus))+'"?')){ renderOrders(); return; }
+  // CHẶN CỨNG cổng QC: KHÔNG cho "Đã giao" khi QC chưa ĐẠT (không cho vượt)
+  if(newStatus==='delivered' && o.qcResult!=='pass'){
+    alert('⛔ KHÔNG thể chuyển "Đã giao" — đơn '+(o.code||'')+' chưa có QC = ĐẠT.\nMở Sửa đơn → Cổng QC chọn "ĐẠT" (và in chứng nhận) rồi mới giao.');
+    renderOrders(); return;
   }
   if(newStatus==='hold'){
     const reason = prompt('Lý do tạm dừng (HOLD)?\nVD: Chờ khách xác nhận bản vẽ / Chờ vật tư / KH dời lịch...');
@@ -3542,6 +3605,51 @@ function lateOrderAttribution(){
   });
   return map;
 }
+// QUY TRÌNH BẮT BUỘC + HƯỚNG DẪN — hiển thị ngay trong app (xưởng phải follow)
+function renderGuide(){
+  const el=document.getElementById('view-guide'); if(!el) return;
+  const step=(cls,gate,title,who,items)=>`<div class="card" style="border-left:5px solid ${cls};margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:14px">${gate?`<span style="background:${cls};color:#fff;border-radius:5px;padding:1px 8px;font-size:11px;font-weight:800">${gate}</span> `:''}${title}</b><span style="font-size:11px;color:#fff;background:#475569;border-radius:5px;padding:1px 7px;font-weight:700">${who}</span></div>
+    <ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55">${items.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+  el.innerHTML=`
+    <h2 class="sec"><span class="bar"></span>📋 Quy trình vận hành xưởng CK368 — BẮT BUỘC</h2>
+    <div class="card" style="background:#fef2f2;border:1.5px solid var(--st-late)">
+      <b style="color:var(--st-late)">⛔ NGUYÊN TẮC: App là nguồn dữ liệu duy nhất. Đơn chỉ ĐƯỢC XUẤT XƯỞNG khi qua đủ 3 cổng:</b>
+      <div style="margin-top:6px;font-weight:800">
+        <span style="background:#D97706;color:#fff;border-radius:5px;padding:2px 9px">CỔNG G0 đầu vào</span> →
+        <span style="background:#2563EB;color:#fff;border-radius:5px;padding:2px 9px">Sản xuất + Đo (L1/L2)</span> →
+        <span style="background:#15803D;color:#fff;border-radius:5px;padding:2px 9px">QC ĐẠT</span> →
+        <span style="background:#0f766e;color:#fff;border-radius:5px;padding:2px 9px">Chứng nhận → Giao</span>
+      </div>
+      <div class="small muted" style="margin-top:6px">Thiếu 1 cổng → nút Chứng nhận xuất xưởng bị KHÓA. Không có "QC Đạt" trên app = cấm giao hàng.</div>
+    </div>
+    ${step('#D97706','G0','Nhận đơn & Kiểm tra đầu vào','Điều phối',[
+      'Admin gửi đơn qua mail → <b>＋ Thêm đơn hàng</b> (mã tự sinh MFG/PRJ/SVC/TRD/INT-YY-###).',
+      'Dán <b>link Drive bản vẽ/catalogue</b>. So catalogue hãng + hàng kho (nếu móc lỗ). Kiểm <b>kích thước xung đột</b>.',
+      'Tick đủ <b>checklist G0</b> (bản vẽ/Rev · kích thước · dung sai · vật liệu · số lượng) + người kiểm + ngày.',
+      'Thiếu → <b>Chờ phôi/vật tư</b> hoặc HOLD, feedback Sale/KT. ĐỦ → feedback OK mới xuống xưởng.'])}
+    ${step('#2563EB','','Lên quy trình & Sản xuất','Điều phối + Công nhân',[
+      'Khai <b>chuỗi công đoạn</b> (A/B/C…) + người làm + giờ. Nội bộ: vượt 8h <b>tự nhảy ngày sau</b>; cần thì điền ô <b>OT</b>. Outsource: không quản OT.',
+      'Mỗi công đoạn khai <b>📐 kích thước cần kiểm</b> (thông số · dung sai · dụng cụ đo).',
+      'In <b>📐 Bộ phiếu đo theo công đoạn</b> phát thợ. Đo <b>L1</b>; kích thước trọng yếu có <b>L2 kiểm chéo</b> (người thứ 2). Lệch → NCR.',
+      'Tick trạng thái công đoạn Đang → Xong; nhập số đo vào app.'])}
+    ${step('#15803D','QC','Kiểm tra chất lượng cuối','QC ≠ người chạy máy',[
+      'In <b>Phiếu QC/QA cuối</b> (gộp đủ kích thước công đoạn + đo cuối, có dụng cụ + dung sai).',
+      'Chọn kết luận <b>Đạt / Không đạt</b> + người kiểm + ngày + ghi chú QC.',
+      '<b>Không đạt</b> → mở <b>NCR</b> (mức độ, nguyên nhân, công đoạn lỗi, hướng xử lý) → sửa/làm lại → đo lại.'])}
+    ${step('#0f766e','','Xuất xưởng — chỉ khi QC ĐẠT','Điều phối / GĐ',[
+      '<b>Chỉ khi QC = ĐẠT</b> app mới mở nút <b>📜 Chứng nhận xuất xưởng</b> (liệt kê đủ kích thước đạt).',
+      'In chứng nhận → ký 3 lớp (QC · Điều phối · GĐ) → giao → đặt trạng thái <b>Đã giao</b>.'])}
+    <h2 class="sec"><span class="bar"></span>📄 In tài liệu (ban hành / treo xưởng)</h2>
+    <div class="card">
+      <div class="toolbar">
+        <button onclick="window.open('HUONG_DAN_VAN_HANH_CK368.html','_blank')">📋 Hướng dẫn vận hành + Quy trình (A4)</button>
+        <button class="secondary" onclick="window.open('SOP_CK368.html','_blank')">🗺 Sơ đồ luồng SOP (treo tường)</button>
+        <button class="secondary" onclick="window.open('BieuMau_CK368.html','_blank')">📑 Bộ biểu mẫu (mẫu đầu / NCR…)</button>
+      </div>
+      <p class="small muted" style="margin-bottom:0">Mở → bấm 🖨 In A4 để ban hành/treo xưởng. Quy trình trên là BẮT BUỘC cho mọi đơn trước khi xuất xưởng.</p>
+    </div>`;
+}
 function renderKpi(){
   const el = document.getElementById('view-kpi');
   const orders = DATA.orders;
@@ -3735,6 +3843,7 @@ function renderAll(){
     else if(id==='view-today') renderToday();
     else if(id==='view-process') renderProcessBoard();
     else if(id==='view-customers') renderCustomers();
+    else if(id==='view-guide') renderGuide();
     else if(id==='view-kpi') renderKpi();
     else if(id==='view-outsource') renderOutsource();
     else if(id==='view-ncr') renderNcr();

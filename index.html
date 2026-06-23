@@ -366,6 +366,34 @@ function gateCheck(){
       <label>🎯 Mục tiêu / Target <span class="muted small">(cho công việc nội bộ — vd: "Gia công 20 đồ gá", "Tồn kho 50 ống lót", "Bảo trì máy tiện trước 30/6")</span></label>
       <input id="ord_target" placeholder="Mục tiêu cần đạt + mốc thời gian">
     </div>
+    <div class="field" style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;background:#f8fafc">
+      <label style="font-weight:800;color:#334155">🗒 G0 — Thông tin đơn hàng (admin nhập)</label>
+      <div class="row3" style="margin-top:6px">
+        <div class="field" style="margin:0"><label>Số lượng</label><input id="ord_qty" type="number" min="0" step="0.01"></div>
+        <div class="field" style="margin:0"><label>ĐVT</label><input id="ord_unit" placeholder="Cái / Bộ ..."></div>
+        <div class="field" style="margin:0"><label>Độ ưu tiên</label>
+          <select id="ord_priority"><option value="">—</option><option value="Cao">Cao</option><option value="Trung bình">Trung bình</option><option value="Thấp">Thấp</option></select>
+        </div>
+      </div>
+      <div class="row3" style="margin-top:6px">
+        <div class="field" style="margin:0"><label>Ngày nhận đơn</label><input id="ord_received" type="date"></div>
+        <div class="field" style="margin:0"><label>Ngày yêu cầu hoàn thành</label><input id="ord_requested" type="date"></div>
+        <div class="field" style="margin:0"><label>Hạn giao hàng</label><input id="ord_due" type="date"></div>
+      </div>
+      <div class="row2" style="margin-top:6px">
+        <div class="field" style="margin:0"><label>Trạng thái hiện tại</label><select id="ord_status"></select></div>
+        <div class="field" style="margin:0"><label>Phân công thực hiện</label>
+          <select id="ord_assignment" onchange="toggleOutsourceField()">
+            <option value="inhouse">Gia công nội bộ (xưởng)</option>
+            <option value="outsource">Gia công ngoài (outsource)</option>
+            <option value="mixed">Hỗn hợp — theo công đoạn (nội bộ + outsource)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="ord_partner_field" style="display:none;margin:6px 0 0">
+        <label>Đối tác outsource</label><select id="ord_partner"></select>
+      </div>
+    </div>
     <div class="field" style="border:1px solid #fbbf24;border-radius:10px;padding:12px;background:#fffbeb">
       <label>✅ G1 — Kiểm tra thông tin đầu vào <span class="muted small">(sau khi nhận/tạo đơn = G0) — điều phối kiểm đủ mới cho xuống xưởng. Thiếu → 📧 feedback Sale/KT.</span></label>
       <div style="display:flex;flex-wrap:wrap;gap:10px 18px;margin:6px 0">
@@ -382,9 +410,10 @@ function gateCheck(){
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
         <input id="ord_g0_ref" placeholder="🔗 Tham chiếu catalogue (link Drive / ảnh snip)" style="flex:1;min-width:200px">
-        <button type="button" class="ghost sm" onclick="g0FeedbackOk()" id="g0OkBtn" style="border-color:#16A34A;color:#15803D">✅ Feedback: Đầu vào OK</button>
-        <button type="button" class="ghost sm" onclick="printIntakeSheet(document.getElementById('ord_id').value)" title="In phiếu kiểm đầu vào để ký + chụp đính lại app">🖨 In phiếu G0</button>
-        <button type="button" class="ghost sm" onclick="g0SendFeedbackMail()" style="border-color:#0EA5E9;color:#0369a1" title="Mở email soạn sẵn gửi Sale/KT xin bổ sung thông tin còn thiếu">📧 Gửi mail feedback</button>
+        <button type="button" class="ghost sm" onclick="g0FeedbackOk()" id="g0OkBtn" style="border-color:#16A34A;color:#15803D" title="Thông tin đã đủ — KHÔNG cần gửi mail. Mở cho chia công đoạn (G2).">✅ Thông tin đã OK (cho gia công)</button>
+        <button type="button" class="ghost sm" onclick="g0SendFeedbackMail()" style="border-color:#0EA5E9;color:#0369a1" title="Thông tin CHƯA rõ — gửi mail Sale/KT xin bổ sung. KHÔNG mở G2 cho tới khi OK.">✉ Chưa rõ — gửi mail Sale/KT</button>
+        <button type="button" class="ghost sm" onclick="printIntakeSheet(document.getElementById('ord_id').value)" title="In phiếu kiểm đầu vào để ký + chụp đính lại app">🖨 In phiếu G1</button>
+        <a class="small" style="color:#64748b;cursor:pointer" onclick="setFeedbackEmails()" title="Cấu hình email người nhận feedback">⚙ email nhận</a>
         <span id="g0OkBadge" class="small" style="font-weight:700"></span>
       </div>
     </div>
@@ -403,38 +432,6 @@ function gateCheck(){
       <label>Chi tiết con của đơn <span class="muted small">(tùy chọn — cho đơn nhiều chi tiết / dự án, vd VHG DATA: nhiều van mang gia công ngoài)</span></label>
       <div id="ord_items_list"></div>
       <button type="button" class="ghost sm" onclick="addOrderItem()" style="margin-top:6px">＋ Thêm chi tiết con</button>
-    </div>
-    <div class="row3">
-      <div class="field"><label>Số lượng</label><input id="ord_qty" type="number" min="0" step="0.01"></div>
-      <div class="field"><label>ĐVT</label><input id="ord_unit" placeholder="Cái / Bộ ..."></div>
-      <div class="field"><label>Độ ưu tiên</label>
-        <select id="ord_priority"><option value="">—</option><option value="Cao">Cao</option><option value="Trung bình">Trung bình</option><option value="Thấp">Thấp</option></select>
-      </div>
-    </div>
-    <div class="row3">
-      <div class="field"><label>Ngày nhận đơn</label><input id="ord_received" type="date"></div>
-      <div class="field"><label>Ngày yêu cầu hoàn thành</label><input id="ord_requested" type="date"></div>
-      <div class="field"><label>Hạn giao hàng</label><input id="ord_due" type="date"></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Trạng thái hiện tại (theo bộ 6 trạng thái chuẩn)</label>
-        <select id="ord_status"></select>
-      </div>
-      <div class="field"><label>Phân công thực hiện</label>
-        <select id="ord_assignment" onchange="toggleOutsourceField()">
-          <option value="inhouse">Gia công nội bộ (xưởng)</option>
-          <option value="outsource">Gia công ngoài (outsource)</option>
-          <option value="mixed">Hỗn hợp — theo công đoạn (nội bộ + outsource)</option>
-        </select>
-      </div>
-    </div>
-    <div class="field" id="ord_partner_field" style="display:none">
-      <label>Đối tác outsource</label>
-      <select id="ord_partner"></select>
-    </div>
-    <div class="field">
-      <label>📍 Hàng đang ở đâu / công đoạn hiện tại <span class="muted small">(VD: "Tiện xong @CK368 — đã gửi phay @Tuyết Vinh")</span></label>
-      <input id="ord_location" placeholder="Cập nhật mỗi khi hàng chuyển công đoạn / chuyển chỗ">
     </div>
     <div class="row2">
       <div class="field"><label>% hoàn thành (khi đang gia công)</label><input id="ord_progress" type="number" min="0" max="100" step="5" placeholder="0 – 100"></div>
@@ -1581,7 +1578,7 @@ function ordersTable(){
         </select>
       </td>
       <td>${progressCellHtml(o)}</td>
-      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'—') : (o.assignment==='mixed' ? `<span style="font-weight:700;color:#6366F1">${t('lb_mixed')}</span>`+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : t('lb_inhouse'))}${o.currentLocation?`<div style="margin-top:2px;font-size:10.5px;color:#0EA5E9;font-weight:700;white-space:normal">📍 ${esc(o.currentLocation)}</div>`:''}</td>
+      <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'—') : (o.assignment==='mixed' ? `<span style="font-weight:700;color:#6366F1">${t('lb_mixed')}</span>`+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : t('lb_inhouse'))}</td>
       <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 ${t('lb_forecast')}: ${fmtDate(fc.date)}${fc.kind==='manual'?' '+t('lb_manual'):''}${late?' · '+t('lb_lateKH'):''}</span></div>`;})()}</td>
       <td class="actions"><a onclick="openOrderView('${o.id}')" style="color:#0EA5E9">👁 Xem</a>${canEdit()?`<a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a>`:''}</td>
     </tr>${itemsSubRow(o, rowBg)}`;
@@ -2088,7 +2085,6 @@ function openOrderView(id){
       ${row('Dự kiến HT', ef? (fmtDate(ef)+(o.status!=='delivered'&&ref&&ef>ref?' <span style="color:var(--st-late);font-weight:700">⚠ trễ</span>':'')) : '')}
       ${row('Ngày giao', fmtDate(o.deliveredDate))}
       ${row('Thực hiện', exec)}
-      ${row('Vị trí hiện tại', o.currentLocation?('📍 '+esc(o.currentLocation)):'')}
       ${row('Mục tiêu', o.target?('🎯 '+esc(o.target)):'')}
       ${row('Ghi chú', o.note?esc(o.note):'')}
     </table>
@@ -2325,9 +2321,21 @@ function g0SendFeedbackMail(){
 (g.note? 'Ghi chú: '+g.note+'\n\n' : '')+
 'Nhờ gửi bổ sung: bản vẽ đúng Rev, kích thước/dung sai, vật liệu, số lượng; kèm hình ảnh đo đạc / note trên bản vẽ nếu có.\n'+
 '(Đính kèm phiếu kiểm đầu vào đã in/ký nếu cần.)\n\nTrân trọng,\nĐiều phối xưởng CK368 — '+(g.checker||'');
-  const a=document.createElement('a');
-  a.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  document.body.appendChild(a); a.click(); a.remove();
+  let to=(DATA.meta&&DATA.meta.feedbackEmails)||'';
+  if(!to){ to=setFeedbackEmails(); if(to===null) return; }
+  const cc=(DATA.meta&&DATA.meta.feedbackCc)||'';
+  const href='mailto:'+encodeURIComponent(to.replace(/\s+/g,''))+'?'+(cc?('cc='+encodeURIComponent(cc.replace(/\s+/g,''))+'&'):'')+'subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  window.location.href=href;   // mở app email mặc định (From = tài khoản mail mặc định của máy)
+}
+function setFeedbackEmails(){
+  const cur=(DATA.meta&&DATA.meta.feedbackEmails)||'';
+  const v=prompt('Email NGƯỜI NHẬN feedback (Sale/KT), cách nhau dấu phẩy:\nVD: sale@dhp.com, kythuat@dhp.com', cur);
+  if(v===null) return null;
+  DATA.meta=DATA.meta||{}; DATA.meta.feedbackEmails=v.trim();
+  const cc=prompt('CC cho ai (tùy chọn, vd Giám đốc) — để trống nếu không:', (DATA.meta.feedbackCc)||'');
+  if(cc!==null) DATA.meta.feedbackCc=cc.trim();
+  save();
+  return DATA.meta.feedbackEmails;
 }
 function collectG0(){
   const o={}; G0_KEYS.forEach(k=>{ o[k]=document.getElementById('ord_g0_'+k).checked; });
@@ -2388,7 +2396,6 @@ function openOrderModal(id){
     document.getElementById('ord_progress').value = o.progress!=null ? o.progress : '';
     document.getElementById('ord_forecast').value = o.forecastDate||'';
     document.getElementById('ord_drive').value = o.driveFolder||'';
-    document.getElementById('ord_location').value = o.currentLocation||'';
     document.getElementById('ord_note').value = o.note||'';
     editingItems = (o.items||[]).map(x=>({...x}));
     editingAtts = (o.attachments||[]).map(x=>({...x}));
@@ -2402,7 +2409,7 @@ function openOrderModal(id){
     document.getElementById('ord_qc_note').value = o.qcNote||'';
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
-    ['ord_code','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
+    ['ord_code','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
     onPickProduct();
     editingItems = [];
     editingAtts = [];
@@ -2480,7 +2487,7 @@ function saveOrder(){
     progress: (function(){ const v=document.getElementById('ord_progress').value; return v===''?null:Math.max(0,Math.min(100,parseFloat(v))); })(),
     forecastDate: document.getElementById('ord_forecast').value || null,
     driveFolder: document.getElementById('ord_drive').value.trim(),
-    currentLocation: document.getElementById('ord_location').value.trim(),
+    currentLocation: '',
     items: editingItems.filter(it=>(it.name||'').trim()),
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
     stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()).map(s=>({...s, checks:(s.checks||[]).filter(c=>(c.param||'').trim()||(c.actual1||'').trim()||(c.spec||'').trim())})),

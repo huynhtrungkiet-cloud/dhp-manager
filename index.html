@@ -450,6 +450,10 @@ function gateCheck(){
         </select>
         <span class="small muted">Người kiểm & ngày lấy theo ô "Người đo / nghiệm thu" ở trên.</span>
       </div>
+      <div style="margin-top:8px">
+        <label class="small" style="font-weight:700;color:#15803D">📝 Ghi chú QC / nhận xét đo đạc (nhiều dòng)</label>
+        <textarea id="ord_qc_note" rows="3" style="width:100%;margin-top:3px" placeholder="VD: Ø lỗ 42.01 trong dung sai H7; độ đảo mặt bích 0.03; bề mặt đạt; lưu ý nhiệt luyện vùng then..."></textarea>
+      </div>
     </div>
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff7ed">
       <label>📦 Vật tư cần mua / phôi chế tạo <span class="muted small">— gửi kế toán đặt mua. Bấm "Copy gửi kế toán" để dán vào Zalo nhóm kế toán–GĐ.</span></label>
@@ -597,11 +601,12 @@ function gateCheck(){
 const ORDER_STATUSES = [
   {k:'new',          label:'1. Mới nhận đơn',                 en:'1. New order',            color:'var(--st-new)'},
   {k:'planned',      label:'2. Đã lên kế hoạch / phân công',  en:'2. Planned / assigned',   color:'var(--st-planned)'},
-  {k:'in_production',label:'3. Đang gia công',                en:'3. In production',        color:'var(--st-prod)'},
-  {k:'qc',           label:'4. Chờ kiểm tra chất lượng (QC)', en:'4. Awaiting QC',          color:'var(--st-qc)'},
-  {k:'done_waiting', label:'5. Hoàn thành — chờ giao',        en:'5. Done — to deliver',    color:'var(--st-wait)'},
-  {k:'delivered',    label:'6. Đã giao — đóng đơn',           en:'6. Delivered — closed',   color:'var(--st-done)'},
-  {k:'hold',         label:'7. Tạm dừng (HOLD)',              en:'7. On hold',              color:'#64748B'},
+  {k:'wait_material',label:'3. Đang chờ phôi / vật tư',       en:'3. Awaiting material',    color:'#CA8A04'},
+  {k:'in_production',label:'4. Đang gia công',                en:'4. In production',        color:'var(--st-prod)'},
+  {k:'qc',           label:'5. Chờ kiểm tra chất lượng (QC)', en:'5. Awaiting QC',          color:'var(--st-qc)'},
+  {k:'done_waiting', label:'6. Hoàn thành — chờ giao',        en:'6. Done — to deliver',    color:'var(--st-wait)'},
+  {k:'delivered',    label:'7. Đã giao — đóng đơn',           en:'7. Delivered — closed',   color:'var(--st-done)'},
+  {k:'hold',         label:'8. Tạm dừng (HOLD)',              en:'8. On hold',              color:'#64748B'},
 ];
 // Nhãn trạng thái theo ngôn ngữ đang chọn (LANG khai báo ở phần i18n bên dưới)
 function stLabel(st){ return (typeof LANG!=='undefined' && LANG==='en' && st.en) ? st.en : st.label; }
@@ -638,10 +643,10 @@ const PRODUCTION_STAGES = [
 const STAGE_PRESETS = [
   {c:'A', n:'Tiện'},            {c:'B', n:'Phay'},              {c:'C', n:'Cắt dây'},
   {c:'D', n:'Khoan'},           {c:'P', n:'Khoan + Taro'},      {c:'Q', n:'Taro / Ren'},
-  {c:'O', n:'Doa'},             {c:'E', n:'Hàn'},               {c:'F', n:'Mài / Đánh bóng'},
-  {c:'G', n:'Gia công CNC'},    {c:'H', n:'Nhiệt luyện'},       {c:'I', n:'Sơn / Xử lý bề mặt'},
-  {c:'J', n:'Lắp ráp'},         {c:'K', n:'QC / Kiểm tra'},     {c:'L', n:'Mua phôi / Vật tư'},
-  {c:'M', n:'Hợp đồng / Thủ tục'},{c:'N', n:'Vận chuyển / Giao nhận'},{c:'X', n:'Khác'},
+  {c:'S', n:'Cắt laser'},       {c:'E', n:'Hàn'},               {c:'F', n:'Mài / Đánh bóng'},
+  {c:'G', n:'Gia công CNC'},    {c:'V', n:'Cân bằng động'},     {c:'H', n:'Nhiệt luyện'},
+  {c:'I', n:'Sơn / Xử lý bề mặt'},{c:'J', n:'Lắp ráp'},         {c:'K', n:'QC / Kiểm tra'},
+  {c:'L', n:'Mua phôi / Vật tư'},{c:'N', n:'Vận chuyển / Giao nhận'},{c:'X', n:'Khác'},
 ];
 // Quy đổi GIỜ ↔ NGÀY: 1 ngày công = 8h. Tự dàn công đoạn qua nhiều ngày, mỗi ngày tối đa 8h.
 const HOURS_PER_DAY = 8;
@@ -651,7 +656,7 @@ function stageState(s){
   if(!s || typeof s!=='object') return 'pending';
   if(s.status==='done' || s.doneDate) return 'done';
   if(s.status==='doing') {
-    if(s.startDate && daysBetween(s.startDate, todayStr()) > stageSpanDays(s)) return 'late';
+    { const end=stageEndDate(s); if(end && todayStr()>end) return 'late'; }
     return 'doing';
   }
   return 'pending';
@@ -851,8 +856,22 @@ function workingDaysFrom(startStr, count){
   while(out.length<count && guard<400){ if(d.getDay()!==0) out.push(ymdLocal(d)); d.setDate(d.getDate()+1); guard++; }
   return out;
 }
+// Các ngày làm việc TỪ start ĐẾN end (bao gồm 2 đầu, bỏ Chủ Nhật)
+function workingDaysInRange(startStr, endStr){
+  startStr=normDate(startStr); endStr=normDate(endStr); if(!startStr||!endStr) return [];
+  if(endStr<startStr) endStr=startStr;
+  const out=[]; const d=new Date(startStr+'T00:00:00'); const end=new Date(endStr+'T00:00:00'); let guard=0;
+  while(d<=end && guard<800){ if(d.getDay()!==0) out.push(ymdLocal(d)); d.setDate(d.getDate()+1); guard++; }
+  return out;
+}
+// Danh sách ngày làm của 1 công đoạn: ưu tiên khoảng từ→tới (endDate), nếu trống thì dàn theo giờ
+function stageWorkingDays(s){
+  if(s && s.startDate && s.endDate) return workingDaysInRange(s.startDate, s.endDate);
+  return workingDaysFrom(s&&s.startDate, stageSpanDays(s));
+}
 // Ngày XONG dự kiến = ngày làm việc cuối cùng
 function stageFinishDate(startStr, plannedDays){ const a=workingDaysFrom(startStr, plannedDays); return a.length? a[a.length-1] : normDate(startStr); }
+function stageEndDate(s){ if(s&&s.endDate) return normDate(s.endDate); const a=stageWorkingDays(s); return a.length?a[a.length-1]:normDate(s&&s.startDate); }
 function pillFor(statusKey){ const s=statusByKey(statusKey); return `<span class="pill" style="background:${s.color}">${esc(stLabel(s).replace(/^\d+\.\s*/,''))}</span>`; }
 function sevLabel(s){ return s=='1'?'Nghiêm trọng':(s=='2'?'Trung bình':'Nhẹ'); }
 function fillSelect(sel, items, valueKey, labelKey, placeholder){
@@ -1583,7 +1602,11 @@ function renderStagesEditor(){
           <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
           <option value="done" ${s.status==='done'?'selected':''}>Xong ✓</option>
         </select>
-        <input type="date" style="width:128px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value)" title="Ngày dự kiến làm">
+        <span style="display:flex;gap:3px;align-items:center"><span class="small muted">từ</span>
+          <input type="date" style="width:118px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value)" title="Ngày bắt đầu">
+          <span class="small muted">tới</span>
+          <input type="date" style="width:118px" value="${esc(s.endDate||'')}" min="${esc(s.startDate||'')}" onchange="updStage(${i},'endDate',this.value)" title="Ngày kết thúc dự kiến (để trống = tự tính theo giờ)">
+        </span>
         <span style="display:flex;gap:4px">
           <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Lên">↑</a>
           <a onclick="moveStage(${i},1)" style="cursor:pointer;font-weight:800" title="Xuống">↓</a>
@@ -1614,11 +1637,11 @@ function workloadHintHtml(s){
   if(!s.assignee || !s.startDate) return '<span class="small muted">↪ chọn người + ngày để TỰ lên lịch (8h/ngày)</span>';
   const d=normDate(s.startDate);
   const totH=stageHours(s);
-  const n=stageSpanDays(s);
-  const fin=stageFinishDate(d, n);
+  const days=stageWorkingDays(s); const n=days.length;
+  const fin=stageEndDate(s);
   const h=plannedHoursOnDay(s.assignee, d, (document.getElementById('ord_id')||{}).value||'');
   const over=h>HOURS_PER_DAY;
-  return `<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${totH}h${n>1?' → dàn '+n+' ngày (bỏ CN), xong '+fmtDate(fin):' · '+fmtDate(d)}</span>${over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày '+fmtDate(d)+' đã '+Math.round(h*10)/10+'h → tăng ca</span>':''}`;
+  return `<span class="small" style="color:#16A34A;font-weight:700">✓ ${esc(staffName(s.assignee))} · ${totH}h${n>1?' → '+fmtDate(d)+' đến '+fmtDate(fin)+' ('+n+' ngày, bỏ CN)':' · '+fmtDate(d)}</span>${over?' <span class="small" style="color:var(--st-late);font-weight:700">⚠ ngày '+fmtDate(d)+' đã '+Math.round(h*10)/10+'h → tăng ca</span>':''}`;
 }
 function pickStagePreset(i, c){
   const p = STAGE_PRESETS.find(x=>x.c===c);
@@ -1695,8 +1718,9 @@ function itemStagesHtml(it,i){
       <input type="number" style="width:54px;font-size:11px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updItemStage(${i},${si},'hours',this.value)" title="Số GIỜ công (8h=1 ngày, để trống=8h, >8h tự dàn nhiều ngày bỏ CN)">
       <select style="width:80px;font-size:11px" onchange="updItemStage(${i},${si},'status',this.value)"><option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa</option><option value="doing" ${s.status==='doing'?'selected':''}>Đang</option><option value="done" ${s.status==='done'?'selected':''}>Xong</option></select>
       <select style="width:120px;font-size:11px" onchange="updItemStage(${i},${si},'assignee',this.value)" title="Người làm → tự lên lịch"><option value="">👤 ai làm?</option>${(DATA.staff||[]).filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
-      <input type="date" style="width:118px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu → tự lên lịch">
-      ${(s.startDate && stageSpanDays(s)>1)?`<span class="small" style="color:#16A34A;white-space:nowrap" title="${stageHours(s)}h → dàn ${stageSpanDays(s)} ngày làm việc, bỏ CN">→ ${fmtDate(stageFinishDate(s.startDate,stageSpanDays(s)))}</span>`:''}
+      <span class="small muted">từ</span><input type="date" style="width:112px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu">
+      <span class="small muted">tới</span><input type="date" style="width:112px;font-size:11px" value="${esc(s.endDate||'')}" onchange="updItemStage(${i},${si},'endDate',this.value)" title="Ngày kết thúc (để trống = tự tính theo giờ)">
+      ${(s.startDate && stageWorkingDays(s).length>1)?`<span class="small" style="color:#16A34A;white-space:nowrap" title="${stageHours(s)}h, bỏ CN">→ ${fmtDate(stageEndDate(s))}</span>`:''}
       <a onclick="rmItemStage(${i},${si})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
     </div>`;
   }).join('');
@@ -1895,11 +1919,13 @@ function syncAssignmentsFromOrder(o){
     if(!st || !st.assignee || !st.startDate) return;
     if(!st.id) st.id = localId('ST');   // đảm bảo có id để công nhân tick đúng công đoạn
     const totH = stageHours(st);                       // tổng giờ công của công đoạn
-    const n = stageSpanDays(st);                       // số ngày = trần(giờ/8), mỗi ngày tối đa 8h
-    const days = workingDaysFrom(st.startDate, n);     // dàn qua N ngày làm việc, bỏ CN
+    const days = stageWorkingDays(st);                 // ưu tiên khoảng từ→tới, nếu trống thì dàn theo giờ
+    const n = days.length || 1;
+    // Có khoảng từ→tới: chia ĐỀU tổng giờ cho số ngày (≤8h/ngày). Không có: 8h/ngày, ngày cuối nhận phần lẻ.
+    const evenH = st.endDate ? Math.min(HOURS_PER_DAY, Math.round((totH/n)*10)/10) : null;
     let remain = totH;
     days.forEach((dy,di)=>{
-      const dayH = Math.min(HOURS_PER_DAY, remain); remain -= dayH;   // ngày cuối nhận phần lẻ
+      let dayH; if(evenH!=null){ dayH=evenH; } else { dayH=Math.min(HOURS_PER_DAY, remain); remain-=dayH; }
       DATA.assignments.push({
         id: localId('PCS'),
         staffId: st.assignee,
@@ -1972,6 +1998,7 @@ function openOrderView(id){
       ${row('% hoàn thành', orderOverallProgress(o)+'%')}
       ${row('Cổng G0 đầu vào', intakeComplete(o.intake)?`<span style="color:#15803D;font-weight:700">✓ Đủ thông tin</span>${o.intake&&o.intake.checker?' · '+esc(o.intake.checker):''}${o.intake&&o.intake.date?' · '+fmtDate(o.intake.date):''}`:`<span style="color:#D97706;font-weight:700">⚠ Chưa đủ${o.intake&&o.intake.note?': '+esc(o.intake.note):''}</span>`)}
       ${row('Kết luận QC', o.qcResult==='pass'?'<span style="color:#15803D;font-weight:700">✓ ĐẠT</span>':o.qcResult==='fail'?'<span style="color:var(--st-late);font-weight:700">✕ KHÔNG ĐẠT</span>':'<span class="muted">— chưa kiểm —</span>')}
+      ${row('Ghi chú QC', o.qcNote?'<span style="white-space:pre-wrap">'+esc(o.qcNote)+'</span>':'')}
       ${row('Ngày nhận', fmtDate(o.receivedDate))}
       ${row('Hạn KH', ref?fmtDate(ref):'')}
       ${row('Dự kiến HT', ef? (fmtDate(ef)+(o.status!=='delivered'&&ref&&ef>ref?' <span style="color:var(--st-late);font-weight:700">⚠ trễ</span>':'')) : '')}
@@ -2034,6 +2061,7 @@ function printQcSheet(id){
     <h2>Kết quả đo đạc / nghiệm thu</h2>
     <table><thead><tr><th style="width:34px">TT</th><th>Thông số / kích thước</th><th>Yêu cầu (bản vẽ)</th><th>Thực đo</th><th style="width:90px">Kết luận</th></tr></thead><tbody>${measRows}</tbody></table>
     <h2>Kết luận QC: ${res}</h2>
+    ${o.qcNote?`<p style="white-space:pre-wrap"><b>Ghi chú QC:</b> ${esc(o.qcNote)}</p>`:''}
     <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, ghi rõ họ tên)</div></div>
       <div><b>Người kiểm QC</b><div class="line">${esc(o.inspector||'')}${o.inspectDate?'<br>'+fmtDate(o.inspectDate):''}</div></div>
       <div><b>Điều phối / TPKT</b><div class="line">(Ký, ghi rõ họ tên)</div></div></div>`;
@@ -2138,6 +2166,7 @@ function openOrderModal(id){
     document.getElementById('ord_inspectDate').value = o.inspectDate||'';
     setG0Fields(o.intake||{});
     document.getElementById('ord_qc_result').value = o.qcResult||'';
+    document.getElementById('ord_qc_note').value = o.qcNote||'';
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
     ['ord_code','ord_company','ord_name','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_location','ord_note'].forEach(id=>document.getElementById(id).value='');
@@ -2156,6 +2185,7 @@ function openOrderModal(id){
     document.getElementById('ord_partner').value = '';
     setG0Fields({});
     document.getElementById('ord_qc_result').value = '';
+    document.getElementById('ord_qc_note').value = '';
   }
   renderItemsEditor();
   renderAttEditor();
@@ -2182,6 +2212,7 @@ function saveOrder(){
   let code = document.getElementById('ord_code').value.trim();
   const intake = collectG0();
   const qcResult = document.getElementById('ord_qc_result').value;
+  const qcNote = document.getElementById('ord_qc_note').value.trim();
   const newStatus = document.getElementById('ord_status').value;
   // CHẶN MỀM: chuyển sang "đang gia công" mà chưa đủ Cổng G0 → cảnh báo (cho phép vượt)
   if(newStatus==='in_production' && !intakeComplete(intake)){
@@ -2218,6 +2249,7 @@ function saveOrder(){
     inspectDate: document.getElementById('ord_inspectDate').value || null,
     intake: intake,
     qcResult: qcResult,
+    qcNote: qcNote,
     note: document.getElementById('ord_note').value.trim(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),
@@ -2272,7 +2304,7 @@ function expectedFinishDate(o){
   if(o.status==='delivered') return o.deliveredDate||null;
   if(o.forecastDate) return o.forecastDate;
   let last=null;
-  const consider=(st)=>{ if(st&&st.startDate){ const f=stageFinishDate(st.startDate, stageSpanDays(st)); if(!last||f>last) last=f; } };
+  const consider=(st)=>{ if(st&&st.startDate){ const f=stageEndDate(st); if(f&&(!last||f>last)) last=f; } };
   (o.stages||[]).filter(Boolean).forEach(consider);
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(consider));
   if(last) return last;

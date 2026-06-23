@@ -376,7 +376,7 @@ function gateCheck(){
         <label class="small" style="font-weight:600"><input type="checkbox" id="ord_g0_qty" onchange="g0Changed()" style="width:auto"> Số lượng xác nhận</label>
       </div>
       <div class="row3" style="gap:8px">
-        <input id="ord_g0_checker" placeholder="👤 Người kiểm đầu vào (điều phối)">
+        <select id="ord_g0_checker" onchange="g0Changed()" title="Người kiểm đầu vào — chọn nhân sự nội bộ"><option value="">— 👤 Người kiểm đầu vào —</option></select>
         <input type="date" id="ord_g0_date" title="Ngày kiểm đầu vào">
         <input id="ord_g0_note" placeholder="Ghi chú / feedback phòng ban (nếu thiếu)">
       </div>
@@ -390,10 +390,12 @@ function gateCheck(){
     <div class="field" id="routingField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff;position:relative">
       <label>🔧 BƯỚC 2 — Công đoạn (routing) <span class="muted small">— mã cố định: A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
       <div id="routingLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>BƯỚC 1: Cổng G0</b> (tick đủ 5 mục + bấm <b>✅ Feedback OK</b>) mới mở chia công đoạn.</div>
-      <div id="ord_stages_list"></div>
-      <div class="toolbar" style="margin-top:8px">
-        <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
-        <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
+      <div id="routingBody">
+        <div id="ord_stages_list"></div>
+        <div class="toolbar" style="margin-top:8px">
+          <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
+          <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
+        </div>
       </div>
     </div>
     <div class="field">
@@ -453,24 +455,26 @@ function gateCheck(){
     <div class="field" id="qcField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#f0fdf4">
       <label>📐 BƯỚC 3 — Nghiệm thu / QC <span class="muted small">— nhập kích thước đo, chọn người đo (nhân sự), kết luận Đạt/Không.</span></label>
       <div id="qcLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>TẤT CẢ công đoạn (trạng thái Xong)</b> mới mở QC.</div>
-      <div id="ord_measure_list"></div>
-      <div class="toolbar" style="margin-top:8px">
-        <button type="button" class="ghost sm" onclick="addMeasure()">＋ Thêm thông số đo</button>
-        <select id="ord_inspector" style="max-width:220px" title="Người đo / nghiệm thu — chọn từ nhân sự để xác nhận trách nhiệm"><option value="">— 👤 Người đo / QC —</option></select>
-        <input id="ord_inspectDate" type="date" title="Ngày nghiệm thu">
-      </div>
-      <div style="margin-top:8px;border-top:1px dashed #bbf7d0;padding-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <b class="small" style="color:#15803D">🛡 Cổng QC/QA — kết luận:</b>
-        <select id="ord_qc_result" style="max-width:160px">
-          <option value="">— chưa kiểm —</option>
-          <option value="pass">✓ ĐẠT — cho xuất xưởng</option>
-          <option value="fail">✕ KHÔNG ĐẠT — lập NCR</option>
-        </select>
-        <span class="small muted">Người kiểm & ngày lấy theo ô "Người đo / nghiệm thu" ở trên.</span>
-      </div>
-      <div style="margin-top:8px">
-        <label class="small" style="font-weight:700;color:#15803D">📝 Ghi chú QC / nhận xét đo đạc (nhiều dòng)</label>
-        <textarea id="ord_qc_note" rows="3" style="width:100%;margin-top:3px" placeholder="VD: Ø lỗ 42.01 trong dung sai H7; độ đảo mặt bích 0.03; bề mặt đạt; lưu ý nhiệt luyện vùng then..."></textarea>
+      <div id="qcBody">
+        <div id="ord_measure_list"></div>
+        <div class="toolbar" style="margin-top:8px">
+          <button type="button" class="ghost sm" onclick="addMeasure()">＋ Thêm thông số đo</button>
+          <select id="ord_inspector" style="max-width:220px" title="Người đo / nghiệm thu — chọn từ nhân sự để xác nhận trách nhiệm"><option value="">— 👤 Người đo / QC —</option></select>
+          <input id="ord_inspectDate" type="date" title="Ngày nghiệm thu">
+        </div>
+        <div style="margin-top:8px;border-top:1px dashed #bbf7d0;padding-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <b class="small" style="color:#15803D">🛡 Cổng QC/QA — kết luận:</b>
+          <select id="ord_qc_result" style="max-width:160px">
+            <option value="">— chưa kiểm —</option>
+            <option value="pass">✓ ĐẠT — cho xuất xưởng</option>
+            <option value="fail">✕ KHÔNG ĐẠT — lập NCR</option>
+          </select>
+          <span class="small muted">Người kiểm & ngày lấy theo ô "Người đo / nghiệm thu" ở trên.</span>
+        </div>
+        <div style="margin-top:8px">
+          <label class="small" style="font-weight:700;color:#15803D">📝 Ghi chú QC / nhận xét đo đạc (nhiều dòng)</label>
+          <textarea id="ord_qc_note" rows="3" style="width:100%;margin-top:3px" placeholder="VD: Ø lỗ 42.01 trong dung sai H7; độ đảo mặt bích 0.03; bề mặt đạt..."></textarea>
+        </div>
       </div>
     </div>
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff7ed">
@@ -2284,15 +2288,18 @@ function g0FeedbackOk(){
 // QUY TRÌNH CỨNG: khóa BƯỚC 2 (công đoạn) đến khi G0 OK; khóa BƯỚC 3 (QC) đến khi mọi công đoạn Xong
 function updateFormGates(){
   const rl=document.getElementById('routingLock'); if(!rl) return;   // modal chưa mở
+  // BƯỚC 2: khóa CỨNG (mờ + không bấm được) tới khi G0 đủ + Feedback OK
   const routingLocked = !intakeApproved(collectG0());
   rl.style.display = routingLocked?'block':'none';
-  document.querySelectorAll('#routingField .toolbar button').forEach(b=>{ b.disabled=routingLocked; b.style.opacity=routingLocked?'.4':''; });
+  const rb=document.getElementById('routingBody'); if(rb){ rb.style.opacity=routingLocked?'.4':''; rb.style.pointerEvents=routingLocked?'none':'auto'; }
+  // BƯỚC 3: khóa CỨNG tới khi MỌI công đoạn = Xong
   const stagesDone = editingStages.length>0 && editingStages.every(s=>String(s.status)==='done');
-  const qc=document.getElementById('qcLock'); if(qc){
-    qc.style.display = stagesDone?'none':'block';
-    ['ord_qc_result','ord_inspector','ord_inspectDate','ord_qc_note'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.disabled=!stagesDone; el.style.opacity=stagesDone?'':'.5'; } });
-    document.querySelectorAll('#qcField .toolbar button').forEach(b=>{ b.disabled=!stagesDone; b.style.opacity=stagesDone?'':'.5'; });
-  }
+  const qc=document.getElementById('qcLock'); if(qc) qc.style.display=stagesDone?'none':'block';
+  const qb=document.getElementById('qcBody'); if(qb){ qb.style.opacity=stagesDone?'':'.4'; qb.style.pointerEvents=stagesDone?'auto':'none'; }
+  // Dự đoán ngày hoàn thành: KHÓA, tự lấy ngày CUỐI của các công đoạn
+  const fc=document.getElementById('ord_forecast');
+  if(fc){ let last=''; (editingStages||[]).forEach(s=>{ if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last||e>last)) last=e; } });
+    fc.value=last||''; fc.readOnly=true; fc.style.background='#f1f5f9'; fc.title='Tự lấy ngày cuối của các công đoạn (khóa — không nhập tay)'; }
 }
 function g0Changed(){ updateFormGates(); }
 function collectG0(){
@@ -2326,7 +2333,8 @@ function onPickProduct(){
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';
   fillProdDatalist();
-  (function(){ const insp=document.getElementById('ord_inspector'); if(insp) insp.innerHTML='<option value="">— 👤 Người đo / QC —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false).map(s=>'<option>'+esc(s.name)+'</option>').join(''); })();
+  (function(){ const insp=document.getElementById('ord_inspector'); if(insp) insp.innerHTML='<option value="">— 👤 Người đo / QC —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false).map(s=>'<option>'+esc(s.name)+'</option>').join('');
+    const chk=document.getElementById('ord_g0_checker'); if(chk) chk.innerHTML='<option value="">— 👤 Người kiểm đầu vào —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false&&s.type!=='outsource').map(s=>'<option>'+esc(s.name)+'</option>').join(''); })();
   const sSel = document.getElementById('ord_status');
   sSel.innerHTML = ORDER_STATUSES.map(s=>`<option value="${s.k}">${esc(s.label)}</option>`).join('');
   fillSelect(document.getElementById('ord_partner'), DATA.partners, 'name', 'name', '— Chọn đối tác —');

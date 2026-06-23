@@ -367,7 +367,7 @@ function gateCheck(){
       <input id="ord_target" placeholder="Mục tiêu cần đạt + mốc thời gian">
     </div>
     <div class="field" style="border:1px solid #fbbf24;border-radius:10px;padding:12px;background:#fffbeb">
-      <label>✅ Cổng G0 — Kiểm tra đầu vào trước khi gia công <span class="muted small">— điều phối kiểm đủ thông tin mới cho xuống xưởng. Thiếu → feedback Sale/KT.</span></label>
+      <label>✅ G1 — Kiểm tra thông tin đầu vào <span class="muted small">(sau khi nhận/tạo đơn = G0) — điều phối kiểm đủ mới cho xuống xưởng. Thiếu → 📧 feedback Sale/KT.</span></label>
       <div style="display:flex;flex-wrap:wrap;gap:10px 18px;margin:6px 0">
         <label class="small" style="font-weight:600"><input type="checkbox" id="ord_g0_drawing" onchange="g0Changed()" style="width:auto"> Có bản vẽ / catalogue</label>
         <label class="small" style="font-weight:600"><input type="checkbox" id="ord_g0_dims" onchange="g0Changed()" style="width:auto"> Kích thước rõ ràng</label>
@@ -384,12 +384,13 @@ function gateCheck(){
         <input id="ord_g0_ref" placeholder="🔗 Tham chiếu catalogue (link Drive / ảnh snip)" style="flex:1;min-width:200px">
         <button type="button" class="ghost sm" onclick="g0FeedbackOk()" id="g0OkBtn" style="border-color:#16A34A;color:#15803D">✅ Feedback: Đầu vào OK</button>
         <button type="button" class="ghost sm" onclick="printIntakeSheet(document.getElementById('ord_id').value)" title="In phiếu kiểm đầu vào để ký + chụp đính lại app">🖨 In phiếu G0</button>
+        <button type="button" class="ghost sm" onclick="g0SendFeedbackMail()" style="border-color:#0EA5E9;color:#0369a1" title="Mở email soạn sẵn gửi Sale/KT xin bổ sung thông tin còn thiếu">📧 Gửi mail feedback</button>
         <span id="g0OkBadge" class="small" style="font-weight:700"></span>
       </div>
     </div>
     <div class="field" id="routingField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff;position:relative">
-      <label>🔧 BƯỚC 2 — Công đoạn (routing) <span class="muted small">— mã cố định: A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
-      <div id="routingLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>BƯỚC 1: Cổng G0</b> (tick đủ 5 mục + bấm <b>✅ Feedback OK</b>) mới mở chia công đoạn.</div>
+      <label>🔧 G2 — Công đoạn (routing) <span class="muted small">— A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
+      <div id="routingLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>G1: Kiểm tra đầu vào</b> (tick đủ 5 mục + chọn người kiểm + bấm <b>✅ Feedback OK</b>) mới mở chia công đoạn.</div>
       <div id="routingBody">
         <div id="ord_stages_list"></div>
         <div class="toolbar" style="margin-top:8px">
@@ -453,7 +454,7 @@ function gateCheck(){
       <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
     </div>
     <div class="field" id="qcField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#f0fdf4">
-      <label>📐 BƯỚC 3 — Nghiệm thu / QC <span class="muted small">— nhập kích thước đo, chọn người đo (nhân sự), kết luận Đạt/Không.</span></label>
+      <label>📐 G2 — Nghiệm thu / QC <span class="muted small">— nhập kích thước đo, chọn người đo (nhân sự), kết luận Đạt/Không → Đạt thì mở G3 xuất xưởng.</span></label>
       <div id="qcLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>TẤT CẢ công đoạn (trạng thái Xong)</b> mới mở QC.</div>
       <div id="qcBody">
         <div id="ord_measure_list"></div>
@@ -1724,7 +1725,9 @@ function pickStagePreset(i, c){
   editingStages[i].name = p.n;
   renderStagesEditor();
 }
+function g0LockGuard(){ if(!intakeApproved(collectG0())){ alert('🔒 BƯỚC G1 (Cổng kiểm tra đầu vào) CHƯA hoàn tất.\nTick đủ 5 mục + chọn người kiểm + bấm "✅ Feedback OK" trước khi chia công đoạn.'); return false; } return true; }
 function addStage(){
+  if(!g0LockGuard()) return;
   editingStages.push({id:localId('ST'), code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', endDate:'', assignee:'', hours:null, otHours:null, checks:[], doneDate:'', note:''});
   renderStagesEditor();
 }
@@ -1864,7 +1867,8 @@ function renderMeasuresEditor(){
       <a onclick="rmMeasure(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
     </div>`).join('');
 }
-function addMeasure(){ editingMeasures.push({param:'',spec:'',actual:'',pass:''}); renderMeasuresEditor(); }
+function qcLockGuard(){ const done=editingStages.length>0 && editingStages.every(s=>String(s.status)==='done'); if(!done){ alert('🔒 BƯỚC G2: phải hoàn tất TẤT CẢ công đoạn (trạng thái Xong) mới mở QC.'); return false; } return true; }
+function addMeasure(){ if(!qcLockGuard()) return; editingMeasures.push({param:'',spec:'',actual:'',pass:''}); renderMeasuresEditor(); }
 function updMeasure(i,k,v){ if(editingMeasures[i]){ editingMeasures[i][k]=v; if(k==='pass') renderMeasuresEditor(); } }
 function rmMeasure(i){ editingMeasures.splice(i,1); renderMeasuresEditor(); }
 
@@ -1924,6 +1928,7 @@ function exportMaterialsExcel(){
 
 // Tạo nhanh chuỗi công đoạn chuẩn xưởng CK368 (có thể sửa lại sau)
 function applyStageTemplate(){
+  if(!g0LockGuard()) return;
   if(editingStages.length && !confirm('Thay chuỗi công đoạn hiện tại bằng MẪU CHUẨN?\n(L Mua phôi → A Tiện → B Phay → K Đo/QC → N Đóng gói & nghiệm thu → X Xuất xưởng)')) return;
   const tpl = [['L','Mua phôi / Vật tư'],['A','Tiện'],['B','Phay'],['K','Đo đạc / QC'],['N','Đóng gói & nghiệm thu'],['X','Xuất xưởng']];
   editingStages = tpl.map(([c,n])=>({id:localId('ST'), code:c, name:n, location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:null, note:''}));
@@ -1931,6 +1936,7 @@ function applyStageTemplate(){
 }
 // Áp dụng mẫu đã lưu vào chuỗi công đoạn hiện tại
 function applyNamedTemplate(){
+  if(!g0LockGuard()) return;
   const id=(document.getElementById('stageTplSel')||{}).value;
   const t=(DATA.routingTemplates||[]).find(x=>x.id===id);
   if(!t){ alert('Chọn một mẫu trong danh sách trước.'); return; }
@@ -1957,6 +1963,7 @@ function nameWords(s){
     .filter(w=>w.length>=2 && !['cho','và','các','bộ','cái','theo','lỗ','trục','then','mm','d1','d2'].includes(w));
 }
 function suggestRoutingFromSimilar(){
+  if(!g0LockGuard()) return;
   const myName=(document.getElementById('ord_name')||{}).value||'';
   const myId=(document.getElementById('ord_id')||{}).value||'';
   const myW=nameWords(myName);
@@ -2302,6 +2309,26 @@ function updateFormGates(){
     fc.value=last||''; fc.readOnly=true; fc.style.background='#f1f5f9'; fc.title='Tự lấy ngày cuối của các công đoạn (khóa — không nhập tay)'; }
 }
 function g0Changed(){ updateFormGates(); }
+// Soạn sẵn email feedback cho Sale/KT xin bổ sung thông tin đầu vào còn thiếu
+function g0SendFeedbackMail(){
+  const g=collectG0();
+  const labels={drawing:'Bản vẽ/catalogue đúng Rev',dims:'Kích thước rõ ràng',tol:'Dung sai/yêu cầu KT',mat:'Vật liệu xác định',qty:'Số lượng xác nhận'};
+  const missing=G0_KEYS.filter(k=>!g[k]).map(k=>'- '+labels[k]);
+  const code=document.getElementById('ord_code').value.trim()||'(đơn mới)';
+  const name=document.getElementById('ord_name').value.trim();
+  const company=document.getElementById('ord_company').value.trim();
+  const subject='[CK368] Feedback kiểm tra đầu vào — đơn '+code+(name?' — '+name:'');
+  const body=
+'Kính gửi Sale/Kỹ thuật,\n\n'+
+'Đơn hàng: '+code+(name?' — '+name:'')+(company?'\nKhách hàng: '+company:'')+'\n\n'+
+(missing.length? 'Thông tin đầu vào CÒN THIẾU, cần bổ sung để cho gia công:\n'+missing.join('\n')+'\n\n' : 'Một vài điểm cần làm rõ trước khi gia công:\n\n')+
+(g.note? 'Ghi chú: '+g.note+'\n\n' : '')+
+'Nhờ gửi bổ sung: bản vẽ đúng Rev, kích thước/dung sai, vật liệu, số lượng; kèm hình ảnh đo đạc / note trên bản vẽ nếu có.\n'+
+'(Đính kèm phiếu kiểm đầu vào đã in/ký nếu cần.)\n\nTrân trọng,\nĐiều phối xưởng CK368 — '+(g.checker||'');
+  const a=document.createElement('a');
+  a.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  document.body.appendChild(a); a.click(); a.remove();
+}
 function collectG0(){
   const o={}; G0_KEYS.forEach(k=>{ o[k]=document.getElementById('ord_g0_'+k).checked; });
   o.checker=document.getElementById('ord_g0_checker').value.trim();

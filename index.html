@@ -563,6 +563,17 @@ function gateCheck(){
         </select>
       </div>
     </div>
+    <div class="row2">
+      <div class="field"><label>Tình trạng hàng hư</label>
+        <select id="ncr_recover">
+          <option value="usable">Còn dùng được (sửa/làm lại được)</option>
+          <option value="scrap">Mất khả năng phục hồi (phế / loại bỏ)</option>
+        </select>
+      </div>
+      <div class="field"><label>👤 Người gia công chịu trách nhiệm <span class="muted small">(KPI)</span></label>
+        <select id="ncr_responsible"><option value="">— chọn người đứng máy —</option></select>
+      </div>
+    </div>
     <div class="field"><label>Mô tả sai lệch (so với bản vẽ / tiêu chuẩn)</label><textarea id="ncr_desc" rows="2"></textarea></div>
     <div class="field"><label>Hướng xử lý</label>
       <select id="ncr_action">
@@ -2912,12 +2923,15 @@ function renderNcr(){
 function openNcrModal(id){
   document.getElementById('ncr_id').value = id||'';
   fillSelect(document.getElementById('ncr_order'), DATA.orders.map(o=>({id:o.id,label:o.code+' — '+truncate(o.name,40)})), 'id','label','— Chọn đơn hàng —');
+  document.getElementById('ncr_responsible').innerHTML='<option value="">— chọn người đứng máy —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}${s.type==='outsource'?' (outsource)':''}</option>`).join('');
   if(id){
     const n = DATA.ncrRecords.find(x=>x.id===id);
     document.getElementById('ncr_order').value = n.orderId||'';
     document.getElementById('ncr_date').value = n.date||'';
     document.getElementById('ncr_stage').value = n.stage||'Gia công';
     document.getElementById('ncr_severity').value = n.severity||'2';
+    document.getElementById('ncr_recover').value = n.recover||'usable';
+    document.getElementById('ncr_responsible').value = n.responsible||'';
     document.getElementById('ncr_desc').value = n.description||'';
     document.getElementById('ncr_action').value = n.action||'Làm lại';
     document.getElementById('ncr_by').value = n.reportedBy||'';
@@ -2926,6 +2940,8 @@ function openNcrModal(id){
     document.getElementById('ncr_date').value = todayStr();
     document.getElementById('ncr_stage').value = 'Gia công';
     document.getElementById('ncr_severity').value = '2';
+    document.getElementById('ncr_recover').value = 'usable';
+    document.getElementById('ncr_responsible').value = '';
     document.getElementById('ncr_desc').value='';
     document.getElementById('ncr_action').value='Làm lại';
     document.getElementById('ncr_by').value='';
@@ -2945,6 +2961,8 @@ function saveNcr(){
     date: document.getElementById('ncr_date').value || todayStr(),
     stage: document.getElementById('ncr_stage').value,
     severity: document.getElementById('ncr_severity').value,
+    recover: document.getElementById('ncr_recover').value,
+    responsible: document.getElementById('ncr_responsible').value,
     description,
     action: document.getElementById('ncr_action').value,
     reportedBy: document.getElementById('ncr_by').value.trim(),
@@ -3771,6 +3789,10 @@ function renderGuide(){
     ${step('#0f766e','','Xuất xưởng — chỉ khi QC ĐẠT','Điều phối / GĐ',[
       '<b>Chỉ khi QC = ĐẠT</b> app mới mở nút <b>📜 Chứng nhận xuất xưởng</b> (liệt kê đủ kích thước đạt).',
       'In chứng nhận → ký 3 lớp (QC · Điều phối · GĐ) → giao → đặt trạng thái <b>Đã giao</b>.'])}
+    ${step('#7c3aed','KPI','Chấm điểm tự động (không sửa tay)','App',[
+      '<b>Đơn TRỄ</b> → trừ điểm <b>người điều phối</b> (người sắp xếp công việc).',
+      '<b>Hàng hư (NCR)</b> → trừ điểm <b>thợ đứng máy chịu trách nhiệm</b>: hư <b>còn dùng được</b> (nhẹ) vs <b>phế/mất khả năng phục hồi</b> (nặng).',
+      '<b>Thưởng</b> cho thợ: công đoạn xong <b>đúng hạn/sớm</b> + <b>chất lượng</b> (mọi kích thước đạt). Xem tab <b>KPI & Báo cáo</b> → "Bảng điểm KPI tự động".'])}
     <h2 class="sec"><span class="bar"></span>📄 In tài liệu (ban hành / treo xưởng)</h2>
     <div class="card">
       <div class="toolbar">
@@ -3781,6 +3803,28 @@ function renderGuide(){
       <p class="small muted" style="margin-bottom:0">Mở → bấm 🖨 In A4 để ban hành/treo xưởng. Quy trình trên là BẮT BUỘC cho mọi đơn trước khi xuất xưởng.</p>
     </div>`;
 }
+// ===== KPI TỰ ĐỘNG (không cho can thiệp): trễ→điều phối, hư hỏng→thợ, thưởng tốc độ+chất lượng =====
+function _kn(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }
+function kpiScores(){
+  const staff=DATA.staff.filter(s=>s&&s.active!==false);
+  const dispatchers=staff.filter(s=>_kn(s.role).includes('dieu phoi'));
+  const m={}; staff.forEach(s=>m[s.id]={s, dispatcher:dispatchers.some(d=>d.id===s.id), late:0, ncrUsable:0, ncrScrap:0, onTime:0, quality:0});
+  // ĐƠN TRỄ → người điều phối (người sắp xếp công việc)
+  const lateOrders=(DATA.orders||[]).filter(o=>{ const ref=o.requestedDate||o.dueDate; if(!ref) return false;
+    if(o.status==='delivered') return !!(o.deliveredDate && daysBetween(ref,o.deliveredDate)>0);
+    return o.status!=='hold' && ref<todayStr(); });
+  if(dispatchers.length) lateOrders.forEach(()=>dispatchers.forEach(d=>m[d.id].late++));
+  // HƯ HỎNG (NCR) → người gia công chịu trách nhiệm, theo tình trạng
+  (DATA.ncrRecords||[]).forEach(n=>{ if(n.responsible && m[n.responsible]){ if(n.recover==='scrap') m[n.responsible].ncrScrap++; else m[n.responsible].ncrUsable++; } });
+  // THƯỞNG: công đoạn xong ĐÚNG HẠN/SỚM + CHẤT LƯỢNG (mọi kích thước đạt) → thợ làm
+  let allStages=[]; (DATA.orders||[]).forEach(o=>{ (o.stages||[]).filter(Boolean).forEach(s=>allStages.push(s)); (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>allStages.push(s))); });
+  allStages.forEach(s=>{ if(!s.assignee||!m[s.assignee]) return;
+    if(stageState(s)==='done'){ const end=stageEndDate(s), done=s.doneDate||''; if(end&&done&&done<=end) m[s.assignee].onTime++;
+      const ck=(s.checks||[]).filter(Boolean); if(ck.length && ck.every(c=>c.pass==='pass')) m[s.assignee].quality++; } });
+  Object.values(m).forEach(x=>{ x.score=Math.max(0, 100 - x.late*8 - x.ncrUsable*4 - x.ncrScrap*12 + x.onTime*2 + x.quality*1); });
+  return m;
+}
+function kpiGrade(sc){ return sc>=90?{g:'A',c:'#15803D'}:sc>=75?{g:'B',c:'#2563EB'}:sc>=60?{g:'C',c:'#D97706'}:{g:'D',c:'#b91c1c'}; }
 function renderKpi(){
   const el = document.getElementById('view-kpi');
   const orders = DATA.orders;
@@ -3814,6 +3858,9 @@ function renderKpi(){
   const staffRows = DATA.staff.map(s=>({s, hours: staffHours[s.id]||0, ot: staffOt[s.id]||0, late:(lateMap[s.id]?lateMap[s.id].late.size:0), lateCodes:(lateMap[s.id]?lateMap[s.id].codes:[])}))
     .filter(x=>x.hours>0 || x.late>0).sort((a,b)=> (b.late-a.late) || (b.hours-a.hours));
   const lateStaffRows = staffRows.filter(x=>x.late>0);
+  // Bảng điểm KPI tự động
+  const kpi = kpiScores();
+  const kpiRows = Object.values(kpi).filter(x=>x.onTime||x.quality||x.late||x.ncrUsable||x.ncrScrap).sort((a,b)=>b.score-a.score);
 
   // NCR theo công đoạn
   const ncrByStage = {};
@@ -3825,6 +3872,24 @@ function renderKpi(){
       ${kpiCard('Tỷ lệ giao đúng hạn', onTimeRate==null?'—':onTimeRate+'%', onTimeRate==null?'(chưa đủ dữ liệu)':'trên '+withBothDates.length+' đơn có đủ mốc ngày', onTimeRate!=null&&onTimeRate<70?'var(--st-late)':'var(--st-done)')}
       ${kpiCard('Đơn quá hạn chưa đóng', overdueOpen.length, 'cần xử lý ngay', overdueOpen.length>0?'var(--st-late)':'var(--st-done)')}
       ${kpiCard('Tỷ lệ đơn có NCR', ncrRate==null?'—':ncrRate+'%', ordersWithNcr.size+'/'+total+' đơn · mục tiêu ≤3%', ncrRate!=null&&ncrRate>3?'var(--st-late)':'var(--st-done)')}
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>🏆 Bảng điểm KPI tự động <span class="muted small" style="font-weight:400">(app tính — KHÔNG sửa tay)</span></h2>
+    <div class="card" style="padding:0;overflow:auto">
+      ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ — quy về điều phối">⚠ Trễ</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>
+        ${kpiRows.map(x=>{ const g=kpiGrade(x.score); return `<tr>
+          <td><b>${esc(x.s.name)}</b>${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td>
+          <td class="small muted">${x.dispatcher?'Điều phối':'Thợ'}</td>
+          <td>${x.onTime?'<b style="color:#15803D">+'+x.onTime+'</b>':'0'}</td>
+          <td>${x.quality?'<b style="color:#15803D">+'+x.quality+'</b>':'0'}</td>
+          <td>${x.late?'<b style="color:var(--st-late)">'+x.late+'</b>':'0'}</td>
+          <td>${x.ncrUsable?'<b style="color:#D97706">'+x.ncrUsable+'</b>':'0'}</td>
+          <td>${x.ncrScrap?'<b style="color:var(--st-late)">'+x.ncrScrap+'</b>':'0'}</td>
+          <td><b style="font-size:14px">${x.score}</b></td>
+          <td><span style="background:${g.c};color:#fff;border-radius:5px;padding:1px 9px;font-weight:800">${g.g}</span></td>
+        </tr>`; }).join('')}
+      </tbody></table>` : '<div class="empty">Chưa đủ dữ liệu (công đoạn Xong / NCR / đơn trễ) để chấm điểm.</div>'}
+      <div class="small muted" style="padding:8px 10px;line-height:1.5">Quy tắc tự động: <b>+2</b> mỗi công đoạn xong đúng hạn/sớm · <b>+1</b> chất lượng (mọi kích thước đạt) · <b>−8</b> mỗi đơn trễ (quy về <b>điều phối</b>) · <b>−4</b> hàng hư còn dùng được · <b>−12</b> hàng phế (quy về <b>thợ đứng máy</b> trong NCR). Điểm = 100 + thưởng − phạt. Hạng A≥90 · B≥75 · C≥60 · D&lt;60.</div>
     </div>
 
     <h2 class="sec"><span class="bar"></span>Phân bố đơn hàng theo trạng thái</h2>

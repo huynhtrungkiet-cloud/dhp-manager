@@ -376,10 +376,15 @@ function gateCheck(){
         </div>
       </div>
       <div class="row3" style="margin-top:6px">
-        <div class="field" style="margin:0"><label>Ngày nhận đơn</label><input id="ord_received" type="date"></div>
-        <div class="field" style="margin:0"><label>Ngày yêu cầu hoàn thành</label><input id="ord_requested" type="date"></div>
-        <div class="field" style="margin:0"><label>Hạn giao hàng</label><input id="ord_due" type="date"></div>
+        <div class="field" style="margin:0"><label>Ngày nhận đơn</label><input id="ord_received" type="date" onchange="updateG0Days()"></div>
+        <div class="field" style="margin:0"><label>Hạn giao hàng</label><input id="ord_due" type="date" onchange="updateG0Days()"></div>
+        <div class="field" style="margin:0;display:flex;flex-direction:column;justify-content:flex-end">
+          <span class="small" id="ord_daysInfo" style="color:#0369a1;font-weight:700"></span>
+          <span class="small" id="ord_forecastInfo" style="color:#15803D;font-weight:700;margin-top:2px"></span>
+        </div>
       </div>
+      <input id="ord_requested" type="hidden">
+      <input id="ord_forecast" type="hidden">
       <div class="row2" style="margin-top:6px">
         <div class="field" style="margin:0"><label>Trạng thái hiện tại</label><select id="ord_status"></select></div>
         <div class="field" style="margin:0"><label>Phân công thực hiện</label>
@@ -392,6 +397,15 @@ function gateCheck(){
       </div>
       <div class="field" id="ord_partner_field" style="display:none;margin:6px 0 0">
         <label>Đối tác outsource</label><select id="ord_partner"></select>
+      </div>
+      <div class="field" style="margin:8px 0 0">
+        <label>📁 Thư mục Google Drive của đơn <span class="muted small">(bản vẽ, tài liệu Sale, ảnh SP, report đo đạc...)</span></label>
+        <input id="ord_drive" placeholder="Dán link thư mục Drive (Chia sẻ → Sao chép liên kết)">
+      </div>
+      <div class="field" style="margin:8px 0 0">
+        <label>🔗 Tài liệu / hình ảnh đính kèm <span class="muted small">(đặt tên + dán link Drive: Bản vẽ, Ảnh đo đạc, Report kích thước...)</span></label>
+        <div id="ord_att_list"></div>
+        <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
       </div>
     </div>
     <div class="field" style="border:1px solid #fbbf24;border-radius:10px;padding:12px;background:#fffbeb">
@@ -433,23 +447,8 @@ function gateCheck(){
       <div id="ord_items_list"></div>
       <button type="button" class="ghost sm" onclick="addOrderItem()" style="margin-top:6px">＋ Thêm chi tiết con</button>
     </div>
-    <div class="row2">
-      <div class="field"><label>% hoàn thành (khi đang gia công)</label><input id="ord_progress" type="number" min="0" max="100" step="5" placeholder="0 – 100"></div>
-      <div class="field"><label>Dự báo ngày giao (để trống = tự tính)</label><input id="ord_forecast" type="date"></div>
-    </div>
-    <div class="row2">
-      <div class="field"><label>Ngày hoàn thành gia công thực tế</label><input id="ord_completed" type="date"></div>
-      <div class="field"><label>Ngày giao hàng thực tế</label><input id="ord_delivered" type="date"></div>
-    </div>
-    <div class="field">
-      <label>📁 Thư mục Google Drive của đơn <span class="muted small">(chứa bản vẽ, tài liệu Sale, ảnh SP, report đo đạc...)</span></label>
-      <input id="ord_drive" placeholder="Dán link thư mục Drive (Chia sẻ → Sao chép liên kết)">
-    </div>
-    <div class="field">
-      <label>🔗 Tài liệu / hình ảnh đính kèm <span class="muted small">(đặt tên + dán link Drive: Bản vẽ, Ảnh đo đạc, Report kích thước...)</span></label>
-      <div id="ord_att_list"></div>
-      <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
-    </div>
+    <!-- % hoàn thành: app TỰ TÍNH theo công đoạn Xong/tổng. Ngày hoàn thành/giao: tự set khi đổi trạng thái. (ẩn) -->
+    <input id="ord_progress" type="hidden"><input id="ord_completed" type="hidden"><input id="ord_delivered" type="hidden">
     <div class="field" id="qcField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#f0fdf4">
       <label>📐 G2 — Nghiệm thu / QC <span class="muted small">— nhập kích thước đo, chọn người đo (nhân sự), kết luận Đạt/Không → Đạt thì mở G3 xuất xưởng.</span></label>
       <div id="qcLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>TẤT CẢ công đoạn (trạng thái Xong)</b> mới mở QC.</div>
@@ -2299,10 +2298,17 @@ function updateFormGates(){
   const stagesDone = editingStages.length>0 && editingStages.every(s=>String(s.status)==='done');
   const qc=document.getElementById('qcLock'); if(qc) qc.style.display=stagesDone?'none':'block';
   const qb=document.getElementById('qcBody'); if(qb){ qb.style.opacity=stagesDone?'':'.4'; qb.style.pointerEvents=stagesDone?'auto':'none'; }
-  // Dự đoán ngày hoàn thành: KHÓA, tự lấy ngày CUỐI của các công đoạn
+  // Dự đoán ngày giao: TỰ TÍNH = ngày CUỐI của các công đoạn (sau khi điền xong công đoạn)
   const fc=document.getElementById('ord_forecast');
-  if(fc){ let last=''; (editingStages||[]).forEach(s=>{ if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last||e>last)) last=e; } });
-    fc.value=last||''; fc.readOnly=true; fc.style.background='#f1f5f9'; fc.title='Tự lấy ngày cuối của các công đoạn (khóa — không nhập tay)'; }
+  let last=''; (editingStages||[]).forEach(s=>{ if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last||e>last)) last=e; } });
+  if(fc) fc.value=last||'';
+  const fi=document.getElementById('ord_forecastInfo'); if(fi) fi.textContent = last?('📅 Dự kiến giao: '+fmtDate(last)):'📅 Dự kiến giao: (điền công đoạn)';
+}
+function updateG0Days(){
+  const el=document.getElementById('ord_daysInfo'); if(!el) return;
+  const r=(document.getElementById('ord_received')||{}).value, d=(document.getElementById('ord_due')||{}).value;
+  if(r&&d){ const n=daysBetween(r,d); el.textContent = (n!=null) ? ('⏱ '+n+' ngày (nhận → hạn giao)') : ''; }
+  else el.textContent='';
 }
 function g0Changed(){ updateFormGates(); }
 // Soạn sẵn email feedback cho Sale/KT xin bổ sung thông tin đầu vào còn thiếu
@@ -2320,7 +2326,7 @@ function g0SendFeedbackMail(){
 (missing.length? 'Thông tin đầu vào CÒN THIẾU, cần bổ sung để cho gia công:\n'+missing.join('\n')+'\n\n' : 'Một vài điểm cần làm rõ trước khi gia công:\n\n')+
 (g.note? 'Ghi chú: '+g.note+'\n\n' : '')+
 'Nhờ gửi bổ sung: bản vẽ đúng Rev, kích thước/dung sai, vật liệu, số lượng; kèm hình ảnh đo đạc / note trên bản vẽ nếu có.\n'+
-'(Đính kèm phiếu kiểm đầu vào đã in/ký nếu cần.)\n\nTrân trọng,\nĐiều phối xưởng CK368 — '+(g.checker||'');
+'(Đính kèm phiếu kiểm đầu vào đã in/ký nếu cần.)\n\nTrân trọng,\nĐiều phối xưởng CK368 — '+(g.checker||'')+((DATA.meta&&DATA.meta.feedbackFrom)?'\nEmail: '+DATA.meta.feedbackFrom:'');
   let to=(DATA.meta&&DATA.meta.feedbackEmails)||'';
   if(!to){ to=setFeedbackEmails(); if(to===null) return; }
   const cc=(DATA.meta&&DATA.meta.feedbackCc)||'';
@@ -2334,6 +2340,8 @@ function setFeedbackEmails(){
   DATA.meta=DATA.meta||{}; DATA.meta.feedbackEmails=v.trim();
   const cc=prompt('CC cho ai (tùy chọn, vd Giám đốc) — để trống nếu không:', (DATA.meta.feedbackCc)||'');
   if(cc!==null) DATA.meta.feedbackCc=cc.trim();
+  const from=prompt('Email NGƯỜI GỬI (của xưởng/điều phối) — hiện trong chữ ký mail.\nLưu ý: app dùng app mail mặc định của máy để gửi, KHÔNG ép được địa chỉ gửi; muốn gửi từ địa chỉ này thì đăng nhập app mail bằng nó.', (DATA.meta.feedbackFrom)||'');
+  if(from!==null) DATA.meta.feedbackFrom=from.trim();
   save();
   return DATA.meta.feedbackEmails;
 }
@@ -2436,6 +2444,7 @@ function openOrderModal(id){
   toggleOutsourceField();
   toggleTargetField();
   updateFormGates();
+  updateG0Days();
   openModal('modalOrder');
 }
 function toggleTargetField(){

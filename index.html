@@ -439,6 +439,7 @@ function gateCheck(){
         <div class="toolbar" style="margin-top:8px">
           <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
           <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
+          <button type="button" class="ghost sm" onclick="printAllStageSheets(currentFormOrder())" style="border-color:#0EA5E9;color:#0369a1" title="In phiếu đo đạc kích thước cho TỪNG công đoạn (mỗi công đoạn 1 tờ)">🖨 In bộ phiếu đo theo công đoạn</button>
         </div>
       </div>
     </div>
@@ -479,7 +480,8 @@ function gateCheck(){
       <div id="ord_mat_list"></div>
       <div class="toolbar" style="margin-top:8px">
         <button type="button" class="ghost sm" onclick="addMaterial()">＋ Thêm vật tư</button>
-        <button type="button" class="ghost sm" onclick="copyMaterialsForAccounting()">📋 Copy gửi kế toán</button>
+        <button type="button" class="ghost sm" onclick="copyMaterialsForAccounting()">📋 Copy (Zalo)</button>
+        <button type="button" class="ghost sm" onclick="mailMaterialsToAccounting()" style="border-color:#0EA5E9;color:#0369a1">📧 Mail kế toán</button>
         <button type="button" class="ghost sm" onclick="exportMaterialsExcel()">📊 Xuất vật tư ra Excel</button>
       </div>
     </div>
@@ -1904,6 +1906,23 @@ function copyMaterialsForAccounting(){
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt,done)); }
   else fallbackCopy(txt,done);
 }
+// Mail vật tư cho KẾ TOÁN — mở webmail + copy nội dung (giống feedback)
+function mailMaterialsToAccounting(){
+  const mats=currentMaterials();
+  if(!mats.length){ alert('Chưa có vật tư nào để gửi.'); return; }
+  const code=document.getElementById('ord_code').value.trim()||'(chưa có mã)';
+  const name=document.getElementById('ord_name').value.trim()||'';
+  const cust=document.getElementById('ord_company').value.trim()||'';
+  const due=document.getElementById('ord_due').value||'';
+  const lines=mats.map((m,i)=>`${i+1}. ${m.material||''}${m.spec?' — '+m.spec:''}${m.qty?' × '+m.qty+(m.unit?' '+m.unit:''):''}${m.supplier?' (NCC: '+m.supplier+')':''}`);
+  const subject='[CK368] Đề nghị mua vật tư — đơn '+code+(name?' — '+name:'');
+  const body='Kính gửi Kế toán (CC Giám đốc),\n\nĐề nghị đặt mua vật tư cho đơn '+code+(name?' — '+name:'')+(cust?'\nKhách: '+cust:'')+(due?'\nCần trước: '+fmtDate(due):'')+
+    '\n--------------------\n'+lines.join('\n')+'\n--------------------\n\nNhờ kế toán đặt mua, GĐ duyệt. Trân trọng,\nĐiều phối xưởng CK368.';
+  const to=(DATA.meta&&DATA.meta.accountingEmails)||'';
+  const cc=(DATA.meta&&DATA.meta.feedbackCc)||'';
+  if(!to){ const v=prompt('Email KẾ TOÁN (cách nhau dấu phẩy):', ''); if(v===null) return; DATA.meta=DATA.meta||{}; DATA.meta.accountingEmails=v.trim(); save(); }
+  openWebmailWithContent((DATA.meta&&DATA.meta.accountingEmails)||'', cc, subject, body);
+}
 function fallbackCopy(txt,cb){
   const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
   document.body.appendChild(ta); ta.select();
@@ -2237,8 +2256,19 @@ function stageSheetHtml(o, s, itName){
     <div class="sign"><div><b>Người gia công</b><div class="line">(Ký)</div></div><div><b>Người kiểm chéo</b><div class="line">(Ký)</div></div><div><b>Tổ trưởng/Điều phối</b><div class="line">(Ký)</div></div></div>`;
 }
 // IN CẢ BỘ: mỗi công đoạn 1 tờ A4 (page-break giữa các tờ)
+// Dựng "đơn tạm" từ form (đang soạn, chưa lưu) để in phiếu ngay trong G2
+function currentFormOrder(){
+  return {
+    id: document.getElementById('ord_id').value, code: document.getElementById('ord_code').value.trim(),
+    company: document.getElementById('ord_company').value.trim(), name: document.getElementById('ord_name').value.trim(),
+    productSku: document.getElementById('ord_product').value.trim(),
+    qty: parseFloat(document.getElementById('ord_qty').value)||null, unit: document.getElementById('ord_unit').value.trim(),
+    requestedDate: document.getElementById('ord_requested').value||null, dueDate: document.getElementById('ord_due').value||null,
+    stages: editingStages, items: editingItems
+  };
+}
 function printAllStageSheets(id){
-  const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
+  const o=(typeof id==='object'&&id) ? id : (DATA.orders||[]).find(x=>x.id===id); if(!o) return;
   let list=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>list.push({s,it:it.name||''})));
   if(!list.length){ alert('Đơn chưa khai báo công đoạn nào.'); return; }
@@ -2327,21 +2357,27 @@ function g0SendFeedbackMail(){
 (g.note? 'Ghi chú: '+g.note+'\n\n' : '')+
 'Nhờ gửi bổ sung: bản vẽ đúng Rev, kích thước/dung sai, vật liệu, số lượng; kèm hình ảnh đo đạc / note trên bản vẽ nếu có.\n'+
 '(Đính kèm phiếu kiểm đầu vào đã in/ký nếu cần.)\n\nTrân trọng,\nĐiều phối xưởng CK368 — '+(g.checker||'')+((DATA.meta&&DATA.meta.feedbackFrom)?'\nEmail: '+DATA.meta.feedbackFrom:'');
-  let to=(DATA.meta&&DATA.meta.feedbackEmails)||'';
-  if(!to){ to=setFeedbackEmails(); if(to===null) return; }
+  const to=(DATA.meta&&DATA.meta.feedbackEmails)||'';
   const cc=(DATA.meta&&DATA.meta.feedbackCc)||'';
-  const href='mailto:'+encodeURIComponent(to.replace(/\s+/g,''))+'?'+(cc?('cc='+encodeURIComponent(cc.replace(/\s+/g,''))+'&'):'')+'subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  window.location.href=href;   // mở app email mặc định (From = tài khoản mail mặc định của máy)
+  openWebmailWithContent(to, cc, subject, body);
+}
+// Mở WEBMAIL công ty (tab mới) + copy sẵn nội dung để người gửi dán & soạn thêm (không tự động gửi)
+function getWebmailUrl(){ return (DATA.meta&&DATA.meta.webmailUrl)||'https://mail.dhp-corp.com.vn/SOGo/'; }
+function openWebmailWithContent(to, cc, subject, body){
+  const text='Người nhận (To): '+(to||'(điền)')+(cc?'\nCC: '+cc:'')+'\nTiêu đề: '+subject+'\n\n'+body;
+  window.open(getWebmailUrl(),'_blank');   // mở webmail NGAY trong click → tránh bị chặn popup
+  const go=()=>alert('✓ Đã COPY nội dung email (người nhận + tiêu đề + nội dung).\n\nQua tab Webmail → "Soạn thư mới" → dán (Ctrl+V) → kiểm tra người nhận → gửi.');
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(go,()=>prompt('Copy nội dung email rồi dán vào webmail:',text));
+  else prompt('Copy nội dung email rồi dán vào webmail:',text);
 }
 function setFeedbackEmails(){
-  const cur=(DATA.meta&&DATA.meta.feedbackEmails)||'';
-  const v=prompt('Email NGƯỜI NHẬN feedback (Sale/KT), cách nhau dấu phẩy:\nVD: sale@dhp.com, kythuat@dhp.com', cur);
-  if(v===null) return null;
-  DATA.meta=DATA.meta||{}; DATA.meta.feedbackEmails=v.trim();
+  DATA.meta=DATA.meta||{};
+  const w=prompt('Link WEBMAIL công ty (mở khi bấm gửi mail):', getWebmailUrl());
+  if(w!==null) DATA.meta.webmailUrl=w.trim();
+  const v=prompt('Email NGƯỜI NHẬN feedback (Sale/KT), cách nhau dấu phẩy:\nVD: sale@dhp-corp.com.vn, tech.manager@dhp-corp.com.vn', (DATA.meta.feedbackEmails)||'');
+  if(v!==null) DATA.meta.feedbackEmails=v.trim();
   const cc=prompt('CC cho ai (tùy chọn, vd Giám đốc) — để trống nếu không:', (DATA.meta.feedbackCc)||'');
   if(cc!==null) DATA.meta.feedbackCc=cc.trim();
-  const from=prompt('Email NGƯỜI GỬI (của xưởng/điều phối) — hiện trong chữ ký mail.\nLưu ý: app dùng app mail mặc định của máy để gửi, KHÔNG ép được địa chỉ gửi; muốn gửi từ địa chỉ này thì đăng nhập app mail bằng nó.', (DATA.meta.feedbackFrom)||'');
-  if(from!==null) DATA.meta.feedbackFrom=from.trim();
   save();
   return DATA.meta.feedbackEmails;
 }

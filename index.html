@@ -1666,11 +1666,14 @@ function renderStagesEditor(){
 }
 const MEAS_TOOLS=['Thước cặp','Panme','Đồng hồ so','Calip','Thước lá','CMM','Dưỡng','Mắt thường','Khác'];
 // Bảng KÍCH THƯỚC CẦN KIỂM của 1 công đoạn (đo L1 + đo chéo L2 cho mẫu đầu)
+// 1 công đoạn coi là ĐỦ thông số khi có ≥1 kích thước điền CẢ Thông số + Yêu cầu/dung sai
+function stageHasFullDim(s){ return (s.checks||[]).some(c=>(c.param||'').trim() && (c.spec||'').trim()); }
+function stagesMissingDim(){ return editingStages.filter(s=>!stageHasFullDim(s)); }
 function stageChecksHtml(s,i){
   const ck=s.checks||[];
   const rows = ck.map((c,ci)=>`<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;flex-wrap:wrap">
-    <input style="flex:1;min-width:110px;font-size:11px" value="${esc(c.param||'')}" placeholder="Thông số (Ø lỗ d1)" oninput="updStageCheck(${i},${ci},'param',this.value)">
-    <input style="width:90px;font-size:11px" value="${esc(c.spec||'')}" placeholder="YC+dsai 42H7" oninput="updStageCheck(${i},${ci},'spec',this.value)">
+    <input style="flex:1;min-width:120px;font-size:11px" value="${esc(c.param||'')}" placeholder="Gia công gì? (Phay rãnh then / Tiện Ø ngoài / Khoan lỗ d2...)" oninput="updStageCheck(${i},${ci},'param',this.value)">
+    <input style="width:120px;font-size:11px" value="${esc(c.spec||'')}" placeholder="YC+dung sai (42H7 / Ø80→Ø50 ±0.05)" oninput="updStageCheck(${i},${ci},'spec',this.value)">
     <select style="width:96px;font-size:11px" onchange="updStageCheck(${i},${ci},'tool',this.value)" title="Dụng cụ đo"><option value="">— dụng cụ —</option>${MEAS_TOOLS.map(t=>`<option ${c.tool===t?'selected':''}>${t}</option>`).join('')}</select>
     <input style="width:74px;font-size:11px" value="${esc(c.actual1||'')}" placeholder="đo L1" oninput="updStageCheck(${i},${ci},'actual1',this.value)" title="Đo lần 1 (người làm)">
     <input style="width:74px;font-size:11px;border-color:#6366F1" value="${esc(c.actual2||'')}" placeholder="đo L2" oninput="updStageCheck(${i},${ci},'actual2',this.value)" title="Đo lần 2 — KIỂM CHÉO (người thứ 2) cho mẫu đầu">
@@ -1679,9 +1682,9 @@ function stageChecksHtml(s,i){
   </div>`).join('');
   return `<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:5px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
-      <span style="font-size:10.5px;font-weight:800;color:#0EA5E9">📐 KÍCH THƯỚC CẦN KIỂM${ck.length?' ('+ck.length+')':''}</span>
+      <span style="font-size:10.5px;font-weight:800;color:${stageHasFullDim(s)?'#0EA5E9':'#b91c1c'}">📐 KÍCH THƯỚC CẦN KIỂM${ck.length?' ('+ck.length+')':''}${stageHasFullDim(s)?'':' ⚠ BẮT BUỘC'}</span>
       <a onclick="addStageCheck(${i})" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11px">＋ Thêm kích thước</a>
-      ${ck.length?'<span class="small muted">đo L2 = kiểm chéo người thứ 2 (mẫu đầu)</span>':''}
+      ${stageHasFullDim(s)?'<span class="small muted">đo L2 = kiểm chéo người thứ 2 (mẫu đầu)</span>':'<span class="small" style="color:#b91c1c">phải điền Thông số + Yêu cầu/dung sai mới cho Xong &amp; in</span>'}
     </div>
     ${rows}
   </div>`;
@@ -1742,6 +1745,11 @@ function addStage(){
 }
 function updStage(i,k,v){
   if(!editingStages[i]) return;
+  // CHẶN: không cho đánh "Xong" nếu công đoạn chưa có kích thước (Thông số + dung sai)
+  if(k==='status' && v==='done' && !stageHasFullDim(editingStages[i])){
+    alert('⛔ Công đoạn "'+(editingStages[i].code||'')+' '+(editingStages[i].name||'')+'" chưa thể đánh XONG.\n\nPhải nhập ÍT NHẤT 1 KÍCH THƯỚC đủ "Thông số gia công" + "Yêu cầu/dung sai"\n(vd: Phay rãnh then = 12P9; Tiện Ø ngoài = Ø80→Ø50 ±0.05).\n\nBấm "📐 + Thêm kích thước" trong công đoạn này.');
+    renderStagesEditor(); return;
+  }
   editingStages[i][k] = (k==='plannedDays'||k==='hours'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
   if(k==='status'){
     if(v==='done' && !editingStages[i].doneDate) editingStages[i].doneDate = todayStr();
@@ -1879,9 +1887,9 @@ function renderMeasuresEditor(){
 function qcLockGuard(){
   const has=editingStages.length>0;
   const done=has && editingStages.every(s=>String(s.status)==='done');
-  const dim=has && editingStages.every(s=>(s.checks||[]).some(c=>(c.param||'').trim()));
+  const dim=has && editingStages.every(stageHasFullDim);
   if(!done){ alert('🔒 Chưa mở QC: phải hoàn tất TẤT CẢ công đoạn (trạng thái Xong).'); return false; }
-  if(!dim){ alert('🔒 Chưa mở QC: mỗi công đoạn phải có ÍT NHẤT 1 kích thước cần kiểm.'); return false; }
+  if(!dim){ alert('🔒 Chưa mở QC: mỗi công đoạn phải có ÍT NHẤT 1 kích thước ĐỦ Thông số + Yêu cầu/dung sai.'); return false; }
   if(!_stageSheetPrinted){ alert('🔒 Chưa mở QC: phải bấm "🖨 In phiếu gia công" trước.'); return false; }
   return true;
 }
@@ -2289,8 +2297,8 @@ function currentFormOrder(){
 let _stageSheetPrinted=false;   // BẮT BUỘC in phiếu gia công mới cho qua QC
 function printStageSheetsFromForm(){
   if(!editingStages.length){ alert('⛔ Chưa có công đoạn nào để in. Hãy thêm công đoạn ở G2.'); return; }
-  const noDim=editingStages.filter(s=>!(s.checks||[]).some(c=>(c.param||'').trim()));
-  if(noDim.length){ alert('⛔ MỖI công đoạn phải có ÍT NHẤT 1 KÍCH THƯỚC cần kiểm trước khi in.\n\nThiếu kích thước ở: '+noDim.map(s=>(s.code||'')+' '+(s.name||'')).join(' · ')+'\n\nBấm "📐 Thêm kích thước" trong từng công đoạn.'); return; }
+  const noDim=stagesMissingDim();
+  if(noDim.length){ alert('⛔ MỖI công đoạn phải có ÍT NHẤT 1 kích thước điền ĐỦ cả "Thông số" + "Yêu cầu/dung sai" (vd: Phay rãnh then = 12P9; Tiện Ø ngoài = Ø80→Ø50 ±0.05).\n\nThiếu ở: '+noDim.map(s=>(s.code||'')+' '+(s.name||'')).join(' · ')+'\n\nMở 📐 trong từng công đoạn để điền.'); return; }
   printAllStageSheets(currentFormOrder());
   _stageSheetPrinted=true; updateFormGates();
   alert('✓ Đã in phiếu gia công. Giờ có thể tiến hành & sau khi xong hết công đoạn sẽ mở QC.');
@@ -2362,14 +2370,14 @@ function updateFormGates(){
   // BƯỚC 3 (QC): mở khi ĐỦ 3 điều kiện — mọi công đoạn Xong + mọi công đoạn có kích thước + ĐÃ in phiếu gia công
   const hasStages = editingStages.length>0;
   const stagesDone = hasStages && editingStages.every(s=>String(s.status)==='done');
-  const everyHasDim = hasStages && editingStages.every(s=>(s.checks||[]).some(c=>(c.param||'').trim()));
+  const everyHasDim = hasStages && editingStages.every(stageHasFullDim);
   const printed = !!_stageSheetPrinted;
   const qcReady = stagesDone && everyHasDim && printed;
   const qc=document.getElementById('qcLock');
   if(qc){ qc.style.display=qcReady?'none':'block';
     qc.innerHTML='🔒 Mở QC khi ĐỦ 3 điều kiện:<br>'+
       (stagesDone?'✅':'⬜')+' Mọi công đoạn = <b>Xong</b> &nbsp;&nbsp; '+
-      (everyHasDim?'✅':'⬜')+' Mọi công đoạn có <b>kích thước cần kiểm</b> &nbsp;&nbsp; '+
+      (everyHasDim?'✅':'⬜')+' Mọi công đoạn có <b>kích thước đủ Thông số + dung sai</b> &nbsp;&nbsp; '+
       (printed?'✅':'⬜')+' Đã bấm <b>🖨 In phiếu gia công</b>'; }
   const qb=document.getElementById('qcBody'); if(qb){ qb.style.opacity=qcReady?'':'.4'; qb.style.pointerEvents=qcReady?'auto':'none'; }
   // Dự đoán ngày giao: TỰ TÍNH = ngày CUỐI của các công đoạn (sau khi điền xong công đoạn)

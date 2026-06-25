@@ -1638,9 +1638,9 @@ function renderStagesEditor(){
           <option value="done" ${s.status==='done'?'selected':''}>Xong ✓</option>
         </select>
         <span style="display:flex;gap:3px;align-items:center"><span class="small muted">từ</span>
-          <input type="date" style="width:118px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value)" title="Ngày bắt đầu">
+          <input type="date" style="width:118px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value);renderStagesEditor()" title="Ngày bắt đầu — đổi ngày sẽ tự tính lại cảnh báo">
           <span class="small muted">tới</span>
-          <input type="date" style="width:118px" value="${esc(s.endDate||'')}" min="${esc(s.startDate||'')}" onchange="updStage(${i},'endDate',this.value)" title="Ngày kết thúc dự kiến (để trống = tự tính theo giờ)">
+          <input type="date" style="width:118px" value="${esc(s.endDate||'')}" min="${esc(s.startDate||'')}" onchange="updStage(${i},'endDate',this.value);renderStagesEditor()" title="Ngày kết thúc dự kiến (để trống = tự tính theo giờ)">
         </span>
         <span style="display:flex;gap:4px">
           <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Lên">↑</a>
@@ -1654,10 +1654,10 @@ function renderStagesEditor(){
           <option value="">— chọn người / đối tác —</option>
           ${DATA.staff.filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}${x.type==='outsource'?' (outsource)':''}</option>`).join('')}
         </select>
-        <input type="number" style="width:60px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ (8)" oninput="updStage(${i},'hours',this.value)" title="Số GIỜ công thường — 8h = 1 ngày. Để trống = 8h. >8h tự dàn nhiều ngày.">
+        <input type="number" style="width:60px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ (8)" oninput="updStage(${i},'hours',this.value)" onchange="renderStagesEditor()" title="Số GIỜ công thường — 8h = 1 ngày. Để trống = 8h. >8h tự dàn nhiều ngày.">
         <span class="small muted">giờ</span>
         ${isOut ? `<input type="number" style="width:56px;opacity:.35" value="" placeholder="OT" disabled title="Outsource — không quản OT"><span class="small" style="color:#cbd5e1;font-weight:700">OT</span>`
-          : `<input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường"><span class="small" style="color:#d97706;font-weight:700">OT</span>`}
+          : `<input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" onchange="renderStagesEditor()" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường"><span class="small" style="color:#d97706;font-weight:700">OT</span>`}
         ${workloadHintHtml(s)}
       </div>
       ${stageChecksHtml(s,i)}

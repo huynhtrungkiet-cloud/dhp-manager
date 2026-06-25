@@ -439,7 +439,7 @@ function gateCheck(){
         <div class="toolbar" style="margin-top:8px">
           <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
           <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
-          <button type="button" class="ghost sm" onclick="printAllStageSheets(currentFormOrder())" style="border-color:#0EA5E9;color:#0369a1" title="In phiếu đo đạc kích thước cho TỪNG công đoạn (mỗi công đoạn 1 tờ)">🖨 In bộ phiếu đo theo công đoạn</button>
+          <button type="button" class="ghost sm" onclick="printStageSheetsFromForm()" style="border-color:#0EA5E9;color:#0369a1" title="In phiếu đo đạc kích thước cho TỪNG công đoạn — BẮT BUỘC in trước khi qua QC">🖨 In phiếu gia công (BẮT BUỘC)</button>
         </div>
       </div>
     </div>
@@ -1876,7 +1876,15 @@ function renderMeasuresEditor(){
       <a onclick="rmMeasure(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>
     </div>`).join('');
 }
-function qcLockGuard(){ const done=editingStages.length>0 && editingStages.every(s=>String(s.status)==='done'); if(!done){ alert('🔒 BƯỚC G2: phải hoàn tất TẤT CẢ công đoạn (trạng thái Xong) mới mở QC.'); return false; } return true; }
+function qcLockGuard(){
+  const has=editingStages.length>0;
+  const done=has && editingStages.every(s=>String(s.status)==='done');
+  const dim=has && editingStages.every(s=>(s.checks||[]).some(c=>(c.param||'').trim()));
+  if(!done){ alert('🔒 Chưa mở QC: phải hoàn tất TẤT CẢ công đoạn (trạng thái Xong).'); return false; }
+  if(!dim){ alert('🔒 Chưa mở QC: mỗi công đoạn phải có ÍT NHẤT 1 kích thước cần kiểm.'); return false; }
+  if(!_stageSheetPrinted){ alert('🔒 Chưa mở QC: phải bấm "🖨 In phiếu gia công" trước.'); return false; }
+  return true;
+}
 function addMeasure(){ if(!qcLockGuard()) return; editingMeasures.push({param:'',spec:'',actual:'',pass:''}); renderMeasuresEditor(); }
 function updMeasure(i,k,v){ if(editingMeasures[i]){ editingMeasures[i][k]=v; if(k==='pass') renderMeasuresEditor(); } }
 function rmMeasure(i){ editingMeasures.splice(i,1); renderMeasuresEditor(); }
@@ -2278,6 +2286,15 @@ function currentFormOrder(){
     stages: editingStages, items: editingItems
   };
 }
+let _stageSheetPrinted=false;   // BẮT BUỘC in phiếu gia công mới cho qua QC
+function printStageSheetsFromForm(){
+  if(!editingStages.length){ alert('⛔ Chưa có công đoạn nào để in. Hãy thêm công đoạn ở G2.'); return; }
+  const noDim=editingStages.filter(s=>!(s.checks||[]).some(c=>(c.param||'').trim()));
+  if(noDim.length){ alert('⛔ MỖI công đoạn phải có ÍT NHẤT 1 KÍCH THƯỚC cần kiểm trước khi in.\n\nThiếu kích thước ở: '+noDim.map(s=>(s.code||'')+' '+(s.name||'')).join(' · ')+'\n\nBấm "📐 Thêm kích thước" trong từng công đoạn.'); return; }
+  printAllStageSheets(currentFormOrder());
+  _stageSheetPrinted=true; updateFormGates();
+  alert('✓ Đã in phiếu gia công. Giờ có thể tiến hành & sau khi xong hết công đoạn sẽ mở QC.');
+}
 function printAllStageSheets(id){
   const o=(typeof id==='object'&&id) ? id : (DATA.orders||[]).find(x=>x.id===id); if(!o) return;
   let list=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
@@ -2321,9 +2338,16 @@ function renderG0Badge(){
   else b.innerHTML='<span style="color:#D97706">chưa feedback</span>';
 }
 function g0FeedbackOk(){
-  if(!intakeComplete(collectG0())){ alert('⚠ Chưa tick đủ 5 mục checklist G0 — chưa thể feedback "Đầu vào OK".'); return; }
+  // BẮT BUỘC nhập đủ thông tin đơn (G0) trước
+  const miss=[];
+  if(!document.getElementById('ord_name').value.trim()) miss.push('Tên hàng');
+  if(!(parseFloat(document.getElementById('ord_qty').value)>0)) miss.push('Số lượng');
+  if(!document.getElementById('ord_received').value) miss.push('Ngày nhận đơn');
+  if(!document.getElementById('ord_due').value) miss.push('Hạn giao hàng');
+  if(miss.length){ alert('⛔ Chưa đủ THÔNG TIN ĐƠN (G0):\n— '+miss.join('\n— ')+'\n\nNhập đủ rồi mới feedback OK.'); return; }
+  if(!intakeComplete(collectG0())){ alert('⚠ Chưa tick đủ 5 mục checklist kiểm tra đầu vào.'); return; }
   const by=document.getElementById('ord_g0_checker').value.trim();
-  if(!by){ alert('Nhập "Người kiểm đầu vào" trước khi feedback OK.'); return; }
+  if(!by){ alert('Chọn "Người kiểm đầu vào" trước khi feedback OK.'); return; }
   if(!document.getElementById('ord_g0_date').value) document.getElementById('ord_g0_date').value=todayStr();
   _g0Feedback = {ok:true, by, at:new Date().toLocaleString('vi-VN')};
   renderG0Badge(); updateFormGates();
@@ -2335,10 +2359,19 @@ function updateFormGates(){
   const routingLocked = !intakeApproved(collectG0());
   rl.style.display = routingLocked?'block':'none';
   const rb=document.getElementById('routingBody'); if(rb){ rb.style.opacity=routingLocked?'.4':''; rb.style.pointerEvents=routingLocked?'none':'auto'; }
-  // BƯỚC 3: khóa CỨNG tới khi MỌI công đoạn = Xong
-  const stagesDone = editingStages.length>0 && editingStages.every(s=>String(s.status)==='done');
-  const qc=document.getElementById('qcLock'); if(qc) qc.style.display=stagesDone?'none':'block';
-  const qb=document.getElementById('qcBody'); if(qb){ qb.style.opacity=stagesDone?'':'.4'; qb.style.pointerEvents=stagesDone?'auto':'none'; }
+  // BƯỚC 3 (QC): mở khi ĐỦ 3 điều kiện — mọi công đoạn Xong + mọi công đoạn có kích thước + ĐÃ in phiếu gia công
+  const hasStages = editingStages.length>0;
+  const stagesDone = hasStages && editingStages.every(s=>String(s.status)==='done');
+  const everyHasDim = hasStages && editingStages.every(s=>(s.checks||[]).some(c=>(c.param||'').trim()));
+  const printed = !!_stageSheetPrinted;
+  const qcReady = stagesDone && everyHasDim && printed;
+  const qc=document.getElementById('qcLock');
+  if(qc){ qc.style.display=qcReady?'none':'block';
+    qc.innerHTML='🔒 Mở QC khi ĐỦ 3 điều kiện:<br>'+
+      (stagesDone?'✅':'⬜')+' Mọi công đoạn = <b>Xong</b> &nbsp;&nbsp; '+
+      (everyHasDim?'✅':'⬜')+' Mọi công đoạn có <b>kích thước cần kiểm</b> &nbsp;&nbsp; '+
+      (printed?'✅':'⬜')+' Đã bấm <b>🖨 In phiếu gia công</b>'; }
+  const qb=document.getElementById('qcBody'); if(qb){ qb.style.opacity=qcReady?'':'.4'; qb.style.pointerEvents=qcReady?'auto':'none'; }
   // Dự đoán ngày giao: TỰ TÍNH = ngày CUỐI của các công đoạn (sau khi điền xong công đoạn)
   const fc=document.getElementById('ord_forecast');
   let last=''; (editingStages||[]).forEach(s=>{ if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last||e>last)) last=e; } });
@@ -2462,6 +2495,7 @@ function openOrderModal(id){
     setG0Fields(o.intake||{});
     document.getElementById('ord_qc_result').value = o.qcResult||'';
     document.getElementById('ord_qc_note').value = o.qcNote||'';
+    _stageSheetPrinted = !!o.stageSheetPrinted;
   } else {
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
     ['ord_code','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
@@ -2482,6 +2516,7 @@ function openOrderModal(id){
     setG0Fields({});
     document.getElementById('ord_qc_result').value = '';
     document.getElementById('ord_qc_note').value = '';
+    _stageSheetPrinted = false;
   }
   renderItemsEditor();
   renderAttEditor();
@@ -2554,6 +2589,7 @@ function saveOrder(){
     intake: intake,
     qcResult: qcResult,
     qcNote: qcNote,
+    stageSheetPrinted: _stageSheetPrinted,
     note: document.getElementById('ord_note').value.trim(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),

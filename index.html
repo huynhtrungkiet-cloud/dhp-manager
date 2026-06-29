@@ -187,6 +187,7 @@ function gateCheck(){
       <button id="syncNowBtn" class="ghost sm" onclick="syncNow()" title="Lưu thay đổi & đồng bộ ngay lên kho chung" style="display:none">💾 Lưu &amp; Đồng bộ</button>
       <button id="lockEditBtn" class="ghost sm" onclick="lockEdit()" title="Khóa sửa (về chỉ xem)" style="display:none">🔒 Khóa sửa</button>
       <a class="ghost sm" href="dhp_tools.html" title="Tư vấn kỹ thuật khớp nối &amp; Báo giá gia công" style="text-decoration:none;padding:4px 9px;border:1px solid rgba(255,255,255,.5);border-radius:8px;color:#fff;font-weight:700">🧭 Tư vấn &amp; Báo giá</a>
+      <a class="ghost sm" href="dhp_coding.html" title="Catalogue sản phẩm &amp; Sinh mã SKU (DHP Coding)" style="text-decoration:none;padding:4px 9px;border:1px solid rgba(255,255,255,.5);border-radius:8px;color:#fff;font-weight:700">🏷 Coding</a>
       <button class="ghost sm" onclick="toggleLang()" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
       <button class="ghost sm" onclick="lockApp()" title="Đăng xuất">⎋</button>
     </div>
@@ -196,7 +197,8 @@ function gateCheck(){
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="grid" onclick="goTab('grid')">📅 <span data-i18n="tab_grid">Lịch phân công &amp; Đơn hàng</span></div>
+  <div class="tab active" data-tab="dashboard" onclick="goTab('dashboard')">🏠 Tổng quan</div>
+  <div class="tab" data-tab="grid" onclick="goTab('grid')">📅 <span data-i18n="tab_grid">Lịch phân công &amp; Đơn hàng</span></div>
   <!-- TẠM ẨN (bật lại sau bằng cách bỏ comment): Việc hôm nay
   <div class="tab" data-tab="today" onclick="goTab('today')">👷 <span data-i18n="tab_today">Việc hôm nay</span></div>
   -->
@@ -215,8 +217,10 @@ function gateCheck(){
 <div id="alertBar" style="display:none"></div>
 
 <main>
-  <!-- ============ GRID / TIMESHEET (primary view) ============ -->
-  <div class="view active" id="view-grid"></div>
+  <!-- ============ DASHBOARD (trang chủ) ============ -->
+  <div class="view active" id="view-dashboard"></div>
+  <!-- ============ GRID / TIMESHEET ============ -->
+  <div class="view" id="view-grid"></div>
   <!-- ============ TODAY (việc của công nhân) ============ -->
   <div class="view" id="view-today"></div>
   <!-- ============ PROCESS (bảng follow quy trình) ============ -->
@@ -1131,6 +1135,78 @@ function cellStackHtml(staffId, dateStr){
   return `${fill}<div class="joblist">${items.join('')}</div>${load}`;
 }
 
+// ===== TRANG CHỦ / DASHBOARD =====
+function renderDashboard(){
+  const el=document.getElementById('view-dashboard'); if(!el) return;
+  const orders=DATA.orders||[]; const today=todayStr();
+  const ref=o=>o.requestedDate||o.dueDate;
+  const open=orders.filter(o=>o.status!=='delivered');
+  const inProd=orders.filter(o=>o.status==='in_production').length;
+  const overdue=orders.filter(o=>o.status!=='delivered'&&o.status!=='hold'&&ref(o)&&ref(o)<today);
+  const dueToday=orders.filter(o=>o.status!=='delivered'&&ref(o)===today);
+  const delivered=orders.filter(o=>o.status==='delivered').length;
+  const waiting=orders.filter(o=>['wait_material','wait_sample','hold'].includes(o.status));
+  const openNcr=(DATA.ncrRecords||[]).length;
+  const hour=new Date().getHours();
+  const greet=hour<11?'Chào buổi sáng':hour<14?'Chào buổi trưa':hour<18?'Chào buổi chiều':'Chào buổi tối';
+  // Việc hôm nay = quá hạn + tới hạn + chờ (gộp, không trùng)
+  const tmap={}; [...overdue,...dueToday,...waiting].forEach(o=>tmap[o.id]=o);
+  const tasks=Object.values(tmap).sort((a,b)=>String(ref(a)||'').localeCompare(String(ref(b)||'')));
+  // Hoạt động gần đây
+  const acts=[];
+  orders.forEach(o=>{ if(o.updatedAt) acts.push({t:o.updatedAt, icon:'📦', txt:'Cập nhật đơn <b>'+esc(o.code||'')+'</b> — '+esc(truncate(o.name||'',34)), oid:o.id}); });
+  (DATA.ncrRecords||[]).forEach(n=>{ const oc=(orders.find(o=>o.id===n.orderId)||{}).code||''; acts.push({t:(n.date||today)+'T00:00:00', icon:'⚠', txt:'NCR đơn <b>'+esc(oc)+'</b> — '+esc(truncate(n.description||'',34))}); });
+  acts.sort((a,b)=>String(b.t).localeCompare(String(a.t)));
+  const recent=acts.slice(0,8);
+  const launch=(href,extra,icon,title,sub)=>`<a ${href?`href="${href}"`:''} ${extra||''} style="text-decoration:none;display:flex;flex-direction:column;gap:3px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:box-shadow .12s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,.12)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:22px">${icon}</div><div style="font-weight:800;color:var(--ink);font-size:13.5px">${title}</div><div class="small muted">${sub}</div></a>`;
+  el.innerHTML=`
+    <div style="display:flex;align-items:baseline;gap:10px;margin:6px 0 12px;flex-wrap:wrap">
+      <h2 style="margin:0;font-size:22px">${greet}! 👋</h2>
+      <span class="muted">${new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})}</span>
+    </div>
+    <div class="grid grid-4">
+      ${kpiCard('Đơn đang theo dõi', open.length, inProd+' đang gia công','var(--st-prod)')}
+      ${kpiCard('Quá hạn', overdue.length, 'cần xử lý ngay', overdue.length?'var(--st-late)':'var(--st-done)')}
+      ${kpiCard('Tới hạn hôm nay', dueToday.length, 'giao trong hôm nay', dueToday.length?'#D97706':'var(--st-done)')}
+      ${kpiCard('Đã giao (hoàn thành)', delivered, openNcr+' NCR ghi nhận','var(--st-done)')}
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>🚀 Khởi chạy nhanh</h2>
+    <div class="grid grid-4">
+      ${launch('dhp_tools.html','','🧭','Advisor — Tư vấn','Tư vấn khớp nối &amp; báo giá')}
+      ${launch('dhp_coding.html','','🏷','Coding — Mã SKU','Catalogue + sinh mã sản phẩm')}
+      ${launch('','onclick="goTab(\'grid\')"','📅','Lịch &amp; Đơn hàng','Phân công · tiến độ · đơn')}
+      ${launch('','onclick="goTab(\'kpi\')"','📊','KPI &amp; Báo cáo','Điểm KPI · giờ công · trễ')}
+      ${launch('','onclick="goTab(\'guide\')"','📋','Quy trình','Hướng dẫn vận hành bắt buộc')}
+      ${launch('','onclick="goTab(\'ncr\')"','⚠','Ghi nhận NCR','Hàng hư / sai lệch')}
+      ${launch('','onclick="goTab(\'data\')"','⚙','Dữ liệu &amp; Đồng bộ','Supabase · sao lưu · Excel')}
+      ${canEdit()?launch('','onclick="openOrderModal()"','＋','Thêm đơn hàng','Tạo đơn mới (G0)'):''}
+    </div>
+
+    <div class="grid grid-2" style="margin-top:14px">
+      <div>
+        <h2 class="sec"><span class="bar"></span>📌 Việc cần xử lý ${tasks.length?'('+tasks.length+')':''}</h2>
+        <div class="card" style="padding:0;overflow:auto;max-height:340px">
+          ${tasks.length? tasks.map(o=>{ const od=ref(o)&&ref(o)<today; const td=ref(o)===today;
+            return `<div onclick="openOrderView('${o.id}')" style="cursor:pointer;display:flex;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line)">
+              <span style="background:${statusByKey(o.status).color};color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap">${esc(stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''))}</span>
+              <span style="flex:1"><b>${esc(o.code||'')}</b> <span class="muted small">${esc(truncate(o.name||'',40))}</span></span>
+              <span class="small" style="font-weight:700;color:${od?'var(--st-late)':td?'#D97706':'var(--muted)'}">${od?'⛔ quá hạn':td?'hôm nay':(ref(o)?fmtDate(ref(o)):'')}</span>
+            </div>`; }).join('') : '<div class="empty">Không có việc gấp. 🎉</div>'}
+        </div>
+      </div>
+      <div>
+        <h2 class="sec"><span class="bar"></span>🕒 Hoạt động gần đây</h2>
+        <div class="card" style="max-height:340px;overflow:auto">
+          ${recent.length? recent.map(a=>`<div ${a.oid?`onclick="openOrderView('${a.oid}')" style="cursor:pointer;"`:'style=""'} class="actrow" style="display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--line)">
+            <span style="font-size:15px">${a.icon}</span>
+            <div style="flex:1"><div style="font-size:12.5px">${a.txt}</div><div class="small muted">${esc(new Date(a.t).toLocaleString('vi-VN'))}</div></div>
+          </div>`).join('') : '<div class="empty">Chưa có hoạt động.</div>'}
+        </div>
+      </div>
+    </div>`;
+}
 function renderGrid(){
   const el = document.getElementById('view-grid');
   const orders = DATA.orders;
@@ -4083,7 +4159,8 @@ function renderAll(){
   if(!active) return;
   const id = active.id;
   try{
-    if(id==='view-grid') renderGrid();
+    if(id==='view-dashboard') renderDashboard();
+    else if(id==='view-grid') renderGrid();
     else if(id==='view-today') renderToday();
     else if(id==='view-process') renderProcessBoard();
     else if(id==='view-customers') renderCustomers();

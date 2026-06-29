@@ -86,7 +86,7 @@
     <div class="muted small" style="margin-bottom:14px">Catalogue &amp; sinh mã SKU — nhập mật khẩu</div>
     <input id="gatePass" type="password" placeholder="Mật khẩu" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')gateCheck()">
     <button style="width:100%" onclick="gateCheck()">Đăng nhập</button>
-    <div class="muted small" style="margin-top:10px">👁 dhp368 = xem · 🔓 edit368 = sửa</div>
+    <div class="muted small" style="margin-top:10px">4 cấp: Xem · Sale · Kỹ thuật · Quản trị.<br>Quản trị đặt mật khẩu trong ⚙ Mật khẩu.</div>
   </div>
 </div>
 
@@ -96,7 +96,8 @@
   <div class="right">
     <span class="pill" id="roleBadge">👁 Xem</span>
     <span class="pill" id="connBadge">● chưa kết nối</span>
-    <button class="ghost sm" id="unlockBtn" onclick="unlockEdit()">🔓 Mở khóa sửa</button>
+    <button class="ghost sm" id="unlockBtn" onclick="unlockEdit()">🔓 Đổi cấp</button>
+    <button class="ghost sm" id="adminBtn" style="display:none" onclick="openAdmin()">⚙ Mật khẩu</button>
     <button class="ghost sm" onclick="loadProducts()">🔄 Tải lại</button>
     <a class="ghost sm" href="HUONG_DAN_DHP_CODING.html" target="_blank" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">❓ Hướng dẫn</a>
     <a class="ghost sm" href="index.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">↩ DHP Manager</a>
@@ -222,6 +223,20 @@
       <button class="ghost sm" id="delBtn" style="background:#fef2f2;color:var(--brand);display:none" onclick="delProduct()">🗑 Xóa</button>
       <span style="display:flex;gap:8px;margin-left:auto"><button class="ghost" onclick="closeModal()">Hủy</button><button onclick="saveProduct()">💾 Lưu</button></span>
     </div>
+  </div>
+</div>
+
+<!-- Modal Quản trị mật khẩu (chỉ Quản trị) -->
+<div class="modal-bg" id="adminModal">
+  <div class="modal" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">⚙ Mật khẩu các cấp</h3><button class="ghost sm" onclick="closeAdmin()">✕</button></div>
+    <div class="vbox warn" style="margin:10px 0">Để trống = giữ mật khẩu cũ. Mật khẩu lưu dạng <b>băm</b> trên Supabase, đồng bộ mọi máy. Đây là phân quyền giao diện cho nội bộ — không thay cho bảo mật server.</div>
+    <div class="field"><label>👁 Xem (chỉ tra cứu)</label><input id="ac_viewer" type="text" placeholder="mật khẩu cấp Xem"></div>
+    <div class="field"><label>🧾 Sale (xem + gắn dự án)</label><input id="ac_sale" type="text" placeholder="mật khẩu cấp Sale"></div>
+    <div class="field"><label>🔧 Kỹ thuật (tạo/sửa mã)</label><input id="ac_tech" type="text" placeholder="mật khẩu cấp Kỹ thuật"></div>
+    <div class="field"><label>🔓 Quản trị (toàn quyền)</label><input id="ac_admin" type="text" placeholder="mật khẩu Quản trị"></div>
+    <div id="acStatus" class="small muted" style="margin-bottom:8px"></div>
+    <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="ghost" onclick="closeAdmin()">Hủy</button><button onclick="saveAccess()">💾 Lưu mật khẩu</button></div>
   </div>
 </div>
 
@@ -356,9 +371,19 @@ const PROJECT_TYPES = [
 ];
 
 /* ============================================================ */
-const VIEW_PASSCODE='dhp368', EDIT_PASSCODE='edit368';
+/* Mật khẩu 4 cấp — lưu BĂM trên Supabase (đồng bộ mọi máy), admin tự đổi.
+   Khi CHƯA cấu hình lần đầu: dùng tạm 2 mật khẩu mặc định bên dưới rồi đặt lại trong Quản trị. */
+const LEGACY_DEFAULTS={'edit368':'admin','dhp368':'viewer'};
+const ROLE_INFO={viewer:{badge:'👁 Xem'},sale:{badge:'🧾 Sale'},tech:{badge:'🔧 Kỹ thuật'},admin:{badge:'🔓 Quản trị'}};
+const ACCESS_ID='__dhp_access_coding__';
 const STORAGE_KEY='dhp_hub_v3';
-let _sb=null, PRODUCTS=[];
+let _sb=null, PRODUCTS=[], ACCESS=null; // ACCESS = {viewer,sale,tech,admin} (hex hash)
+async function hashPass(p){ const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('DHPv1::'+p)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+async function loadAccess(){ if(!_sb && !connect()) return; try{ const {data}=await _sb.from('products').select('data').eq('id',ACCESS_ID).maybeSingle(); if(data&&data.data&&data.data.levels) ACCESS=data.data.levels; }catch(e){} }
+async function resolveRole(pw){
+  if(ACCESS){ const h=await hashPass(pw); for(const lv of ['admin','tech','sale','viewer']){ if(ACCESS[lv]&&ACCESS[lv]===h) return lv; } return null; }
+  return LEGACY_DEFAULTS[pw]||null; // chưa cấu hình → fallback mặc định
+}
 
 /* ---- helpers ---- */
 function $(id){ return document.getElementById(id); }
@@ -371,20 +396,50 @@ function catName(code){ const c=CATEGORIES.find(x=>x.c===code); return c?c.n:cod
 
 /* ---- role / gate ---- */
 function getRole(){ return localStorage.getItem('dhp_role')||'viewer'; }
-function canEdit(){ return getRole()==='editor'; }
-function gateCheck(){
+function canEdit(){ const r=getRole(); return r==='tech'||r==='admin'; }   // tạo/sửa mã
+function canTag(){ const r=getRole(); return r==='sale'||canEdit(); }       // gắn dự án
+function isAdmin(){ return getRole()==='admin'; }
+async function gateCheck(){
   const v=$('gatePass').value;
-  if(v===EDIT_PASSCODE){ localStorage.setItem('dhp_role','editor'); }
-  else if(v===VIEW_PASSCODE){ localStorage.setItem('dhp_role','viewer'); }
-  else { alert('Sai mật khẩu.'); return; }
-  localStorage.setItem('dhp_coding_ok','1');
+  await loadAccess();
+  const role=await resolveRole(v);
+  if(!role){ alert('Sai mật khẩu.'); return; }
+  localStorage.setItem('dhp_role',role); localStorage.setItem('dhp_coding_ok','1');
   $('gate').style.display='none'; applyRole(); boot();
 }
-function unlockEdit(){ const v=prompt('Mật khẩu SỬA:'); if(v===EDIT_PASSCODE){ localStorage.setItem('dhp_role','editor'); applyRole(); renderGrid(); } else if(v!==null) alert('Sai mật khẩu sửa.'); }
+async function unlockEdit(){ // đăng nhập lại bằng cấp cao hơn
+  const v=prompt('Nhập mật khẩu cấp cần dùng:'); if(v===null) return;
+  await loadAccess(); const role=await resolveRole(v);
+  if(!role){ alert('Sai mật khẩu.'); return; }
+  localStorage.setItem('dhp_role',role); applyRole(); renderGrid();
+}
 function applyRole(){
-  $('roleBadge').textContent = canEdit()?'🔓 Quản lý':'👁 Xem';
-  $('unlockBtn').style.display = canEdit()?'none':'';
-  $('editBtns').style.display = canEdit()?'inline-flex':'none';
+  const r=getRole();
+  $('roleBadge').textContent=(ROLE_INFO[r]||ROLE_INFO.viewer).badge;
+  $('unlockBtn').style.display=isAdmin()?'none':'';
+  $('editBtns').style.display=canEdit()?'inline-flex':'none';
+  const ab=$('adminBtn'); if(ab) ab.style.display=isAdmin()?'':'none';
+}
+function openAdmin(){
+  if(!isAdmin()) return;
+  ['viewer','sale','tech','admin'].forEach(k=>{ $('ac_'+k).value=''; });
+  const set=ACCESS||{};
+  $('acStatus').textContent='Đã đặt: '+['viewer','sale','tech','admin'].filter(k=>set[k]).map(k=>ROLE_INFO[k].badge).join(' · ')||'Chưa đặt mật khẩu nào (đang dùng mặc định).';
+  if(!ACCESS) $('acStatus').textContent='Chưa cấu hình — đang dùng tạm dhp368 (Xem) / edit368 (Quản trị). Hãy đặt mật khẩu mới.';
+  $('adminModal').classList.add('show');
+}
+function closeAdmin(){ $('adminModal').classList.remove('show'); }
+async function saveAccess(){
+  if(!isAdmin()) return;
+  const lv=Object.assign({}, ACCESS||{});
+  for(const k of ['viewer','sale','tech','admin']){ const v=$('ac_'+k).value.trim(); if(v) lv[k]=await hashPass(v); }
+  if(!lv.admin){ alert('Phải có mật khẩu cấp Quản trị.'); return; }
+  try{
+    const rec={__access:true, levels:lv, updatedAt:new Date().toISOString()};
+    const {error}=await _sb.from('products').upsert({id:ACCESS_ID, data:rec, updated_at:rec.updatedAt});
+    if(error) throw new Error(error.message);
+    ACCESS=lv; closeAdmin(); alert('✓ Đã lưu mật khẩu các cấp. Lần đăng nhập sau sẽ dùng mật khẩu mới.');
+  }catch(e){ alert('Lỗi lưu mật khẩu: '+e.message); }
 }
 
 /* ---- Supabase ---- */
@@ -410,7 +465,9 @@ async function loadProducts(){
   try{
     const {data,error}=await _sb.from('products').select('id,data');
     if(error) throw new Error(error.message);
-    PRODUCTS=(data||[]).map(r=>r.data).filter(Boolean);
+    const rows=data||[];
+    const cfg=rows.find(r=>r.id===ACCESS_ID || (r.data&&r.data.__access)); if(cfg&&cfg.data&&cfg.data.levels) ACCESS=cfg.data.levels;
+    PRODUCTS=rows.filter(r=>!(r.id===ACCESS_ID||(r.data&&r.data.__access))).map(r=>r.data).filter(Boolean);
     setConn('✓ '+PRODUCTS.length+' SP',true);
     fillFilters(); renderGrid();
   }catch(e){ setConn('● lỗi tải: '+e.message,false); alert('Lỗi tải products: '+e.message+'\n(Đã tạo bảng products trên Supabase chưa?)'); }
@@ -454,13 +511,13 @@ function renderGrid(){
   if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
   grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
     <table class="ptbl"><thead><tr>
-      <th>Mã SKU</th><th>Vai trò</th><th>Tên sản phẩm</th><th>Hãng</th><th>Nhóm</th><th>Series</th><th>Cỡ</th>${canEdit()?'<th></th>':''}
+      <th>Mã SKU</th><th>Vai trò</th><th>Tên sản phẩm</th><th>Hãng</th><th>Nhóm</th><th>Series</th><th>Cỡ</th>${canTag()?'<th></th>':''}
     </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
     ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
 }
 function rowHtml(p){
   const pf=prodPrefix(p);
-  return `<tr ${canEdit()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
+  return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
     <td class="csku">${esc(p.sku||'')}</td>
     <td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>
     <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
@@ -468,7 +525,7 @@ function rowHtml(p){
     <td>${esc(p.category||'')}</td>
     <td>${esc(p.series||'')}</td>
     <td>${esc(p.size||'')}</td>
-    ${canEdit()?'<td class="cact">✎</td>':''}
+    ${canTag()?`<td class="cact">${canEdit()?'✎':'🏷'}</td>`:''}
   </tr>`;
 }
 
@@ -601,7 +658,8 @@ function showSimilar(){
 
 /* ---- mở / lưu / xóa ---- */
 function openProduct(id){
-  if(!canEdit()) return;
+  if(!canTag()) return;
+  if(!id && !canEdit()) return;          // Sale không tạo mã mới
   const p=id?PRODUCTS.find(x=>x.id===id):null;
   MS={prefix:'',family:'',cat:'',subtype:'',_skuTouched:!!p};
   $('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm mã';
@@ -631,12 +689,32 @@ function openProduct(id){
   const pv=$('p_prev'); pv.src=p&&p.imageUrl?p.imageUrl:''; pv.style.display=p&&p.imageUrl?'inline-block':'none';
   $('delBtn').style.display=p?'inline-block':'none';
   genSku();
+  applyModalLock();
   $('modal').classList.add('show');
+}
+// Sale: khóa mọi ô trừ "Gắn dự án" + "Loại dự án"
+function applyModalLock(){
+  const saleOnly = canTag() && !canEdit();
+  const keep=['p_project','p_projType'];
+  document.querySelectorAll('#modal input, #modal select, #modal textarea').forEach(el=>{
+    el.disabled = saleOnly && !keep.includes(el.id);
+  });
+  $('mTitle').textContent = saleOnly ? '🏷 Gắn dự án (Sale)' : $('mTitle').textContent;
+  $('delBtn').style.display = (saleOnly||!$('p_id').value) ? 'none' : 'inline-block';
 }
 function closeModal(){ $('modal').classList.remove('show'); }
 
 async function saveProduct(){
-  if(!canEdit()) return;
+  if(!canTag()) return;
+  // Sale: chỉ cập nhật gắn dự án trên mã đã có
+  if(!canEdit()){
+    const id=$('p_id').value, p=PRODUCTS.find(x=>x.id===id); if(!p){ closeModal(); return; }
+    p.projectCode=$('p_project').value.trim(); p.projectType=$('p_projType').value; p.updatedAt=new Date().toISOString();
+    try{ const {error}=await _sb.from('products').upsert({id:p.id,data:p,updated_at:p.updatedAt}); if(error) throw new Error(error.message);
+      closeModal(); renderGrid(); setConn('✓ '+PRODUCTS.length+' SP',true);
+    }catch(e){ alert('Lỗi lưu: '+e.message); }
+    return;
+  }
   const g=k=>{ const el=$(k); return el?el.value.trim():''; };
   const sku=g('p_sku'); if(!sku){ alert('Chưa có mã. Hãy điền đủ thông tin để sinh mã.'); return; }
   const m=modeOf();

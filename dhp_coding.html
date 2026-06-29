@@ -4,49 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>DHP Coding — Catalogue & Sinh mã SKU</title>
-<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --brand:#b91c1c; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#16a34a; }
+  :root{ --brand:#b91c1c; --brand-d:#8B0A1F; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#16a34a; --paper:#f8fafc; }
   *{box-sizing:border-box}
   body{font-family:'Play','Segoe UI',Arial,sans-serif;margin:0;background:#f1f5f9;color:var(--ink)}
   .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:10px 18px;flex-wrap:wrap}
   .topbar img{height:42px;background:#fff;border-radius:8px;padding:4px 10px}
   .topbar h1{font-size:16px;margin:0;font-weight:700}
   .topbar .sub{font-size:11px;opacity:.85}
-  .topbar .right{margin-left:auto;display:flex;gap:6px;align-items:center}
-  .wrap{max-width:1200px;margin:0 auto;padding:14px}
+  .topbar .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .wrap{max-width:1240px;margin:0 auto;padding:14px}
   .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-  input,select,button{font-family:inherit;font-size:14px}
-  input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
-  button{cursor:pointer;border:0;border-radius:8px;padding:8px 14px;font-weight:700;background:var(--brand);color:#fff}
+  input,select,button,textarea{font-family:inherit;font-size:14px}
+  input,select,textarea{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+  button{cursor:pointer;border:0;border-radius:8px;padding:8px 14px;font-weight:700;background:var(--brand);color:#fff;width:auto}
   button.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
   button.sm{padding:6px 10px;font-size:13px}
   .muted{color:var(--muted)} .small{font-size:12px}
-  .prdgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-  .prdcard{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;transition:box-shadow .12s}
-  .prdcard:hover{box-shadow:0 2px 10px rgba(0,0,0,.12)}
-  .prdcard img{width:100%;height:130px;object-fit:contain;background:#f8fafc;border-bottom:1px solid var(--line)}
-  .prd-noimg{width:100%;height:130px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;color:#94a3b8;font-size:12px;border-bottom:1px solid var(--line)}
   .badge{display:inline-block;background:#eef2ff;color:#4338ca;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
-  /* Bảng danh sách gọn (nhẹ, xem nhiều SP) */
+  .pfx-badge{display:inline-block;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:800;font-family:'JetBrains Mono',monospace;background:#1e293b;color:#fff}
+  /* Bảng */
   .ptbl{width:100%;border-collapse:collapse;font-size:13px}
-  .ptbl th{position:sticky;top:0;background:#f8fafc;text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569;white-space:nowrap}
+  .ptbl th{position:sticky;top:0;background:var(--paper);text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569;white-space:nowrap}
   .ptbl td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
   .ptbl tbody tr:hover{background:#fff7ed}
-  .ptbl .csku{font-family:ui-monospace,Consolas,monospace;font-weight:700;color:#0EA5E9;white-space:nowrap}
+  .ptbl .csku{font-family:'JetBrains Mono',ui-monospace,Consolas,monospace;font-weight:700;color:#0EA5E9;white-space:nowrap}
   .ptbl .cact{text-align:right;color:var(--muted)}
-  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:24px}
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:20px}
   .modal-bg.show{display:flex}
-  .modal{background:#fff;border-radius:14px;padding:18px;max-width:560px;width:100%}
+  .modal{background:#fff;border-radius:14px;padding:18px;max-width:760px;width:100%}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   .field{margin-bottom:10px} .field label{display:block;font-size:12px;font-weight:700;margin-bottom:3px;color:#334155}
-  .field input{width:100%}
+  .sec{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fff}
+  .sec-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:8px}
+  /* Prefix grid */
+  .pfx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .pfx-card{border:1px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer;background:#fff;text-align:left;transition:.12s;display:flex;flex-direction:column;gap:1px;width:auto}
+  .pfx-card:hover{border-color:#94a3b8;background:var(--paper)}
+  .pfx-card.active{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand);background:#fff7f7}
+  .pfx-card .pn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px;line-height:1;color:#334155}
+  .pfx-card.active .pn{color:var(--brand)}
+  .pfx-card .pl{font-size:12.5px;font-weight:700;margin-top:2px;color:var(--ink)}
+  .pfx-card .pd{font-size:10px;color:var(--muted);line-height:1.3}
+  /* Family tabs */
+  .fam-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+  .fam-tab{border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff;cursor:pointer;text-align:center;width:auto}
+  .fam-tab .fk{font-weight:800;font-size:15px;color:#334155}
+  .fam-tab .fn{font-size:10px;color:var(--muted)}
+  .fam-tab.active{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand);background:#fff7f7}
+  .fam-tab.active .fk{color:var(--brand)}
+  /* Suggest chips */
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .chip{font-size:11px;font-weight:700;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:999px;padding:3px 9px;cursor:pointer}
+  .chip:hover{background:#4338ca;color:#fff}
+  /* Code display */
+  .codebox{background:#0f172a;border-radius:10px;padding:14px;color:#e2e8f0}
+  .codebox .cd-main{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;word-break:break-all;line-height:1.3}
+  .codebox .seg-prefix{color:#f87171}
+  .codebox .seg-dim{color:#475569}
+  .codebox .cd-desc{font-size:12px;color:#94a3b8;margin-top:6px}
   .gate{position:fixed;inset:0;background:var(--brand);display:flex;align-items:center;justify-content:center;z-index:100}
   .gate .box{background:#fff;border-radius:16px;padding:28px;width:330px;text-align:center}
   .pill{display:inline-block;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700}
-  @media(max-width:560px){ .row2,.row3{grid-template-columns:1fr} }
+  .vbox{font-size:12px;border-radius:8px;padding:6px 9px;margin-top:6px}
+  .vbox.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .vbox.err{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c}
+  .vbox.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+  @media(max-width:680px){ .row2,.row3,.pfx-grid,.fam-tabs{grid-template-columns:1fr 1fr} }
 </style>
 </head>
 <body>
@@ -56,7 +84,7 @@
   <div class="box">
     <h2 style="color:var(--brand);margin:0 0 4px">DHP Coding</h2>
     <div class="muted small" style="margin-bottom:14px">Catalogue &amp; sinh mã SKU — nhập mật khẩu</div>
-    <input id="gatePass" type="password" placeholder="Mật khẩu" style="width:100%;margin-bottom:10px" onkeydown="if(event.key==='Enter')gateCheck()">
+    <input id="gatePass" type="password" placeholder="Mật khẩu" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')gateCheck()">
     <button style="width:100%" onclick="gateCheck()">Đăng nhập</button>
     <div class="muted small" style="margin-top:10px">👁 dhp368 = xem · 🔓 edit368 = sửa</div>
   </div>
@@ -64,7 +92,7 @@
 
 <div class="topbar">
   <img src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}">
-  <div><h1>DHP Coding</h1><div class="sub">Catalogue sản phẩm · Sinh mã SKU · Chung kho với DHP Manager</div></div>
+  <div><h1>DHP Coding</h1><div class="sub">Catalogue · Sinh mã SKU theo chuẩn v2.5 · Chung kho với DHP Manager</div></div>
   <div class="right">
     <span class="pill" id="roleBadge">👁 Xem</span>
     <span class="pill" id="connBadge">● chưa kết nối</span>
@@ -88,11 +116,11 @@
 
   <div class="toolbar">
     <input id="q" placeholder="🔎 Tìm mã / tên / series / hãng..." style="flex:1;min-width:240px;font-size:15px;padding:10px 12px" oninput="renderGrid()">
-    <select id="fBrand" onchange="onBrandFilter()"><option value="">— Tất cả hãng —</option></select>
-    <select id="fCat" onchange="renderGrid()"><option value="">— Tất cả nhóm —</option></select>
-    <select id="fKind" onchange="renderGrid()"><option value="">— Loại mã —</option><option value="brand">Sản phẩm hãng</option><option value="dhp">DHP tự chế (dự án/DV/GC)</option></select>
+    <select id="fPrefix" style="width:auto" onchange="renderGrid()"><option value="">— Vai trò / prefix —</option></select>
+    <select id="fBrand" style="width:auto" onchange="onBrandFilter()"><option value="">— Tất cả hãng —</option></select>
+    <select id="fCat" style="width:auto" onchange="renderGrid()"><option value="">— Tất cả nhóm —</option></select>
     <span id="editBtns" style="display:none;gap:6px">
-      <button class="sm" onclick="openProduct()">＋ Thêm SKU</button>
+      <button class="sm" onclick="openProduct()">＋ Thêm mã</button>
       <button class="ghost sm" onclick="document.getElementById('csvIn').click()">📥 Nhập CSV</button>
       <button class="ghost sm" onclick="exportCsv()">📤 Xuất CSV</button>
     </span>
@@ -105,54 +133,91 @@
 <!-- Modal thêm/sửa -->
 <div class="modal-bg" id="modal">
   <div class="modal">
-    <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="mTitle" style="margin:0">Sản phẩm</h3><button class="ghost sm" onclick="closeModal()">✕</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="mTitle" style="margin:0">Thêm mã</h3><button class="ghost sm" onclick="closeModal()">✕</button></div>
     <input type="hidden" id="p_id">
-    <div class="card" style="background:#fff7ed;border-color:#fbbf24;margin:10px 0;padding:10px">
-      <div class="field" style="margin:0 0 8px"><label>🏷 Loại mã</label>
-        <select id="p_kind" onchange="toggleKind();genSku()" style="width:100%">
-          <option value="brand">Sản phẩm hãng (catalogue) → BRAND-SERIES-SIZE</option>
-          <option value="dhp">DHP tự chế (dự án / dịch vụ / gia công) → DHP-TYPE-###</option>
-        </select>
+
+    <!-- 1. PREFIX / vai trò -->
+    <div class="sec" style="margin-top:10px">
+      <div class="sec-h">① Vai trò sản phẩm · Prefix</div>
+      <div class="pfx-grid" id="pfxGrid"></div>
+    </div>
+
+    <!-- 2. PRODUCT (prefix 0/1/3/4) -->
+    <div class="sec" id="secProduct" style="display:none">
+      <div class="sec-h">② Phân loại sản phẩm</div>
+      <div class="fam-tabs" id="famTabs"></div>
+      <div class="row2">
+        <div class="field" style="margin:0"><label>Nhóm sản phẩm</label><select id="p_cat" onchange="onCatChange()"></select></div>
+        <div class="field" style="margin:0"><label>Sub-type (tùy chọn)</label><select id="p_subtype" onchange="genSku()"></select></div>
       </div>
-      <!-- Mode: sản phẩm hãng -->
-      <div id="brandBox">
-        <div class="row3">
-          <div class="field" style="margin:0"><label>Hãng</label><select id="p_brandSel" onchange="refreshCats();refreshSeries();genSku()" style="width:100%"></select></div>
-          <div class="field" style="margin:0"><label>Nhóm</label><select id="p_catSel" onchange="catChanged()" style="width:100%"></select></div>
-          <div class="field" style="margin:0"><label>Series</label><select id="p_serSel" onchange="serChanged()" style="width:100%"></select></div>
-        </div>
-        <div class="row3" style="margin-top:6px">
-          <div class="field" style="margin:0"><label>Cỡ / Size</label><input id="p_size" placeholder="28 / 60X90" oninput="genSku()"></div>
-          <div class="field" style="margin:0"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / SST..." oninput="genSku()"></div>
-          <div class="field" style="margin:0"><label>→ Mã SKU (sửa được)</label><input id="p_sku" placeholder="KTR-ROTEX-28" style="font-weight:800"></div>
-        </div>
+      <div class="row2" style="margin-top:8px">
+        <div class="field" style="margin:0"><label>Hãng</label><select id="p_brand" onchange="onBrandChange()"></select></div>
+        <div class="field" style="margin:0"><label>Series / dòng</label><input id="p_series" placeholder="ROTEX / N-EUPEX..." oninput="genSku()">
+          <div class="chips" id="serChips"></div></div>
       </div>
-      <!-- Mode: DHP tự chế -->
-      <div id="dhpBox" style="display:none">
-        <div class="row3">
-          <div class="field" style="margin:0"><label>Loại</label>
-            <select id="p_dhpType" onchange="genSku()" style="width:100%">
-              <option value="PRJ">Dự án (PRJ)</option><option value="SVC">Dịch vụ (SVC)</option>
-              <option value="MFG">Gia công (MFG)</option><option value="OTH">Khác (OTH)</option>
-            </select></div>
-          <div class="field" style="margin:0"><label>Tên ngắn chi tiết</label><input id="p_dhpName" placeholder="VD: Ống lót côn KH"></div>
-          <div class="field" style="margin:0"><label>→ Mã (sửa được)</label><input id="p_sku2" placeholder="DHP-PRJ-001" style="font-weight:800" oninput="document.getElementById('p_sku').value=this.value"></div>
-        </div>
+      <div class="row3" style="margin-top:8px">
+        <div class="field" style="margin:0"><label>Cỡ / Size (catalog)</label><input id="p_size" placeholder="28 / 110" oninput="genSku()"></div>
+        <div class="field" style="margin:0"><label>Bore lẻ Ø mm (tùy chọn)</label><input id="p_bore" placeholder="30" oninput="genSku()"></div>
+        <div class="field" style="margin:0"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / 98SH / KW8" oninput="genSku()">
+          <div class="chips" id="varChips"></div></div>
+      </div>
+    </div>
+
+    <!-- 3. DOC (prefix 6) -->
+    <div class="sec" id="secDoc" style="display:none">
+      <div class="sec-h">② Tài liệu</div>
+      <div class="row3">
+        <div class="field" style="margin:0"><label>Loại tài liệu</label><select id="p_docType" onchange="genSku()"></select></div>
+        <div class="field" style="margin:0"><label>Hãng (tùy chọn)</label><select id="p_docBrand" onchange="genSku()"></select></div>
+        <div class="field" style="margin:0"><label>Mã tham chiếu</label><input id="p_docRef" placeholder="REV01 / số bản vẽ" oninput="genSku()"></div>
+      </div>
+    </div>
+
+    <!-- 4. COMBO (prefix 8) -->
+    <div class="sec" id="secCombo" style="display:none">
+      <div class="sec-h">② Combo / Gói bán hàng</div>
+      <div class="row3">
+        <div class="field" style="margin:0"><label>Ngành ứng dụng</label><select id="p_comboInd" onchange="genSku()"></select></div>
+        <div class="field" style="margin:0"><label>Ứng dụng / tên gói</label><input id="p_comboApp" placeholder="BOMNUOC / BANGTAI" oninput="genSku()"></div>
+        <div class="field" style="margin:0"><label>Số thứ tự</label><input id="p_comboSeq" placeholder="001" oninput="genSku()"></div>
+      </div>
+    </div>
+
+    <!-- 5. SERVICE / SỬA CHỮA (prefix 9) -->
+    <div class="sec" id="secSvc" style="display:none">
+      <div class="sec-h">② Dịch vụ kỹ thuật / Sửa chữa</div>
+      <div class="row2">
+        <div class="field" style="margin:0"><label>Loại dịch vụ</label><select id="p_svcType" onchange="genSku()"></select></div>
+        <div class="field" style="margin:0"><label>Chi tiết / biến thể (tùy chọn)</label><input id="p_svcVar" placeholder="LASER / GANGCAU..." oninput="genSku()"></div>
+      </div>
+    </div>
+
+    <!-- LIVE CODE -->
+    <div class="codebox" style="margin-bottom:10px">
+      <div class="cd-main" id="cdMain"><span class="seg-dim">— Chọn prefix để bắt đầu —</span></div>
+      <div class="cd-desc" id="cdDesc">Điền các trường để xem mã sinh tự động.</div>
+      <div class="field" style="margin:8px 0 0">
+        <label style="color:#94a3b8">Mã cuối (sửa được)</label>
+        <input id="p_sku" placeholder="0.KNL-JAW-KTR-ROTEX-28" style="font-weight:800;font-family:'JetBrains Mono',monospace" oninput="showSimilar()">
       </div>
     </div>
     <div id="simBox" class="small" style="margin:2px 0 10px"></div>
-    <div class="field"><label>Tên sản phẩm</label><input id="p_name" placeholder="Tên / mô tả" oninput="showSimilar()"></div>
-    <div class="row2">
+
+    <!-- COMMON -->
+    <div class="field"><label>Tên / mô tả sản phẩm</label><input id="p_name" placeholder="Tên / mô tả" oninput="showSimilar()"></div>
+    <div class="row3">
       <div class="field"><label>Vật liệu</label><input id="p_material" placeholder="Gang / Thép..."></div>
-      <div class="field"><label>PN / Mã phụ</label><input id="p_pn" placeholder=""></div>
+      <div class="field"><label>PN / Mã NCC</label><input id="p_pn"></div>
+      <div class="field"><label>Giá tham khảo</label><input id="p_price"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Giá tham khảo</label><input id="p_price"></div>
-      <div class="field"><label>🖼 Link ảnh</label><input id="p_image" placeholder="catalogue_img/... hoặc URL" oninput="document.getElementById('p_prev').src=this.value"></div>
+      <div class="field"><label>Gắn dự án (mã / tên)</label><input id="p_project" placeholder="VD: VNS.0007 — Nhà máy X"></div>
+      <div class="field"><label>Loại dự án</label><select id="p_projType"></select></div>
     </div>
+    <div class="field"><label>🖼 Link ảnh</label><input id="p_image" placeholder="catalogue_img/... hoặc URL" oninput="document.getElementById('p_prev').src=this.value"></div>
     <div style="text-align:center;margin:6px 0"><img id="p_prev" style="max-height:130px;max-width:100%;border-radius:8px;border:1px solid var(--line)" onerror="this.style.display='none'" onload="this.style.display='inline-block'"></div>
     <div class="field"><label>Ghi chú</label><input id="p_note"></div>
-    <datalist id="dlCats"></datalist>
+
     <div class="toolbar" style="justify-content:space-between;margin:0">
       <button class="ghost sm" id="delBtn" style="background:#fef2f2;color:var(--brand);display:none" onclick="delProduct()">🗑 Xóa</button>
       <span style="display:flex;gap:8px;margin-left:auto"><button class="ghost" onclick="closeModal()">Hủy</button><button onclick="saveProduct()">💾 Lưu</button></span>
@@ -162,45 +227,183 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ============================================================
+   TAXONOMY TĨNH — bê từ DHP_CodingSystem_v2_5.html
+   ============================================================ */
+const PREFIXES = [
+  {k:'0', label:'Catalog OEM',    desc:'Hàng chính hãng, bore chuẩn', mode:'product'},
+  {k:'1', label:'Gia công CNC',   desc:'Bore lẻ, keyway, gia công',   mode:'product'},
+  {k:'3', label:'Phụ tùng lẻ',   desc:'Spider, sleeve, gối đỡ...',   mode:'product'},
+  {k:'4', label:'Chế tạo / Hàn', desc:'Kết cấu hàn theo bản vẽ DHP', mode:'product'},
+  {k:'6', label:'Tài liệu',      desc:'Datasheet, drawing, study',   mode:'doc'},
+  {k:'8', label:'Combo / Gói',   desc:'Gói bán hàng / cụm chế tạo',  mode:'combo'},
+  {k:'9', label:'Dịch vụ / Sửa', desc:'Cân chỉnh, sửa chữa, lắp đặt',mode:'svc'}
+];
+const FAMILIES = [
+  {k:'A', name:'Truyền động cơ khí'},
+  {k:'B', name:'Bảo vệ điều khiển'},
+  {k:'C', name:'Giảm chấn cách rung'},
+  {k:'D', name:'Thuỷ lực & Phụ trợ'}
+];
+const CATEGORIES = [
+  {c:'KNL', n:'Khớp nối linh hoạt', f:'A'},{c:'KND', n:'Khớp nối đĩa đàn hồi', f:'A'},
+  {c:'KNB', n:'Khớp nối bu lông đai ốc', f:'A'},{c:'KNX', n:'Khớp nối lò xo (T10/T20/T31)', f:'A'},
+  {c:'KNE', n:'Khớp nối encoder', f:'A'},{c:'KNS', n:'Khớp nối servo', f:'A'},
+  {c:'KNC', n:'Khớp nối cứng', f:'A'},{c:'KNR', n:'Khớp nối răng', f:'A'},
+  {c:'KCD', n:'Khớp các đăng', f:'A'},{c:'KNW', n:'Khớp nối bánh xe', f:'A'},
+  {c:'KTL', n:'Khớp nối thủy lực', f:'A'},{c:'KEG', n:'Khớp nối điện gió', f:'A'},
+  {c:'KTC', n:'Khớp nối tang cuốn cáp', f:'A'},{c:'KXI', n:'Khớp nối xích', f:'A'},
+  {c:'KKT', n:'Khớp khóa trục côn', f:'A'},{c:'TBT', n:'Thiết bị bóp trục', f:'A'},
+  {c:'PLY', n:'Puly — Ống lót côn', f:'A'},{c:'XCN', n:'Xích công nghiệp', f:'A'},
+  {c:'DAI', n:'Dây đai / Curoa', f:'A'},
+  {c:'KQT', n:'Khớp nối bảo vệ quá tải', f:'B'},{c:'LMS', n:'Lò xo ma sát', f:'B'},
+  {c:'VCQ', n:'Vòng bi chống quay ngược', f:'B'},{c:'PCN', n:'Phanh công nghiệp', f:'B'},
+  {c:'CSG', n:'Cao su giảm chấn khớp nối', f:'C'},{c:'CGX', n:'Cao su giảm xóc', f:'C'},
+  {c:'BUF', n:'Bộ giảm chấn công nghiệp', f:'C'},
+  {c:'NCB', n:'Nắp chụp bơm thủy lực', f:'D'},{c:'LMD', n:'Bộ làm mát dầu thủy lực', f:'D'}
+];
+const SUBTYPES = {
+  'KNL':[{c:'JAW',n:'Vấu cao su (Jaw/Spider)'},{c:'TYR',n:'Lốp (Tyre)'},{c:'PIN',n:'Pin & bush'},{c:'BLW',n:'Khớp xếp (Bellows)'},{c:'CRV',n:'Curved-jaw'},{c:'SLV',n:'Sleeve / ống lót'},{c:'MAG',n:'Từ tính (Magnetic)'}],
+  'KND':[{c:'SD',n:'Single disc'},{c:'DD',n:'Double disc'},{c:'MEM',n:'Membrane (màng)'}],
+  'KNB':[{c:'DRM',n:'Drum-style'},{c:'FLG',n:'Flanged'}],
+  'KNX':[{c:'T10',n:'Series T10'},{c:'T20',n:'Series T20'},{c:'T31',n:'Series T31'}],
+  'KNE':[{c:'BLW',n:'Bellows'},{c:'DSC',n:'Disc'},{c:'OLD',n:'Oldham'}],
+  'KNS':[{c:'BLW',n:'Bellows'},{c:'DSC',n:'Disc'},{c:'JAW',n:'Jaw servo'},{c:'OLD',n:'Oldham'}],
+  'KNC':[{c:'MUF',n:'Muff / sleeve'},{c:'CLP',n:'Clamp split'},{c:'FLG',n:'Flange-style'}],
+  'KNR':[{c:'FGR',n:'Full gear'},{c:'HGR',n:'Half gear'}],
+  'KCD':[{c:'SU',n:'Single U-joint'},{c:'DU',n:'Double U-joint'},{c:'TEL',n:'Telescopic'},{c:'CV',n:'Constant velocity'}],
+  'KNW':[{c:'FLG',n:'Flange'},{c:'BAR',n:'Barrel'}],
+  'KTL':[{c:'HFC',n:'Hydraulic fluid coupling'},{c:'HDC',n:'Hydrodynamic'},{c:'TRQ',n:'Torque converter'}],
+  'KEG':[{c:'HSC',n:'High speed'},{c:'MSC',n:'Medium speed'},{c:'DTC',n:'Direct drive'}],
+  'KXI':[{c:'RC',n:'Roller chain'},{c:'SC',n:'Silent chain'}],
+  'KKT':[{c:'EXT',n:'External (Ringfeder)'},{c:'INT',n:'Internal'},{c:'CMP',n:'Compact'}],
+  'TBT':[{c:'HYD',n:'Hydraulic-driven'},{c:'MAN',n:'Manual'}],
+  'PLY':[{c:'VBL',n:'V-belt pulley'},{c:'TBL',n:'Timing belt pulley'},{c:'TPB',n:'Taper bush'}],
+  'XCN':[{c:'RC',n:'Roller chain'},{c:'SC',n:'Silent chain'},{c:'ENG',n:'Engineering chain'}],
+  'KQT':[{c:'TQL',n:'Torque limiter'},{c:'SHP',n:'Shear pin'},{c:'MAG',n:'Magnetic'},{c:'FRP',n:'Friction plate'}],
+  'LMS':[{c:'SP',n:'Single spring'},{c:'DBL',n:'Double'}],
+  'VCQ':[{c:'BBR',n:'Backstop'},{c:'CAM',n:'Cam clutch'},{c:'SPR',n:'Sprag'}],
+  'PCN':[{c:'DBR',n:'Disc brake'},{c:'DRB',n:'Drum brake'},{c:'CLP',n:'Caliper'},{c:'THR',n:'Thruster'}],
+  'CSG':[{c:'SPD',n:'Spider / star'},{c:'TYR',n:'Tyre element'},{c:'JAW',n:'Jaw element'},{c:'RNG',n:'Ring element'}],
+  'CGX':[{c:'BLK',n:'Block'},{c:'PAD',n:'Pad'},{c:'MNT',n:'Engine mount'},{c:'BSH',n:'Bushing'}],
+  'LMD':[{c:'HEX',n:'Heat exchanger'},{c:'OAC',n:'Oil-air cooler'}],
+  'DAI':[{c:'VBT',n:'V-belt (curoa thang)'},{c:'TMG',n:'Timing belt (curoa răng)'},{c:'WDG',n:'Wedge SPA/SPB/SPC/SPZ'},{c:'PWR',n:'Power belt bản rộng'}],
+  'BUF':[{c:'DFM',n:'DEFORM plus'},{c:'IBF',n:'Industrial buffer'},{c:'SAB',n:'Shock absorber'}]
+};
+const BRANDS = [
+  {c:'KTR', n:'KTR Germany'},{c:'RGF', n:'Ringfeder Germany'},{c:'RTH', n:'Rathi-Ringfeder India'},
+  {c:'HEN', n:'Henfel-Ringfeder Brazil'},{c:'FLD', n:'Flender / Siemens'},{c:'KBK', n:'KBK Germany'},
+  {c:'CRM', n:'Cross+Morse UK'},{c:'WST', n:'Westcar Italy'},{c:'ITG', n:'Italgiunti Italy'},
+  {c:'WCH', n:'Wichmann Germany'},{c:'PTI', n:'PTI Korea'},{c:'JAC', n:'JAC Korea'},
+  {c:'WJN', n:'Woojin Korea'},{c:'MAV', n:'MAV Italy'},{c:'TBW', n:'TB Woods USA'},
+  {c:'MTN', n:'Martin Sprocket USA'},{c:'RXN', n:'Rexnord USA'},{c:'FNR', n:'Fenner UK'},
+  {c:'RNL', n:'Renold UK'},{c:'HUC', n:'Huco UK'},{c:'ETP', n:'ETP Sweden'},
+  {c:'TFL', n:'Transfluid Italy'},{c:'MAG', n:'Magnaloy USA'},{c:'RSP', n:'Ringspann Germany'},
+  {c:'STB', n:'Stieber Germany'},{c:'TWF', n:'Twiflex Germany'},{c:'SVB', n:'Svendborg / Stromag'},
+  {c:'DHP', n:'Đại Hồng Phát — gia công nội bộ'}
+];
+const SERIES_HINTS = {
+  'KTR':['ROTEX','BOWEX','RADEX-N','REVOLEX','POLY-NORM','TOOLFLEX','MINEX','RUFLEX'],
+  'RGF':['TNM','TNS','TNB','TNR','TNT','TNZ','TND','GWB','GWE','TNK','RLB','RLP','RLT','RLU','RfN-7012','RfN-7013','RfN-7015','RfN-7110','RfN-4051','RfN-4071'],
+  'RTH':['RRS','RRA','RFLEX','RJAW'],
+  'FLD':['N-EUPEX','RUPEX','ARPEX','N-ARPEX','ZAPEX-XN','ZAPEX-XW','BIPEX','FLUDEX','ELPEX-B','RADEX-N','SGG','SHH','SKK'],
+  'CRM':['KE','HRC','GF','GFA','L','CS','LNC','LRC'],
+  'WST':['ROTOFLEXI','ROTOPIN','ROTODISC','ROTOGRID','ROTOGEAR','ROTOFLUID','ROTOMEC'],
+  'ITG':['GG','GE','GS','GR','GF'],
+  'WCH':['SAFESET','BIKON','WK','WM'],
+  'PTI':['PTI-JAW','PTI-DISC','PTI-GEAR'],
+  'JAC':['JC','JAS','JM'],
+  'WJN':['WJC','WJS'],
+  'MAV':['MAV-1008','MAV-2003','MAV-3009','MAV-6202'],
+  'TBW':['SURE-FLEX','DURA-FLEX','FORM-FLEX','HEX-A-FLEX'],
+  'MTN':['SLEEVE','JAW','MARTIN-JAW'],
+  'RXN':['OMEGA','THOMAS','FALK','VIVA','STEELFLEX'],
+  'FNR':['ESSEX','TYRE','HRC','FENAFLEX'],
+  'RNL':['JAW','COUPLING','GEAR'],
+  'HUC':['OLDHAM','BELLOWS','DISC'],
+  'ETP':['ETP-HYLOC','ETP-EXPRESS','ETP-CLASSIC','ETP-POWER','ETP-TECHNO'],
+  'KBK':['KB1','KB2','KB3','KB4','KB5','KB6','KB7','KB8','KBE1','KBE2','KBE3','KBE4','KBST','BAA','BAI','BKK','CA','EAA'],
+  'HEN':['AHHVV','HDFB','HLE-R','HLE-RRA','HCP','HCP-RR','HFF-R','HFB-R','HFF-RR','HFB-RR','HLF-R','HLF-RR','FH-16E','FH-21E'],
+  'MAG':['MAGNALOY','M100','M200','M300'],
+  'TFL':['TRANSFLUID','KPTB','KSL','CPC','HD'],
+  'RSP':['IR','FB','FXN','FAV','FXM','FA','FGR'],
+  'STB':['ASK','AL','CSK','RSBW','RIWI','NFS','NSS'],
+  'TWF':['VKSD','VMS','GMR','GMX','MR','MS','MU','MX','VCS','VS','T20','T40'],
+  'SVB':['BSAK','BSAB','BSAC','BSFA','BSFB','BSFG','BSFH','BSFI','BSFK','CB90','CB120']
+};
+const VARIANT_HINTS = ['STD','SP','FB','FF','HUB','KW8','KW10','KW12','NBR','HNBR','EPDM','SI','98SH','92SH','64SH','BAL','TAP'];
+const DOC_TYPES = [
+  {c:'DS', n:'Datasheet'},{c:'DWG', n:'Bản vẽ'},{c:'LAY', n:'Layout'},
+  {c:'STD', n:'Study / tính toán'},{c:'PRC', n:'Quy trình (procedure)'},
+  {c:'CAT', n:'Catalogue'},{c:'CRT', n:'Chứng nhận'}
+];
+const COMBO_INDS = [
+  {c:'GEN', n:'Chung'},{c:'SUG', n:'Mía đường'},{c:'CEM', n:'Xi măng'},{c:'STL', n:'Thép'},
+  {c:'PWR', n:'Điện / nhiệt điện'},{c:'PMP', n:'Bơm'},{c:'MIN', n:'Khoáng sản'},
+  {c:'MAR', n:'Hàng hải'},{c:'PPR', n:'Giấy'},{c:'WTR', n:'Cấp thoát nước'}
+];
+const SVC_TYPES = [
+  {c:'ALIGN', n:'Cân chỉnh đồng trục (laser)'},{c:'REP', n:'Sửa chữa / phục hồi'},
+  {c:'INST', n:'Lắp đặt'},{c:'INSP', n:'Kiểm tra / đo rung'},
+  {c:'BAL', n:'Cân bằng động'},{c:'MNT', n:'Bảo trì định kỳ'},
+  {c:'TRN', n:'Đào tạo'},{c:'OVR', n:'Đại tu (overhaul)'}
+];
+const PROJECT_TYPES = [
+  {c:'', n:'— Không —'},
+  {c:'NEW', n:'New supply — cung cấp mới'},{c:'MFG', n:'Manufacturing — chế tạo'},
+  {c:'RTF', n:'Retrofit — cải tạo'},{c:'SPR', n:'Spare parts — phụ tùng'},
+  {c:'SVC', n:'Service — dịch vụ'},{c:'OEM', n:'OEM supply'}
+];
+
+/* ============================================================ */
 const VIEW_PASSCODE='dhp368', EDIT_PASSCODE='edit368';
-const STORAGE_KEY='dhp_hub_v3';            // dùng chung config với DHP Manager (cùng origin)
-const BRANDS=[['KTR Germany','KTR'],['Ringfeder Germany','RF'],['Rathi-Ringfeder India','RA'],['Westcar Italy','WES'],['Cross+Morse UK','WC'],['JAC Korea','JAC'],['Martin USA','MAR'],['Flender Germany','FL'],['TB Woods USA','TBW'],['Magnaloy USA','MAG'],['Fenner','FEN'],['Renold USA','REN']];
+const STORAGE_KEY='dhp_hub_v3';
 let _sb=null, PRODUCTS=[];
+
+/* ---- helpers ---- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }
+function clean(s){ if(!s) return ''; return String(s).trim().toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9\-]/g,''); }
+function brandName(code){ const b=BRANDS.find(x=>x.c===code); return b?b.n:code; }
+function brandCodeOf(name){ const b=BRANDS.find(x=>x.n===name||x.c===name); return b?b.c:''; }
+function catName(code){ const c=CATEGORIES.find(x=>x.c===code); return c?c.n:code; }
+
+/* ---- role / gate ---- */
 function getRole(){ return localStorage.getItem('dhp_role')||'viewer'; }
 function canEdit(){ return getRole()==='editor'; }
 function gateCheck(){
-  const v=document.getElementById('gatePass').value;
+  const v=$('gatePass').value;
   if(v===EDIT_PASSCODE){ localStorage.setItem('dhp_role','editor'); }
   else if(v===VIEW_PASSCODE){ localStorage.setItem('dhp_role','viewer'); }
   else { alert('Sai mật khẩu.'); return; }
   localStorage.setItem('dhp_coding_ok','1');
-  document.getElementById('gate').style.display='none';
-  applyRole(); boot();
+  $('gate').style.display='none'; applyRole(); boot();
 }
 function unlockEdit(){ const v=prompt('Mật khẩu SỬA:'); if(v===EDIT_PASSCODE){ localStorage.setItem('dhp_role','editor'); applyRole(); renderGrid(); } else if(v!==null) alert('Sai mật khẩu sửa.'); }
 function applyRole(){
-  document.getElementById('roleBadge').textContent = canEdit()?'🔓 Quản lý':'👁 Xem';
-  document.getElementById('unlockBtn').style.display = canEdit()?'none':'';
-  document.getElementById('editBtns').style.display = canEdit()?'inline-flex':'none';
+  $('roleBadge').textContent = canEdit()?'🔓 Quản lý':'👁 Xem';
+  $('unlockBtn').style.display = canEdit()?'none':'';
+  $('editBtns').style.display = canEdit()?'inline-flex':'none';
 }
-function readCfg(){
-  try{ const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); return {url:(d.meta&&d.meta.supaUrl)||'', key:(d.meta&&d.meta.supaKey)||''}; }catch(e){ return {url:'',key:''}; }
-}
+
+/* ---- Supabase ---- */
+function readCfg(){ try{ const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); return {url:(d.meta&&d.meta.supaUrl)||'', key:(d.meta&&d.meta.supaKey)||''}; }catch(e){ return {url:'',key:''}; } }
 function cleanUrl(u){ return String(u||'').trim().replace(/\/rest\/v1\/?$/i,'').replace(/\/+$/,''); }
 function connect(){
   const c=readCfg();
-  if(!c.url||!c.key){ document.getElementById('cfgCard').style.display='block'; setConn('● chưa kết nối',false); return false; }
+  if(!c.url||!c.key){ $('cfgCard').style.display='block'; setConn('● chưa kết nối',false); return false; }
   if(typeof supabase==='undefined'){ setConn('● thiếu thư viện (cần mạng)',false); return false; }
-  try{ _sb=supabase.createClient(cleanUrl(c.url),c.key.trim()); document.getElementById('cfgCard').style.display='none'; return true; }
+  try{ _sb=supabase.createClient(cleanUrl(c.url),c.key.trim()); $('cfgCard').style.display='none'; return true; }
   catch(e){ setConn('● lỗi: '+e.message,false); return false; }
 }
 function saveCfg(){
-  const url=document.getElementById('cfgUrl').value, key=document.getElementById('cfgKey').value;
+  const url=$('cfgUrl').value, key=$('cfgKey').value;
   let d={}; try{ d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); }catch(e){}
   d.meta=d.meta||{}; d.meta.supaUrl=url; d.meta.supaKey=key; localStorage.setItem(STORAGE_KEY,JSON.stringify(d));
   if(connect()) loadProducts();
 }
-function setConn(t,ok){ const b=document.getElementById('connBadge'); b.textContent=t; b.style.background=ok?'rgba(255,255,255,.25)':'rgba(0,0,0,.2)'; }
+function setConn(t,ok){ const b=$('connBadge'); b.textContent=t; b.style.background=ok?'rgba(255,255,255,.25)':'rgba(0,0,0,.2)'; }
 async function loadProducts(){
   if(!_sb && !connect()) return;
   setConn('● đang tải...',false);
@@ -212,50 +415,54 @@ async function loadProducts(){
     fillFilters(); renderGrid();
   }catch(e){ setConn('● lỗi tải: '+e.message,false); alert('Lỗi tải products: '+e.message+'\n(Đã tạo bảng products trên Supabase chưa?)'); }
 }
-function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }
-function brandImg(p){ if(p.imageUrl) return p.imageUrl; const k=(p.brand||'')+'|'+(p.series||''); const sib=PRODUCTS.find(x=>x.imageUrl&&((x.brand||'')+'|'+(x.series||''))===k); return sib?sib.imageUrl:''; }
+
+/* ---- prefix của 1 sản phẩm (suy ra từ mã) ---- */
+function prodPrefix(p){ if(p.prefix) return p.prefix; const m=String(p.sku||'').match(/^(\d)\./); if(m) return m[1]; if(/^DHP-/.test(p.sku||'')) return '4'; return ''; }
+function prefixLabel(k){ const p=PREFIXES.find(x=>x.k===k); return p?p.label:''; }
+
+/* ---- filters (toolbar) ---- */
 function fillFilters(){
+  // prefix
+  $('fPrefix').innerHTML='<option value="">— Vai trò / prefix —</option>'+PREFIXES.map(p=>`<option value="${p.k}">${p.k} · ${esc(p.label)}</option>`).join('');
+  // brand
   const bs=[...new Set(PRODUCTS.map(p=>p.brand).filter(Boolean))].sort();
-  document.getElementById('fBrand').innerHTML='<option value="">— Tất cả hãng —</option>'+bs.map(b=>`<option>${esc(b)}</option>`).join('');
+  $('fBrand').innerHTML='<option value="">— Tất cả hãng —</option>'+bs.map(b=>`<option>${esc(b)}</option>`).join('');
   refreshCatFilter();
-  const cs=[...new Set(PRODUCTS.map(p=>p.category).filter(Boolean))].sort();
-  document.getElementById('dlCats').innerHTML=cs.map(c=>`<option value="${esc(c)}">`).join('');
 }
-// Chọn hãng → ô "Nhóm" chỉ hiện nhóm thực có của hãng đó
 function refreshCatFilter(){
-  const b=document.getElementById('fBrand').value;
-  const prev=document.getElementById('fCat').value;
+  const b=$('fBrand').value, prev=$('fCat').value;
   const cs=[...new Set(PRODUCTS.filter(p=>!b||p.brand===b).map(p=>p.category).filter(Boolean))].sort();
   const keep=cs.includes(prev)?prev:'';
-  document.getElementById('fCat').innerHTML='<option value="">— Tất cả nhóm —</option>'+cs.map(c=>`<option ${c===keep?'selected':''}>${esc(c)}</option>`).join('');
+  $('fCat').innerHTML='<option value="">— Tất cả nhóm —</option>'+cs.map(c=>`<option ${c===keep?'selected':''}>${esc(c)}</option>`).join('');
 }
 function onBrandFilter(){ refreshCatFilter(); renderGrid(); }
 function filtered(){
-  const q=norm(document.getElementById('q').value), b=document.getElementById('fBrand').value, c=document.getElementById('fCat').value;
-  const k=document.getElementById('fKind')?document.getElementById('fKind').value:'';
+  const q=norm($('q').value), b=$('fBrand').value, c=$('fCat').value, pf=$('fPrefix').value;
   return PRODUCTS.filter(p=>{
-    if(b&&p.brand!==b) return false; if(c&&p.category!==c) return false;
-    if(k){ const isDhp=/^DHP-/.test(p.sku||'')||p.kind==='dhp'; if(k==='dhp'&&!isDhp) return false; if(k==='brand'&&isDhp) return false; }
-    if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
+    if(b&&p.brand!==b) return false;
+    if(c&&p.category!==c) return false;
+    if(pf&&prodPrefix(p)!==pf) return false;
+    if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.category||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
     return true;
   });
 }
 function renderGrid(){
   const rows=filtered(), CAP=600, shown=rows.slice(0,CAP);
-  document.getElementById('count').textContent=`${rows.length} / ${PRODUCTS.length} sản phẩm`;
-  const grid=document.getElementById('grid');
-  if(PRODUCTS.length===0){ grid.innerHTML=`<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm SKU</b>.':''}</div>`; return; }
+  $('count').textContent=`${rows.length} / ${PRODUCTS.length} mã`;
+  const grid=$('grid');
+  if(PRODUCTS.length===0){ grid.innerHTML=`<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm mã</b>.':''}</div>`; return; }
   if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
   grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
     <table class="ptbl"><thead><tr>
-      <th>Mã SKU</th><th>Tên sản phẩm</th><th>Hãng</th><th>Nhóm</th><th>Series</th><th>Cỡ</th>${canEdit()?'<th></th>':''}
+      <th>Mã SKU</th><th>Vai trò</th><th>Tên sản phẩm</th><th>Hãng</th><th>Nhóm</th><th>Series</th><th>Cỡ</th>${canEdit()?'<th></th>':''}
     </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
-    ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc hãng để thu hẹp.</div>`:''}`;
+    ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
 }
 function rowHtml(p){
+  const pf=prodPrefix(p);
   return `<tr ${canEdit()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
     <td class="csku">${esc(p.sku||'')}</td>
+    <td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>
     <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
     <td>${esc(p.brand||'')}</td>
     <td>${esc(p.category||'')}</td>
@@ -264,138 +471,203 @@ function rowHtml(p){
     ${canEdit()?'<td class="cact">✎</td>':''}
   </tr>`;
 }
-// ---- Sinh mã SKU ----
-const NEWOPT='__new__';
-function brandCode(name){ const f=BRANDS.find(b=>b[0]===name); if(f) return f[1]; return norm(name).replace(/[^a-z0-9]/g,'').slice(0,3).toUpperCase(); }
-function skuSlug(s){ return norm(s).replace(/[^a-z0-9]+/g,'').toUpperCase(); }
-function fillSel(el, values, current, newLabel){
-  const opts=['<option value="">— chọn —</option>']
-    .concat(values.map(v=>`<option ${current===v?'selected':''}>${esc(v)}</option>`))
-    .concat([`<option value="${NEWOPT}">➕ ${newLabel}</option>`]);
-  el.innerHTML=opts.join('');
-  if(current && !values.includes(current)){ // giá trị cũ chưa có trong list → thêm
-    const o=document.createElement('option'); o.textContent=current; o.selected=true; el.insertBefore(o, el.lastChild);
-  }
+
+/* ============================================================
+   MODAL — state + UI dựng động
+   ============================================================ */
+let MS = {}; // modal state
+function modeOf(){ const p=PREFIXES.find(x=>x.k===MS.prefix); return p?p.mode:''; }
+
+function buildPfxGrid(){
+  $('pfxGrid').innerHTML=PREFIXES.map(p=>`
+    <button type="button" class="pfx-card" data-k="${p.k}" onclick="setPrefix('${p.k}')">
+      <span class="pn">${p.k}</span><span class="pl">${esc(p.label)}</span><span class="pd">${esc(p.desc)}</span>
+    </button>`).join('');
 }
-// chọn hãng → nhóm của hãng đó tự nhảy ra
-function refreshCats(){
-  const brand=document.getElementById('p_brandSel').value;
-  const cats=[...new Set(PRODUCTS.filter(p=>!brand||p.brand===brand).map(p=>p.category).filter(Boolean))].sort();
-  fillSel(document.getElementById('p_catSel'), cats, document.getElementById('p_catSel').dataset.val||'', 'Nhóm mới…');
+function buildFamTabs(){
+  $('famTabs').innerHTML=FAMILIES.map(f=>`
+    <button type="button" class="fam-tab" data-f="${f.k}" onclick="setFamily('${f.k}')">
+      <div class="fk">${f.k}</div><div class="fn">${esc(f.name)}</div></button>`).join('');
 }
-function refreshSeries(){
-  const brand=document.getElementById('p_brandSel').value, cat=document.getElementById('p_catSel').value;
-  const ser=[...new Set(PRODUCTS.filter(p=>(!brand||p.brand===brand)&&(!cat||cat===NEWOPT||p.category===cat)).map(p=>p.series).filter(Boolean))].sort();
-  fillSel(document.getElementById('p_serSel'), ser, document.getElementById('p_serSel').dataset.val||'', 'Series mới…');
+function fillStaticSelects(){
+  const opt=(arr,blank)=>`${blank?`<option value="">${blank}</option>`:''}`+arr.map(o=>`<option value="${o.c}">${o.c?o.c+' — ':''}${esc(o.n)}</option>`).join('');
+  $('p_brand').innerHTML='<option value="">— Chọn hãng —</option>'+BRANDS.map(b=>`<option value="${b.c}">${b.c} — ${esc(b.n)}</option>`).join('');
+  $('p_docBrand').innerHTML='<option value="">— Không —</option>'+BRANDS.map(b=>`<option value="${b.c}">${b.c} — ${esc(b.n)}</option>`).join('');
+  $('p_docType').innerHTML=opt(DOC_TYPES);
+  $('p_comboInd').innerHTML=opt(COMBO_INDS);
+  $('p_svcType').innerHTML=opt(SVC_TYPES);
+  $('p_projType').innerHTML=PROJECT_TYPES.map(o=>`<option value="${o.c}">${esc(o.n)}</option>`).join('');
+  $('varChips').innerHTML=VARIANT_HINTS.map(v=>`<span class="chip" onclick="addVariant('${v}')">${v}</span>`).join('');
 }
-function catChanged(){
-  const el=document.getElementById('p_catSel');
-  if(el.value===NEWOPT){ const v=(prompt('Tên NHÓM mới:')||'').trim(); if(v){ const o=document.createElement('option'); o.textContent=v; o.selected=true; el.insertBefore(o, el.lastChild);} else el.value=''; }
-  el.dataset.val=el.value===NEWOPT?'':el.value;
-  refreshSeries(); genSku();
-}
-function serChanged(){
-  const el=document.getElementById('p_serSel');
-  if(el.value===NEWOPT){ const v=(prompt('Tên SERIES mới:')||'').trim(); if(v){ const o=document.createElement('option'); o.textContent=v; o.selected=true; el.insertBefore(o, el.lastChild);} else el.value=''; }
-  el.dataset.val=el.value===NEWOPT?'':el.value;
+function setPrefix(k){
+  MS.prefix=k;
+  document.querySelectorAll('#pfxGrid .pfx-card').forEach(b=>b.classList.toggle('active',b.dataset.k===k));
+  const m=modeOf();
+  $('secProduct').style.display = m==='product'?'':'none';
+  $('secDoc').style.display     = m==='doc'?'':'none';
+  $('secCombo').style.display   = m==='combo'?'':'none';
+  $('secSvc').style.display     = m==='svc'?'':'none';
   genSku();
 }
-function curVal(id){ const el=document.getElementById(id); return (el.value===NEWOPT)?'':el.value; }
-function toggleKind(){
-  const dhp=document.getElementById('p_kind').value==='dhp';
-  document.getElementById('brandBox').style.display=dhp?'none':'';
-  document.getElementById('dhpBox').style.display=dhp?'':'none';
+function setFamily(k){
+  MS.family=k;
+  document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.toggle('active',b.dataset.f===k));
+  const cats=CATEGORIES.filter(c=>c.f===k);
+  $('p_cat').innerHTML='<option value="">— Chọn nhóm —</option>'+cats.map(c=>`<option value="${c.c}" ${MS.cat===c.c?'selected':''}>${c.c} — ${esc(c.n)}</option>`).join('');
+  onCatChange();
 }
-// Tự kiểm tra mã đã có + gợi ý dùng lại (ngay khi đang nhập)
-function showSimilar(){
-  const box=document.getElementById('simBox'); if(!box) return;
-  const myId=document.getElementById('p_id').value;
-  const sku=(document.getElementById('p_sku').value||'').trim();
-  const isDhp=document.getElementById('p_kind').value==='dhp';
-  const brand=isDhp?'':document.getElementById('p_brandSel').value;
-  const series=isDhp?'':curVal('p_serSel');
-  const nmEl=document.getElementById(isDhp?'p_dhpName':'p_name');
-  const nm=norm(nmEl?nmEl.value:'');
-  let exact=PRODUCTS.find(p=>p.sku && norm(p.sku)===norm(sku) && p.id!==myId);
-  if(!exact && !isDhp){ // app thêm "-2" vì base trùng → tìm theo mã gốc để cảnh báo
-    const base=[brandCode(brand),skuSlug(curVal('p_serSel')),skuSlug(document.getElementById('p_size').value),skuSlug(document.getElementById('p_variant').value)].filter(Boolean).join('-');
-    if(base) exact=PRODUCTS.find(p=>p.sku && norm(p.sku)===norm(base) && p.id!==myId);
+function onCatChange(){
+  MS.cat=$('p_cat').value;
+  const subs=SUBTYPES[MS.cat]||[];
+  if(!subs.length){ $('p_subtype').innerHTML='<option value="">— Không có sub-type —</option>'; $('p_subtype').disabled=true; }
+  else{ $('p_subtype').innerHTML='<option value="">— Tùy chọn —</option>'+subs.map(s=>`<option value="${s.c}" ${MS.subtype===s.c?'selected':''}>${s.c} — ${esc(s.n)}</option>`).join(''); $('p_subtype').disabled=false; }
+  genSku();
+}
+function onBrandChange(){
+  const code=$('p_brand').value;
+  // gợi ý series: hint cứng + series đã có trong DB của hãng này
+  const dbSer=[...new Set(PRODUCTS.filter(p=>brandCodeOf(p.brand)===code).map(p=>p.series).filter(Boolean))];
+  const hints=[...new Set([...(SERIES_HINTS[code]||[]), ...dbSer])];
+  $('serChips').innerHTML=hints.map(s=>`<span class="chip" onclick="setSeries('${esc(s)}')">${esc(s)}</span>`).join('') || '<span class="muted small">— chưa có gợi ý cho hãng này, gõ tay —</span>';
+  genSku();
+}
+function setSeries(v){ $('p_series').value=v; genSku(); }
+function addVariant(v){ const cur=$('p_variant').value.trim(); $('p_variant').value=cur?(cur.endsWith(v)?cur:cur+v):v; genSku(); }
+
+/* ---- sinh mã theo chuẩn v2.5 ---- */
+function buildCode(){
+  const k=MS.prefix; if(!k) return {full:'',desc:''};
+  const m=modeOf(); let body=[], desc=[];
+  if(m==='product'){
+    const cat=clean($('p_cat').value), sub=clean($('p_subtype').value), br=clean($('p_brand').value),
+          ser=clean($('p_series').value), sz=clean($('p_size').value), bore=clean($('p_bore').value), va=clean($('p_variant').value);
+    body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+bore:'', va].filter(Boolean);
+    if(cat) desc.push(catName($('p_cat').value)); if(br) desc.push(brandName($('p_brand').value));
+    if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore);
+  } else if(m==='doc'){
+    const dt=clean($('p_docType').value), br=clean($('p_docBrand').value), ref=clean($('p_docRef').value);
+    body=['DOC', dt, br, ref].filter(Boolean);
+    desc.push('Tài liệu', dt); if(br) desc.push(brandName($('p_docBrand').value));
+  } else if(m==='combo'){
+    const ind=clean($('p_comboInd').value), app=clean($('p_comboApp').value), seq=clean($('p_comboSeq').value);
+    body=['PKG', ind, app, seq].filter(Boolean);
+    desc.push('Combo', ind, app);
+  } else if(m==='svc'){
+    const st=clean($('p_svcType').value), v=clean($('p_svcVar').value);
+    body=['SVC', st, v].filter(Boolean);
+    const s=SVC_TYPES.find(x=>x.c==$('p_svcType').value); desc.push('Dịch vụ', s?s.n:st); if(v) desc.push(v);
   }
+  return {full: k+'.'+body.join('-'), desc: desc.filter(Boolean).join(' · ')};
+}
+function genSku(){
+  const {full,desc}=buildCode();
+  // hiển thị live
+  if(MS.prefix){
+    $('cdMain').innerHTML=full.replace(/^(\d)\./,'<span class="seg-prefix">$1</span>.');
+    $('cdDesc').textContent=desc||'Điền tiếp các trường…';
+    // auto đề xuất mã (chỉ ghi đè khi người dùng chưa sửa tay)
+    if(!MS._skuTouched){ $('p_sku').value=full.length>2?full:''; }
+  } else { $('cdMain').innerHTML='<span class="seg-dim">— Chọn prefix để bắt đầu —</span>'; $('cdDesc').textContent='Điền các trường để xem mã sinh tự động.'; }
+  showSimilar();
+}
+
+/* ---- cảnh báo trùng + gợi ý dùng lại ---- */
+function showSimilar(){
+  const box=$('simBox'); if(!box) return;
+  const myId=$('p_id').value, sku=($('p_sku').value||'').trim();
+  const brandN = modeOf()==='product' ? brandName($('p_brand').value) : '';
+  const nm=norm($('p_name').value);
+  let exact=PRODUCTS.find(p=>p.sku && norm(p.sku)===norm(sku) && p.id!==myId);
   const cands=PRODUCTS.filter(p=>p.id!==myId).map(p=>{
     let s=0;
-    if(brand&&p.brand===brand) s+=2;
-    if(series&&p.series===series) s+=3;
+    if(brandN&&p.brand===brandN) s+=2;
     if(nm&&nm.length>=2){ const h=norm((p.name||'')+' '+(p.series||'')+' '+(p.sku||'')); if(h.includes(nm)) s+=2; }
     return {p,s};
-  }).filter(o=>o.s>0).sort((a,b)=>b.s-a.s).slice(0,8).map(o=>o.p);
+  }).filter(o=>o.s>0).sort((a,b)=>b.s-a.s).slice(0,6).map(o=>o.p);
   let html='';
   if(exact){
-    html+=`<div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:6px 9px;border-radius:8px;margin-bottom:6px">
-      ⚠ Mã <b>${esc(exact.sku)}</b> ĐÃ TỒN TẠI — "${esc(exact.name||'')}". Nên dùng lại thay vì tạo mới.
+    html+=`<div class="vbox err">⚠ Mã <b>${esc(exact.sku)}</b> ĐÃ TỒN TẠI — "${esc(exact.name||'')}". Nên dùng lại thay vì tạo mới.
       <button type="button" class="ghost sm" style="margin-left:4px;padding:3px 8px" onclick="openProduct('${esc(exact.id)}')">↗ Mở mã này</button></div>`;
   }
   if(cands.length){
-    html+=`<div class="muted" style="margin:2px 0 3px">🔎 Mã tương tự đã có — cân nhắc dùng lại:</div>`
+    html+=`<div class="muted" style="margin:6px 0 3px">🔎 Mã tương tự đã có:</div>`
       +cands.map(p=>`<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px dashed var(--line)">
-        <span class="csku" style="color:#0EA5E9">${esc(p.sku)}</span>
+        <span class="csku">${esc(p.sku)}</span>
         <span style="flex:1">${esc(p.name||'')} <span class="muted">· ${esc([p.brand,p.series].filter(Boolean).join(' · '))}</span></span>
         <button type="button" class="ghost sm" style="padding:3px 8px" onclick="openProduct('${esc(p.id)}')">↗ Mở</button></div>`).join('');
   }
   box.innerHTML=html;
 }
-function genSku(){
-  const myId=document.getElementById('p_id').value;
-  let base='';
-  if(document.getElementById('p_kind').value==='dhp'){
-    const t=document.getElementById('p_dhpType').value;
-    const head='DHP-'+t+'-'; let mx=0;
-    PRODUCTS.forEach(p=>{ if(p.id!==myId && String(p.sku||'').startsWith(head)){ const n=parseInt(String(p.sku).slice(head.length).replace(/\D/g,''),10); if(!isNaN(n)&&n>mx)mx=n; } });
-    const sku=head+String(mx+1).padStart(3,'0');
-    document.getElementById('p_sku2').value=sku; document.getElementById('p_sku').value=sku; showSimilar(); return;
-  }
-  const parts=[brandCode(document.getElementById('p_brandSel').value), skuSlug(curVal('p_serSel')), skuSlug(document.getElementById('p_size').value), skuSlug(document.getElementById('p_variant').value)].filter(Boolean);
-  base=parts.join('-'); if(!base) return;
-  let sku=base, n=2;
-  while(PRODUCTS.some(p=>p.sku===sku && p.id!==myId)){ sku=base+'-'+n; n++; }
-  document.getElementById('p_sku').value=sku;
-  showSimilar();
-}
+
+/* ---- mở / lưu / xóa ---- */
 function openProduct(id){
   if(!canEdit()) return;
   const p=id?PRODUCTS.find(x=>x.id===id):null;
-  document.getElementById('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm sản phẩm';
-  document.getElementById('p_id').value=id||'';
-  const isDhp = p && /^DHP-/.test(p.sku||'');
-  document.getElementById('p_kind').value=isDhp?'dhp':'brand'; toggleKind();
-  // brand mode
-  const bs=document.getElementById('p_brandSel'); bs.innerHTML='<option value="">— hãng —</option>'+BRANDS.map(b=>`<option ${p&&p.brand===b[0]?'selected':''}>${b[0]}</option>`).join('');
-  document.getElementById('p_catSel').dataset.val=p&&p.category||''; refreshCats();
-  document.getElementById('p_serSel').dataset.val=p&&p.series||''; refreshSeries();
-  const set=(k,v)=>{ const el=document.getElementById('p_'+k); if(el) el.value=v||''; };
-  set('size',p&&p.size); set('variant',p&&p.variant); set('sku',p&&p.sku);
-  // dhp mode
-  if(isDhp){ const m=(p.sku||'').match(/^DHP-([A-Z]+)-/); document.getElementById('p_dhpType').value=m?m[1]:'PRJ'; set('dhpName',p&&p.name); set('sku2',p&&p.sku); }
-  else { set('dhpName',''); set('sku2',''); document.getElementById('p_dhpType').value='PRJ'; }
-  // common
-  set('name',p&&p.name); set('material',p&&p.material); set('pn',p&&p.pn);
-  set('price',p&&p.price); set('image',p&&p.imageUrl); set('note',p&&p.note);
-  const pv=document.getElementById('p_prev'); pv.src=p&&p.imageUrl?p.imageUrl:''; pv.style.display=p&&p.imageUrl?'inline-block':'none';
-  document.getElementById('delBtn').style.display=p?'inline-block':'none';
-  showSimilar();
-  document.getElementById('modal').classList.add('show');
+  MS={prefix:'',family:'',cat:'',subtype:'',_skuTouched:!!p};
+  $('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm mã';
+  $('p_id').value=id||'';
+  // reset fields
+  ['p_series','p_size','p_bore','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project'].forEach(k=>{ if($(k))$(k).value=''; });
+  $('serChips').innerHTML=''; document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.remove('active'));
+  // điền từ bản ghi
+  const pf = p?prodPrefix(p):'';
+  setPrefix(pf||'0');
+  if(p){
+    const m=modeOf();
+    if(m==='product'){
+      MS.cat=p.cat||''; MS.subtype=p.subtype||'';
+      const cat=CATEGORIES.find(c=>c.c===p.cat); if(cat) setFamily(cat.f);
+      if(p.cat){ $('p_cat').value=p.cat; onCatChange(); $('p_subtype').value=p.subtype||''; }
+      const bc=p.brandCode||brandCodeOf(p.brand); $('p_brand').value=bc; onBrandChange();
+      $('p_series').value=p.series||''; $('p_size').value=p.size||''; $('p_bore').value=p.bore||''; $('p_variant').value=p.variant||'';
+    } else if(m==='doc'){ $('p_docType').value=p.docType||'DS'; $('p_docBrand').value=p.brandCode||brandCodeOf(p.brand)||''; $('p_docRef').value=p.docRef||''; }
+    else if(m==='combo'){ $('p_comboInd').value=p.comboInd||'GEN'; $('p_comboApp').value=p.comboApp||''; $('p_comboSeq').value=p.comboSeq||''; }
+    else if(m==='svc'){ $('p_svcType').value=p.svcType||'ALIGN'; $('p_svcVar').value=p.svcVar||''; }
+    $('p_sku').value=p.sku||'';
+    $('p_name').value=p.name||''; $('p_material').value=p.material||''; $('p_pn').value=p.pn||'';
+    $('p_price').value=p.price||''; $('p_image').value=p.imageUrl||''; $('p_note').value=p.note||'';
+    $('p_project').value=p.projectCode||''; $('p_projType').value=p.projectType||'';
+  }
+  const pv=$('p_prev'); pv.src=p&&p.imageUrl?p.imageUrl:''; pv.style.display=p&&p.imageUrl?'inline-block':'none';
+  $('delBtn').style.display=p?'inline-block':'none';
+  genSku();
+  $('modal').classList.add('show');
 }
-function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+function closeModal(){ $('modal').classList.remove('show'); }
+
 async function saveProduct(){
   if(!canEdit()) return;
-  const g=k=>{ const el=document.getElementById('p_'+k); return el?el.value.trim():''; };
-  const isDhp=document.getElementById('p_kind').value==='dhp';
-  const sku=g('sku'), name=isDhp?g('dhpName'):g('name');
-  if(!sku){ alert('Chưa có mã. Hãy điền đủ thông tin để sinh mã.'); return; }
-  const id=document.getElementById('p_id').value || ('PRD-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-  const rec={ id, sku, kind:isDhp?'dhp':'brand', name:name||sku,
-    brand:isDhp?'':document.getElementById('p_brandSel').value, category:isDhp?'':curVal('p_catSel'),
-    series:isDhp?'':curVal('p_serSel'), size:isDhp?'':g('size'), variant:isDhp?'':g('variant'),
-    material:g('material'), pn:g('pn'), price:g('price'), imageUrl:g('image'), note:g('note'), updatedAt:new Date().toISOString() };
+  const g=k=>{ const el=$(k); return el?el.value.trim():''; };
+  const sku=g('p_sku'); if(!sku){ alert('Chưa có mã. Hãy điền đủ thông tin để sinh mã.'); return; }
+  const m=modeOf();
+  const id=$('p_id').value || ('PRD-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  const brandCode = m==='product'?$('p_brand').value : (m==='doc'?$('p_docBrand').value:'');
+  const cat = m==='product'?$('p_cat').value:'';
+  // category hiển thị (giữ tương thích grid cũ)
+  let categoryDisp='';
+  if(m==='product') categoryDisp=catName(cat);
+  else if(m==='doc') categoryDisp='Tài liệu';
+  else if(m==='combo') categoryDisp='Combo';
+  else if(m==='svc'){ const s=SVC_TYPES.find(x=>x.c===$('p_svcType').value); categoryDisp='Dịch vụ' + (s?' · '+s.n:''); }
+  const {desc}=buildCode();
+  const rec={
+    id, sku, prefix:MS.prefix, mode:m,
+    name:g('p_name')||sku, descAuto:desc,
+    // product
+    family:MS.family||'', cat, subtype:m==='product'?$('p_subtype').value:'',
+    brandCode, brand:brandCode?brandName(brandCode):'', series:g('p_series'),
+    size:g('p_size'), bore:g('p_bore'), variant:g('p_variant'),
+    // doc / combo / svc
+    docType:m==='doc'?$('p_docType').value:'', docRef:m==='doc'?g('p_docRef'):'',
+    comboInd:m==='combo'?$('p_comboInd').value:'', comboApp:m==='combo'?g('p_comboApp'):'', comboSeq:m==='combo'?g('p_comboSeq'):'',
+    svcType:m==='svc'?$('p_svcType').value:'', svcVar:m==='svc'?g('p_svcVar'):'',
+    // grid compat
+    category:categoryDisp,
+    // common
+    material:g('p_material'), pn:g('p_pn'), price:g('p_price'), imageUrl:g('p_image'), note:g('p_note'),
+    projectCode:g('p_project'), projectType:$('p_projType').value||'',
+    updatedAt:new Date().toISOString()
+  };
   try{
     const {error}=await _sb.from('products').upsert({id, data:rec, updated_at:rec.updatedAt});
     if(error) throw new Error(error.message);
@@ -404,12 +676,13 @@ async function saveProduct(){
   }catch(e){ alert('Lỗi lưu: '+e.message); }
 }
 async function delProduct(){
-  const id=document.getElementById('p_id').value; if(!id||!confirm('Xóa SKU này?')) return;
+  const id=$('p_id').value; if(!id||!confirm('Xóa SKU này?')) return;
   try{ const {error}=await _sb.from('products').delete().eq('id',id); if(error) throw new Error(error.message);
     PRODUCTS=PRODUCTS.filter(p=>p.id!==id); closeModal(); fillFilters(); renderGrid();
   }catch(e){ alert('Lỗi xóa: '+e.message); }
 }
-// ---- CSV ----
+
+/* ---- CSV ---- */
 function parseCsv(t){ t=String(t||'').replace(/^﻿/,''); const rows=[]; let row=[],cur='',q=false;
   for(let i=0;i<t.length;i++){ const c=t[i];
     if(q){ if(c==='"'){ if(t[i+1]==='"'){cur+='"';i++} else q=false } else cur+=c }
@@ -429,15 +702,13 @@ async function importCsv(file){
       const batch=[]; let add=0,upd=0;
       for(let r=1;r<rows.length;r++){ const row=rows[r], get=k=>ix[k]>=0?String(row[ix[k]]||'').trim():'';
         let sku=get('sku'); const model=get('name'),brand=get('brand'),size=get('size');
-        if(!sku) sku=[brandCode(brand)||skuSlug(brand),skuSlug(model),skuSlug(size)].filter(Boolean).join('-');
         if(!sku&&!model) continue;
         const ex=bySku[norm(sku)];
         const rec=Object.assign(ex?{...ex}:{id:'PRD-'+Date.now().toString(36)+r+Math.random().toString(36).slice(2,5)},
-          {sku,name:model||sku,brand,category:get('category'),series:get('series'),size,pn:get('pn'),material:get('material'),price:get('price'),imageUrl:get('image'),note:get('note'),updatedAt:new Date().toISOString()});
+          {sku,name:model||sku,brand,brandCode:brandCodeOf(brand),category:get('category'),series:get('series'),size,pn:get('pn'),material:get('material'),price:get('price'),imageUrl:get('image'),note:get('note'),updatedAt:new Date().toISOString()});
         batch.push({id:rec.id,data:rec,updated_at:rec.updatedAt}); bySku[norm(sku)]=rec;
         if(ex){ const i=PRODUCTS.findIndex(p=>p.id===rec.id); PRODUCTS[i]=rec; upd++; } else { PRODUCTS.push(rec); add++; }
       }
-      // đẩy lên Supabase theo lô 500
       setConn('● đang nhập...',false);
       for(let i=0;i<batch.length;i+=500){ const {error}=await _sb.from('products').upsert(batch.slice(i,i+500)); if(error) throw new Error(error.message); }
       fillFilters(); renderGrid(); setConn('✓ '+PRODUCTS.length+' SP',true);
@@ -448,16 +719,18 @@ async function importCsv(file){
 }
 function csvCell(v){ v=(v==null?'':String(v)); return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportCsv(){
-  const head=['SKU','Tên','Hãng','Nhóm','Series','KíchThước','PN','VậtLiệu','Giá','LinkẢnh','GhiChú'];
-  const rows=PRODUCTS.map(p=>[p.sku,p.name,p.brand,p.category,p.series,p.size,p.pn,p.material,p.price,p.imageUrl,p.note]);
+  const head=['SKU','Prefix','Tên','Hãng','Nhóm','Series','KíchThước','Bore','BiếnThể','PN','VậtLiệu','Giá','DựÁn','LinkẢnh','GhiChú'];
+  const rows=PRODUCTS.map(p=>[p.sku,prodPrefix(p),p.name,p.brand,p.category,p.series,p.size,p.bore,p.variant,p.pn,p.material,p.price,p.projectCode,p.imageUrl,p.note]);
   const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'}));
   a.download='DHP_catalogue.csv'; document.body.appendChild(a); a.click(); a.remove();
 }
-function boot(){ if(connect()) loadProducts(); }
-// khởi động
+
+/* ---- boot ---- */
+function boot(){ buildPfxGrid(); buildFamTabs(); fillStaticSelects(); if(connect()) loadProducts(); }
+$('p_sku').addEventListener('input',()=>{ MS._skuTouched=true; });
 (function(){
-  if(localStorage.getItem('dhp_coding_ok')==='1' || localStorage.getItem('dhp_gate_ok')==='1'){ document.getElementById('gate').style.display='none'; applyRole(); boot(); }
+  if(localStorage.getItem('dhp_coding_ok')==='1' || localStorage.getItem('dhp_gate_ok')==='1'){ $('gate').style.display='none'; applyRole(); boot(); }
 })();
 </script>
 </body>

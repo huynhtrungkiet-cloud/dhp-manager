@@ -280,6 +280,20 @@
   </div>
 </div>
 
+<!-- Modal mở khóa sửa (thay prompt để tránh bị Chrome chặn hộp thoại) -->
+<div id="unlockModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:22px;width:320px;max-width:90vw;text-align:center">
+    <h3 style="margin:0 0 4px;color:var(--brand)">🔓 Mở khóa sửa</h3>
+    <div class="muted small" style="margin-bottom:12px">Nhập mật khẩu quyền SỬA để dùng phần tính giá / báo giá / cấu hình.</div>
+    <input id="unlockPass" type="password" placeholder="Mật khẩu sửa" style="width:100%;margin-bottom:8px" onkeydown="if(event.key==='Enter')unlockOk()">
+    <div class="small" style="color:var(--brand);min-height:14px" id="unlockErr"></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="ghost" style="flex:1" onclick="unlockClose()">Hủy</button>
+      <button style="flex:1" onclick="unlockOk()">Mở khóa</button>
+    </div>
+  </div>
+</div>
+
 <div id="printArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -502,9 +516,8 @@ function matRate(n){const m=CFG.mat.find(x=>x.name===n);return m?m.rate:0;}
 const LOCKED_TABS=['cases','quote','saved','config'];   // chỉ quyền SỬA (edit368) mới vào
 function goTab(t){
   if(LOCKED_TABS.includes(t) && !DHPCore.canEdit()){
-    alert('🔒 Mục "tính giá / báo giá / ca thực tế" chỉ dành cho quyền SỬA.\nBấm OK rồi nhập mật khẩu edit368.');
-    if(!DHPCore.unlockEdit()) return;   // nhập sai/hủy → ở lại
-    applyRole();
+    doUnlock(t);   // mở modal nhập edit368; xong sẽ tự vào tab này
+    return;
   }
   ['advisor','kb','cases','quote','saved','config'].forEach(x=>{document.getElementById('tab-'+x).style.display=(x===t?'block':'none');});
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
@@ -1010,7 +1023,25 @@ function applyRole(){
   // người chỉ xem đang đứng ở tab bị khóa → đưa về Tư vấn
   if(!ed){ const cur=document.querySelector('.tabs button.active'); if(cur && LOCKED_TABS.includes(cur.dataset.tab)) goTab('advisor'); }
 }
-function doUnlock(){ if(DHPCore.unlockEdit()) applyRole(); }
+const VIEW_PASSCODE='dhp368', EDIT_PASSCODE='edit368';
+let _pendingTab=null;
+function doUnlock(pendingTab){
+  _pendingTab=(typeof pendingTab==='string')?pendingTab:null;
+  document.getElementById('unlockErr').textContent='';
+  document.getElementById('unlockPass').value='';
+  document.getElementById('unlockModal').style.display='flex';
+  setTimeout(()=>{ try{document.getElementById('unlockPass').focus();}catch(e){} },50);
+}
+function unlockClose(){ document.getElementById('unlockModal').style.display='none'; _pendingTab=null; }
+function unlockOk(){
+  const v=document.getElementById('unlockPass').value;
+  if(v===EDIT_PASSCODE){
+    localStorage.setItem('dhp_role','editor');
+    document.getElementById('unlockModal').style.display='none';
+    applyRole();
+    const t=_pendingTab; _pendingTab=null; if(t) goTab(t);
+  } else { document.getElementById('unlockErr').textContent='Sai mật khẩu sửa.'; }
+}
 function markConn(){
   const ok=DHPCore.connected();
   document.getElementById('connBadge').textContent= ok?'● đã kết nối':'● chưa kết nối (vẫn dùng được, dữ liệu cục bộ)';

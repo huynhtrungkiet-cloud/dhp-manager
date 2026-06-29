@@ -1085,12 +1085,12 @@ function showGate(){
   const go=()=>{ const v=document.getElementById('tgPass').value;
     if(v===EDIT) localStorage.setItem('dhp_role','editor'); else if(v===VIEW) localStorage.setItem('dhp_role','viewer');
     else { document.getElementById('tgErr').textContent='Sai mật khẩu.'; return; }
-    localStorage.setItem('dhp_coding_ok','1'); g.remove(); startApp(); };
+    localStorage.setItem('dhp_tools_ok','1'); g.remove(); startApp(); };
   document.getElementById('tgBtn').onclick=go;
   document.getElementById('tgPass').addEventListener('keydown',e=>{ if(e.key==='Enter')go(); });
   document.getElementById('tgPass').focus();
 }
-if(localStorage.getItem('dhp_coding_ok')==='1') startApp(); else showGate();
+if(localStorage.getItem('dhp_tools_ok')==='1') startApp(); else showGate();
 </script>
 </body>
 </html>

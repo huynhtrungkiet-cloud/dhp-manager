@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHP Engineering Advisor — Tư vấn khớp nối &amp; Báo giá gia công</title>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --brand:#b91c1c; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#16a34a; --warn:#d97706; --bg:#f1f5f9; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
+  .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:10px 18px;flex-wrap:wrap}
+  .topbar img{height:42px;background:#fff;border-radius:8px;padding:4px 10px}
+  .topbar h1{font-size:16px;margin:0;font-weight:700}
+  .topbar .sub{font-size:11px;opacity:.85}
+  .topbar .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-block;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700}
+  .wrap{max-width:1180px;margin:0 auto;padding:14px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .tabs button{background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}
+  .tabs button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:15px}
+  input,select,button,textarea{font-family:inherit;font-size:14px}
+  input,select,textarea{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  textarea{width:100%;resize:vertical}
+  button{cursor:pointer;border:0;border-radius:8px;padding:8px 14px;font-weight:700;background:var(--brand);color:#fff}
+  button.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  button.sm{padding:6px 10px;font-size:13px}
+  button.ok{background:var(--ok)}
+  button.big{padding:12px 20px;font-size:15px}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:12px;font-weight:700;margin-bottom:3px;color:#334155}
+  .field input,.field select,.field textarea{width:100%}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:7px 8px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569}
+  td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .stars{color:#f59e0b;letter-spacing:1px;white-space:nowrap}
+  .chip{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin:2px}
+  .chip.b{background:#eef2ff;color:#4338ca}
+  .chip.g{background:#dcfce7;color:#166534}
+  .chip.w{background:#fef3c7;color:#92400e}
+  .chip.r{background:#fee2e2;color:#991b1b}
+  .kpi{background:#fff7ed;border:1px solid #fcd34d;border-radius:10px;padding:12px}
+  .kpi .big{font-size:26px;font-weight:800;color:var(--brand)}
+  .alert{border-radius:10px;padding:10px 12px;font-size:13px;margin-top:8px}
+  .alert.ok{background:#dcfce7;color:#166534;border:1px solid #86efac}
+  .alert.warn{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+  .alert.bad{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .alert.info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+  .opline{display:grid;grid-template-columns:1.6fr 1fr .8fr .8fr auto;gap:6px;align-items:center;margin-bottom:6px}
+  .matline{display:grid;grid-template-columns:1.6fr .9fr .9fr .9fr auto;gap:6px;align-items:center;margin-bottom:6px}
+  .rankbar{height:18px;border-radius:9px;background:linear-gradient(90deg,#16a34a,#84cc16);min-width:2px}
+  .scorerow{display:grid;grid-template-columns:160px 1fr 54px;gap:8px;align-items:center;margin-bottom:6px}
+  .conc{border:2px solid var(--brand);border-radius:14px;padding:16px;background:linear-gradient(180deg,#fff,#fff7ed)}
+  details summary{cursor:pointer;font-weight:700;padding:6px 0}
+  @media(max-width:640px){ .row2,.row3,.row4{grid-template-columns:1fr} .opline,.matline{grid-template-columns:1fr 1fr} .scorerow{grid-template-columns:110px 1fr 44px} }
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;left:0;top:0;width:100%;padding:18px}
+    .noprint{display:none!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <img src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}">
+  <div><h1>DHP Engineering Advisor</h1><div class="sub">Tư vấn kỹ thuật khớp nối · Chọn cỡ · Vật liệu · Báo giá gia công · Hub-mixing</div></div>
+  <div class="right">
+    <span class="pill" id="roleBadge">👁 Xem</span>
+    <span class="pill" id="connBadge">● chưa kết nối</span>
+    <button class="ghost sm" id="unlockBtn" onclick="doUnlock()">🔓 Mở khóa sửa</button>
+    <a class="ghost sm" href="index.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">↩ DHP Manager</a>
+    <a class="ghost sm" href="dhp_coding.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">🏷 Coding</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="active" data-tab="advisor" onclick="goTab('advisor')">🧭 Tư vấn kỹ thuật</button>
+    <button data-tab="kb" onclick="goTab('kb')">📚 Tra cứu &amp; So sánh</button>
+    <button data-tab="cases" onclick="goTab('cases')">🗂 Ca thực tế</button>
+    <button data-tab="quote" onclick="goTab('quote')">💰 Báo giá gia công</button>
+    <button data-tab="saved" onclick="goTab('saved')">📋 Báo giá đã lưu</button>
+    <button data-tab="config" onclick="goTab('config')">⚙️ Cấu hình giá</button>
+  </div>
+
+  <!-- ============ TƯ VẤN KỸ THUẬT ============ -->
+  <div id="tab-advisor">
+    <div class="card">
+      <h3>🧭 Nhập điều kiện làm việc — app sẽ tư vấn như một kỹ sư</h3>
+      <div class="row4">
+        <div class="field"><label>Công suất P (kW)</label><input id="inP" type="number" step="0.1" placeholder="45"></div>
+        <div class="field"><label>Tốc độ n (rpm)</label><input id="inN" type="number" placeholder="1450"></div>
+        <div class="field"><label>Đường kính trục Ø (mm)</label><input id="inD" type="number" placeholder="65"></div>
+        <div class="field"><label>Sai lệch tâm ước tính (mm)</label><input id="inMis" type="number" step="0.05" placeholder="0.4"></div>
+      </div>
+      <div class="row4">
+        <div class="field"><label>Máy kéo (driver)</label>
+          <select id="inDriver">
+            <option value="motor">Động cơ điện (êm)</option>
+            <option value="engine">Động cơ diesel/đốt trong (giật)</option>
+            <option value="turbine">Turbine</option>
+          </select>
+        </div>
+        <div class="field"><label>Máy được kéo (tải)</label><select id="inDriven"></select></div>
+        <div class="field"><label>Số giờ vận hành / ngày</label>
+          <select id="inDuty"><option value="0">≤ 8 giờ</option><option value="1">8–16 giờ</option><option value="2">&gt; 16 giờ (liên tục)</option></select>
+        </div>
+        <div class="field"><label>Nhiệt độ làm việc (°C)</label><input id="inTemp" type="number" placeholder="40"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Môi trường</label>
+          <select id="inEnv">
+            <option value="normal">Thường (xưởng khô)</option>
+            <option value="outdoor">Ngoài trời / bụi ẩm</option>
+            <option value="food">Thực phẩm / vệ sinh</option>
+            <option value="corrosive">Ăn mòn / hóa chất / biển</option>
+            <option value="oil">Có dầu / dính dầu</option>
+          </select>
+        </div>
+        <div class="field"><label>Khớp đang dùng (nếu có)</label><input id="inCur" placeholder="Rotex 65 / N-EUPEX..."></div>
+        <div class="field"><label>Ưu tiên thêm</label>
+          <select id="inPrio">
+            <option value="">— Không có —</option>
+            <option value="price">Giá thấp nhất</option>
+            <option value="maint">Ít bảo trì</option>
+            <option value="precision">Chính xác / không backlash</option>
+            <option value="compact">Gọn / nhẹ</option>
+          </select>
+        </div>
+      </div>
+      <button class="big" onclick="doAdvise()">🔎 Phân tích &amp; Tư vấn</button>
+      <button class="ghost" onclick="loadExample()">↳ Nạp ví dụ (Motor 45kW · Bơm · Ø65 · Rotex 65)</button>
+      <div class="alert info" style="margin-top:10px">ℹ️ Bảng cỡ <b>ROTEX trích từ catalogue KTR chính hãng</b> (dùng cho họ khớp vấu: ROTEX/Lovejoy L/TNM/Rathi — tương đương cỡ). Các họ khác (N-EUPEX, đĩa, răng...) hiện chọn cỡ theo momen thiết kế — sẽ nạp bảng riêng khi có catalogue. Luôn đối chiếu bản vẽ &amp; catalogue trước khi chốt.</div>
+    </div>
+
+    <div id="advOut"></div>
+  </div>
+
+  <!-- ============ TRA CỨU & SO SÁNH ============ -->
+  <div id="tab-kb" style="display:none">
+    <div class="card">
+      <h3>🔁 Tra khớp đang có → tương đương &amp; Hub-mixing</h3>
+      <input id="kbXref" placeholder="🔎 Rotex / N-EUPEX / Lovejoy / Fenaflex / Disc / Gear / Ringfeder..." style="width:100%" oninput="renderXref()">
+      <div id="xrefResult" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h3>📑 Datasheet từng loại khớp</h3>
+      <select id="kbFam" onchange="renderDatasheet()" style="min-width:260px"></select>
+      <div id="kbSheet" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h3>📊 Bảng so sánh nhanh (toàn bộ loại)</h3>
+      <div id="kbCompare" style="overflow:auto"></div>
+    </div>
+  </div>
+
+  <!-- ============ CA THỰC TẾ (CASE LIBRARY) ============ -->
+  <div id="tab-cases" style="display:none">
+    <div class="card">
+      <h3>🗂 Thư viện ca tư vấn thực tế <span class="muted small">— tài sản tri thức của DHP, tích lũy theo thời gian</span></h3>
+      <div class="muted small" style="margin-bottom:8px">Mỗi ca tư vấn (đã bấm “Lưu ca” ở tab Tư vấn) được lưu lại. Nếu đã kết nối Supabase, ca được chia sẻ chung mọi máy. App tự gợi ý <b>ca tương tự</b> khi bạn phân tích đơn mới.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px" class="noprint">
+        <button class="ghost sm" id="caseSyncBtn" onclick="pullCases(true)">⟲ Tải ca từ Supabase</button>
+        <input id="caseSearch" placeholder="🔎 Tìm theo máy / khách / khớp..." style="flex:1;min-width:200px" oninput="renderCases()">
+      </div>
+      <div id="casesList"></div>
+    </div>
+  </div>
+
+  <!-- ============ BÁO GIÁ ============ -->
+  <div id="tab-quote" style="display:none">
+    <div class="card">
+      <h3>💰 Lập báo giá gia công</h3>
+      <div class="row3">
+        <div class="field"><label>Khách hàng</label><input id="qCust" placeholder="Công ty..."></div>
+        <div class="field"><label>Tên hàng / chi tiết</label><input id="qName" placeholder="Khớp nối cao su bu lông..."></div>
+        <div class="field"><label>Loại mặt hàng (để soát khung giá)</label>
+          <select id="qType" onchange="quoteRecalc()"></select>
+        </div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Số lượng</label><input id="qQty" type="number" value="1" min="1" oninput="quoteRecalc()"></div>
+        <div class="field"><label>ĐVT</label><input id="qUnit" value="Bộ"></div>
+        <div class="field"><label>Áp quy trình mẫu</label>
+          <select id="qTemplate"><option value="">— Chọn mẫu routing —</option></select>
+        </div>
+      </div>
+      <button class="ghost sm" onclick="applyTypeDefaults()">↧ Nạp vật liệu + công đoạn gợi ý theo loại hàng</button>
+    </div>
+
+    <div class="card">
+      <h3>🧱 Vật tư / Phôi <span class="muted small">(tính theo kg)</span></h3>
+      <div id="matLines"></div>
+      <button class="ghost sm" onclick="addMatLine()">＋ Thêm vật tư</button>
+      <div class="muted small" style="margin-top:6px">Khối lượng phôi ≈ thể tích × tỉ trọng (thép ~7.85, gang ~7.2, inox ~7.9, đồng ~8.9, nhôm ~2.7 kg/dm³).</div>
+    </div>
+
+    <div class="card">
+      <h3>⚙️ Công đoạn gia công <span class="muted small">(giờ × đơn giá máy)</span></h3>
+      <div class="opline muted small"><div>Công đoạn</div><div>Nơi làm</div><div>Giờ</div><div>Đ.giá/giờ</div><div></div></div>
+      <div id="opLines"></div>
+      <button class="ghost sm" onclick="addOpLine()">＋ Thêm công đoạn</button>
+    </div>
+
+    <div class="card">
+      <h3>➕ Phụ phí &amp; Lãi</h3>
+      <div class="row3">
+        <div class="field"><label>Vật tư phụ / phụ kiện (đ)</label><input id="qExtra" type="number" value="0" oninput="quoteRecalc()"></div>
+        <div class="field"><label>Dao cụ / hao mòn (% trên tiền công)</label><input id="qTool" type="number" value="0" oninput="quoteRecalc()"></div>
+        <div class="field"><label>Lợi nhuận (%)</label><input id="qMargin" type="number" value="25" oninput="quoteRecalc()"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>VAT (%)</label><input id="qVat" type="number" value="0" oninput="quoteRecalc()"></div>
+        <div class="field"><label>Ghi chú báo giá</label><input id="qNote" placeholder="Thời gian giao, điều kiện..."></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📊 Kết quả</h3>
+      <div id="quoteOut"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px" class="noprint">
+        <button class="ok" onclick="saveQuote()">💾 Lưu báo giá</button>
+        <button class="ghost" onclick="printQuote()">🖨 In / xuất PDF</button>
+        <button class="ghost" onclick="resetQuote()">🧹 Làm mới</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ĐÃ LƯU ============ -->
+  <div id="tab-saved" style="display:none">
+    <div class="card">
+      <h3>📋 Báo giá đã lưu</h3>
+      <div class="muted small" style="margin-bottom:8px">Lưu cục bộ trên máy này (localStorage). Bấm để mở lại / in.</div>
+      <div id="savedList"></div>
+    </div>
+  </div>
+
+  <!-- ============ CẤU HÌNH GIÁ ============ -->
+  <div id="tab-config" style="display:none">
+    <div class="alert warn" style="margin-bottom:12px">⚠️ Đây là <b>số mẫu thị trường cơ khí VN 2026</b> — hãy chỉnh đúng đơn giá thực tế của DHP rồi bấm <b>Lưu cấu hình</b>. Cần quyền <b>edit368</b> để sửa.</div>
+    <div class="card"><h3>⚙️ Đơn giá giờ máy theo công đoạn (đ/giờ)</h3><div id="cfgProc"></div><button class="ghost sm" onclick="cfgAddProc()">＋ Thêm công đoạn</button></div>
+    <div class="card"><h3>🧱 Đơn giá vật liệu (đ/kg)</h3><div id="cfgMat"></div><button class="ghost sm" onclick="cfgAddMat()">＋ Thêm vật liệu</button></div>
+    <div class="card"><h3>📐 Khung đơn giá tham khảo theo loại mặt hàng (đ/đơn vị)</h3>
+      <div class="muted small" style="margin-bottom:6px">Dùng để soát báo giá có hợp lý không (cảnh báo khi thấp/cao bất thường).</div>
+      <div id="cfgType"></div><button class="ghost sm" onclick="cfgAddType()">＋ Thêm loại hàng</button></div>
+    <div class="card"><h3>🔧 Mặc định</h3>
+      <div class="row3">
+        <div class="field"><label>% Lợi nhuận mặc định</label><input id="cfgMargin" type="number"></div>
+        <div class="field"><label>% Dao cụ/hao mòn mặc định</label><input id="cfgTool" type="number"></div>
+        <div class="field"><label>% VAT mặc định</label><input id="cfgVat" type="number"></div>
+      </div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="ok" onclick="saveConfig()">💾 Lưu cấu hình</button>
+      <button class="ghost" onclick="resetConfig()">↺ Khôi phục số mẫu</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="dhp_core.js"></script>
+<script>
+/* ============================================================
+   DHP Engineering Advisor — tri thức khớp nối + báo giá gia công
+   ============================================================ */
+const VND = n => (Math.round(+n||0)).toLocaleString('vi-VN') + ' đ';
+const CFG_KEY='dhp_tools_cfg', QUOTE_KEY='dhp_tools_quotes';
+const stars = n => '★'.repeat(Math.max(0,Math.min(5,n))) + '☆'.repeat(5-Math.max(0,Math.min(5,n)));
+
+/* ===================== KNOWLEDGE BASE ===================== */
+/* Mỗi "họ khớp" có: thông số định lượng + điểm sao theo tiêu chí (1-5) +
+   ứng dụng, element, failure mode, khả năng gia công của DHP, % tiết kiệm. */
+const FAMILIES = {
+  jaw:{ key:'jaw', icon:'🟠', name:'Khớp vấu đàn hồi (Jaw / ROTEX)', principle:'Đàn hồi cao su',
+    models:['KTR ROTEX','Lovejoy L','Rathi','TNM','KCP','Tschan'],
+    desc:'Truyền momen qua đệm sao (spider) cao su/PU giữa hai vấu. Giảm chấn tốt, bù lệch vừa, rẻ, thay element nhanh.',
+    torque:[10,5000], rpmMax:14000, misalign:{p:0.4,a:1.0,x:1.4}, temp:[-40,90],
+    spiders:['92 ShA (mềm — giảm chấn nhiều, momen thấp)','98 ShA (tiêu chuẩn)','64 ShD (cứng — momen cao, ít giảm chấn)'],
+    r:{damp:5,shock:4,misalign:3,rpm:3,torqueDensity:2,maintenance:5,price:5,precision:3,temp:2,oil:2,food:3},
+    apps:['Bơm ly tâm','Quạt / blower','Máy nén nhỏ','Băng tải nhẹ','Máy công cụ'],
+    failures:[
+      {m:'Spider (đệm sao) cháy / chảy mềm',c:'Nhiệt độ > 90°C hoặc môi trường nóng'},
+      {m:'Vấu cao su nứt / mòn nhanh',c:'Lệch tâm lớn, quá tải, rung động'},
+      {m:'Spider lão hóa, chai cứng',c:'Tuổi thọ / tia UV ngoài trời / dầu'},
+      {m:'Vỡ vấu, kêu lạch cạch (backlash)',c:'Quá tải sốc / spider mòn không thay'}],
+    machinable:['Hub 2 nửa (theo bore + rãnh then)','Doa bore, phay rãnh then','Cân bằng động','Tôi cao tần mặt vấu'],
+    saving:[40,60] },
+  pinbush:{ key:'pinbush', icon:'🔩', name:'Khớp chốt-bạc (Pin & Bush / N-EUPEX)', principle:'Đàn hồi cao su',
+    models:['Flender N-EUPEX','PTI PF','Bowex','David Brown'],
+    desc:'Hai moayơ nối qua chốt thép + bạc cao su. Rất bền với tải va đập, dễ bảo trì (thay chốt/bạc), hợp ngoài trời.',
+    torque:[30,60000], rpmMax:5000, misalign:{p:0.5,a:0.6,x:2.0}, temp:[-30,100],
+    spiders:['Bạc cao su NBR tiêu chuẩn','Bạc chịu nhiệt (option)'],
+    r:{damp:4,shock:5,misalign:4,rpm:3,torqueDensity:3,maintenance:5,price:4,precision:3,temp:3,oil:3,food:3},
+    apps:['Máy nghiền','Băng tải nặng','Máy nén piston','Máy trộn','Tải va đập ngoài trời'],
+    failures:[
+      {m:'Bạc cao su mòn / rách',c:'Tải va đập liên tục, lệch tâm'},
+      {m:'Chốt cong / gãy',c:'Quá tải đột ngột'},
+      {m:'Mòn lỗ chốt trên hub',c:'Bạc mòn không thay kịp → kim loại chạm kim loại'}],
+    machinable:['Hub / 2 nửa khớp','Chốt thép (tiện + tôi)','Bạc cao su/PU theo cỡ','Doa lỗ chốt, phay rãnh then','Cân bằng động'],
+    saving:[45,65] },
+  tyre:{ key:'tyre', icon:'🛞', name:'Khớp lốp (Tyre / Fenaflex)', principle:'Đàn hồi cao su',
+    models:['Fenner Fenaflex','Dunlop','TB Woods Dura-Flex'],
+    desc:'Vành lốp cao su kẹp giữa hai tang. Bù lệch lớn nhất, giảm chấn rất tốt, không cần bôi trơn, lắp tháo nhanh.',
+    torque:[20,16000], rpmMax:4000, misalign:{p:2.0,a:4.0,x:6.0}, temp:[-40,80],
+    spiders:['Vành lốp F-type (cao su gân)'],
+    r:{damp:5,shock:5,misalign:5,rpm:2,torqueDensity:2,maintenance:5,price:3,precision:2,temp:3,oil:2,food:2},
+    apps:['Bơm / quạt rung nhiều','Máy phát diesel','Băng tải lệch trục','Máy có sốc khởi động'],
+    failures:[
+      {m:'Vành lốp rách / tách lớp',c:'Quá tải xoắn, lệch quá giới hạn'},
+      {m:'Phồng / nứt do dầu',c:'Dính dầu mỡ'},
+      {m:'Lão hóa cao su',c:'Nhiệt / UV / thời gian'}],
+    machinable:['Tang kẹp (taper) 2 nửa','Doa bore + rãnh then','Cân bằng động'],
+    saving:[40,55] },
+  disc:{ key:'disc', icon:'⚪', name:'Khớp đĩa thép (Disc / RADEX-N)', principle:'Màng/đĩa kim loại',
+    models:['KTR RADEX-N','Flender ARPEX','Rexnord Thomas'],
+    desc:'Bộ lá đĩa thép không gỉ truyền momen. Cứng xoắn, không backlash, không bảo trì/bôi trơn, cho tốc độ cao & chính xác.',
+    torque:[50,90000], rpmMax:30000, misalign:{p:0.15,a:0.5,x:1.0}, temp:[-50,280],
+    spiders:['Bộ lá đĩa thép Inox 301/304'],
+    r:{damp:1,shock:1,misalign:2,rpm:5,torqueDensity:4,maintenance:5,price:2,precision:5,temp:5,oil:5,food:4},
+    apps:['Bơm tốc độ cao','Turbine / máy nén ly tâm','Servo / máy CNC','Truyền động chính xác'],
+    failures:[
+      {m:'Nứt mỏi lá đĩa',c:'Lệch tâm vượt giới hạn (đĩa rất nhạy lệch)'},
+      {m:'Cong vênh bộ đĩa',c:'Tải va đập / lắp không đồng tâm'},
+      {m:'Lỏng bu lông đĩa',c:'Rung động, không siết đúng lực'}],
+    machinable:['Moayơ + spacer (tiện/phay/CNC)','Doa bore chính xác','Cân bằng động cấp cao'],
+    saving:[30,45] },
+  gear:{ key:'gear', icon:'⚙️', name:'Khớp răng (Gear / GEARex)', principle:'Khớp răng',
+    models:['KTR GEARex','Flender ZAPEX','Renold'],
+    desc:'Hai moayơ răng ăn khớp vành răng trong. Momen rất lớn trên đường kính nhỏ, bù lệch tốt — nhưng cần bôi trơn.',
+    torque:[100,1000000], rpmMax:6000, misalign:{p:0.3,a:1.5,x:5.0}, temp:[-20,120],
+    spiders:['Vành răng thép + mỡ chịu tải cao'],
+    r:{damp:2,shock:3,misalign:4,rpm:4,torqueDensity:5,maintenance:2,price:3,precision:4,temp:4,oil:3,food:1},
+    apps:['Máy cán thép','Máy nghiền bi','Truyền động tải nặng','Hộp số công nghiệp'],
+    failures:[
+      {m:'Mòn răng / sứt răng',c:'Thiếu mỡ / quá tải / lệch tâm'},
+      {m:'Khô mỡ → nóng, kẹt',c:'Không bảo trì định kỳ'},
+      {m:'Rỗ bề mặt răng (pitting)',c:'Tải cao kéo dài'}],
+    machinable:['Moayơ răng (hớt/lăn răng theo module)','Vỏ răng','Doa bore + rãnh then','Nhiệt luyện răng'],
+    saving:[35,55] },
+  grid:{ key:'grid', icon:'🌀', name:'Khớp lưới lò xo (Grid / Steelflex)', principle:'Lò xo kim loại',
+    models:['Falk Steelflex','TB Woods'],
+    desc:'Lưới thép lò xo luồn qua rãnh hai moayơ. Vừa truyền momen lớn vừa hấp thụ sốc & quá tải đỉnh.',
+    torque:[100,90000], rpmMax:4500, misalign:{p:0.4,a:0.5,x:6.0}, temp:[-30,110],
+    spiders:['Lưới thép lò xo + mỡ'],
+    r:{damp:4,shock:5,misalign:3,rpm:3,torqueDensity:4,maintenance:3,price:3,precision:3,temp:3,oil:3,food:1},
+    apps:['Máy nghiền','Máy ép','Bơm piston','Tải sốc đỉnh cao'],
+    failures:[
+      {m:'Gãy / mỏi lưới lò xo',c:'Quá tải đỉnh lặp lại'},
+      {m:'Mòn rãnh moayơ',c:'Lệch tâm / thiếu mỡ'}],
+    machinable:['Moayơ rãnh (phay rãnh lưới)','Doa bore + rãnh then','Lưới thép thay theo cỡ'],
+    saving:[35,50] },
+  rigid:{ key:'rigid', icon:'🔗', name:'Khớp cứng (Rigid / Flange)', principle:'Nối cứng',
+    models:['Flange coupling','Sleeve/Muff','Bích bắt bu lông'],
+    desc:'Nối cứng tuyệt đối. Truyền 100% momen, định vị chính xác — nhưng KHÔNG bù lệch, đòi hai trục đồng tâm hoàn hảo.',
+    torque:[50,1000000], rpmMax:6000, misalign:{p:0,a:0,x:0}, temp:[-50,400],
+    spiders:['—'],
+    r:{damp:1,shock:1,misalign:1,rpm:4,torqueDensity:5,maintenance:5,price:5,precision:5,temp:5,oil:5,food:4},
+    apps:['Trục nối thẳng đồng tâm','Trục đứng bơm','Nối trục dài có gối đỡ'],
+    failures:[
+      {m:'Hỏng vòng bi 2 đầu',c:'Lệch tâm dù nhỏ → dồn tải lên bạc đạn'},
+      {m:'Gãy bu lông bích',c:'Rung động / quá tải / lệch'}],
+    machinable:['Mặt bích / ống nối (tiện/phay)','Doa bore + rãnh then','Khoan lỗ bu lông theo PCD'],
+    saving:[50,70] },
+  cardan:{ key:'cardan', icon:'✚', name:'Trục các-đăng (Cardan / Universal)', principle:'Chữ thập',
+    models:['ITALGIUNTI','Universal joint','WCC Cardan shaft'],
+    desc:'Truyền momen qua góc lớn và khoảng cách xa nhờ khớp chữ thập + trục trung gian. Dùng nơi hai trục không thẳng hàng.',
+    torque:[100,500000], rpmMax:3000, misalign:{p:50,a:25,x:50}, temp:[-30,120],
+    spiders:['Chữ thập (bi kim) + mỡ'],
+    r:{damp:2,shock:4,misalign:5,rpm:2,torqueDensity:4,maintenance:3,price:3,precision:3,temp:4,oil:3,food:1},
+    apps:['Truyền qua góc lớn','Khoảng cách trục xa','Máy cán / luyện kim','Xe / thiết bị di động'],
+    failures:[
+      {m:'Mòn / vỡ bi kim chữ thập',c:'Thiếu mỡ / góc làm việc quá lớn'},
+      {m:'Dao động tốc độ (nếu 1 khớp)',c:'Bố trí sai pha hai khớp chữ thập'}],
+    machinable:['Nạng (yoke) / mặt bích','Trục trung gian (tiện)','Phục hồi ổ chữ thập','Cân bằng động'],
+    saving:[40,60] },
+  fluid:{ key:'fluid', icon:'💧', name:'Khớp thủy lực (Fluid coupling)', principle:'Thủy lực',
+    models:['Fluid coupling','Voith','Transfluid'],
+    desc:'Truyền momen qua dầu. Khởi động êm, chống quá tải, cách ly rung động khởi động cho máy quán tính lớn.',
+    torque:[100,500000], rpmMax:3000, misalign:{p:0.3,a:0.5,x:1.0}, temp:[-10,90],
+    spiders:['Dầu thủy lực'],
+    r:{damp:5,shock:5,misalign:3,rpm:3,torqueDensity:2,maintenance:2,price:1,precision:2,temp:3,oil:5,food:1},
+    apps:['Băng tải dài quán tính lớn','Máy nghiền khởi động nặng','Quạt lớn','Bơm công suất lớn'],
+    failures:[
+      {m:'Rò dầu',c:'Phớt lão hóa / quá nhiệt'},
+      {m:'Cháy fusible plug (chảy nút an toàn)',c:'Quá tải kéo dài → dầu quá nóng'}],
+    machinable:['Vỏ / cánh bơm (hạn chế)','Moayơ nối','Phục hồi gối đỡ'],
+    saving:[20,35] }
+};
+const FAM_ORDER=['jaw','pinbush','tyre','disc','gear','grid','rigid','cardan','fluid'];
+
+/* Máy được kéo → service factor (motor điện, 8h/ngày) + mức sốc 1..3 */
+const DRIVEN=[
+  {v:'pump_cent',  l:'Bơm ly tâm', sf:1.4, shock:1},
+  {v:'fan',        l:'Quạt / Blower', sf:1.4, shock:1},
+  {v:'conveyor',   l:'Băng tải đều', sf:1.25, shock:1},
+  {v:'generator',  l:'Máy phát điện', sf:1.3, shock:1},
+  {v:'machine_tool',l:'Máy công cụ', sf:1.5, shock:1},
+  {v:'mixer',      l:'Máy trộn (lỏng)', sf:1.5, shock:1},
+  {v:'pump_piston',l:'Bơm piston / màng', sf:1.75, shock:2},
+  {v:'compressor', l:'Máy nén khí piston', sf:1.9, shock:2},
+  {v:'conveyor_h', l:'Băng tải nặng / giật', sf:1.75, shock:2},
+  {v:'extruder',   l:'Máy đùn / ép', sf:1.75, shock:2},
+  {v:'mixer_h',    l:'Máy trộn rắn / nhào', sf:1.9, shock:2},
+  {v:'crusher',    l:'Máy nghiền / đập đá', sf:2.5, shock:3},
+  {v:'mill',       l:'Máy cán / nghiền bi', sf:2.5, shock:3},
+  {v:'hoist',      l:'Cẩu / Tời / Nâng', sf:2.0, shock:3},
+  {v:'other',      l:'Khác (tải đều)', sf:1.5, shock:1}
+];
+
+/* Bảng cỡ KTR ROTEX — momen danh định TKN [Nm] & lỗ hoàn thiện tối đa [mm]
+   TRÍCH TỪ CATALOGUE CHÍNH HÃNG: KTR Drive Technology (ROTEX® Steel), trang "Rated torque".
+   nmax = tốc độ cho phép tối đa theo KTR (tham khảo). */
+const ROTEX_SIZES=[
+  {s:14,  bore:16,  t92:7.5,   t98:12.5,  t64d:16,    nmax:19000},
+  {s:19,  bore:25,  t92:10,    t98:17,    t64d:21,    nmax:14000},
+  {s:24,  bore:35,  t92:35,    t98:60,    t64d:75,    nmax:10600},
+  {s:28,  bore:40,  t92:95,    t98:160,   t64d:200,   nmax:8500},
+  {s:38,  bore:48,  t92:190,   t98:325,   t64d:405,   nmax:7100},
+  {s:42,  bore:55,  t92:265,   t98:450,   t64d:560,   nmax:6000},
+  {s:48,  bore:62,  t92:310,   t98:525,   t64d:655,   nmax:5300},
+  {s:55,  bore:75,  t92:410,   t98:685,   t64d:825,   nmax:4500},
+  {s:65,  bore:80,  t92:625,   t98:940,   t64d:1175,  nmax:4000},
+  {s:75,  bore:95,  t92:1280,  t98:1920,  t64d:2400,  nmax:3350},
+  {s:90,  bore:110, t92:2400,  t98:3600,  t64d:4500,  nmax:2800},
+  {s:100, bore:115, t92:3300,  t98:4950,  t64d:6185,  nmax:2500},
+  {s:110, bore:125, t92:4800,  t98:7200,  t64d:9000,  nmax:2240},
+  {s:125, bore:145, t92:6650,  t98:10000, t64d:12500, nmax:2000},
+  {s:140, bore:160, t92:8550,  t98:12800, t64d:16000, nmax:1800},
+  {s:160, bore:185, t92:12800, t98:19200, t64d:24000, nmax:1600},
+  {s:180, bore:200, t92:18650, t98:28000, t64d:35000, nmax:1500}
+];
+
+/* Vật liệu — tư vấn nâng cao (tensile MPa tham khảo, cost tương đối so C45=1.0) */
+const MAT_ADV={
+  'CT3':     {tensile:380, hard:'—', cost:0.7,  use:'Thép kết cấu rẻ — chi tiết ít chịu lực, tấm cách, gá.'},
+  'C45':     {tensile:700, hard:'≤ HRC 55 (tôi cao tần)', cost:1.0, use:'Phổ thông cho hub/trục chịu lực vừa, dễ gia công.'},
+  '42CrMo4': {tensile:1000,hard:'HRC 35–42 (tôi + ram)', cost:1.22,use:'Thép hợp kim: bền hơn C45 ~35%, cho hub/trục TẢI NẶNG & VA ĐẬP.'},
+  '16MnCr5': {tensile:'lõi dẻo', hard:'HRC 58–62 bề mặt (thấm than)', cost:1.6, use:'Cho RĂNG khớp/bánh răng — vỏ cứng chống mòn, lõi dẻo chống gãy.'},
+  'GG25':    {tensile:250, hard:'~HB 220', cost:1.1, use:'Gang xám: thân khớp / brake drum — giảm rung, chịu mài mòn; giòn, không chịu kéo.'},
+  'SUS304':  {tensile:520, hard:'không tăng cứng', cost:2.7, use:'Inox: chống ăn mòn, thực phẩm/ẩm.'},
+  'SUS316':  {tensile:520, hard:'không tăng cứng', cost:4.0, use:'Inox 316: chống ăn mòn mạnh (hóa chất, biển).'},
+  'Bronze':  {tensile:300, hard:'HB 80–120', cost:3.0, use:'Bạc lót: tự bôi trơn, chịu mài mòn/ăn mòn.'},
+  'Nhôm':    {tensile:300, hard:'—', cost:3.2, use:'Nhẹ — spacer/chi tiết không chịu lực cao.'}
+};
+
+/* ===================== CẤU HÌNH GIÁ ===================== */
+function defaultConfig(){
+  return {
+    proc:[{code:'A',name:'Tiện thường',rate:120000},{code:'B',name:'Phay',rate:150000},{code:'C',name:'Cắt dây (EDM)',rate:180000},
+      {code:'D',name:'Khoan / Doa',rate:100000},{code:'E',name:'Hàn',rate:130000},{code:'F',name:'Mài',rate:160000},
+      {code:'G',name:'CNC (tiện/phay)',rate:250000},{code:'H',name:'Nhiệt luyện (outsource)',rate:0},
+      {code:'I',name:'Sơn / Xử lý bề mặt',rate:80000},{code:'J',name:'Lắp ráp',rate:90000},{code:'K',name:'Đo đạc / QC',rate:80000}],
+    mat:[{name:'CT3',rate:22000},{name:'C45',rate:35000},{name:'42CrMo4',rate:55000},{name:'16MnCr5',rate:60000},
+      {name:'GG25',rate:40000},{name:'SUS304',rate:95000},{name:'SUS316',rate:140000},{name:'Nhôm',rate:110000},{name:'Bronze',rate:280000}],
+    types:[
+      {name:'Khớp cao su bu lông (bộ)',unit:'Bộ',min:1500000,max:5000000,mats:[{name:'C45',kg:6}],ops:[{code:'A',h:4},{code:'B',h:2},{code:'D',h:1},{code:'K',h:1}]},
+      {name:'Khớp đĩa đàn hồi (bộ)',unit:'Bộ',min:3000000,max:14000000,mats:[{name:'C45',kg:10}],ops:[{code:'A',h:6},{code:'B',h:4},{code:'G',h:3},{code:'K',h:1}]},
+      {name:'Khớp răng (bộ)',unit:'Bộ',min:4000000,max:20000000,mats:[{name:'42CrMo4',kg:12}],ops:[{code:'A',h:5},{code:'B',h:6},{code:'F',h:2},{code:'K',h:1}]},
+      {name:'Brake drum (cái)',unit:'Cái',min:2500000,max:9000000,mats:[{name:'GG25',kg:18}],ops:[{code:'A',h:6},{code:'D',h:2},{code:'K',h:1}]},
+      {name:'Hub / Moayơ tiện lại (cái)',unit:'Cái',min:600000,max:3500000,mats:[{name:'C45',kg:4}],ops:[{code:'A',h:3},{code:'B',h:1.5},{code:'K',h:0.5}]},
+      {name:'Trục / Chốt (cái)',unit:'Cái',min:400000,max:4000000,mats:[{name:'C45',kg:3}],ops:[{code:'A',h:2.5},{code:'F',h:1},{code:'K',h:0.5}]},
+      {name:'Bạc lót (cái)',unit:'Cái',min:200000,max:1500000,mats:[{name:'Bronze',kg:1.2}],ops:[{code:'A',h:1.5},{code:'D',h:0.5}]},
+      {name:'Tấm cách / Spacer (cái)',unit:'Cái',min:300000,max:2500000,mats:[{name:'CT3',kg:3}],ops:[{code:'C',h:2},{code:'D',h:1}]},
+      {name:'Chi tiết khác',unit:'Bộ',min:0,max:0,mats:[{name:'C45',kg:5}],ops:[{code:'A',h:3},{code:'B',h:2},{code:'K',h:1}]}
+    ],
+    margin:25, tool:8, vat:0
+  };
+}
+let CFG=loadConfig();
+function loadConfig(){ try{const c=JSON.parse(localStorage.getItem(CFG_KEY)); if(c&&c.proc)return c;}catch(e){} return defaultConfig(); }
+function persistConfig(){ localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); }
+function procRate(c){const p=CFG.proc.find(x=>x.code===c);return p?p.rate:0;}
+function procName(c){const p=CFG.proc.find(x=>x.code===c);return p?p.name:c;}
+function matRate(n){const m=CFG.mat.find(x=>x.name===n);return m?m.rate:0;}
+
+/* ===================== TABS ===================== */
+function goTab(t){
+  ['advisor','kb','cases','quote','saved','config'].forEach(x=>{document.getElementById('tab-'+x).style.display=(x===t?'block':'none');});
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  if(t==='config') renderConfig();
+  if(t==='saved') renderSaved();
+  if(t==='quote') ensureQuoteInit();
+  if(t==='kb') renderCompare();
+  if(t==='cases') renderCases();
+}
+
+/* ===================== ENGINEERING ADVISOR ===================== */
+function loadExample(){
+  inP.value=45; inN.value=1450; inD.value=65; inMis.value=0.4;
+  inDriver.value='motor'; inDriven.value='pump_cent'; inDuty.value='1'; inTemp.value=40;
+  inEnv.value='outdoor'; inCur.value='Rotex 65'; inPrio.value='';
+  doAdvise();
+}
+function critWeights(){
+  // Lấy điều kiện -> trọng số tiêu chí (0..3)
+  const dn=DRIVEN.find(d=>d.v===inDriven.value)||DRIVEN[0];
+  const driver=inDriver.value, env=inEnv.value, prio=inPrio.value;
+  const tempC=parseFloat(inTemp.value); const mis=parseFloat(inMis.value); const n=parseFloat(inN.value);
+  let shock=dn.shock + (driver==='engine'?1:0);
+  const w={damp:1,shock:0,misalign:1,rpm:1,torqueDensity:1,maintenance:1,price:1,precision:0,temp:0,oil:0,food:0};
+  w.shock = shock;                       // tải sốc
+  if(shock>=2) w.damp += 1;
+  if(!isNaN(mis)){ if(mis>0.8) w.misalign+=3; else if(mis>0.4) w.misalign+=2; else if(mis>0.2) w.misalign+=1; }
+  if(!isNaN(n)){ if(n>3000){w.rpm+=3;w.precision+=1;} else if(n>1800) w.rpm+=1; }
+  if(!isNaN(tempC) && tempC>=80) w.temp+=3; else if(!isNaN(tempC)&&tempC>=60) w.temp+=1;
+  if(env==='food'){ w.food+=3; }
+  if(env==='corrosive'){ w.food+=2; }
+  if(env==='oil'){ w.oil+=3; }
+  if(env==='outdoor'){ w.maintenance+=1; }
+  if(prio==='price') w.price+=3;
+  if(prio==='maint') w.maintenance+=3;
+  if(prio==='precision'){ w.precision+=3; w.misalign+=0; }
+  if(prio==='compact') w.torqueDensity+=2;
+  return {w, shock, dn};
+}
+function scoreFamilies(){
+  const {w,shock,dn}=critWeights();
+  const tempC=parseFloat(inTemp.value), env=inEnv.value, mis=parseFloat(inMis.value);
+  const keys=Object.keys(w).filter(k=>w[k]>0);
+  const wsum=keys.reduce((a,k)=>a+w[k],0);
+  return FAM_ORDER.map(fk=>{
+    const f=FAMILIES[fk]; let num=0;
+    keys.forEach(k=>{ num += w[k]*(f.r[k]||0); });
+    let score = wsum? Math.round(num/(wsum*5)*100) : 0;
+    const warns=[];
+    if(!isNaN(tempC) && tempC>f.temp[1]){ score=Math.round(score*0.35); warns.push('Quá nhiệt cho loại này ('+f.temp[1]+'°C max)'); }
+    if(env==='food' && f.r.food<3){ score=Math.round(score*0.6); warns.push('Kém phù hợp vệ sinh/thực phẩm'); }
+    if(env==='corrosive' && f.r.food<3){ score=Math.round(score*0.7); }
+    if(!isNaN(mis) && mis>f.misalign.p){ score=Math.round(score*0.7); warns.push('Sai lệch '+mis+'mm vượt khả năng bù ('+f.misalign.p+'mm)'); }
+    return {fk,f,score,warns};
+  }).sort((a,b)=>b.score-a.score);
+}
+function rotexPick(Tdesign, shaft, n){
+  if(!(Tdesign>0)) return null;
+  for(const r of ROTEX_SIZES){
+    if(shaft && r.bore < shaft) continue;          // bore phải đủ
+    if(n && r.nmax < n) continue;                  // tốc độ
+    let hard=null;
+    if(r.t92>=Tdesign) hard='92 ShA';
+    else if(r.t98>=Tdesign) hard='98 ShA';
+    else if(r.t64d>=Tdesign) hard='64 ShD';
+    if(hard){
+      const tight = shaft && (shaft/r.bore>0.9);
+      return {size:r, hard, tight};
+    }
+  }
+  return {over:true};
+}
+function doAdvise(){
+  const P=parseFloat(inP.value), n=parseFloat(inN.value), shaft=parseFloat(inD.value), mis=parseFloat(inMis.value), tempC=parseFloat(inTemp.value);
+  const env=inEnv.value, cur=inCur.value.trim();
+  const {shock,dn}=critWeights();
+  const snap={P:isNaN(P)?'':P,n:isNaN(n)?'':n,shaft:isNaN(shaft)?'':shaft,mis:isNaN(mis)?'':mis,tempC:isNaN(tempC)?'':tempC,
+    driver:inDriver.value,driven:inDriven.value,drivenL:dn.l,duty:inDuty.value,env,cur,prio:inPrio.value};
+  let html='';
+
+  /* ---- 1. TÍNH TOÁN ---- */
+  let Tn=null,Tdesign=null,sf=null,pick=null;
+  if(P>0 && n>0){
+    Tn = 9550*P/n;
+    sf = dn.sf + (inDuty.value==='1'?0.1:inDuty.value==='2'?0.25:0) + (inDriver.value==='engine'?0.25:0);
+    Tdesign = Tn*sf;
+    pick = rotexPick(Tdesign, shaft, n);
+    let pickTxt;
+    if(!pick) pickTxt='—';
+    else if(pick.over) pickTxt='<span style="color:var(--brand)">Vượt dải ROTEX tiêu chuẩn — cân nhắc khớp răng/đĩa cỡ lớn</span>';
+    else {
+      pickTxt=`<b>ROTEX GS${pick.size.s}</b> · spider <b>${pick.hard}</b> (momen danh định ${VND0(pick.size['t'+(pick.hard==='92 ShA'?'92':pick.hard==='98 ShA'?'98':'64d')])} Nm; bore tối đa Ø${pick.size.bore})`;
+    }
+    html+=`<div class="card"><h3>1️⃣ Tính toán chọn cỡ</h3>
+      <table>
+        <tr><td>Momen danh định T<sub>N</sub> = 9550·P/n</td><td class="num"><b>${Tn.toFixed(0)} Nm</b></td></tr>
+        <tr><td>Hệ số sử dụng SF (${dn.l}${inDriver.value==='engine'?' + động cơ đốt trong':''}${inDuty.value!=='0'?' + giờ chạy dài':''})</td><td class="num"><b>${sf.toFixed(2)}</b></td></tr>
+        <tr style="font-weight:700;color:var(--brand)"><td>Momen thiết kế T<sub>design</sub> = T<sub>N</sub> × SF</td><td class="num">${Tdesign.toFixed(0)} Nm</td></tr>
+        <tr><td>Cỡ khớp vấu (ROTEX) tối thiểu</td><td class="num">${pickTxt}</td></tr>
+      </table>`;
+    if(pick && !pick.over && pick.tight){
+      const idx=ROTEX_SIZES.indexOf(pick.size); const up=ROTEX_SIZES[idx+1];
+      html+=`<div class="alert warn">⚠ Ø trục ${shaft} sát giới hạn lỗ GS${pick.size.s} (Ø${pick.size.bore}). Nên chọn <b>GS${up?up.s:pick.size.s}</b> để có dư an toàn về lỗ &amp; tuổi thọ.</div>`;
+    }
+    // so với khớp đang dùng
+    const m=cur.match(/(\d{2,3})/);
+    if(m && pick && !pick.over){
+      const curSize=+m[1];
+      if(curSize>pick.size.s) html+=`<div class="alert ok">✔ Khớp đang dùng (cỡ ${curSize}) <b>dư tải</b> so với cần thiết (tối thiểu GS${pick.size.s}). Giữ nguyên an toàn, hoặc tối ưu chi phí xuống GS${pick.size.s}.</div>`;
+      else if(curSize===pick.size.s) html+=`<div class="alert ok">✔ Khớp đang dùng (cỡ ${curSize}) <b>vừa đúng</b> yêu cầu.</div>`;
+      else html+=`<div class="alert bad">⛔ Khớp đang dùng (cỡ ${curSize}) <b>NHỎ hơn</b> mức cần (GS${pick.size.s}) — nguy cơ quá tải, nên nâng cỡ.</div>`;
+    }
+    html+=`</div>`;
+  } else {
+    html+=`<div class="alert info">Nhập <b>công suất + tốc độ</b> để app tính momen &amp; chọn cỡ. Bỏ trống thì vẫn xếp hạng loại khớp theo điều kiện.</div>`;
+  }
+
+  /* ---- 2. XẾP HẠNG (recommendation engine) ---- */
+  const ranked=scoreFamilies();
+  const top=ranked[0];
+  html+=`<div class="card"><h3>2️⃣ Xếp hạng loại khớp phù hợp <span class="muted small">(chấm theo điều kiện đã nhập)</span></h3>`;
+  ranked.forEach(r=>{
+    const bad=r.score<35;
+    html+=`<div class="scorerow">
+      <div><b>${r.f.icon} ${shortName(r.fk)}</b></div>
+      <div><div class="rankbar" style="width:${Math.max(2,r.score)}%;${bad?'background:#cbd5e1':''}"></div></div>
+      <div class="num"><b style="color:${bad?'#94a3b8':'var(--brand)'}">${r.score}</b></div>
+    </div>`;
+  });
+  // không nên
+  const avoid=ranked.filter(r=>r.warns.length||r.score<30);
+  if(avoid.length){
+    html+=`<div class="alert warn" style="margin-top:8px"><b>Cân nhắc/không nên:</b><br>`+
+      avoid.map(r=>`• ${shortName(r.fk)}${r.warns.length?' — '+r.warns.join('; '):' — điểm thấp với điều kiện này'}`).join('<br>')+`</div>`;
+  }
+  html+=`</div>`;
+
+  /* ---- Ca tương tự đã lưu ---- */
+  const sims=similarCases(snap);
+  if(sims.length){
+    html+=`<div class="card"><h3>🗂 Ca tương tự DHP đã làm (${sims.length})</h3>`+
+      sims.slice(0,3).map(c=>`<div class="alert info" style="margin-top:6px">
+        <b>${c.cust||'—'}</b> · ${c.snap.drivenL||''} ${c.snap.P?c.snap.P+'kW':''} ${c.snap.n?'/'+c.snap.n+'rpm':''}
+        → khuyến nghị <b>${c.recName}</b>${c.size?' ('+c.size+')':''}. ${c.note?'<i>'+c.note+'</i>':''}
+        <button class="ghost sm" onclick="goTab('cases');renderCases()">xem</button></div>`).join('')+`</div>`;
+  }
+
+  /* ---- 3. KẾT LUẬN "ra nghề" ---- */
+  const f=top.f;
+  const matHub=hubMaterial(shock, Tdesign, env);
+  const sizeTxt=(top.fk==='jaw'&&pick&&!pick.over)?('ROTEX GS'+pick.size.s+' · '+pick.hard):(Tdesign?('≈'+Tdesign.toFixed(0)+' Nm'):'');
+  window.LAST_ADV={snap, recFk:top.fk, recName:shortName(top.fk), score:top.score, size:sizeTxt,
+    matHub:matHub.pri, Tn:Tn?Math.round(Tn):'', sf:sf?sf.toFixed(2):'', Td:Tdesign?Math.round(Tdesign):''};
+  const surf = env==='outdoor'?'Sơn epoxy 2 thành phần / nhuộm đen (chống UV, gỉ)' : env==='food'||env==='corrosive'?'Tẩy thụ động inox (passivation)' : 'Nhuộm đen / phốt phát hóa chống gỉ';
+  html+=`<div class="card"><div class="conc">
+    <div style="font-size:13px;color:var(--muted);font-weight:700">KẾT LUẬN KỸ THUẬT</div>
+    <div style="font-size:20px;font-weight:800;margin:4px 0">${f.icon} Khuyến nghị: ${shortName(top.fk)} <span class="stars">${stars(5)}</span></div>
+    <div class="small"><b>Model tương đương:</b> ${f.models.map(m=>`<span class="chip b">${m}</span>`).join('')}</div>
+    <div style="margin-top:8px"><b>Lý do:</b> ${reasonList(top.fk,shock,env,mis,n).map(x=>`<span class="chip g">✔ ${x}</span>`).join('')}</div>
+    ${(P>0&&n>0&&Tdesign)?`<div style="margin-top:8px"><b>Cỡ:</b> ${(top.fk==='jaw'&&pick&&!pick.over)?`ROTEX GS${pick.size.s} · spider ${pick.hard}`:`chọn theo momen thiết kế ≈ ${Tdesign.toFixed(0)} Nm trong catalogue ${shortName(top.fk)}`}</div>`:''}
+    <div style="margin-top:8px"><b>Vật liệu hub đề xuất:</b> ${matHub.html}</div>
+    <div class="small" style="margin-top:2px"><b>Xử lý bề mặt:</b> ${surf}</div>
+    <details style="margin-top:8px"><summary>⚠ Lỗi thường gặp của loại này &amp; nguyên nhân</summary>
+      <table style="margin-top:6px"><tr><th>Hiện tượng</th><th>Nguyên nhân</th></tr>
+      ${f.failures.map(x=>`<tr><td>${x.m}</td><td class="muted">${x.c}</td></tr>`).join('')}</table></details>
+    <div class="alert ok" style="margin-top:10px"><b>🛠 DHP có thể làm:</b> ${f.machinable.map(x=>`✔ ${x}`).join(' &nbsp; ')}
+      &nbsp;·&nbsp; <b>Reverse engineering / scan 3D / nhiệt luyện / cân bằng động</b>.<br>
+      <b>Ước tính tiết kiệm so với nhập nguyên bộ: ${f.saving[0]}–${f.saving[1]}%</b> (gia công hub theo trục + dùng element tương đương).</div>
+    <div style="margin-top:10px" class="noprint">
+      <button onclick="quoteFromFam('${top.fk}')">💰 Lập báo giá gia công hub này</button>
+      <button class="ok" onclick="saveCase()">💾 Lưu ca tư vấn này</button>
+      <button class="ghost" onclick="goTab('kb');document.getElementById('kbFam').value='${top.fk}';renderDatasheet()">📑 Xem datasheet đầy đủ</button>
+    </div>
+  </div></div>`;
+
+  /* ---- 4. So sánh top 3 ---- */
+  html+=`<div class="card"><h3>4️⃣ So sánh nhanh top lựa chọn</h3><div style="overflow:auto">`+
+    compareTable(ranked.slice(0,4).map(r=>r.fk))+`</div></div>`;
+
+  document.getElementById('advOut').innerHTML=html;
+}
+function VND0(n){ return (Math.round(+n||0)).toLocaleString('vi-VN'); }
+function shortName(fk){ return FAMILIES[fk].name; }
+function reasonList(fk,shock,env,mis,n){
+  const out=[]; const f=FAMILIES[fk];
+  if(shock>=3) out.push('Tải va đập mạnh');
+  else if(shock>=2) out.push('Có tải va đập');
+  else out.push('Tải tương đối đều');
+  if(!isNaN(mis)&&mis>0.4) out.push('Bù lệch tâm tốt');
+  if(!isNaN(n)&&n>3000) out.push('Chịu tốc độ cao');
+  if(env==='outdoor') out.push('Hợp ngoài trời, bảo trì dễ');
+  if(env==='food'||env==='corrosive') out.push('Phù hợp vệ sinh/chống ăn mòn');
+  if(f.r.maintenance>=4) out.push('Ít bảo trì');
+  if(f.r.price>=4) out.push('Chi phí tốt');
+  return out.slice(0,5);
+}
+function hubMaterial(shock, Tdesign, env){
+  let pri,note;
+  if(env==='food'||env==='corrosive'){ pri='SUS304'; }
+  else if((shock>=2) || (Tdesign>800)){ pri='42CrMo4'; }
+  else pri='C45';
+  const d=MAT_ADV[pri];
+  let html=`<b>${pri}</b> — ${d.use} <span class="muted small">(độ cứng: ${d.hard}; chi phí ~×${d.cost} so C45)</span>`;
+  if(pri==='42CrMo4') html+=` <span class="chip g">Bền hơn C45 ~35%, giá +~22% → khuyên dùng cho tải nặng</span>`;
+  if(pri==='C45') html+=` <span class="chip b">Nâng cấp 42CrMo4 nếu cần bền hơn</span>`;
+  return {pri, html};
+}
+function compareTable(keys){
+  const crit=[['price','Giá'],['misalign','Bù lệch'],['shock','Chịu sốc'],['rpm','Tốc độ'],['torqueDensity','Momen/đ.kính'],['maintenance','Ít bảo trì'],['precision','Chính xác']];
+  let h='<table><tr><th>Loại</th>'+crit.map(c=>`<th>${c[1]}</th>`).join('')+'<th>Momen (Nm)</th><th>Nhiệt (°C)</th></tr>';
+  keys.forEach(k=>{ const f=FAMILIES[k];
+    h+=`<tr><td><b>${f.icon} ${f.name.replace(/\s*\(.*\)/,'')}</b></td>`+
+      crit.map(c=>`<td><span class="stars">${stars(f.r[c[0]])}</span></td>`).join('')+
+      `<td class="num small">${f.torque[0]}–${f.torque[1]}</td><td class="num small">${f.temp[0]}…${f.temp[1]}</td></tr>`;
+  });
+  return h+'</table>';
+}
+
+/* ===================== TRA CỨU & SO SÁNH ===================== */
+function initKB(){
+  const sel=document.getElementById('kbFam'); sel.innerHTML='';
+  FAM_ORDER.forEach(k=> sel.add(new Option(FAMILIES[k].icon+' '+FAMILIES[k].name, k)));
+  renderDatasheet(); renderCompare();
+}
+function renderCompare(){ document.getElementById('kbCompare').innerHTML=compareTable(FAM_ORDER); }
+function renderDatasheet(){
+  const k=document.getElementById('kbFam').value; const f=FAMILIES[k]; if(!f){document.getElementById('kbSheet').innerHTML='';return;}
+  document.getElementById('kbSheet').innerHTML=`
+    <div style="font-weight:800;font-size:16px">${f.icon} ${f.name}</div>
+    <div class="muted small" style="margin:2px 0 8px">Nguyên lý: ${f.principle} · ${f.models.map(m=>`<span class="chip b">${m}</span>`).join('')}</div>
+    <div class="small" style="margin-bottom:8px">${f.desc}</div>
+    <div class="row2">
+      <table>
+        <tr><td>Momen</td><td class="num">${f.torque[0]}–${f.torque[1]} Nm</td></tr>
+        <tr><td>Tốc độ tối đa</td><td class="num">${f.rpmMax} rpm</td></tr>
+        <tr><td>Bù lệch (song song / góc / dọc trục)</td><td class="num">${f.misalign.p}mm / ${f.misalign.a}° / ${f.misalign.x}mm</td></tr>
+        <tr><td>Nhiệt độ</td><td class="num">${f.temp[0]} … ${f.temp[1]} °C</td></tr>
+      </table>
+      <table>
+        <tr><td>Giảm chấn</td><td><span class="stars">${stars(f.r.damp)}</span></td></tr>
+        <tr><td>Chịu sốc</td><td><span class="stars">${stars(f.r.shock)}</span></td></tr>
+        <tr><td>Chính xác</td><td><span class="stars">${stars(f.r.precision)}</span></td></tr>
+        <tr><td>Ít bảo trì / Giá</td><td><span class="stars">${stars(f.r.maintenance)}</span> / <span class="stars">${stars(f.r.price)}</span></td></tr>
+      </table>
+    </div>
+    <div class="small" style="margin-top:6px"><b>Element / phần tử đàn hồi:</b> ${f.spiders.join(' · ')}</div>
+    <div class="small" style="margin-top:4px"><b>Ứng dụng điển hình:</b> ${f.apps.map(a=>`<span class="chip w">${a}</span>`).join('')}</div>
+    <details style="margin-top:8px" open><summary>⚠ Failure mode</summary>
+      <table style="margin-top:6px"><tr><th>Hiện tượng</th><th>Nguyên nhân</th></tr>
+      ${f.failures.map(x=>`<tr><td>${x.m}</td><td class="muted">${x.c}</td></tr>`).join('')}</table></details>
+    <div class="alert ok" style="margin-top:8px"><b>🛠 DHP gia công:</b> ${f.machinable.map(x=>`✔ ${x}`).join(' &nbsp; ')}<br><b>Tiết kiệm vs nhập bộ: ${f.saving[0]}–${f.saving[1]}%</b></div>
+    <button style="margin-top:8px" onclick="quoteFromFam('${k}')">💰 Lập báo giá gia công hub này</button>`;
+}
+function renderXref(){
+  const q=(document.getElementById('kbXref').value||'').toLowerCase().trim();
+  const box=document.getElementById('xrefResult');
+  if(!q){ box.innerHTML=''; return; }
+  const hits=FAM_ORDER.filter(k=>{ const f=FAMILIES[k];
+    return f.name.toLowerCase().includes(q) || k.includes(q) || f.models.some(m=>m.toLowerCase().includes(q)); });
+  if(!hits.length){ box.innerHTML='<div class="muted small">Không khớp. Thử: rotex, n-eupex, lovejoy, fenaflex, disc, gear, grid, cardan, ringfeder...</div>'; return; }
+  box.innerHTML=hits.map(k=>{ const f=FAMILIES[k];
+    return `<div class="card" style="margin:0 0 10px;background:#f8fafc">
+      <div style="font-weight:700">${f.icon} ${f.name}</div>
+      <div class="small" style="margin:4px 0"><b>Thay thế lẫn nhau:</b> ${f.models.map(m=>`<span class="chip b">${m}</span>`).join('')}</div>
+      <div class="alert ok" style="margin-top:6px"><b>🛠 Hub-mixing — DHP gia công:</b> ${f.machinable.join(' · ')}.<br><b>Tiết kiệm ${f.saving[0]}–${f.saving[1]}%</b> so với nhập nguyên bộ.</div>
+      <button class="ghost sm" onclick="quoteFromFam('${k}')">💰 Lập báo giá hub này</button>
+      <button class="ghost sm" onclick="document.getElementById('kbFam').value='${k}';renderDatasheet();window.scrollTo(0,document.getElementById('kbSheet').offsetTop)">📑 Datasheet</button>
+    </div>`;
+  }).join('');
+}
+function quoteFromFam(k){
+  goTab('quote');
+  document.getElementById('qName').value='Gia công lại hub — '+FAMILIES[k].name;
+  const idx=CFG.types.findIndex(t=>/hub|moay/i.test(t.name));
+  if(idx>=0){ document.getElementById('qType').value=idx; applyTypeDefaults(); }
+}
+
+/* ===================== BÁO GIÁ ===================== */
+let quoteInited=false;
+function ensureQuoteInit(){
+  if(quoteInited) return;
+  const sel=document.getElementById('qType'); sel.innerHTML=''; CFG.types.forEach((t,i)=>sel.add(new Option(t.name,i)));
+  const tpl=document.getElementById('qTemplate'); tpl.innerHTML='<option value="">— Quy trình mẫu theo loại hàng —</option>';
+  CFG.types.forEach((t,i)=>tpl.add(new Option(t.name,i)));
+  tpl.onchange=()=>{ if(tpl.value!==''){ document.getElementById('qType').value=tpl.value; applyTypeDefaults(); } };
+  if(!document.querySelectorAll('#matLines .matline').length) addMatLine();
+  if(!document.querySelectorAll('#opLines .opline').length) addOpLine();
+  quoteInited=true; quoteRecalc();
+}
+function matOptions(sel){ return CFG.mat.map(m=>`<option ${m.name===sel?'selected':''}>${m.name}</option>`).join(''); }
+function procOptions(sel){ return CFG.proc.map(p=>`<option value="${p.code}" ${p.code===sel?'selected':''}>${p.code} · ${p.name}</option>`).join(''); }
+function addMatLine(name,kg){
+  const d=document.createElement('div'); d.className='matline';
+  d.innerHTML=`<select onchange="matAutoRate(this);quoteRecalc()">${matOptions(name)}</select>
+    <input type="number" step="0.1" placeholder="kg" value="${kg!=null?kg:''}" oninput="quoteRecalc()" title="Khối lượng phôi (kg)">
+    <input type="number" placeholder="đ/kg" value="${matRate(name||(CFG.mat[0]&&CFG.mat[0].name))}" oninput="quoteRecalc()" title="Đơn giá đ/kg">
+    <span class="num small muted" data-cell="sub">0</span>
+    <button class="ghost sm" onclick="this.parentNode.remove();quoteRecalc()">✕</button>`;
+  document.getElementById('matLines').appendChild(d);
+}
+function matAutoRate(s){ s.parentNode.querySelectorAll('input')[1].value=matRate(s.value); }
+function addOpLine(code,h){
+  const d=document.createElement('div'); d.className='opline'; const c=code||(CFG.proc[0]&&CFG.proc[0].code);
+  d.innerHTML=`<select onchange="opAutoRate(this);quoteRecalc()">${procOptions(c)}</select>
+    <input placeholder="CK368 / đối tác" title="Nơi làm">
+    <input type="number" step="0.5" placeholder="giờ" value="${h!=null?h:''}" oninput="quoteRecalc()">
+    <input type="number" placeholder="đ/giờ" value="${procRate(c)}" oninput="quoteRecalc()">
+    <button class="ghost sm" onclick="this.parentNode.remove();quoteRecalc()">✕</button>`;
+  document.getElementById('opLines').appendChild(d);
+}
+function opAutoRate(s){ s.parentNode.querySelectorAll('input')[2].value=procRate(s.value); }
+function applyTypeDefaults(){
+  const i=+document.getElementById('qType').value; const t=CFG.types[i]; if(!t) return;
+  document.getElementById('matLines').innerHTML=''; document.getElementById('opLines').innerHTML='';
+  (t.mats||[]).forEach(m=>addMatLine(m.name,m.kg)); (t.ops||[]).forEach(o=>addOpLine(o.code,o.h));
+  if(t.unit) document.getElementById('qUnit').value=t.unit;
+  if(!document.querySelectorAll('#matLines .matline').length) addMatLine();
+  if(!document.querySelectorAll('#opLines .opline').length) addOpLine();
+  quoteRecalc();
+}
+function readQuote(){
+  const mats=[...document.querySelectorAll('#matLines .matline')].map(l=>{const s=l.querySelector('select'),ins=l.querySelectorAll('input');const kg=+ins[0].value||0,rate=+ins[1].value||0;return{name:s.value,kg,rate,sub:kg*rate};});
+  const ops=[...document.querySelectorAll('#opLines .opline')].map(l=>{const s=l.querySelector('select'),ins=l.querySelectorAll('input');const where=ins[0].value,h=+ins[1].value||0,rate=+ins[2].value||0;return{code:s.value,name:procName(s.value),where,h,rate,sub:h*rate};});
+  const matTotal=mats.reduce((a,b)=>a+b.sub,0), opTotal=ops.reduce((a,b)=>a+b.sub,0);
+  const extra=+document.getElementById('qExtra').value||0, toolPct=+document.getElementById('qTool').value||0, tool=opTotal*toolPct/100;
+  const cost=matTotal+opTotal+tool+extra, margin=+document.getElementById('qMargin').value||0, sell=cost*(1+margin/100);
+  const qty=+document.getElementById('qQty').value||1, vatPct=+document.getElementById('qVat').value||0, subtotal=sell*qty, vat=subtotal*vatPct/100, grand=subtotal+vat;
+  return {mats,ops,matTotal,opTotal,tool,toolPct,extra,cost,margin,sell,qty,vatPct,subtotal,vat,grand};
+}
+function quoteRecalc(){
+  const q=readQuote();
+  [...document.querySelectorAll('#matLines .matline')].forEach((l,i)=>{const c=l.querySelector('[data-cell=sub]');if(c&&q.mats[i])c.textContent=VND(q.mats[i].sub);});
+  const ti=+document.getElementById('qType').value; const t=CFG.types[ti]; let check='';
+  if(t&&t.min>0){
+    if(q.sell<t.min) check=`<div class="alert warn">⚠ Giá bán/đơn vị (${VND(q.sell)}) <b>THẤP</b> hơn khung "${t.name}" (${VND(t.min)}–${VND(t.max)}). Soát lại giờ công/phôi.</div>`;
+    else if(q.sell>t.max) check=`<div class="alert warn">⚠ Giá bán/đơn vị (${VND(q.sell)}) <b>CAO</b> hơn khung (${VND(t.min)}–${VND(t.max)}).</div>`;
+    else check=`<div class="alert ok">✔ Giá bán/đơn vị (${VND(q.sell)}) nằm trong khung (${VND(t.min)}–${VND(t.max)}).</div>`;
+  }
+  document.getElementById('quoteOut').innerHTML=`<table>
+    <tr><td>Tiền vật tư / phôi (× kg)</td><td class="num">${VND(q.matTotal)}</td></tr>
+    <tr><td>Tiền công gia công (× giờ)</td><td class="num">${VND(q.opTotal)}</td></tr>
+    <tr><td>Dao cụ / hao mòn (${q.toolPct}%)</td><td class="num">${VND(q.tool)}</td></tr>
+    <tr><td>Vật tư phụ</td><td class="num">${VND(q.extra)}</td></tr>
+    <tr style="font-weight:700"><td>Giá vốn / đơn vị</td><td class="num">${VND(q.cost)}</td></tr>
+    <tr><td>+ Lợi nhuận (${q.margin}%)</td><td class="num">${VND(q.sell-q.cost)}</td></tr>
+    <tr style="font-weight:700;color:var(--brand)"><td>Đơn giá bán / đơn vị</td><td class="num">${VND(q.sell)}</td></tr>
+    <tr><td>× Số lượng (${q.qty})</td><td class="num">${VND(q.subtotal)}</td></tr>
+    ${q.vatPct?`<tr><td>VAT (${q.vatPct}%)</td><td class="num">${VND(q.vat)}</td></tr>`:''}
+  </table>
+  <div class="kpi" style="margin-top:10px;text-align:center"><div class="small muted">TỔNG BÁO GIÁ</div><div class="big">${VND(q.grand)}</div></div>${check}`;
+}
+function resetQuote(){
+  ['qCust','qName','qNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('qQty').value=1; document.getElementById('qExtra').value=0;
+  document.getElementById('qTool').value=CFG.tool; document.getElementById('qMargin').value=CFG.margin; document.getElementById('qVat').value=CFG.vat;
+  document.getElementById('matLines').innerHTML=''; document.getElementById('opLines').innerHTML=''; addMatLine(); addOpLine(); quoteRecalc();
+}
+function loadQuotes(){ try{return JSON.parse(localStorage.getItem(QUOTE_KEY))||[];}catch(e){return[];} }
+function saveQuotes(a){ localStorage.setItem(QUOTE_KEY,JSON.stringify(a)); }
+function saveQuote(){
+  const q=readQuote();
+  const rec={id:'Q'+Date.now(),date:new Date().toISOString().slice(0,10),cust:qCust.value,name:qName.value,
+    type:(CFG.types[+document.getElementById('qType').value]||{}).name||'',unit:qUnit.value,note:qNote.value,data:q};
+  const a=loadQuotes(); a.unshift(rec); saveQuotes(a); alert('Đã lưu báo giá: '+(rec.name||rec.id)); renderSaved();
+}
+function renderSaved(){
+  const a=loadQuotes(); const box=document.getElementById('savedList');
+  if(!a.length){ box.innerHTML='<div class="muted small">Chưa có báo giá nào.</div>'; return; }
+  box.innerHTML='<table><tr><th>Ngày</th><th>Khách</th><th>Tên hàng</th><th class="num">SL</th><th class="num">Tổng</th><th></th></tr>'+
+    a.map(r=>`<tr><td>${r.date}</td><td>${r.cust||''}</td><td>${r.name||''}</td><td class="num">${r.data.qty}</td><td class="num">${VND(r.data.grand)}</td>
+      <td class="num"><button class="ghost sm" onclick="openQuote('${r.id}')">In</button> <button class="ghost sm" onclick="delQuote('${r.id}')">✕</button></td></tr>`).join('')+'</table>';
+}
+function delQuote(id){ if(!confirm('Xóa báo giá này?'))return; saveQuotes(loadQuotes().filter(r=>r.id!==id)); renderSaved(); }
+function openQuote(id){ const r=loadQuotes().find(x=>x.id===id); if(r) doPrint(r); }
+function printQuote(){ doPrint({date:new Date().toISOString().slice(0,10),cust:qCust.value,name:qName.value,unit:qUnit.value,note:qNote.value,data:readQuote()}); }
+function doPrint(r){
+  const q=r.data;
+  document.getElementById('printArea').innerHTML=`<div style="font-family:'Play',Arial,sans-serif;color:#0f172a">
+    <div style="display:flex;justify-content:space-between;border-bottom:3px solid #b91c1c;padding-bottom:8px">
+      <div><div style="font-size:22px;font-weight:800;color:#b91c1c">ĐẠI HỒNG PHÁT</div><div style="font-size:11px;color:#64748b">Power Transmission Solutions · Xưởng cơ khí CK368</div></div>
+      <div style="text-align:right"><div style="font-size:18px;font-weight:800">BÁO GIÁ GIA CÔNG</div><div style="font-size:12px">Ngày: ${r.date}</div></div></div>
+    <div style="margin:10px 0;font-size:13px"><div><b>Khách hàng:</b> ${r.cust||'..................'}</div><div><b>Tên hàng:</b> ${r.name||''}</div></div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr style="background:#f1f5f9"><th style="text-align:left;padding:6px;border:1px solid #e2e8f0">Khoản mục</th><th style="text-align:right;padding:6px;border:1px solid #e2e8f0">Thành tiền</th></tr>
+      <tr><td style="padding:6px;border:1px solid #e2e8f0">Vật tư / phôi</td><td style="text-align:right;padding:6px;border:1px solid #e2e8f0">${VND(q.matTotal)}</td></tr>
+      <tr><td style="padding:6px;border:1px solid #e2e8f0">Công gia công</td><td style="text-align:right;padding:6px;border:1px solid #e2e8f0">${VND(q.opTotal)}</td></tr>
+      <tr><td style="padding:6px;border:1px solid #e2e8f0">Dao cụ + vật tư phụ</td><td style="text-align:right;padding:6px;border:1px solid #e2e8f0">${VND(q.tool+q.extra)}</td></tr>
+      <tr><td style="padding:6px;border:1px solid #e2e8f0">Đơn giá / ${r.unit||'đơn vị'} (gồm lãi ${q.margin}%)</td><td style="text-align:right;padding:6px;border:1px solid #e2e8f0"><b>${VND(q.sell)}</b></td></tr>
+      <tr><td style="padding:6px;border:1px solid #e2e8f0">Số lượng</td><td style="text-align:right;padding:6px;border:1px solid #e2e8f0">${q.qty} ${r.unit||''}</td></tr>
+      ${q.vatPct?`<tr><td style="padding:6px;border:1px solid #e2e8f0">VAT ${q.vatPct}%</td><td style="text-align:right;padding:6px;border:1px solid #e2e8f0">${VND(q.vat)}</td></tr>`:''}
+      <tr style="background:#fef3c7;font-weight:800"><td style="padding:8px;border:1px solid #e2e8f0">TỔNG CỘNG</td><td style="text-align:right;padding:8px;border:1px solid #e2e8f0">${VND(q.grand)}</td></tr>
+    </table>
+    ${r.note?`<div style="margin-top:8px;font-size:12px"><b>Ghi chú:</b> ${r.note}</div>`:''}
+    <div style="margin-top:24px;display:flex;justify-content:space-between;font-size:12px">
+      <div style="text-align:center">Khách hàng<br><br><br>(Ký, ghi rõ họ tên)</div><div style="text-align:center">Đại Hồng Phát<br><br><br>(Ký, đóng dấu)</div></div></div>`;
+  window.print();
+}
+
+/* ===================== CA THỰC TẾ (CASE LIBRARY) ===================== */
+const CASES_KEY='dhp_tools_cases';
+let CASES=[];
+function loadCasesLocal(){ try{return JSON.parse(localStorage.getItem(CASES_KEY))||[];}catch(e){return[];} }
+function saveCasesLocal(){ localStorage.setItem(CASES_KEY, JSON.stringify(CASES)); }
+function saveCase(){
+  if(!window.LAST_ADV){ alert('Hãy bấm "Phân tích & Tư vấn" trước.'); return; }
+  if(!DHPCore.canEdit()){ if(!confirm('Bạn đang ở chế độ Xem — vẫn lưu ca trên máy này?')) return; }
+  const a=window.LAST_ADV;
+  const cust=prompt('Tên khách hàng / máy / vị trí (để tra lại sau):',''); if(cust===null) return;
+  const note=prompt('Ghi chú kinh nghiệm (tùy chọn): vd "đã làm hub C45, KH hài lòng"','')||'';
+  const rec={ id:'C'+Date.now(), date:new Date().toISOString().slice(0,10), cust:cust.trim(),
+    snap:a.snap, recFk:a.recFk, recName:a.recName, size:a.size, matHub:a.matHub,
+    Tn:a.Tn, sf:a.sf, Td:a.Td, score:a.score, note:note.trim() };
+  CASES.unshift(rec); saveCasesLocal();
+  if(DHPCore.connected()){ DHPCore.upsert('tools_cases', rec).catch(e=>console.warn('case push',e.message)); }
+  alert('Đã lưu ca: '+(rec.cust||rec.id));
+}
+function delCase(id){
+  if(!confirm('Xóa ca này?'))return;
+  CASES=CASES.filter(c=>c.id!==id); saveCasesLocal();
+  if(DHPCore.connected()) DHPCore.remove('tools_cases', id).catch(()=>{});
+  renderCases();
+}
+async function pullCases(alertDone){
+  if(!DHPCore.connected()){ if(alertDone) alert('Chưa kết nối Supabase (mở DHP Manager để cấu hình).'); return; }
+  try{
+    const rows=await DHPCore.list('tools_cases');
+    const map={}; loadCasesLocal().forEach(c=>map[c.id]=c); rows.forEach(c=>{ if(c&&c.id) map[c.id]=c; });
+    CASES=Object.values(map).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    saveCasesLocal(); renderCases();
+    if(alertDone) alert('Đã tải '+rows.length+' ca từ Supabase.');
+  }catch(e){ if(alertDone) alert('Lỗi tải ca: '+e.message+'\n(Cần tạo bảng tools_cases — xem supabase_tools.sql.)'); }
+}
+function similarCases(snap){
+  return CASES.filter(c=>{
+    if(!c.snap) return false;
+    if(c.recFk && c.recFk===window.__lastRecFk) {/*noop*/}
+    const sameDriven = c.snap.driven && snap.driven && c.snap.driven===snap.driven;
+    let pClose=false;
+    if(snap.P && c.snap.P){ const a=+snap.P,b=+c.snap.P; pClose = Math.abs(a-b)/Math.max(a,b) < 0.4; }
+    return sameDriven || pClose;
+  });
+}
+function renderCases(){
+  const box=document.getElementById('casesList'); if(!box) return;
+  const q=(document.getElementById('caseSearch').value||'').toLowerCase().trim();
+  let list=CASES;
+  if(q) list=CASES.filter(c=>JSON.stringify(c).toLowerCase().includes(q));
+  if(!list.length){ box.innerHTML='<div class="muted small">Chưa có ca nào. Vào tab Tư vấn → Phân tích → "💾 Lưu ca tư vấn này".</div>'; return; }
+  box.innerHTML='<table><tr><th>Ngày</th><th>Khách / Máy</th><th>Điều kiện</th><th>Khuyến nghị</th><th>Ghi chú</th><th></th></tr>'+
+    list.map(c=>`<tr>
+      <td class="small">${c.date}</td>
+      <td><b>${c.cust||'—'}</b></td>
+      <td class="small muted">${c.snap.drivenL||''}${c.snap.P?' · '+c.snap.P+'kW':''}${c.snap.n?' / '+c.snap.n+'rpm':''}${c.snap.env&&c.snap.env!=='normal'?' · '+c.snap.env:''}</td>
+      <td class="small">${c.recName||''}${c.size?'<br><span class="muted">'+c.size+'</span>':''}${c.Td?'<br><span class="muted">T_d '+c.Td+' Nm</span>':''}</td>
+      <td class="small">${c.note||''}</td>
+      <td class="num"><button class="ghost sm" onclick="reuseCase('${c.id}')">↗ Dùng lại</button> <button class="ghost sm" onclick="delCase('${c.id}')">✕</button></td>
+    </tr>`).join('')+'</table>';
+}
+function reuseCase(id){
+  const c=CASES.find(x=>x.id===id); if(!c) return; const s=c.snap;
+  goTab('advisor');
+  inP.value=s.P||''; inN.value=s.n||''; inD.value=s.shaft||''; inMis.value=s.mis||''; inTemp.value=s.tempC||'';
+  inDriver.value=s.driver||'motor'; inDriven.value=s.driven||'pump_cent'; inDuty.value=s.duty||'0';
+  inEnv.value=s.env||'normal'; inCur.value=s.cur||''; inPrio.value=s.prio||'';
+  doAdvise();
+}
+
+/* ===================== CẤU HÌNH GIÁ ===================== */
+function renderConfig(){
+  document.getElementById('cfgProc').innerHTML='<table><tr><th>Mã</th><th>Tên công đoạn</th><th class="num">Đ.giá/giờ</th><th></th></tr>'+
+    CFG.proc.map((p,i)=>`<tr><td><input value="${p.code}" style="width:60px" onchange="CFG.proc[${i}].code=this.value"></td>
+      <td><input value="${p.name}" style="width:100%" onchange="CFG.proc[${i}].name=this.value"></td>
+      <td class="num"><input type="number" value="${p.rate}" style="width:120px;text-align:right" onchange="CFG.proc[${i}].rate=+this.value"></td>
+      <td><button class="ghost sm" onclick="CFG.proc.splice(${i},1);renderConfig()">✕</button></td></tr>`).join('')+'</table>';
+  document.getElementById('cfgMat').innerHTML='<table><tr><th>Vật liệu</th><th class="num">Đ.giá/kg</th><th></th></tr>'+
+    CFG.mat.map((m,i)=>`<tr><td><input value="${m.name}" style="width:100%" onchange="CFG.mat[${i}].name=this.value"></td>
+      <td class="num"><input type="number" value="${m.rate}" style="width:120px;text-align:right" onchange="CFG.mat[${i}].rate=+this.value"></td>
+      <td><button class="ghost sm" onclick="CFG.mat.splice(${i},1);renderConfig()">✕</button></td></tr>`).join('')+'</table>';
+  document.getElementById('cfgType').innerHTML='<table><tr><th>Loại hàng</th><th>ĐVT</th><th class="num">Khung min</th><th class="num">Khung max</th><th></th></tr>'+
+    CFG.types.map((t,i)=>`<tr><td><input value="${t.name}" style="width:100%" onchange="CFG.types[${i}].name=this.value"></td>
+      <td><input value="${t.unit||''}" style="width:60px" onchange="CFG.types[${i}].unit=this.value"></td>
+      <td class="num"><input type="number" value="${t.min||0}" style="width:110px;text-align:right" onchange="CFG.types[${i}].min=+this.value"></td>
+      <td class="num"><input type="number" value="${t.max||0}" style="width:110px;text-align:right" onchange="CFG.types[${i}].max=+this.value"></td>
+      <td><button class="ghost sm" onclick="CFG.types.splice(${i},1);renderConfig()">✕</button></td></tr>`).join('')+'</table>';
+  document.getElementById('cfgMargin').value=CFG.margin; document.getElementById('cfgTool').value=CFG.tool; document.getElementById('cfgVat').value=CFG.vat;
+}
+function cfgAddProc(){ CFG.proc.push({code:'X',name:'Mới',rate:0}); renderConfig(); }
+function cfgAddMat(){ CFG.mat.push({name:'Mới',rate:0}); renderConfig(); }
+function cfgAddType(){ CFG.types.push({name:'Loại mới',unit:'Cái',min:0,max:0,mats:[],ops:[]}); renderConfig(); }
+function saveConfig(){
+  if(!DHPCore.canEdit()){ alert('Cần quyền sửa (edit368). Bấm 🔓 Mở khóa sửa.'); return; }
+  CFG.margin=+document.getElementById('cfgMargin').value||0; CFG.tool=+document.getElementById('cfgTool').value||0; CFG.vat=+document.getElementById('cfgVat').value||0;
+  persistConfig(); quoteInited=false; alert('Đã lưu cấu hình giá (trên máy này).');
+}
+function resetConfig(){ if(!confirm('Khôi phục số mẫu? Mất chỉnh sửa hiện tại.'))return; CFG=defaultConfig(); persistConfig(); quoteInited=false; renderConfig(); }
+
+/* ===================== VAI TRÒ / KẾT NỐI ===================== */
+function applyRole(){ const ed=DHPCore.canEdit(); document.getElementById('roleBadge').textContent=ed?'🔓 Sửa':'👁 Xem'; document.getElementById('unlockBtn').style.display=ed?'none':'inline-block'; }
+function doUnlock(){ if(DHPCore.unlockEdit()) applyRole(); }
+function markConn(){ document.getElementById('connBadge').textContent=DHPCore.connected()?'● đã kết nối':'● chưa kết nối (vẫn dùng được, dữ liệu cục bộ)'; }
+
+/* ===================== KHỞI ĐỘNG ===================== */
+function startApp(){
+  try{ DHPCore.connect(); }catch(e){}
+  applyRole(); markConn();
+  document.getElementById('qTool').value=CFG.tool; document.getElementById('qMargin').value=CFG.margin; document.getElementById('qVat').value=CFG.vat;
+  // fill máy được kéo
+  const dn=document.getElementById('inDriven'); DRIVEN.forEach(d=>dn.add(new Option(d.l,d.v)));
+  initKB();
+  CASES=loadCasesLocal();
+  if(DHPCore.connected()) pullCases(false);   // đồng bộ ca dùng chung nếu có Supabase
+}
+function showGate(){
+  const VIEW='dhp368', EDIT='edit368';
+  const g=document.createElement('div'); g.id='toolsGate';
+  g.style.cssText="position:fixed;inset:0;z-index:9999;background:var(--brand);display:flex;align-items:center;justify-content:center";
+  g.innerHTML="<div style='background:#fff;border-radius:16px;padding:28px;width:330px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)'>"+
+    "<h2 style='color:var(--brand);margin:0 0 4px'>DHP Engineering Advisor</h2>"+
+    "<div class='muted small' style='margin-bottom:14px'>Tư vấn &amp; Báo giá — nhập mật khẩu</div>"+
+    "<input id='tgPass' type='password' placeholder='Mật khẩu' style='width:100%;margin-bottom:8px'>"+
+    "<div class='small' style='color:var(--brand);min-height:14px' id='tgErr'></div>"+
+    "<button style='width:100%' id='tgBtn'>Đăng nhập</button>"+
+    "<div class='muted small' style='margin-top:10px'>👁 dhp368 = xem · 🔓 edit368 = sửa</div></div>";
+  document.body.appendChild(g);
+  const go=()=>{ const v=document.getElementById('tgPass').value;
+    if(v===EDIT) localStorage.setItem('dhp_role','editor'); else if(v===VIEW) localStorage.setItem('dhp_role','viewer');
+    else { document.getElementById('tgErr').textContent='Sai mật khẩu.'; return; }
+    localStorage.setItem('dhp_coding_ok','1'); g.remove(); startApp(); };
+  document.getElementById('tgBtn').onclick=go;
+  document.getElementById('tgPass').addEventListener('keydown',e=>{ if(e.key==='Enter')go(); });
+  document.getElementById('tgPass').focus();
+}
+if(localStorage.getItem('dhp_coding_ok')==='1') startApp(); else showGate();
+</script>
+</body>
+</html>

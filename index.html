@@ -634,11 +634,12 @@ const ORDER_STATUSES = [
   {k:'new',          label:'1. Mới nhận đơn',                 en:'1. New order',            color:'var(--st-new)'},
   {k:'planned',      label:'2. Đã lên kế hoạch / phân công',  en:'2. Planned / assigned',   color:'var(--st-planned)'},
   {k:'wait_material',label:'3. Đang chờ phôi / vật tư',       en:'3. Awaiting material',    color:'#CA8A04'},
-  {k:'in_production',label:'4. Đang gia công',                en:'4. In production',        color:'var(--st-prod)'},
-  {k:'qc',           label:'5. Chờ kiểm tra chất lượng (QC)', en:'5. Awaiting QC',          color:'var(--st-qc)'},
-  {k:'done_waiting', label:'6. Hoàn thành — chờ giao',        en:'6. Done — to deliver',    color:'var(--st-wait)'},
-  {k:'delivered',    label:'7. Đã giao — đóng đơn',           en:'7. Delivered — closed',   color:'var(--st-done)'},
-  {k:'hold',         label:'8. Tạm dừng (HOLD)',              en:'8. On hold',              color:'#64748B'},
+  {k:'wait_sample',  label:'4. Chờ chi tiết / mẫu từ KH',     en:'4. Awaiting sample (cust.)',color:'#0891B2'},
+  {k:'in_production',label:'5. Đang gia công',                en:'5. In production',        color:'var(--st-prod)'},
+  {k:'qc',           label:'6. Chờ kiểm tra chất lượng (QC)', en:'6. Awaiting QC',          color:'var(--st-qc)'},
+  {k:'done_waiting', label:'7. Hoàn thành — chờ giao',        en:'7. Done — to deliver',    color:'var(--st-wait)'},
+  {k:'delivered',    label:'8. Đã giao — đóng đơn',           en:'8. Delivered — closed',   color:'var(--st-done)'},
+  {k:'hold',         label:'9. Tạm dừng (HOLD)',              en:'9. On hold',              color:'#64748B'},
 ];
 // Nhãn trạng thái theo ngôn ngữ đang chọn (LANG khai báo ở phần i18n bên dưới)
 function stLabel(st){ return (typeof LANG!=='undefined' && LANG==='en' && st.en) ? st.en : st.label; }

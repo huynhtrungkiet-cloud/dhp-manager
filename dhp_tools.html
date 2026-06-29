@@ -93,6 +93,17 @@
     <button data-tab="config" onclick="goTab('config')">⚙️ Cấu hình giá</button>
   </div>
 
+  <!-- Kết nối Supabase (hiện khi chưa kết nối) -->
+  <div class="card" id="cfgCard" style="display:none;border-color:#fbbf24;background:#fff7ed">
+    <b>🔌 Kết nối Supabase</b> <span class="muted small">— dán <b>cùng URL + anon key</b> như DHP Manager để dùng chung kho “Ca thực tế” trên mọi máy. (Tư vấn &amp; báo giá vẫn chạy tốt dù chưa kết nối — chỉ dữ liệu để cục bộ.)</span>
+    <div class="row2" style="margin-top:8px">
+      <input id="cfgUrl" placeholder="Project URL — https://xxxxx.supabase.co">
+      <input id="cfgKey" placeholder="anon public key — eyJ...">
+    </div>
+    <button class="sm" style="margin-top:8px" onclick="toolsSaveCfg()">💾 Lưu &amp; Kết nối</button>
+    <span class="muted small" style="margin-left:8px">Lấy ở Supabase → Project Settings → API (Project URL &amp; anon public).</span>
+  </div>
+
   <!-- ============ TƯ VẤN KỸ THUẬT ============ -->
   <div id="tab-advisor">
     <div class="card">
@@ -984,7 +995,22 @@ function resetConfig(){ if(!confirm('Khôi phục số mẫu? Mất chỉnh sử
 /* ===================== VAI TRÒ / KẾT NỐI ===================== */
 function applyRole(){ const ed=DHPCore.canEdit(); document.getElementById('roleBadge').textContent=ed?'🔓 Sửa':'👁 Xem'; document.getElementById('unlockBtn').style.display=ed?'none':'inline-block'; }
 function doUnlock(){ if(DHPCore.unlockEdit()) applyRole(); }
-function markConn(){ document.getElementById('connBadge').textContent=DHPCore.connected()?'● đã kết nối':'● chưa kết nối (vẫn dùng được, dữ liệu cục bộ)'; }
+function markConn(){
+  const ok=DHPCore.connected();
+  document.getElementById('connBadge').textContent= ok?'● đã kết nối':'● chưa kết nối (vẫn dùng được, dữ liệu cục bộ)';
+  const card=document.getElementById('cfgCard');
+  if(card){
+    card.style.display= ok?'none':'block';
+    if(!ok){ const c=DHPCore.readCfg(); if(c.url) document.getElementById('cfgUrl').value=c.url; if(c.key) document.getElementById('cfgKey').value=c.key; }
+  }
+}
+function toolsSaveCfg(){
+  const url=document.getElementById('cfgUrl').value.trim(), key=document.getElementById('cfgKey').value.trim();
+  if(!url||!key){ alert('Nhập đủ Project URL và anon key.'); return; }
+  DHPCore.saveCfg(url,key);
+  if(DHPCore.connect()){ markConn(); pullCases(true); }
+  else alert('Không kết nối được — kiểm tra lại URL/key.');
+}
 
 /* ===================== KHỞI ĐỘNG ===================== */
 function startApp(){

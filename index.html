@@ -142,7 +142,7 @@
     <label style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:12px;font-size:11.5px;color:#6b7280;cursor:pointer">
       <input type="checkbox" id="gateRemember" checked> Ghi nhớ trên thiết bị này
     </label>
-    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">👁 Mật khẩu xem: cho mọi người · 🔓 Mật khẩu sửa: chỉ TPKT &amp; điều phối</p>
+    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">4 cấp: 👁 Xem (mọi người) · 👷 Thợ · 🛠 Điều phối/TPKT · 👑 Quản lý/GĐ</p>
   </div>
   <p style="color:rgba(255,255,255,.7);font-size:11px;margin-top:18px">Chỉ dành cho nội bộ Đại Hồng Phát</p>
 </div>
@@ -150,9 +150,18 @@
 /* ===== Cổng mật khẩu (self-contained) =====
    ĐỔI MẬT KHẨU: sửa giá trị APP_PASSCODE bên dưới rồi upload lại index.html.
    Lưu ý: đây là lớp chặn cơ bản cho nội bộ — bảo vệ thật sự nằm ở URL Google Sheets (chìa khóa dữ liệu). */
-// ĐỔI MẬT KHẨU: sửa 2 giá trị này rồi upload lại index.html.
-window.VIEW_PASSCODE = 'dhp368';    // XEM — cho mọi người trong công ty
-window.EDIT_PASSCODE = 'edit368';   // SỬA — chỉ TPKT & điều phối
+// ĐỔI MẬT KHẨU: sửa các giá trị này rồi upload lại index.html.
+window.VIEW_PASSCODE  = 'dhp368';    // 1. XEM — mọi người
+window.WORK_PASSCODE  = 'tho368';    // 2. THỢ — tick công đoạn + nhập đo đạc
+window.EDIT_PASSCODE  = 'edit368';   // 3. ĐIỀU PHỐI/TPKT — sửa đơn, công đoạn, QC
+window.ADMIN_PASSCODE = 'admin368';  // 4. QUẢN LÝ/GĐ — tất cả + cấu hình
+window.roleFromPass = function(v){
+  if(v===window.ADMIN_PASSCODE) return 'admin';
+  if(v===window.EDIT_PASSCODE)  return 'editor';
+  if(v===window.WORK_PASSCODE)  return 'worker';
+  if(v===window.VIEW_PASSCODE)  return 'viewer';
+  return null;
+};
 (function(){
   if(localStorage.getItem('dhp_gate_ok')==='1' || sessionStorage.getItem('dhp_gate_ok')==='1'){
     document.getElementById('gate').style.display='none';
@@ -160,7 +169,7 @@ window.EDIT_PASSCODE = 'edit368';   // SỬA — chỉ TPKT & điều phối
 })();
 function gateCheck(){
   const v = document.getElementById('gatePass').value;
-  const role = (v===window.EDIT_PASSCODE) ? 'editor' : ((v===window.VIEW_PASSCODE) ? 'viewer' : null);
+  const role = window.roleFromPass(v);
   if(role){
     const store = document.getElementById('gateRemember').checked ? localStorage : sessionStorage;
     store.setItem('dhp_gate_ok','1');
@@ -987,21 +996,40 @@ function goTab(name){
 }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
-/* ===== VAI TRÒ: ai cũng XEM · chỉ "editor" (2 người) mới SỬA ===== */
-function getRole(){ return localStorage.getItem('dhp_role') || sessionStorage.getItem('dhp_role') || 'viewer'; }
-function canEdit(){ return getRole()==='editor'; }
-// Chặn thao tác sửa khi đang ở chế độ Chỉ xem — gọi đầu các hàm sửa
+/* ===== VAI TRÒ 4 CẤP: viewer < worker < editor < admin ===== */
+const ROLE_LEVEL = { viewer:0, worker:1, editor:2, admin:3 };
+const ROLE_INFO = {
+  viewer:{badge:'👁 Xem',        name:'Xem'},
+  worker:{badge:'👷 Thợ',        name:'Thợ'},
+  editor:{badge:'🛠 Điều phối',  name:'Điều phối/TPKT'},
+  admin: {badge:'👑 Quản lý',    name:'Quản lý/GĐ'},
+};
+function getRole(){ const r=localStorage.getItem('dhp_role')||sessionStorage.getItem('dhp_role')||'viewer'; return ROLE_LEVEL[r]!=null?r:'viewer'; }
+function roleLevel(){ return ROLE_LEVEL[getRole()]||0; }
+function canWork(){  return roleLevel()>=ROLE_LEVEL.worker; }   // thợ trở lên: tick công đoạn + nhập đo
+function canEdit(){  return roleLevel()>=ROLE_LEVEL.editor; }   // điều phối trở lên: sửa đơn/QC
+function canAdmin(){ return roleLevel()>=ROLE_LEVEL.admin; }    // quản lý: cấu hình
 function requireEdit(){
   if(canEdit()) return true;
-  alert('Bạn đang ở chế độ 👁 CHỈ XEM.\nBấm "🔓 Mở khóa sửa" (góc trên phải) và nhập mật khẩu sửa — chỉ TPKT & điều phối.');
+  alert('⛔ Cần quyền ĐIỀU PHỐI/TPKT trở lên để sửa.\nBấm "🔓 Đổi quyền" (góc trên phải) và nhập mật khẩu.');
+  return false;
+}
+function requireWork(){
+  if(canWork()) return true;
+  alert('⛔ Cần quyền THỢ trở lên.\nBấm "🔓 Đổi quyền" và nhập mật khẩu thợ.');
+  return false;
+}
+function requireAdmin(){
+  if(canAdmin()) return true;
+  alert('⛔ Chỉ QUẢN LÝ/GĐ mới làm được mục này.');
   return false;
 }
 function applyRole(){
-  document.querySelectorAll('.tab').forEach(t=>{ t.style.display=''; }); // mọi người xem hết
-  const rb = document.getElementById('roleBadge');
-  if(rb) rb.textContent = canEdit() ? '🔓 Quản lý' : '👁 Chỉ xem';
-  const ub = document.getElementById('unlockBtn'); if(ub) ub.style.display = canEdit() ? 'none' : '';
-  const kb = document.getElementById('lockEditBtn'); if(kb) kb.style.display = canEdit() ? '' : 'none';
+  document.querySelectorAll('.tab').forEach(t=>{ t.style.display=''; }); // mọi cấp xem hết tab
+  const r=getRole(), info=ROLE_INFO[r]||ROLE_INFO.viewer;
+  const rb = document.getElementById('roleBadge'); if(rb) rb.textContent = info.badge;
+  const ub = document.getElementById('unlockBtn'); if(ub){ ub.style.display=''; ub.textContent='🔓 Đổi quyền'; }
+  const kb = document.getElementById('lockEditBtn'); if(kb) kb.style.display = (roleLevel()>0) ? '' : 'none';
   const sb = document.getElementById('syncNowBtn'); if(sb) sb.style.display = (canEdit() && supaConfigured()) ? '' : 'none';
   renderAll();
 }
@@ -1024,10 +1052,11 @@ async function syncNow(){
   }
 }
 function unlockEdit(){
-  const v = prompt('Nhập MẬT KHẨU SỬA (chỉ TPKT & điều phối):');
+  const v = prompt('Nhập mật khẩu theo cấp quyền:\n• Thợ\n• Điều phối/TPKT\n• Quản lý/GĐ');
   if(v===null) return;
-  if(v===window.EDIT_PASSCODE){ sessionStorage.setItem('dhp_role','editor'); localStorage.setItem('dhp_role','editor'); applyRole(); }
-  else alert('Sai mật khẩu sửa.');
+  const role = window.roleFromPass(v);
+  if(role){ sessionStorage.setItem('dhp_role',role); localStorage.setItem('dhp_role',role); applyRole(); alert('✓ Đã chuyển sang quyền: '+(ROLE_INFO[role]||{}).name); }
+  else alert('Sai mật khẩu.');
 }
 function lockEdit(){ // hạ về chỉ xem (không đăng xuất)
   localStorage.setItem('dhp_role','viewer'); sessionStorage.setItem('dhp_role','viewer'); applyRole();
@@ -3623,7 +3652,7 @@ function findStageForAssign(a){
   return st ? {order:o, host, stage:st} : {order:o, host, stage:null};
 }
 function workerSetStage(assignId, newStatus){
-  if(!requireEdit()) return;
+  if(!requireWork()) return;   // THỢ trở lên được tick công đoạn
   const a = (DATA.assignments||[]).find(x=>x && x.id===assignId); if(!a) return;
   const f = findStageForAssign(a);
   if(!f || !f.stage){ alert('Không tìm thấy công đoạn (đơn có thể đã đổi). Báo quản đốc.'); return; }

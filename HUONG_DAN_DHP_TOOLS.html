@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn DHP Engineering Advisor — Tư vấn &amp; Báo giá</title>
+<style>
+  :root{--brand:#b91c1c;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#fff7ed;--ok:#16a34a}
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;margin:0;background:#f1f5f9;color:var(--ink);line-height:1.55}
+  .wrap{max-width:880px;margin:0 auto;padding:0 16px 60px}
+  header{background:var(--brand);color:#fff;padding:22px 16px;margin-bottom:18px}
+  header .in{max-width:880px;margin:0 auto}
+  header h1{margin:0;font-size:22px} header .sub{opacity:.9;font-size:13px;margin-top:3px}
+  h2{font-size:18px;border-bottom:2px solid var(--line);padding-bottom:6px;margin:30px 0 12px}
+  h3{font-size:15px;margin:18px 0 6px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  code,.mono{font-family:ui-monospace,Consolas,monospace;background:#f1f5f9;padding:1px 6px;border-radius:5px;font-weight:700;color:#0EA5E9}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f8fafc;font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:#475569}
+  ol li,ul li{margin:5px 0}
+  .step{background:var(--soft);border:1px solid #fdba74;border-radius:10px;padding:12px 14px;margin:10px 0}
+  .step b{color:var(--brand)}
+  .tip{background:#ecfeff;border-left:4px solid #06b6d4;padding:10px 14px;border-radius:8px;margin:10px 0}
+  .warn{background:#fef2f2;border-left:4px solid var(--brand);padding:10px 14px;border-radius:8px;margin:10px 0}
+  .ok{background:#f0fdf4;border-left:4px solid var(--ok);padding:10px 14px;border-radius:8px;margin:10px 0}
+  .pill{display:inline-block;background:#eef2ff;color:#4338ca;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700}
+  .lock{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700}
+  .toc a{color:#0EA5E9;text-decoration:none}
+  .btn{display:inline-block;background:var(--brand);color:#fff;border-radius:8px;padding:8px 14px;font-weight:700;text-decoration:none;margin-top:8px}
+  @media print{header{-webkit-print-color-adjust:exact;print-color-adjust:exact} .noprint{display:none}}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>Hướng dẫn sử dụng — DHP Engineering Advisor</h1>
+  <div class="sub">Tư vấn kỹ thuật khớp nối · Chọn cỡ · Vật liệu · Báo giá gia công · Hub-mixing</div>
+</div></header>
+
+<div class="wrap">
+
+<div class="card">
+  <b>App này để làm gì?</b>
+  <ul>
+    <li><b>Tư vấn chọn / thay khớp nối</b> như một kỹ sư: nhập thông số máy → app tính momen, chọn cỡ, gợi ý loại khớp, vật liệu, lỗi thường gặp.</li>
+    <li><b>Hub-mixing</b>: tìm cơ hội <b>gia công lại hub theo trục khách</b> thay vì nhập nguyên bộ — thế mạnh của xưởng, tiết kiệm 40–65%.</li>
+    <li><b>Báo giá gia công</b> nhanh, có cơ sở (vật tư + công đoạn + soát khung giá), in ra mẫu báo giá có tiêu đề DHP.</li>
+    <li><b>Lưu lại ca thực tế</b> để thành kho tri thức của DHP, dùng chung mọi máy.</li>
+  </ul>
+  <div class="noprint"><a class="btn" href="dhp_tools.html">↩ Mở app DHP Engineering Advisor</a></div>
+</div>
+
+<div class="card toc">
+  <b>Mục lục</b>
+  <ol>
+    <li><a href="#dn">Đăng nhập &amp; phân quyền</a></li>
+    <li><a href="#kn">Kết nối server (1 lần / máy)</a></li>
+    <li><a href="#tv">Tab Tư vấn kỹ thuật — cách dùng</a></li>
+    <li><a href="#tc">Tab Tra cứu &amp; So sánh</a></li>
+    <li><a href="#ca">Tab Ca thực tế</a></li>
+    <li><a href="#bg">Tab Báo giá gia công</a></li>
+    <li><a href="#cg">Tab Cấu hình giá</a></li>
+    <li><a href="#mk">Đổi mật khẩu khi thay nhân sự</a></li>
+    <li><a href="#sc">Xử lý sự cố</a></li>
+  </ol>
+</div>
+
+<h2 id="dn">1. Đăng nhập &amp; phân quyền</h2>
+<div class="card">
+  <table>
+    <tr><th>Mật khẩu</th><th>Quyền</th><th>Thấy được gì</th></tr>
+    <tr><td><code>dhp368</code></td><td><span class="pill">👁 Xem</span></td><td>Chỉ <b>Tư vấn kỹ thuật</b> + <b>Tra cứu &amp; So sánh</b>. Dành cho thợ / kinh doanh tra cứu.</td></tr>
+    <tr><td><code>edit368</code></td><td><span class="pill">🔓 Quản lý</span></td><td>Mở thêm <b>Ca thực tế · Báo giá gia công · Báo giá đã lưu · Cấu hình giá</b>.</td></tr>
+  </table>
+  <div class="tip">4 tab có dấu <span class="lock">🔒</span> và bị làm mờ là phần <b>chỉ quyền sửa</b>. Bấm vào sẽ hỏi mật khẩu <code>edit368</code>. Nhập đúng 1 lần là mở hết trong phiên.</div>
+  <p class="small">Đang ở chế độ Xem mà cần tính giá → bấm <b>🔓 Mở khóa sửa</b> ở góc trên phải, nhập <code>edit368</code>.</p>
+</div>
+
+<h2 id="kn">2. Kết nối server (làm 1 lần trên mỗi máy)</h2>
+<div class="card">
+  <p>Phần <b>Ca thực tế</b> dùng chung mọi máy thông qua server (Supabase). Lần đầu mở app trên một máy, nếu thấy thẻ vàng <b>“🔌 Kết nối Supabase”</b>:</p>
+  <div class="step"><b>Bước 1.</b> Dán <b>Project URL</b> và <b>anon key</b> (giống hệt như đã dán trong DHP Manager).</div>
+  <div class="step"><b>Bước 2.</b> Bấm <b>💾 Lưu &amp; Kết nối</b>. Badge đổi thành <b>“● đã kết nối”</b> là xong, máy này nhớ luôn lần sau.</div>
+  <div class="tip">Lấy URL + key ở: trang quản trị Supabase → <b>Project Settings → API</b> (mục <i>Project URL</i> và <i>anon public</i>).</div>
+  <div class="ok">Không kết nối cũng <b>vẫn dùng được</b> Tư vấn + Báo giá — chỉ là Ca thực tế để riêng trên máy đó, không chia sẻ.</div>
+</div>
+
+<h2 id="tv">3. Tab “Tư vấn kỹ thuật” — trái tim của app</h2>
+<div class="card">
+  <h3>a) Nhập điều kiện làm việc</h3>
+  <table>
+    <tr><th>Ô</th><th>Nhập gì</th></tr>
+    <tr><td>Công suất P (kW)</td><td>Công suất động cơ. VD động cơ 45 kW.</td></tr>
+    <tr><td>Tốc độ n (rpm)</td><td>Số vòng/phút. VD 1450.</td></tr>
+    <tr><td>Đường kính trục Ø (mm)</td><td>Đường kính trục lắp khớp. VD 65.</td></tr>
+    <tr><td>Sai lệch tâm (mm)</td><td>Độ lệch tâm ước tính giữa 2 trục. Không biết thì để trống.</td></tr>
+    <tr><td>Máy kéo / Máy được kéo</td><td>Chọn loại — app tự suy <b>hệ số sử dụng (service factor)</b> và mức tải va đập.</td></tr>
+    <tr><td>Giờ/ngày · Nhiệt độ · Môi trường</td><td>Càng đủ, tư vấn càng sát (ngoài trời, thực phẩm, ăn mòn…).</td></tr>
+    <tr><td>Khớp đang dùng</td><td>VD “Rotex 65” — app sẽ so sánh đủ/thiếu/dư tải.</td></tr>
+  </table>
+  <p>Chưa quen thì bấm <b>“↳ Nạp ví dụ”</b> để xem mẫu, rồi bấm <b>🔎 Phân tích &amp; Tư vấn</b>.</p>
+
+  <h3>b) Đọc kết quả</h3>
+  <ul>
+    <li><b>1️⃣ Tính toán chọn cỡ:</b> momen danh định T<sub>N</sub>, hệ số SF, momen thiết kế T<sub>design</sub>, và <b>cỡ khớp ROTEX tối thiểu</b> + độ cứng spider. Có cảnh báo nếu trục sát giới hạn lỗ, và so với khớp đang dùng.</li>
+    <li><b>🗂 Ca tương tự:</b> nếu DHP từng làm ca giống → hiện ngay để tham khảo kinh nghiệm.</li>
+    <li><b>2️⃣ Xếp hạng:</b> chấm điểm 0–100 từng loại khớp theo điều kiện. Loại nào không nên dùng cũng nêu rõ.</li>
+    <li><b>Kết luận:</b> loại khuyến nghị + lý do + cỡ/spider + <b>vật liệu hub</b> + xử lý bề mặt + <b>lỗi thường gặp</b> + <b>DHP gia công được gì + ước tính tiết kiệm</b>.</li>
+    <li><b>4️⃣ So sánh:</b> bảng sao các lựa chọn (giá / bù lệch / chịu sốc / tốc độ / chính xác…).</li>
+  </ul>
+  <div class="tip">Từ kết luận: bấm <b>💰 Lập báo giá</b> để chuyển thẳng số liệu sang báo giá, hoặc <b>💾 Lưu ca</b> để cất vào kho tri thức.</div>
+</div>
+
+<h2 id="tc">4. Tab “Tra cứu &amp; So sánh”</h2>
+<div class="card">
+  <ul>
+    <li><b>Tra khớp đang có:</b> gõ tên (rotex, n-eupex, lovejoy, fenaflex, disc, gear, ringfeder…) → ra nhóm tương đương + <b>hướng gia công hub-mixing</b>.</li>
+    <li><b>Datasheet:</b> chọn loại khớp → xem thông số đầy đủ (momen, tốc độ, bù lệch, nhiệt, ứng dụng, lỗi, gia công).</li>
+    <li><b>Bảng so sánh nhanh:</b> tất cả loại khớp chấm sao cạnh nhau.</li>
+  </ul>
+</div>
+
+<h2 id="ca">5. Tab “Ca thực tế” <span class="lock">🔒 edit368</span></h2>
+<div class="card">
+  <p>Kho ca tư vấn đã làm — <b>tài sản tri thức của DHP, dày lên theo thời gian</b>.</p>
+  <ul>
+    <li>Mỗi lần phân tích xong, bấm <b>💾 Lưu ca</b> (nhập tên khách/máy + ghi chú kinh nghiệm).</li>
+    <li>Đã kết nối server → ca <b>chia sẻ chung mọi máy</b>; bấm <b>⟲ Tải ca từ Supabase</b> để đồng bộ.</li>
+    <li><b>↗ Dùng lại</b>: nạp lại đúng thông số ca cũ để phân tích/đối chiếu.</li>
+  </ul>
+</div>
+
+<h2 id="bg">6. Tab “Báo giá gia công” <span class="lock">🔒 edit368</span></h2>
+<div class="card">
+  <p>Tính giá kết hợp 3 cách: <b>vật tư theo kg</b> + <b>công đoạn theo giờ</b> + <b>soát khung giá loại hàng</b>.</p>
+  <ol>
+    <li>Chọn <b>loại mặt hàng</b> → bấm <b>↧ Nạp gợi ý</b> để có sẵn vật tư + công đoạn mẫu.</li>
+    <li>Sửa <b>kg phôi</b> và <b>số giờ</b> từng công đoạn cho đúng (đơn giá tự điền theo Cấu hình giá).</li>
+    <li>Thêm vật tư phụ, % dao cụ, % lợi nhuận, VAT nếu cần.</li>
+    <li>Xem <b>Tổng báo giá</b> + cảnh báo nếu giá lệch khung tham khảo.</li>
+    <li><b>💾 Lưu báo giá</b> hoặc <b>🖨 In / xuất PDF</b> (ra mẫu có tiêu đề DHP, ô ký).</li>
+  </ol>
+</div>
+
+<h2 id="cg">7. Tab “Cấu hình giá” <span class="lock">🔒 edit368</span></h2>
+<div class="card">
+  <p>Nơi đặt <b>đơn giá thật của DHP</b>: đ/giờ từng máy (tiện, phay, CNC…), đ/kg vật liệu, khung giá tham khảo từng loại hàng, % lãi/dao cụ/VAT mặc định.</p>
+  <div class="warn">Số ban đầu là <b>giá mẫu thị trường</b> — phải chỉnh đúng giá DHP rồi bấm <b>💾 Lưu cấu hình</b>. Lưu trên máy đang dùng.</div>
+</div>
+
+<h2 id="mk">8. Đổi mật khẩu khi thay nhân sự (bảo mật)</h2>
+<div class="card">
+  <p>Hiện tại 2 mật khẩu <code>dhp368</code> (xem) và <code>edit368</code> (sửa) <b>dùng chung cho cả 3 app</b> (Manager · Coding · Tools).</p>
+  <div class="step"><b>Khi có người nghỉ / đổi nhân sự</b>, nên đổi mật khẩu để chặn truy cập cũ:
+    <ol>
+      <li>Báo người quản trị (hoặc nhờ Claude) đổi 2 mật khẩu trong file mã <code>dhp_core.js</code> (biến <code>VIEW_PASSCODE</code>, <code>EDIT_PASSCODE</code>) và trong cổng đăng nhập của từng app.</li>
+      <li>Upload lại các file lên GitHub → mọi người đăng nhập lại bằng mật khẩu mới.</li>
+    </ol>
+  </div>
+  <div class="tip">Muốn <b>mỗi người một mật khẩu riêng</b> hoặc <b>nhiều cấp quyền</b> (vd quản đốc, kinh doanh, thợ) thì cần nâng cấp cơ chế đăng nhập — báo để dựng thêm. Hiện đủ dùng với 2 cấp xem/sửa.</div>
+  <div class="warn">Bảo mật dữ liệu thật dựa vào <b>URL + anon key Supabase</b> (không nằm công khai, mỗi máy tự dán). Đổi nhân sự nhạy cảm thì có thể tạo key mới trong Supabase.</div>
+</div>
+
+<h2 id="sc">9. Xử lý sự cố nhanh</h2>
+<div class="card">
+  <table>
+    <tr><th>Hiện tượng</th><th>Cách xử lý</th></tr>
+    <tr><td>Badge “● chưa kết nối”</td><td>Dán URL + anon key vào thẻ “🔌 Kết nối Supabase” (mục 2).</td></tr>
+    <tr><td>“Tải 0 ca”</td><td>Bình thường nếu chưa lưu ca nào. Lưu 1 ca rồi tải lại để kiểm tra.</td></tr>
+    <tr><td>Lỗi khi tải ca (cần bảng)</td><td>Người quản trị chạy file <code>supabase_tools.sql</code> trong Supabase → SQL Editor (1 lần).</td></tr>
+    <tr><td>Tab bị mờ, bấm không vào</td><td>Đó là tab khóa — nhập <code>edit368</code> để mở.</td></tr>
+    <tr><td>App vẫn bản cũ sau khi cập nhật</td><td>Tải lại trang bằng <b>Ctrl + Shift + R</b>.</td></tr>
+  </table>
+</div>
+
+<div class="warn">
+  <b>Lưu ý kỹ thuật:</b> bảng cỡ <b>ROTEX lấy từ catalogue KTR chính hãng</b> (dùng cho họ khớp vấu: ROTEX/Lovejoy/TNM/Rathi). Các họ khác (N-EUPEX, đĩa, răng…) hiện gợi ý theo momen — <b>luôn đối chiếu catalogue chính hãng &amp; bản vẽ trước khi chốt đơn</b>. App là công cụ hỗ trợ quyết định, không thay kỹ sư phê duyệt.
+</div>
+
+<p class="small" style="text-align:center;color:#94a3b8;margin-top:30px">Đại Hồng Phát — Power Transmission Solutions · Tài liệu nội bộ</p>
+</div>
+</body>
+</html>

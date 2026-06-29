@@ -19,6 +19,8 @@
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .tabs button{background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}
   .tabs button.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .tabs button.locked{opacity:.5}
+  .tabs button.locked::before{content:'🔒 '}
   .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
   .card h3{margin:0 0 10px;font-size:15px}
   input,select,button,textarea{font-family:inherit;font-size:14px}
@@ -78,6 +80,7 @@
     <span class="pill" id="roleBadge">👁 Xem</span>
     <span class="pill" id="connBadge">● chưa kết nối</span>
     <button class="ghost sm" id="unlockBtn" onclick="doUnlock()">🔓 Mở khóa sửa</button>
+    <a class="ghost sm" href="HUONG_DAN_DHP_TOOLS.html" target="_blank" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">❓ Hướng dẫn</a>
     <a class="ghost sm" href="index.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">↩ DHP Manager</a>
     <a class="ghost sm" href="dhp_coding.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">🏷 Coding</a>
   </div>
@@ -496,7 +499,13 @@ function procName(c){const p=CFG.proc.find(x=>x.code===c);return p?p.name:c;}
 function matRate(n){const m=CFG.mat.find(x=>x.name===n);return m?m.rate:0;}
 
 /* ===================== TABS ===================== */
+const LOCKED_TABS=['cases','quote','saved','config'];   // chỉ quyền SỬA (edit368) mới vào
 function goTab(t){
+  if(LOCKED_TABS.includes(t) && !DHPCore.canEdit()){
+    alert('🔒 Mục "tính giá / báo giá / ca thực tế" chỉ dành cho quyền SỬA.\nBấm OK rồi nhập mật khẩu edit368.');
+    if(!DHPCore.unlockEdit()) return;   // nhập sai/hủy → ở lại
+    applyRole();
+  }
   ['advisor','kb','cases','quote','saved','config'].forEach(x=>{document.getElementById('tab-'+x).style.display=(x===t?'block':'none');});
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
   if(t==='config') renderConfig();
@@ -993,7 +1002,14 @@ function saveConfig(){
 function resetConfig(){ if(!confirm('Khôi phục số mẫu? Mất chỉnh sửa hiện tại.'))return; CFG=defaultConfig(); persistConfig(); quoteInited=false; renderConfig(); }
 
 /* ===================== VAI TRÒ / KẾT NỐI ===================== */
-function applyRole(){ const ed=DHPCore.canEdit(); document.getElementById('roleBadge').textContent=ed?'🔓 Sửa':'👁 Xem'; document.getElementById('unlockBtn').style.display=ed?'none':'inline-block'; }
+function applyRole(){
+  const ed=DHPCore.canEdit();
+  document.getElementById('roleBadge').textContent=ed?'🔓 Sửa':'👁 Xem';
+  document.getElementById('unlockBtn').style.display=ed?'none':'inline-block';
+  document.querySelectorAll('.tabs button').forEach(b=>{ if(LOCKED_TABS.includes(b.dataset.tab)) b.classList.toggle('locked', !ed); });
+  // người chỉ xem đang đứng ở tab bị khóa → đưa về Tư vấn
+  if(!ed){ const cur=document.querySelector('.tabs button.active'); if(cur && LOCKED_TABS.includes(cur.dataset.tab)) goTab('advisor'); }
+}
 function doUnlock(){ if(DHPCore.unlockEdit()) applyRole(); }
 function markConn(){
   const ok=DHPCore.connected();

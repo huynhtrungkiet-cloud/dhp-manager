@@ -61,6 +61,27 @@
   .scorerow{display:grid;grid-template-columns:160px 1fr 54px;gap:8px;align-items:center;margin-bottom:6px}
   .conc{border:2px solid var(--brand);border-radius:14px;padding:16px;background:linear-gradient(180deg,#fff,#fff7ed)}
   details summary{cursor:pointer;font-weight:700;padding:6px 0}
+  /* Portal / Trung tâm */
+  .suggest{background:linear-gradient(135deg,#7c3aed,#b91c1c);color:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
+  .suggest textarea{width:100%;border:0;border-radius:8px;padding:10px;color:var(--ink);font-size:14px}
+  .toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+  .tool{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;cursor:pointer;transition:.12s;position:relative;display:flex;flex-direction:column;gap:3px;min-height:96px}
+  .tool:hover{box-shadow:0 4px 14px rgba(0,0,0,.1);transform:translateY(-1px);border-color:#cbd5e1}
+  .tool .ic{font-size:22px}
+  .tool .nm{font-weight:700;font-size:14px;line-height:1.2}
+  .tool .ds{font-size:11.5px;color:var(--muted);line-height:1.35}
+  .tool .tg{margin-top:auto;padding-top:4px}
+  .tool .tg span{font-size:10px;background:#f1f5f9;color:#475569;border-radius:5px;padding:1px 6px;margin-right:3px;display:inline-block;margin-top:2px}
+  .stt{position:absolute;top:8px;right:8px;font-size:9px;font-weight:800;border-radius:5px;padding:2px 6px;letter-spacing:.4px}
+  .stt.READY{background:#dcfce7;color:#166534}
+  .stt.ONLINE{background:#dbeafe;color:#1e40af}
+  .stt.NEW{background:#ffedd5;color:#9a3412}
+  .stt.SOON{background:#f1f5f9;color:#94a3b8}
+  .catttl{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-weight:800;font-size:15px}
+  .catttl .cnt{font-size:11px;color:var(--muted);font-weight:600}
+  .drawer-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;z-index:60;align-items:center;justify-content:center;padding:20px}
+  .drawer-bg.show{display:flex}
+  .drawer{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:86vh;overflow:auto;padding:18px}
   @media(max-width:640px){ .row2,.row3,.row4{grid-template-columns:1fr} .opline,.matline{grid-template-columns:1fr 1fr} .scorerow{grid-template-columns:110px 1fr 44px} }
   #printArea{display:none}
   @media print{
@@ -75,7 +96,7 @@
 
 <div class="topbar">
   <img src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}">
-  <div><h1>DHP Engineering Advisor</h1><div class="sub">Tư vấn kỹ thuật khớp nối · Chọn cỡ · Vật liệu · Báo giá gia công · Hub-mixing</div></div>
+  <div><h1>DHP Engineering Portal</h1><div class="sub">Trung tâm công cụ kỹ thuật · Tư vấn · Báo giá · Hub-mixing &nbsp;·&nbsp; <span style="opacity:.8">Build 2026-06-30</span></div></div>
   <div class="right">
     <span class="pill" id="roleBadge">👁 Xem</span>
     <span class="pill" id="connBadge">● chưa kết nối</span>
@@ -88,7 +109,8 @@
 
 <div class="wrap">
   <div class="tabs">
-    <button class="active" data-tab="advisor" onclick="goTab('advisor')">🧭 Tư vấn kỹ thuật</button>
+    <button class="active" data-tab="portal" onclick="goTab('portal')">🏠 Trung tâm</button>
+    <button data-tab="advisor" onclick="goTab('advisor')">🧭 Tư vấn kỹ thuật</button>
     <button data-tab="kb" onclick="goTab('kb')">📚 Tra cứu &amp; So sánh</button>
     <button data-tab="cases" onclick="goTab('cases')">🗂 Ca thực tế</button>
     <button data-tab="quote" onclick="goTab('quote')">💰 Báo giá gia công</button>
@@ -107,8 +129,23 @@
     <span class="muted small" style="margin-left:8px">Lấy ở Supabase → Project Settings → API (Project URL &amp; anon public).</span>
   </div>
 
+  <!-- ============ TRUNG TÂM (PORTAL) ============ -->
+  <div id="tab-portal">
+    <div class="suggest">
+      <div style="font-weight:800;font-size:15px">🤖 Không biết dùng công cụ nào?</div>
+      <div class="small" style="opacity:.92;margin:4px 0 8px">Mô tả bài toán của bạn — DHP gợi ý công cụ phù hợp.</div>
+      <textarea id="aiAsk" rows="2" placeholder="VD: Tính trục Ø40 truyền 5kW · Chọn khớp cho bơm 30kW · Báo giá tiện hub..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();suggestTools()}"></textarea>
+      <button class="ghost" style="margin-top:8px;background:#fff" onclick="suggestTools()">✨ Gợi ý công cụ</button>
+      <div id="aiResult" style="margin-top:8px"></div>
+    </div>
+    <div class="card" style="padding:8px">
+      <input id="toolSearch" placeholder="🔎 Tìm công cụ... (vd: bu lông, vòng bi, khớp, báo giá, dung sai)" style="width:100%;font-size:15px;padding:11px;border:0" oninput="renderPortal()">
+    </div>
+    <div id="portalGrid"></div>
+  </div>
+
   <!-- ============ TƯ VẤN KỸ THUẬT ============ -->
-  <div id="tab-advisor">
+  <div id="tab-advisor" style="display:none">
     <div class="card">
       <h3>🧭 Nhập điều kiện làm việc — app sẽ tư vấn như một kỹ sư</h3>
       <div class="row4">
@@ -292,6 +329,11 @@
       <button style="flex:1" onclick="unlockOk()">Mở khóa</button>
     </div>
   </div>
+</div>
+
+<!-- Drawer chi tiết công cụ -->
+<div class="drawer-bg" id="toolDrawer" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer" id="drawerBody"></div>
 </div>
 
 <div id="printArea"></div>
@@ -512,6 +554,195 @@ function procRate(c){const p=CFG.proc.find(x=>x.code===c);return p?p.rate:0;}
 function procName(c){const p=CFG.proc.find(x=>x.code===c);return p?p.name:c;}
 function matRate(n){const m=CFG.mat.find(x=>x.name===n);return m?m.rate:0;}
 
+/* ===================== TRUNG TÂM (ENGINEERING PORTAL) ===================== */
+const deburr = s => (s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
+const CATS=[
+  {id:'apps', name:'🟥 Ứng dụng DHP'},
+  {id:'mech', name:'⚙️ Cơ khí — Tính toán & Chọn lựa'},
+  {id:'mfg',  name:'🏭 Gia công & Báo giá'},
+  {id:'mat',  name:'🧱 Vật liệu & Tiêu chuẩn'},
+  {id:'elec', name:'🔌 Điện'},
+  {id:'auto', name:'🤖 Tự động hóa'},
+  {id:'prog', name:'💻 Lập trình / Tiện ích'},
+  {id:'ai',   name:'✨ AI Workspace'}
+];
+const TOOLS=[
+  // --- Ứng dụng DHP ---
+  {id:'manager', cat:'apps', icon:'📋', name:'DHP Manager', status:'ONLINE', href:'index.html',
+    desc:'Quản lý đơn hàng, lịch phân công, KPI, outsource, NCR.', tags:['Sản xuất','CK368'], kw:['don hang','quan ly','lich','kpi','san xuat','tien do']},
+  {id:'coding', cat:'apps', icon:'🏷', name:'DHP Coding', status:'ONLINE', href:'dhp_coding.html',
+    desc:'Catalogue sản phẩm & sinh mã SKU thống nhất.', tags:['SKU','Catalogue'], kw:['ma','sku','code','catalogue','san pham']},
+  {id:'advisor', cat:'apps', icon:'🧭', name:'Tư vấn khớp nối', status:'READY', tab:'advisor',
+    desc:'Nhập thông số máy → chọn loại khớp, cỡ, vật liệu như kỹ sư.', tags:['Coupling','Sizing'], kw:['khop','coupling','rotex','noi truc','tu van','bom','quat','momen','sai lech']},
+  // --- Cơ khí ---
+  {id:'kb', cat:'mech', icon:'📚', name:'Tra cứu & So sánh khớp', status:'READY', tab:'kb',
+    desc:'Datasheet từng loại khớp + bảng so sánh sao + hub-mixing.', tags:['Datasheet'], kw:['tra cuu','so sanh','datasheet','khop','hub']},
+  {id:'bolt', cat:'mech', icon:'🔩', name:'Tính bu lông', status:'SOON', std:['ISO 898'],
+    desc:'Cấp bền, lực siết, preload, momen siết bu lông.',
+    formula:['F_v = 0.7·A_s·R_p0.2','T = K·F·d (K≈0.2)'], guide:'Nhập cấp bền (8.8/10.9/12.9), đường kính, hệ số ma sát → ra momen siết & lực kẹp.',
+    kw:['bu long','bolt','siet','preload','luc kep','ren','torque','cap ben']},
+  {id:'bearing', cat:'mech', icon:'🌀', name:'Chọn / tuổi thọ vòng bi', status:'SOON', std:['ISO 281'],
+    desc:'Tải động, tuổi thọ L10, chọn cỡ & lắp ghép vòng bi.',
+    formula:['L10 = (C/P)^p · 10⁶/(60·n)','p = 3 (bi) / 10/3 (đũa)'], guide:'Nhập tải, tốc độ, giờ làm việc → ra hệ số tải động C cần thiết.',
+    kw:['vong bi','bearing','o lan','tuoi tho','l10','goi do','tai']},
+  {id:'shaft', cat:'mech', icon:'🛞', name:'Thiết kế trục', status:'SOON', std:['DIN 743'],
+    desc:'Đường kính trục theo momen xoắn / uốn, kiểm bền & võng.',
+    formula:['τ = 16T/(π·d³)','d ≥ (16T/(π·[τ]))^(1/3)'], guide:'Nhập công suất, tốc độ, vật liệu → ra đường kính trục tối thiểu.',
+    kw:['truc','shaft','duong kinh','momen xoan','uon','vong','d40','ben truc']},
+  {id:'keyway', cat:'mech', icon:'🔑', name:'Then / Keyway', status:'SOON', std:['DIN 6885'],
+    desc:'Kích thước then bằng & chiều dài theo đường kính trục, kiểm dập.',
+    formula:['σ_d = 2T/(d·l·t₂)'], guide:'Nhập đường kính trục + momen → ra b×h×l then & kiểm bền dập/cắt.',
+    kw:['then','keyway','ranh then','moayo','hub','dap']},
+  {id:'fit', cat:'mech', icon:'📐', name:'Dung sai lắp ghép', status:'SOON', std:['ISO 286'],
+    desc:'Tra H7/g6, k6, p6... khe hở / độ dôi, chọn kiểu lắp.',
+    guide:'Chọn kích thước danh nghĩa + cặp dung sai → ra khe hở/độ dôi min–max.',
+    kw:['dung sai','lap ghep','fit','h7','g6','khe ho','do doi','tolerance','iso 286']},
+  {id:'belt', cat:'mech', icon:'🎗', name:'Truyền đai', status:'SOON',
+    desc:'Chọn loại đai, puly, số dây, công suất truyền.', kw:['dai','belt','puly','truyen dong']},
+  {id:'chain', cat:'mech', icon:'⛓', name:'Truyền xích', status:'SOON',
+    desc:'Chọn bước xích, đĩa xích, công suất.', kw:['xich','chain','dia xich']},
+  {id:'gearcalc', cat:'mech', icon:'⚙️', name:'Tính bánh răng', status:'SOON', std:['ISO 6336'],
+    desc:'Module, số răng, tỉ số truyền, kiểm bền uốn/tiếp xúc.', kw:['banh rang','gear','module','ti so truyen','rang']},
+  // --- Gia công & Báo giá ---
+  {id:'quote', cat:'mfg', icon:'💰', name:'Báo giá gia công', status:'READY', tab:'quote', locked:true,
+    desc:'Vật tư (kg) + công đoạn (giờ) + soát khung giá → in báo giá DHP.', tags:['Quotation'], kw:['bao gia','gia','quote','gia cong','tien cong','phoi']},
+  {id:'cases', cat:'mfg', icon:'🗂', name:'Ca thực tế', status:'READY', tab:'cases', locked:true,
+    desc:'Kho ca tư vấn đã làm — tri thức DHP, dùng chung mọi máy.', tags:['Case study'], kw:['ca','case','lich su','kinh nghiem']},
+  {id:'blank', cat:'mfg', icon:'📦', name:'Khối lượng phôi', status:'SOON',
+    desc:'Tính kg phôi theo hình học (trụ/tấm/ống) × tỉ trọng.',
+    formula:['m = V·ρ','ρ thép 7.85 · inox 7.9 · gang 7.2 · nhôm 2.7'], kw:['khoi luong','phoi','kg','ti trong','blank','volume']},
+  {id:'laser', cat:'mfg', icon:'✂️', name:'Chi phí cắt Laser/CNC', status:'SOON',
+    desc:'Ước chi phí theo chiều dài cắt / thời gian máy.', kw:['laser','cnc','cat','plasma','chi phi cat']},
+  {id:'thread', cat:'mfg', icon:'🌩', name:'Tra ren', status:'SOON', std:['ISO 261/262'],
+    desc:'Bước ren, đường kính lỗ khoan tarô, ren hệ mét/inch.', kw:['ren','thread','taro','buoc ren','lo khoan']},
+  // --- Vật liệu ---
+  {id:'material', cat:'mat', icon:'🧱', name:'Tư vấn vật liệu', status:'READY', tab:'advisor',
+    desc:'Chọn thép/inox/gang theo chi tiết + môi trường + tải (có trong Tư vấn).', tags:['C45','42CrMo4','Inox'], kw:['vat lieu','material','thep','inox','gang','c45','42crmo4','nhiet luyen']},
+  {id:'matdb', cat:'mat', icon:'📖', name:'Bảng tra vật liệu', status:'SOON', std:['JIS/DIN/AISI'],
+    desc:'Cơ tính, thành phần, tương đương mác thép các tiêu chuẩn.', kw:['tra vat lieu','co tinh','mac thep','tuong duong','jis','din','aisi']},
+  // --- Điện ---
+  {id:'motor', cat:'elec', icon:'🔌', name:'Chọn động cơ', status:'SOON',
+    desc:'Công suất, momen, dòng định mức theo tải.', kw:['dong co','motor','cong suat','momen','dien']},
+  {id:'cable', cat:'elec', icon:'🔋', name:'Tiết diện cáp', status:'SOON',
+    desc:'Chọn tiết diện dây theo dòng & sụt áp.', kw:['cap','cable','tiet dien','day dien','sut ap']},
+  {id:'inverter', cat:'elec', icon:'📟', name:'Chọn biến tần', status:'SOON',
+    desc:'Chọn VFD theo công suất & loại tải.', kw:['bien tan','inverter','vfd']},
+  // --- Tự động hóa ---
+  {id:'sensor', cat:'auto', icon:'📡', name:'Chọn cảm biến', status:'SOON', desc:'Tiệm cận, quang, áp suất, nhiệt độ.', kw:['cam bien','sensor']},
+  {id:'plc', cat:'auto', icon:'🔲', name:'PLC / I-O', status:'SOON', desc:'Ước số I/O, chọn PLC.', kw:['plc','io','dieu khien']},
+  // --- Lập trình / tiện ích ---
+  {id:'json', cat:'prog', icon:'🧩', name:'JSON Formatter', status:'SOON', desc:'Format/validate JSON.', kw:['json','format']},
+  {id:'regex', cat:'prog', icon:'🔣', name:'Regex Tester', status:'SOON', desc:'Thử biểu thức chính quy.', kw:['regex','bieu thuc']},
+  {id:'base64', cat:'prog', icon:'🔤', name:'Base64 / Hash', status:'SOON', desc:'Mã hóa/giải mã, băm.', kw:['base64','hash','ma hoa']},
+  // --- AI ---
+  {id:'ai_advisor', cat:'ai', icon:'🧠', name:'Engineering Advisor', status:'READY', tab:'advisor',
+    desc:'Trợ lý kỹ thuật: chọn khớp/vật liệu, gợi ý quy trình, hub-mixing.', tags:['AI'], kw:['advisor','ai','tu van','goi y']},
+  {id:'ai_coding', cat:'ai', icon:'🤖', name:'AI Coding', status:'ONLINE', href:'dhp_coding.html',
+    desc:'Sinh mã SKU thông minh, cảnh báo trùng.', tags:['AI'], kw:['ai coding','sinh ma']},
+  {id:'prompt', cat:'ai', icon:'📚', name:'Prompt Library', status:'SOON', desc:'Thư viện prompt kỹ thuật cho DHP.', kw:['prompt','thu vien']}
+];
+// gợi ý đi kèm (related)
+const RELATED={ shaft:['bearing','keyway','material'], advisor:['material','quote','kb'], bearing:['shaft','fit'], bolt:['fit','material'], quote:['blank','material'] };
+const USAGE_KEY='dhp_tools_usage';
+function loadUsage(){ try{return JSON.parse(localStorage.getItem(USAGE_KEY))||{};}catch(e){return {};} }
+function recordUsage(id){ const u=loadUsage(); u[id]=(u[id]||0)+1; localStorage.setItem(USAGE_KEY, JSON.stringify(u)); }
+function frequentlyUsed(){
+  const u=loadUsage(); const ids=Object.keys(u).filter(id=>TOOLS.find(t=>t.id===id)).sort((a,b)=>u[b]-u[a]);
+  const seed=['advisor','quote','coding','material','manager'];
+  const out=[...ids]; seed.forEach(s=>{ if(!out.includes(s)) out.push(s); });
+  return out.slice(0,5);
+}
+function statusLabel(s){ return s==='SOON'?'SẮP CÓ':s; }
+function toolCard(t){
+  const tags=(t.tags||[]).concat(t.std||[]).slice(0,3);
+  return `<div class="tool" onclick="openTool('${t.id}')" title="${t.desc||''}">
+    <span class="stt ${t.status}">${t.locked?'🔒 ':''}${statusLabel(t.status)}</span>
+    <div class="ic">${t.icon}</div>
+    <div class="nm">${t.name}</div>
+    ${t.desc?`<div class="ds">${t.desc}</div>`:''}
+    ${tags.length?`<div class="tg">${tags.map(s=>`<span>${s}</span>`).join('')}</div>`:''}
+  </div>`;
+}
+function catBlock(title, items, count){
+  if(!items.length) return '';
+  return `<div class="catttl">${title}${count!=null?`<span class="cnt">${count} công cụ</span>`:''}</div><div class="toolgrid">${items.map(toolCard).join('')}</div>`;
+}
+function matchTool(t,q){
+  const hay=deburr([t.name,t.desc,(t.tags||[]).join(' '),(t.std||[]).join(' '),(t.kw||[]).join(' ')].join(' '));
+  return deburr(q).split(/\s+/).filter(Boolean).every(w=>hay.includes(w));
+}
+function renderPortal(){
+  const q=(document.getElementById('toolSearch').value||'').trim();
+  let html='';
+  if(!q){
+    const favs=frequentlyUsed().map(id=>TOOLS.find(t=>t.id===id)).filter(Boolean);
+    html+=catBlock('⭐ Hay dùng', favs);
+  }
+  CATS.forEach(c=>{
+    let items=TOOLS.filter(t=>t.cat===c.id);
+    if(q) items=items.filter(t=>matchTool(t,q));
+    html+=catBlock(c.name, items, q?null:items.length);
+  });
+  if(q && !/toolgrid/.test(html)) html='<div class="card muted">Không tìm thấy công cụ khớp "<b>'+q+'</b>".</div>';
+  document.getElementById('portalGrid').innerHTML=html;
+}
+function openTool(id){
+  const t=TOOLS.find(x=>x.id===id); if(!t) return;
+  recordUsage(id);
+  if(t.status==='SOON'){ openToolDetail(id); return; }
+  if(t.href){ window.location.href=t.href; return; }
+  if(t.tab){ goTab(t.tab); return; }
+  openToolDetail(id);
+}
+function openToolDetail(id){
+  const t=TOOLS.find(x=>x.id===id); if(!t) return;
+  const can = t.status!=='SOON' && (t.href||t.tab);
+  document.getElementById('drawerBody').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><div style="font-size:24px">${t.icon}</div><div style="font-size:18px;font-weight:800">${t.name}</div></div>
+      <button class="ghost sm" onclick="closeDrawer()">✕</button>
+    </div>
+    <div style="margin:6px 0"><span class="stt ${t.status}" style="position:static">${statusLabel(t.status)}</span></div>
+    ${t.desc?`<p style="margin:8px 0">${t.desc}</p>`:''}
+    ${t.std?`<div class="small"><b>Tiêu chuẩn áp dụng:</b> ${t.std.map(s=>`<span class="chip b">${s}</span>`).join('')}</div>`:''}
+    ${t.formula?`<div class="card" style="background:#f8fafc;margin:8px 0"><b class="small">Công thức liên quan</b>${t.formula.map(f=>`<div class="mono" style="font-family:ui-monospace,Consolas,monospace;margin-top:4px">${f}</div>`).join('')}</div>`:''}
+    ${t.guide?`<div class="alert info"><b>Cách dùng:</b> ${t.guide}</div>`:''}
+    ${t.status==='SOON'?`<div class="alert warn">🔧 Công cụ này <b>đang phát triển</b>. Bạn cứ dùng <b>Tư vấn kỹ thuật</b> để được hỗ trợ ngay, hoặc đề xuất ưu tiên làm sớm.</div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      ${can?`<button onclick="closeDrawer();(${t.href?`location.href='${t.href}'`:`goTab('${t.tab}')`})">▶ Mở công cụ</button>`:''}
+      <button class="ghost" onclick="closeDrawer();askAboutTool('${t.id}')">🧠 Hỏi Advisor về công cụ này</button>
+    </div>`;
+  document.getElementById('toolDrawer').classList.add('show');
+}
+function closeDrawer(){ document.getElementById('toolDrawer').classList.remove('show'); }
+function askAboutTool(id){
+  const t=TOOLS.find(x=>x.id===id); if(!t) return;
+  goTab('portal');
+  const box=document.getElementById('aiAsk'); box.value='Tôi cần dùng '+t.name.toLowerCase()+' — '+(t.desc||'');
+  suggestTools(); window.scrollTo({top:0,behavior:'smooth'});
+}
+function suggestTools(){
+  const raw=(document.getElementById('aiAsk').value||'').trim();
+  const box=document.getElementById('aiResult');
+  if(!raw){ box.innerHTML='<div class="small" style="background:#fff;color:var(--ink);border-radius:8px;padding:8px">Hãy mô tả bài toán (vd: <i>tính trục Ø40 truyền 5kW</i>).</div>'; return; }
+  const toks=deburr(raw).split(/[^a-z0-9]+/).filter(w=>w.length>1);
+  let scored=TOOLS.map(t=>{
+    const hay=deburr([t.name,t.desc,(t.tags||[]).join(' '),(t.kw||[]).join(' ')].join(' '));
+    let s=0; toks.forEach(w=>{ if(hay.includes(w)) s++; });
+    return {t,s};
+  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s);
+  // mở rộng related từ top
+  const picked=scored.slice(0,4).map(x=>x.t.id);
+  const set=new Set(picked);
+  picked.forEach(id=>(RELATED[id]||[]).forEach(r=>set.add(r)));
+  const list=[...set].map(id=>TOOLS.find(t=>t.id===id)).filter(Boolean).slice(0,6);
+  if(!list.length){ box.innerHTML='<div class="small" style="background:#fff;color:var(--ink);border-radius:8px;padding:8px">Chưa khớp công cụ nào. Thử từ khóa: <b>khớp, trục, bu lông, vòng bi, then, dung sai, báo giá, vật liệu</b>.</div>'; return; }
+  box.innerHTML='<div style="background:#fff;color:var(--ink);border-radius:8px;padding:10px">'+
+    '<div class="small" style="font-weight:700;margin-bottom:6px">💡 Công cụ nên dùng:</div>'+
+    list.map(t=>`<button class="ghost sm" style="margin:3px" onclick="openTool('${t.id}')">${t.icon} ${t.name}${t.status==='SOON'?' <span style="color:#94a3b8">(sắp có)</span>':''}</button>`).join('')+
+    '</div>';
+}
+
 /* ===================== TABS ===================== */
 const LOCKED_TABS=['cases','quote','saved','config'];   // chỉ quyền SỬA (edit368) mới vào
 function goTab(t){
@@ -519,8 +750,9 @@ function goTab(t){
     doUnlock(t);   // mở modal nhập edit368; xong sẽ tự vào tab này
     return;
   }
-  ['advisor','kb','cases','quote','saved','config'].forEach(x=>{document.getElementById('tab-'+x).style.display=(x===t?'block':'none');});
+  ['portal','advisor','kb','cases','quote','saved','config'].forEach(x=>{document.getElementById('tab-'+x).style.display=(x===t?'block':'none');});
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  if(t==='portal') renderPortal();
   if(t==='config') renderConfig();
   if(t==='saved') renderSaved();
   if(t==='quote') ensureQuoteInit();
@@ -1035,12 +1267,13 @@ function doUnlock(pendingTab){
 function unlockClose(){ document.getElementById('unlockModal').style.display='none'; _pendingTab=null; }
 function unlockOk(){
   const v=document.getElementById('unlockPass').value;
-  if(v===EDIT_PASSCODE){
-    localStorage.setItem('dhp_role','editor');
+  const r=DHPCore.roleFromPass(v);
+  if(r){
+    localStorage.setItem('dhp_role',r);
     document.getElementById('unlockModal').style.display='none';
     applyRole();
     const t=_pendingTab; _pendingTab=null; if(t) goTab(t);
-  } else { document.getElementById('unlockErr').textContent='Sai mật khẩu sửa.'; }
+  } else { document.getElementById('unlockErr').textContent='Sai mật khẩu.'; }
 }
 function markConn(){
   const ok=DHPCore.connected();
@@ -1069,6 +1302,7 @@ function startApp(){
   initKB();
   CASES=loadCasesLocal();
   if(DHPCore.connected()) pullCases(false);   // đồng bộ ca dùng chung nếu có Supabase
+  renderPortal();   // trang chủ Trung tâm
 }
 function showGate(){
   const VIEW='dhp368', EDIT='edit368';
@@ -1080,17 +1314,19 @@ function showGate(){
     "<input id='tgPass' type='password' placeholder='Mật khẩu' style='width:100%;margin-bottom:8px'>"+
     "<div class='small' style='color:var(--brand);min-height:14px' id='tgErr'></div>"+
     "<button style='width:100%' id='tgBtn'>Đăng nhập</button>"+
-    "<div class='muted small' style='margin-top:10px'>👁 dhp368 = xem · 🔓 edit368 = sửa</div></div>";
+    "<div class='muted small' style='margin-top:10px'>👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div></div>";
   document.body.appendChild(g);
   const go=()=>{ const v=document.getElementById('tgPass').value;
-    if(v===EDIT) localStorage.setItem('dhp_role','editor'); else if(v===VIEW) localStorage.setItem('dhp_role','viewer');
+    const r=DHPCore.roleFromPass(v);
+    if(r) localStorage.setItem('dhp_role',r);
     else { document.getElementById('tgErr').textContent='Sai mật khẩu.'; return; }
     localStorage.setItem('dhp_tools_ok','1'); g.remove(); startApp(); };
   document.getElementById('tgBtn').onclick=go;
   document.getElementById('tgPass').addEventListener('keydown',e=>{ if(e.key==='Enter')go(); });
   document.getElementById('tgPass').focus();
 }
-if(localStorage.getItem('dhp_tools_ok')==='1') startApp(); else showGate();
+// Đã đăng nhập ở app khác cùng origin (Manager/Coding) → nhận luôn vai trò, khỏi gõ lại
+if(localStorage.getItem('dhp_tools_ok')==='1' || localStorage.getItem('dhp_role')){ localStorage.setItem('dhp_tools_ok','1'); startApp(); } else showGate();
 </script>
 </body>
 </html>

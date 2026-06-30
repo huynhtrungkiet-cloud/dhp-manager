@@ -321,8 +321,8 @@
 <div id="unlockModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;padding:22px;width:320px;max-width:90vw;text-align:center">
     <h3 style="margin:0 0 4px;color:var(--brand)">🔓 Mở khóa sửa</h3>
-    <div class="muted small" style="margin-bottom:12px">Nhập mật khẩu quyền SỬA để dùng phần tính giá / báo giá / cấu hình.</div>
-    <input id="unlockPass" type="password" placeholder="Mật khẩu sửa" style="width:100%;margin-bottom:8px" onkeydown="if(event.key==='Enter')unlockOk()">
+    <div class="muted small" style="margin-bottom:12px">Nhập mật khẩu quyền SỬA (<b>edit368</b> điều phối / <b>admin368</b> quản lý) — dùng chung với DHP Manager.</div>
+    <input id="unlockPass" type="password" placeholder="edit368 / admin368" style="width:100%;margin-bottom:8px" onkeydown="if(event.key==='Enter')unlockOk()">
     <div class="small" style="color:var(--brand);min-height:14px" id="unlockErr"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="ghost" style="flex:1" onclick="unlockClose()">Hủy</button>
@@ -746,7 +746,7 @@ function suggestTools(){
 /* ===================== TABS ===================== */
 const LOCKED_TABS=['cases','quote','saved','config'];   // chỉ quyền SỬA (edit368) mới vào
 function goTab(t){
-  if(LOCKED_TABS.includes(t) && !DHPCore.canEdit()){
+  if(LOCKED_TABS.includes(t) && !iCanEdit()){
     doUnlock(t);   // mở modal nhập edit368; xong sẽ tự vào tab này
     return;
   }
@@ -1155,7 +1155,7 @@ function loadCasesLocal(){ try{return JSON.parse(localStorage.getItem(CASES_KEY)
 function saveCasesLocal(){ localStorage.setItem(CASES_KEY, JSON.stringify(CASES)); }
 function saveCase(){
   if(!window.LAST_ADV){ alert('Hãy bấm "Phân tích & Tư vấn" trước.'); return; }
-  if(!DHPCore.canEdit()){ if(!confirm('Bạn đang ở chế độ Xem — vẫn lưu ca trên máy này?')) return; }
+  if(!iCanEdit()){ if(!confirm('Bạn đang ở chế độ Xem — vẫn lưu ca trên máy này?')) return; }
   const a=window.LAST_ADV;
   const cust=prompt('Tên khách hàng / máy / vị trí (để tra lại sau):',''); if(cust===null) return;
   const note=prompt('Ghi chú kinh nghiệm (tùy chọn): vd "đã làm hub C45, KH hài lòng"','')||'';
@@ -1240,7 +1240,7 @@ function cfgAddProc(){ CFG.proc.push({code:'X',name:'Mới',rate:0}); renderConf
 function cfgAddMat(){ CFG.mat.push({name:'Mới',rate:0}); renderConfig(); }
 function cfgAddType(){ CFG.types.push({name:'Loại mới',unit:'Cái',min:0,max:0,mats:[],ops:[]}); renderConfig(); }
 function saveConfig(){
-  if(!DHPCore.canEdit()){ alert('Cần quyền sửa (edit368). Bấm 🔓 Mở khóa sửa.'); return; }
+  if(!iCanEdit()){ alert('Cần quyền sửa (edit368). Bấm 🔓 Mở khóa sửa.'); return; }
   CFG.margin=+document.getElementById('cfgMargin').value||0; CFG.tool=+document.getElementById('cfgTool').value||0; CFG.vat=+document.getElementById('cfgVat').value||0;
   persistConfig(); quoteInited=false; alert('Đã lưu cấu hình giá (trên máy này).');
 }
@@ -1248,14 +1248,24 @@ function resetConfig(){ if(!confirm('Khôi phục số mẫu? Mất chỉnh sử
 
 /* ===================== VAI TRÒ / KẾT NỐI ===================== */
 function applyRole(){
-  const ed=DHPCore.canEdit();
+  const ed=iCanEdit();
   document.getElementById('roleBadge').textContent=ed?'🔓 Sửa':'👁 Xem';
   document.getElementById('unlockBtn').style.display=ed?'none':'inline-block';
   document.querySelectorAll('.tabs button').forEach(b=>{ if(LOCKED_TABS.includes(b.dataset.tab)) b.classList.toggle('locked', !ed); });
   // người chỉ xem đang đứng ở tab bị khóa → đưa về Tư vấn
   if(!ed){ const cur=document.querySelector('.tabs button.active'); if(cur && LOCKED_TABS.includes(cur.dataset.tab)) goTab('advisor'); }
 }
-const VIEW_PASSCODE='dhp368', EDIT_PASSCODE='edit368';
+/* Quyền NỘI BỘ — không phụ thuộc phiên bản dhp_core.js trên server.
+   Dùng CHUNG localStorage.dhp_role với DHP Manager/Coding (đăng nhập 1 app = nhận quyền mọi app). */
+const PASS_ROLE={dhp368:'viewer',tho368:'worker',edit368:'editor',admin368:'admin'};
+function passToRole(v){
+  v=(v||'').trim();
+  try{ if(window.DHPCore&&DHPCore.roleFromPass){ const r=DHPCore.roleFromPass(v); if(r) return r; } }catch(e){}
+  return PASS_ROLE[v]||null;
+}
+function curRole(){ return localStorage.getItem('dhp_role')||sessionStorage.getItem('dhp_role')||'viewer'; }
+function iCanEdit(){ return ['editor','admin','tech'].includes(curRole()); }
+function setRole(r){ localStorage.setItem('dhp_role',r); sessionStorage.setItem('dhp_role',r); }
 let _pendingTab=null;
 function doUnlock(pendingTab){
   _pendingTab=(typeof pendingTab==='string')?pendingTab:null;
@@ -1267,9 +1277,9 @@ function doUnlock(pendingTab){
 function unlockClose(){ document.getElementById('unlockModal').style.display='none'; _pendingTab=null; }
 function unlockOk(){
   const v=document.getElementById('unlockPass').value;
-  const r=DHPCore.roleFromPass(v);
+  const r=passToRole(v);
   if(r){
-    localStorage.setItem('dhp_role',r);
+    setRole(r);
     document.getElementById('unlockModal').style.display='none';
     applyRole();
     const t=_pendingTab; _pendingTab=null; if(t) goTab(t);
@@ -1317,8 +1327,8 @@ function showGate(){
     "<div class='muted small' style='margin-top:10px'>👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div></div>";
   document.body.appendChild(g);
   const go=()=>{ const v=document.getElementById('tgPass').value;
-    const r=DHPCore.roleFromPass(v);
-    if(r) localStorage.setItem('dhp_role',r);
+    const r=passToRole(v);
+    if(r) setRole(r);
     else { document.getElementById('tgErr').textContent='Sai mật khẩu.'; return; }
     localStorage.setItem('dhp_tools_ok','1'); g.remove(); startApp(); };
   document.getElementById('tgBtn').onclick=go;

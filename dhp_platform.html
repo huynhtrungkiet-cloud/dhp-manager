@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHP Engineering Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --brand:#b91c1c; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#16a34a; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;margin:0;color:var(--ink);
+    background:linear-gradient(160deg,#7f1d1d 0%,#b91c1c 35%,#0f172a 120%);min-height:100vh}
+  .top{display:flex;align-items:center;gap:12px;padding:12px 22px;color:#fff;flex-wrap:wrap}
+  .top img{height:46px;background:#fff;border-radius:9px;padding:5px 12px}
+  .top h1{font-size:18px;margin:0;font-weight:700}
+  .top .sub{font-size:11px;opacity:.85}
+  .top .right{margin-left:auto;display:flex;gap:7px;align-items:center}
+  .pill{background:rgba(255,255,255,.18);border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;color:#fff}
+  .btn{cursor:pointer;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;padding:5px 11px;font-weight:700;font-size:12px;font-family:inherit}
+  .wrap{max-width:1100px;margin:0 auto;padding:8px 18px 40px}
+  .hero{color:#fff;margin:10px 4px 4px}
+  .hero h2{margin:0;font-size:26px}
+  .hero .d{opacity:.85;font-size:13px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 8px}
+  .stat{background:rgba(255,255,255,.12);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px;color:#fff}
+  .stat .v{font-size:28px;font-weight:800;line-height:1}
+  .stat .l{font-size:12px;opacity:.85;margin-top:4px}
+  .sec{color:#fff;font-size:13px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;opacity:.92;margin:20px 4px 8px;display:flex;align-items:center;gap:8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+  .tile{background:#fff;border-radius:16px;padding:16px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 22px rgba(0,0,0,.18);transition:transform .12s, box-shadow .12s;position:relative;overflow:hidden}
+  .tile:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+  .tile.soon{opacity:.72;cursor:default}
+  .tile.soon:hover{transform:none;box-shadow:0 6px 22px rgba(0,0,0,.18)}
+  .tile .ic{font-size:30px}
+  .tile .nm{font-weight:800;font-size:15px}
+  .tile .ds{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .tag{position:absolute;top:12px;right:12px;font-size:10px;font-weight:800;border-radius:20px;padding:2px 9px}
+  .tag.ready{background:#dcfce7;color:#15803d}
+  .tag.soon{background:#f1f5f9;color:#64748b}
+  .foot{color:#fff;opacity:.7;font-size:11px;text-align:center;margin-top:26px}
+  .gate{position:fixed;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;z-index:50}
+  .gate .box{background:#fff;border-radius:16px;padding:28px;width:330px;max-width:90vw;text-align:center}
+  .gate input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;font-family:inherit}
+  .gate button{width:100%;padding:9px;background:var(--brand);color:#fff;border:0;border-radius:9px;font-weight:700;cursor:pointer;font-family:inherit}
+  @media(max-width:680px){ .stats{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate" style="display:none">
+  <div class="box">
+    <h2 style="color:var(--brand);margin:0 0 4px">DHP Platform</h2>
+    <div style="color:var(--muted);font-size:12px;margin-bottom:14px">Nền tảng kỹ thuật — nhập mật khẩu</div>
+    <input id="gpass" type="password" placeholder="Mật khẩu" onkeydown="if(event.key==='Enter')gIn()">
+    <div id="gerr" style="color:var(--brand);font-size:12px;min-height:14px;margin-bottom:6px"></div>
+    <button onclick="gIn()">Đăng nhập</button>
+    <div style="color:#9ca3af;font-size:11px;margin-top:10px">👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div>
+  </div>
+</div>
+
+<div class="top">
+  <img src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}">
+  <div><h1>DHP Engineering Platform</h1><div class="sub">Hệ sinh thái kỹ thuật truyền động — Tư vấn · Sản xuất · Tri thức</div></div>
+  <div class="right">
+    <span class="pill" id="roleBadge">👁 Xem</span>
+    <button class="btn" onclick="changeRole()">🔓 Đổi quyền</button>
+    <button class="btn" onclick="logout()">⎋</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h2 id="greet">Chào!</h2>
+    <div class="d" id="dateLine"></div>
+  </div>
+  <div class="stats" id="stats"></div>
+
+  <div class="sec">🚀 Module sẵn sàng</div>
+  <div class="grid">
+    <a class="tile" href="index.html"><span class="tag ready">Sẵn sàng</span><div class="ic">🏭</div><div class="nm">DHP Manager</div><div class="ds">Đơn hàng · Lịch phân công · Công đoạn · QC · KPI · Quy trình sản xuất CK368</div></a>
+    <a class="tile" href="dhp_tools.html"><span class="tag ready">Sẵn sàng</span><div class="ic">🧭</div><div class="nm">Advisor — Tư vấn</div><div class="ds">Tư vấn chọn khớp nối như kỹ sư · tra cứu · ca thực tế · hub-mixing</div></a>
+    <a class="tile" href="dhp_tools.html"><span class="tag ready">Sẵn sàng</span><div class="ic">💰</div><div class="nm">Quote — Báo giá</div><div class="ds">Báo giá gia công có giải thích · cấu hình giá · lưu &amp; quản lý báo giá</div></a>
+    <a class="tile" href="dhp_coding.html"><span class="tag ready">Sẵn sàng</span><div class="ic">🏷</div><div class="nm">Coding — Mã SKU</div><div class="ds">Catalogue sản phẩm · sinh mã SKU chuẩn · chống trùng · QR sau này</div></a>
+  </div>
+
+  <div class="sec">🗄 Cơ sở dữ liệu &amp; Tri thức <span style="font-weight:400;text-transform:none;font-size:11px;opacity:.8">— lõi nền tảng, đang xây</span></div>
+  <div class="grid">
+    <a class="tile" href="dhp_db.html"><span class="tag ready">Sẵn sàng</span><div class="ic">🧱</div><div class="nm">Material DB</div><div class="ds">Vật liệu: mác thép · cơ tính · nhiệt luyện · tốc độ cắt · giá/kg · NCC</div></a>
+    <a class="tile" href="dhp_db.html"><span class="tag ready">Sẵn sàng</span><div class="ic">📏</div><div class="nm">Standard DB</div><div class="ds">Tiêu chuẩn: DIN6885 then · lắp ghép ISO · dung sai · độ nhám</div></a>
+    <div class="tile soon"><span class="tag soon">Sắp có</span><div class="ic">📚</div><div class="nm">Knowledge Center</div><div class="ds">Lỗi/sự cố khớp nối · nguyên nhân · ảnh · case thực tế · cách xử lý</div></div>
+    <div class="tile soon"><span class="tag soon">Sắp có</span><div class="ic">📐</div><div class="nm">Drawing Center</div><div class="ds">Bản vẽ: STEP/DXF/PDF · revision · lịch sử · máy · đồ gá</div></div>
+    <div class="tile soon"><span class="tag soon">Sắp có</span><div class="ic">👥</div><div class="nm">CRM &amp; Lịch sử</div><div class="ds">Khách: đã mua gì · máy gì · lỗi gì · lịch sử tư vấn kỹ thuật</div></div>
+    <div class="tile soon"><span class="tag soon">Sắp có</span><div class="ic">📊</div><div class="nm">Analytics</div><div class="ds">Top lỗi · top khách · win-rate · lead-time · phân tích ra quyết định</div></div>
+  </div>
+
+  <div class="foot">DHP Engineering Platform · 4 cấp quyền dùng chung · dữ liệu chung Supabase · © Đại Hồng Phát</div>
+</div>
+
+<script src="dhp_core.js"></script>
+<script>
+const PASS={dhp368:'viewer',tho368:'worker',edit368:'editor',admin368:'admin'};
+const RB={viewer:'👁 Xem',worker:'👷 Thợ',editor:'🛠 Điều phối',admin:'👑 Quản lý',sale:'💼 Sale',tech:'🛠 Kỹ thuật'};
+function roleFromPass(v){ return (window.DHPCore&&DHPCore.roleFromPass)?DHPCore.roleFromPass(v):(PASS[v]||null); }
+function getRole(){ return localStorage.getItem('dhp_role')||'viewer'; }
+function gIn(){ const v=document.getElementById('gpass').value; const r=roleFromPass(v);
+  if(!r){ document.getElementById('gerr').textContent='Sai mật khẩu.'; return; }
+  localStorage.setItem('dhp_role',r); localStorage.setItem('dhp_gate_ok','1');
+  document.getElementById('gate').style.display='none'; boot(); }
+function changeRole(){ const v=prompt('Nhập mật khẩu cấp quyền:'); if(v===null)return; const r=roleFromPass(v);
+  if(r){ localStorage.setItem('dhp_role',r); boot(); } else alert('Sai mật khẩu.'); }
+function logout(){ ['dhp_role','dhp_gate_ok','dhp_coding_ok','dhp_tools_ok'].forEach(k=>localStorage.removeItem(k)); location.reload(); }
+function readOrders(){ try{ return (JSON.parse(localStorage.getItem('dhp_hub_v3')||'{}').orders)||[]; }catch(e){ return []; } }
+function readProducts(){ try{ return (JSON.parse(localStorage.getItem('dhp_hub_v3')||'{}').products)||[]; }catch(e){ return []; } }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function boot(){
+  document.getElementById('roleBadge').textContent = RB[getRole()]||('👤 '+getRole());
+  const h=new Date().getHours();
+  document.getElementById('greet').textContent=(h<11?'Chào buổi sáng':h<14?'Chào buổi trưa':h<18?'Chào buổi chiều':'Chào buổi tối')+'! 👋';
+  document.getElementById('dateLine').textContent=new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+  const orders=readOrders(), t=todayStr();
+  const open=orders.filter(o=>o.status!=='delivered').length;
+  const overdue=orders.filter(o=>o.status!=='delivered'&&o.status!=='hold'&&(o.requestedDate||o.dueDate)&&(o.requestedDate||o.dueDate)<t).length;
+  const delivered=orders.filter(o=>o.status==='delivered').length;
+  const prods=readProducts().length;
+  document.getElementById('stats').innerHTML=
+    stat(open,'Đơn đang theo dõi')+stat(overdue,'Đơn quá hạn')+stat(delivered,'Đã hoàn thành')+stat(prods,'Sản phẩm trong catalogue');
+}
+function stat(v,l){ return '<div class="stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
+// Đã đăng nhập ở app khác cùng origin → vào thẳng
+if(localStorage.getItem('dhp_role')||localStorage.getItem('dhp_gate_ok')==='1'){ boot(); }
+else { document.getElementById('gate').style.display='flex'; setTimeout(()=>{try{document.getElementById('gpass').focus();}catch(e){}},50); }
+</script>
+</body>
+</html>

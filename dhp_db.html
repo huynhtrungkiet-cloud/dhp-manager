@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHP Engineering Database — Vật liệu &amp; Tiêu chuẩn</title>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --brand:#b91c1c; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#16a34a; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;margin:0;background:#f1f5f9;color:var(--ink)}
+  .top{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:10px 18px;flex-wrap:wrap}
+  .top img{height:42px;background:#fff;border-radius:8px;padding:4px 10px}
+  .top h1{font-size:16px;margin:0;font-weight:700}.top .sub{font-size:11px;opacity:.85}
+  .top .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .pill{background:rgba(255,255,255,.18);border-radius:7px;padding:4px 9px;font-size:12px;font-weight:700}
+  .btn{cursor:pointer;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:12px;font-family:inherit;text-decoration:none}
+  .wrap{max-width:1150px;margin:0 auto;padding:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{padding:8px 16px;border-radius:10px;background:#fff;border:1px solid var(--line);cursor:pointer;font-weight:700}
+  .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  input,select,button{font-family:inherit;font-size:14px}
+  input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  button.act{cursor:pointer;border:0;border-radius:8px;padding:8px 13px;font-weight:700;background:var(--brand);color:#fff}
+  button.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{position:sticky;top:0;background:#f8fafc;text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;color:#475569;white-space:nowrap}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:hover{background:#fff7ed}
+  .code{font-weight:800;color:#0EA5E9}
+  .muted{color:var(--muted)}.small{font-size:12px}
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:24px}
+  .modal-bg.show{display:flex}.modal{background:#fff;border-radius:14px;padding:18px;max-width:560px;width:100%}
+  .field{margin-bottom:9px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:3px;color:#334155}.field input,.field textarea{width:100%}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  @media(max-width:600px){.row2,.row3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}">
+  <div><h1>DHP Engineering Database</h1><div class="sub">Vật liệu · Tiêu chuẩn (then DIN6885 · lắp ghép ISO) — lõi tri thức nền tảng</div></div>
+  <div class="right">
+    <span class="pill" id="roleBadge">👁 Xem</span>
+    <span class="pill" id="conn">● cục bộ</span>
+    <a class="btn" href="dhp_platform.html">🖥 Platform</a>
+    <a class="btn" href="index.html">↩ Manager</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-t="mat" onclick="go('mat')">🧱 Vật liệu</div>
+    <div class="tab" data-t="std" onclick="go('std')">📏 Tiêu chuẩn</div>
+  </div>
+  <div class="bar">
+    <input id="q" placeholder="🔎 Tìm..." style="flex:1;min-width:220px" oninput="render()">
+    <span id="editBar" style="display:none;gap:6px">
+      <button class="act" onclick="openEdit()">＋ Thêm</button>
+      <button class="ghost" onclick="seed()">⬇ Nạp dữ liệu mẫu</button>
+    </span>
+    <span class="muted small" id="count" style="margin-left:auto"></span>
+  </div>
+  <div class="card"><div id="tbl"></div></div>
+  <p class="small muted" style="margin-top:10px">* Dữ liệu mẫu để khởi đầu — <b>kiểm tra lại theo tiêu chuẩn chính thức</b> trước khi dùng cho tính toán an toàn. Advisor sẽ đọc bảng này để tính cỡ then / lắp ghép.</p>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal"><div class="modal">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="mTitle" style="margin:0">Bản ghi</h3><button class="ghost" onclick="closeM()">✕</button></div>
+  <input type="hidden" id="f_id">
+  <div id="mFields"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+    <button class="ghost" id="delBtn" style="margin-right:auto;display:none;color:var(--brand)" onclick="delRec()">🗑 Xóa</button>
+    <button class="ghost" onclick="closeM()">Hủy</button><button class="act" onclick="saveRec()">💾 Lưu</button>
+  </div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="dhp_core.js"></script>
+<script>
+const RB={viewer:'👁 Xem',worker:'👷 Thợ',editor:'🛠 Điều phối',admin:'👑 Quản lý',sale:'💼 Sale',tech:'🛠 Kỹ thuật'};
+const FIELDS={
+  mat:[['code','Mác / Code','C45 / S45C'],['name','Tên','Thép cacbon TB'],['density','Khối lượng riêng (g/cm³)','7.85'],['yield','Giới hạn chảy (MPa)','430'],['hardness','Độ cứng','170-210 HB'],['heat','Nhiệt luyện','Tôi+ram 28-32HRC'],['machin','Tính gia công','Tốt (~65%)'],['cutspeed','Tốc độ cắt','Tiện ~120 m/ph'],['price','Giá/kg','—'],['supplier','NCC','—'],['note','Ghi chú','']],
+  std:[['category','Nhóm','Then DIN6885 / Lắp ghép ISO'],['code','Mã / Phạm vi','Ø22–30 / H7/g6'],['spec','Thông số','b=8 h=7 t1=4.0 t2=3.3'],['note','Ghi chú / Ứng dụng','']]
+};
+const COLS={ mat:['code','name','density','yield','hardness','heat','machin','cutspeed','price','supplier'],
+             std:['category','code','spec','note'] };
+const TABLE={ mat:'materials', std:'standards' };
+let TAB='mat'; let DB={mat:[],std:[]};
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function role(){return DHPCore.role();}
+function canEdit(){return DHPCore.canEdit();}
+function cache(){ try{ localStorage.setItem('dhp_db_cache',JSON.stringify(DB)); }catch(e){} }
+function loadCache(){ try{ const c=JSON.parse(localStorage.getItem('dhp_db_cache')||'{}'); DB.mat=c.mat||[]; DB.std=c.std||[]; }catch(e){} }
+
+function go(t){ TAB=t; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.t===t)); render(); }
+function render(){
+  $('roleBadge').textContent=RB[role()]||('👤 '+role());
+  $('editBar').style.display=canEdit()?'inline-flex':'none';
+  const q=($('q').value||'').toLowerCase();
+  const cols=COLS[TAB]; const rows=DB[TAB].filter(r=>!q||cols.some(c=>String(r[c]||'').toLowerCase().includes(q)));
+  $('count').textContent=rows.length+' / '+DB[TAB].length+' mục';
+  const head='<tr>'+cols.map(c=>'<th>'+labelOf(c)+'</th>').join('')+(canEdit()?'<th></th>':'')+'</tr>';
+  const body=rows.length? rows.map(r=>'<tr>'+cols.map((c,i)=>'<td'+(i===0?' class="code"':'')+'>'+esc(r[c]||'')+'</td>').join('')+(canEdit()?'<td><a onclick="openEdit(\''+r.id+'\')" style="color:#0EA5E9;cursor:pointer">Sửa</a></td>':'')+'</tr>').join('')
+    : '<tr><td colspan="20" class="muted" style="padding:14px">Chưa có dữ liệu.'+(canEdit()?' Bấm <b>⬇ Nạp dữ liệu mẫu</b> để bắt đầu.':'')+'</td></tr>';
+  $('tbl').innerHTML='<table><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+}
+function labelOf(c){ const f=(FIELDS[TAB].find(x=>x[0]===c)); return f?f[1].replace(/ \(.*\)/,''):c; }
+
+function openEdit(id){
+  if(!canEdit())return; const rec=id?DB[TAB].find(x=>x.id===id):null;
+  $('f_id').value=id||''; $('mTitle').textContent=(id?'Sửa':'Thêm')+' — '+(TAB==='mat'?'Vật liệu':'Tiêu chuẩn');
+  $('mFields').innerHTML=FIELDS[TAB].map(f=>'<div class="field"><label>'+f[1]+'</label>'+
+    (f[0]==='note'?'<textarea id="f_'+f[0]+'" rows="2" placeholder="'+esc(f[2])+'">'+esc(rec?rec[f[0]]||'':'')+'</textarea>'
+      :'<input id="f_'+f[0]+'" value="'+esc(rec?rec[f[0]]||'':'')+'" placeholder="'+esc(f[2])+'">')+'</div>').join('');
+  $('delBtn').style.display=id?'inline-block':'none';
+  $('modal').classList.add('show');
+}
+function closeM(){ $('modal').classList.remove('show'); }
+async function saveRec(){
+  if(!canEdit())return;
+  const id=$('f_id').value||('DB-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
+  const rec={id}; FIELDS[TAB].forEach(f=>rec[f[0]]=($('f_'+f[0]).value||'').trim());
+  if(!rec.code && !rec.name){ alert('Cần ít nhất Mã/Code.'); return; }
+  const arr=DB[TAB]; const i=arr.findIndex(x=>x.id===id); if(i>=0)arr[i]=rec; else arr.push(rec);
+  cache(); closeM(); render();
+  try{ if(DHPCore.connected()||DHPCore.connect()) await DHPCore.upsert(TABLE[TAB],rec); }catch(e){ console.warn(e.message); }
+}
+async function delRec(){
+  const id=$('f_id').value; if(!id||!confirm('Xóa bản ghi này?'))return;
+  DB[TAB]=DB[TAB].filter(x=>x.id!==id); cache(); closeM(); render();
+  try{ if(DHPCore.connected()) await DHPCore.remove(TABLE[TAB],id); }catch(e){}
+}
+async function seed(){
+  if(!canEdit())return;
+  const data=TAB==='mat'?SEED_MAT:SEED_STD;
+  const have={}; DB[TAB].forEach(r=>have[(r.code||'')+'|'+(r.category||'')]=1);
+  let add=0; data.forEach(r=>{ const k=(r.code||'')+'|'+(r.category||''); if(!have[k]){ r.id='DB-'+Date.now().toString(36)+(add++)+Math.random().toString(36).slice(2,4); DB[TAB].push(r); } });
+  cache(); render();
+  try{ if(DHPCore.connected()||DHPCore.connect()) await DHPCore.upsertMany(TABLE[TAB],DB[TAB]); }catch(e){ console.warn(e.message); }
+  alert('✓ Đã nạp '+add+' mục mẫu vào '+(TAB==='mat'?'Vật liệu':'Tiêu chuẩn')+(DHPCore.connected()?' + đẩy lên Supabase.':' (cục bộ — chưa nối Supabase).'));
+}
+const SEED_MAT=[
+  {code:'C45 / S45C',name:'Thép cacbon trung bình',density:'7.85',yield:'430',hardness:'170-210 HB',heat:'Tôi+ram 28-32HRC',machin:'Tốt (~65%)',cutspeed:'Tiện ~120 m/ph',price:'',supplier:'',note:'Thông dụng: trục, hub khớp nối'},
+  {code:'SCM440 / 42CrMo4',name:'Thép hợp kim Cr-Mo',density:'7.85',yield:'650-900',hardness:'28-34 HRC (tôi)',heat:'Tôi dầu + ram cao',machin:'Khá (~55%)',cutspeed:'Tiện ~90 m/ph',price:'',supplier:'',note:'Trục/chi tiết chịu lực cao, mỏi'},
+  {code:'S235 / SS400',name:'Thép kết cấu thường',density:'7.85',yield:'235',hardness:'~120 HB',heat:'—',machin:'Tốt',cutspeed:'~140 m/ph',price:'',supplier:'',note:'Kết cấu, đế, gá'},
+  {code:'SUS304',name:'Inox không gỉ 18/8',density:'8.0',yield:'215',hardness:'~200 HB',heat:'—',machin:'Khó (~45%)',cutspeed:'Tiện ~60 m/ph',price:'',supplier:'',note:'Chống ăn mòn, thực phẩm'},
+  {code:'SUS316',name:'Inox chịu ăn mòn cao',density:'8.0',yield:'205',hardness:'~200 HB',heat:'—',machin:'Khó (~40%)',cutspeed:'~50 m/ph',price:'',supplier:'',note:'Hóa chất, nước biển'},
+  {code:'AL6061-T6',name:'Nhôm hợp kim',density:'2.70',yield:'276',hardness:'~95 HB',heat:'T6',machin:'Rất tốt',cutspeed:'~300 m/ph',price:'',supplier:'',note:'Nhẹ: hub nhôm, vỏ'},
+  {code:'GG25 / Gang xám',name:'Gang xám',density:'7.20',yield:'(kéo ~250)',hardness:'180-220 HB',heat:'—',machin:'Tốt',cutspeed:'~110 m/ph',price:'',supplier:'',note:'Thân khớp, giảm chấn, bệ máy'},
+  {code:'C45 mạ / xử lý',name:'Thép C45 xử lý bề mặt',density:'7.85',yield:'430',hardness:'tùy lớp phủ',heat:'Thấm/mạ tùy yêu cầu',machin:'Tốt',cutspeed:'~120 m/ph',price:'',supplier:'',note:'Chống gỉ nhẹ'}
+];
+const SEED_STD=[
+  // DIN 6885 then bằng — b×h theo Ø trục (t1=sâu trục, t2=sâu hub)
+  {category:'Then DIN6885',code:'Ø6–8',  spec:'b=2 h=2 · t1=1.2 t2=1.0',note:'Then bằng'},
+  {category:'Then DIN6885',code:'Ø8–10', spec:'b=3 h=3 · t1=1.8 t2=1.4',note:''},
+  {category:'Then DIN6885',code:'Ø10–12',spec:'b=4 h=4 · t1=2.5 t2=1.8',note:''},
+  {category:'Then DIN6885',code:'Ø12–17',spec:'b=5 h=5 · t1=3.0 t2=2.3',note:''},
+  {category:'Then DIN6885',code:'Ø17–22',spec:'b=6 h=6 · t1=3.5 t2=2.8',note:''},
+  {category:'Then DIN6885',code:'Ø22–30',spec:'b=8 h=7 · t1=4.0 t2=3.3',note:''},
+  {category:'Then DIN6885',code:'Ø30–38',spec:'b=10 h=8 · t1=5.0 t2=3.3',note:''},
+  {category:'Then DIN6885',code:'Ø38–44',spec:'b=12 h=8 · t1=5.0 t2=3.3',note:''},
+  {category:'Then DIN6885',code:'Ø44–50',spec:'b=14 h=9 · t1=5.5 t2=3.8',note:''},
+  {category:'Then DIN6885',code:'Ø50–58',spec:'b=16 h=10 · t1=6.0 t2=4.3',note:''},
+  {category:'Then DIN6885',code:'Ø58–65',spec:'b=18 h=11 · t1=7.0 t2=4.4',note:''},
+  {category:'Then DIN6885',code:'Ø65–75',spec:'b=20 h=12 · t1=7.5 t2=4.9',note:''},
+  {category:'Then DIN6885',code:'Ø75–85',spec:'b=22 h=14 · t1=9.0 t2=5.4',note:''},
+  {category:'Then DIN6885',code:'Ø85–95',spec:'b=25 h=14 · t1=9.0 t2=5.4',note:''},
+  {category:'Then DIN6885',code:'Ø95–110',spec:'b=28 h=16 · t1=10.0 t2=6.4',note:''},
+  // Lắp ghép ISO thông dụng
+  {category:'Lắp ghép ISO',code:'H7/g6',spec:'Lỏng chính xác',note:'Trục quay trong bạc, định tâm'},
+  {category:'Lắp ghép ISO',code:'H7/h6',spec:'Trượt khít (0 khe danh nghĩa)',note:'Tháo lắp tay, định vị tốt'},
+  {category:'Lắp ghép ISO',code:'H7/k6',spec:'Trung gian nhẹ',note:'Bánh răng, puly tháo được'},
+  {category:'Lắp ghép ISO',code:'H7/n6',spec:'Chặt nhẹ',note:'Vòng bi, bạc — cần ép nhẹ'},
+  {category:'Lắp ghép ISO',code:'H7/p6',spec:'Ép (chặt)',note:'Cố định, ít tháo'},
+  {category:'Lắp ghép ISO',code:'H7/s6',spec:'Ép rất chặt',note:'Truyền momen lớn không then'},
+  {category:'Lắp ghép ISO',code:'H8/f7',spec:'Lỏng vừa (bôi trơn)',note:'Bạc trượt có dầu'}
+];
+// ---- khởi động ----
+loadCache();
+function markConn(){ const c=DHPCore.connected(); $('conn').textContent=c?'● Supabase':'● cục bộ'; }
+async function start(){
+  try{ DHPCore.connect(); }catch(e){}   // dùng cấu hình Supabase chung (nếu có) — không bắt buộc
+  markConn(); render();                 // render ngay từ cache (chạy được offline)
+  if(DHPCore.connected()){
+    try{ const m=await DHPCore.list('materials'); if(m.length){ DB.mat=m; } }catch(e){}
+    try{ const s=await DHPCore.list('standards'); if(s.length){ DB.std=s; } }catch(e){}
+    cache(); render();
+  }
+}
+function showGate(){
+  const g=document.createElement('div'); g.style.cssText='position:fixed;inset:0;background:#b91c1c;display:flex;align-items:center;justify-content:center;z-index:999';
+  g.innerHTML="<div style='background:#fff;border-radius:14px;padding:24px;width:320px;max-width:90vw;text-align:center'><h3 style='color:#b91c1c;margin:0 0 10px'>DHP Engineering Database</h3><input id='dbp' type='password' placeholder='Mật khẩu' style='width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;box-sizing:border-box;font-family:inherit'><div id='dbe' style='color:#b91c1c;font-size:12px;min-height:14px'></div><button id='dbb' style='width:100%;padding:9px;background:#b91c1c;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit'>Đăng nhập</button><div style='color:#94a3b8;font-size:11px;margin-top:8px'>👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div></div>";
+  document.body.appendChild(g);
+  const go=()=>{ const r=DHPCore.roleFromPass(document.getElementById('dbp').value); if(!r){ document.getElementById('dbe').textContent='Sai mật khẩu.'; return; } localStorage.setItem('dhp_role',r); localStorage.setItem('dhp_gate_ok','1'); g.remove(); start(); };
+  document.getElementById('dbb').onclick=go; document.getElementById('dbp').addEventListener('keydown',e=>{ if(e.key==='Enter')go(); }); document.getElementById('dbp').focus();
+}
+// Đã đăng nhập ở app khác cùng origin → vào thẳng; chưa thì hiện cổng
+if(localStorage.getItem('dhp_role')||localStorage.getItem('dhp_gate_ok')==='1') start(); else showGate();
+</script>
+</body>
+</html>

@@ -120,6 +120,7 @@
     <select id="fPrefix" style="width:auto" onchange="renderGrid()"><option value="">— Vai trò / prefix —</option></select>
     <select id="fBrand" style="width:auto" onchange="onBrandFilter()"><option value="">— Tất cả hãng —</option></select>
     <select id="fCat" style="width:auto" onchange="renderGrid()"><option value="">— Tất cả nhóm —</option></select>
+    <select id="fCode" style="width:auto" onchange="renderGrid()" title="Lọc theo loại mã đã dùng"><option value="">— Loại mã —</option><option value="v25">✅ Chuẩn v2.5</option><option value="old">🗂 Mã cũ CK368</option></select>
     <span id="editBtns" style="display:none;gap:6px">
       <button class="sm" onclick="openProduct()">＋ Thêm mã</button>
       <button class="ghost sm" onclick="document.getElementById('csvIn').click()">📥 Nhập CSV</button>
@@ -258,7 +259,8 @@ const FAMILIES = [
   {k:'A', name:'Truyền động cơ khí'},
   {k:'B', name:'Bảo vệ điều khiển'},
   {k:'C', name:'Giảm chấn cách rung'},
-  {k:'D', name:'Thuỷ lực & Phụ trợ'}
+  {k:'D', name:'Thuỷ lực & Phụ trợ'},
+  {k:'E', name:'Dụng cụ & Vật tư khác'}
 ];
 const CATEGORIES = [
   {c:'KNL', n:'Khớp nối linh hoạt', f:'A'},{c:'KND', n:'Khớp nối đĩa đàn hồi', f:'A'},
@@ -275,7 +277,8 @@ const CATEGORIES = [
   {c:'VCQ', n:'Vòng bi chống quay ngược', f:'B'},{c:'PCN', n:'Phanh công nghiệp', f:'B'},
   {c:'CSG', n:'Cao su giảm chấn khớp nối', f:'C'},{c:'CGX', n:'Cao su giảm xóc', f:'C'},
   {c:'BUF', n:'Bộ giảm chấn công nghiệp', f:'C'},
-  {c:'NCB', n:'Nắp chụp bơm thủy lực', f:'D'},{c:'LMD', n:'Bộ làm mát dầu thủy lực', f:'D'}
+  {c:'NCB', n:'Nắp chụp bơm thủy lực', f:'D'},{c:'LMD', n:'Bộ làm mát dầu thủy lực', f:'D'},
+  {c:'DCU', n:'Dụng cụ (Tool)', f:'E'},{c:'KHC', n:'Khác / Vật tư', f:'E'}
 ];
 const SUBTYPES = {
   'KNL':[{c:'JAW',n:'Vấu cao su (Jaw/Spider)'},{c:'TYR',n:'Lốp (Tyre)'},{c:'PIN',n:'Pin & bush'},{c:'BLW',n:'Khớp xếp (Bellows)'},{c:'CRV',n:'Curved-jaw'},{c:'SLV',n:'Sleeve / ống lót'},{c:'MAG',n:'Từ tính (Magnetic)'}],
@@ -494,11 +497,12 @@ function refreshCatFilter(){
 }
 function onBrandFilter(){ refreshCatFilter(); renderGrid(); }
 function filtered(){
-  const q=norm($('q').value), b=$('fBrand').value, c=$('fCat').value, pf=$('fPrefix').value;
+  const q=norm($('q').value), b=$('fBrand').value, c=$('fCat').value, pf=$('fPrefix').value, cc=$('fCode').value;
   return PRODUCTS.filter(p=>{
     if(b&&p.brand!==b) return false;
     if(c&&p.category!==c) return false;
     if(pf&&prodPrefix(p)!==pf) return false;
+    if(cc){ const v25=/^\d\./.test(p.sku||''); if(cc==='v25'&&!v25) return false; if(cc==='old'&&v25) return false; }
     if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.category||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
     return true;
   });

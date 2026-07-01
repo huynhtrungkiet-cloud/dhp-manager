@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHP CRM — Sales Pipeline &amp; Khách hàng</title>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --brand:#b91c1c; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --ok:#16a34a; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;margin:0;background:#f1f5f9;color:var(--ink)}
+  .top{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:10px 18px;flex-wrap:wrap}
+  .top img{height:42px;background:#fff;border-radius:8px;padding:4px 10px}
+  .top h1{font-size:16px;margin:0;font-weight:700}.top .sub{font-size:11px;opacity:.85}
+  .top .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .pill{background:rgba(255,255,255,.18);border-radius:7px;padding:4px 9px;font-size:12px;font-weight:700}
+  .btn{cursor:pointer;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:12px;font-family:inherit;text-decoration:none}
+  .wrap{max-width:1280px;margin:0 auto;padding:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{padding:8px 16px;border-radius:10px;background:#fff;border:1px solid var(--line);cursor:pointer;font-weight:700}
+  .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  input,select,button,textarea{font-family:inherit;font-size:14px}
+  input,select,textarea{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  button.act{cursor:pointer;border:0;border-radius:8px;padding:8px 13px;font-weight:700;background:var(--brand);color:#fff}
+  button.ghost{cursor:pointer;background:#fff;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 13px;font-weight:700}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{position:sticky;top:0;background:#f8fafc;text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;color:#475569;white-space:nowrap}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:hover{background:#fff7ed;cursor:pointer}
+  .muted{color:var(--muted)}.small{font-size:12px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;white-space:nowrap}
+  .chip{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;background:#f1f5f9;color:#475569;font-weight:700}
+  /* Kanban */
+  .kan{display:grid;grid-template-columns:repeat(6,minmax(180px,1fr));gap:10px;align-items:start;overflow-x:auto;padding-bottom:6px}
+  .col{background:#eef2f7;border-radius:12px;padding:8px;min-height:120px}
+  .col.drag{outline:2px dashed var(--brand);outline-offset:-2px}
+  .colhd{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:12px;padding:2px 4px 8px}
+  .colhd .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px}
+  .colsum{font-size:11px;color:var(--muted);font-weight:700}
+  .opp{background:#fff;border:1px solid var(--line);border-left:4px solid #999;border-radius:9px;padding:8px;margin-bottom:8px;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .opp:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+  .opp .cust{font-weight:800;font-size:13px}
+  .opp .prod{font-size:12px;color:#334155;margin:2px 0}
+  .opp .val{font-weight:800;color:var(--brand);font-size:12px}
+  .opp .nxt{font-size:11px;color:#7c3aed;margin-top:3px}
+  .opp .nxt.over{color:#dc2626;font-weight:800}
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:24px}
+  .modal-bg.show{display:flex}.modal{background:#fff;border-radius:14px;padding:18px;max-width:600px;width:100%}
+  .field{margin-bottom:9px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:3px;color:#334155}.field input,.field textarea,.field select{width:100%}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  @media(max-width:600px){.row2,.row3{grid-template-columns:1fr}}
+  /* Analytics */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+  .stat .v{font-size:26px;font-weight:800;line-height:1}.stat .l{font-size:12px;color:var(--muted);margin-top:4px}
+  .barrow{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}
+  .barrow .nm{width:150px;flex:none}.barrow .track{flex:1;background:#f1f5f9;border-radius:6px;height:18px;overflow:hidden}
+  .barrow .fill{height:100%;background:var(--brand)}.barrow .pc{width:90px;flex:none;text-align:right;font-weight:700}
+  @media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}.kan{grid-template-columns:repeat(6,200px)}}
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1;if(f===1){this.src='LOGO.PNG'}else{this.style.display='none'}">
+  <div><h1>DHP CRM — Sales Pipeline</h1><div class="sub">Cơ hội bán hàng · Khách hàng &amp; lịch sử · Phân tích thắng/thua</div></div>
+  <div class="right">
+    <span class="pill" id="roleBadge">👁 Xem</span>
+    <span class="pill" id="conn">● cục bộ</span>
+    <button class="btn" onclick="reload()">⟲ Tải lại</button>
+    <a class="btn" href="dhp_platform.html">🖥 Platform</a>
+    <a class="btn" href="index.html">↩ Manager</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-t="pipe" onclick="go('pipe')">📊 Pipeline</div>
+    <div class="tab" data-t="list" onclick="go('list')">📋 Danh sách</div>
+    <div class="tab" data-t="cust" onclick="go('cust')">👥 Khách hàng</div>
+    <div class="tab" data-t="ana" onclick="go('ana')">📈 Phân tích</div>
+  </div>
+
+  <div class="bar">
+    <input id="q" placeholder="🔎 Tìm khách / sản phẩm / người phụ trách..." style="flex:1;min-width:220px" oninput="render()">
+    <span id="editBar" style="display:none;gap:6px">
+      <button class="act" id="addBtn" onclick="addRec()">＋ Thêm</button>
+      <button class="ghost" onclick="seed()">⬇ Dữ liệu mẫu</button>
+    </span>
+    <span class="muted small" id="count" style="margin-left:auto"></span>
+  </div>
+
+  <div id="view"></div>
+</div>
+
+<!-- Modal cơ hội -->
+<div class="modal-bg" id="oModal"><div class="modal">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="oTitle" style="margin:0">Cơ hội</h3><button class="ghost" onclick="closeO()">✕</button></div>
+  <input type="hidden" id="o_id">
+  <div class="field"><label>Khách hàng *</label><input id="o_customer" list="custList" placeholder="Tên khách / công ty"></div>
+  <datalist id="custList"></datalist>
+  <div class="row2">
+    <div class="field"><label>Người liên hệ</label><input id="o_contact" placeholder="Anh Nam - KT"></div>
+    <div class="field"><label>Điện thoại / Zalo</label><input id="o_phone" placeholder="09xx"></div>
+  </div>
+  <div class="field"><label>Sản phẩm / Yêu cầu *</label><input id="o_product" placeholder="VD: Khớp nối Jaw D160 · Gear coupling thay thế..."></div>
+  <div class="row3">
+    <div class="field"><label>Giai đoạn</label><select id="o_stage" onchange="onStageChange()"></select></div>
+    <div class="field"><label>Giá trị (₫)</label><input id="o_value" inputmode="numeric" placeholder="250000000"></div>
+    <div class="field"><label>Xác suất (%)</label><input id="o_prob" inputmode="numeric" placeholder="50"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Nguồn</label><select id="o_source"></select></div>
+    <div class="field"><label>Người phụ trách</label><input id="o_owner" placeholder="Sale"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Việc tiếp theo</label><input id="o_nextAction" placeholder="Gọi lại / gửi báo giá / chốt"></div>
+    <div class="field"><label>Hạn việc tiếp theo</label><input id="o_nextDate" type="date"></div>
+  </div>
+  <div class="field" id="lostWrap" style="display:none"><label>Lý do THUA *</label><select id="o_lostReason"></select></div>
+  <div class="field"><label>Ghi chú</label><textarea id="o_note" rows="2" placeholder="Trao đổi kỹ thuật, ngữ cảnh..."></textarea></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+    <button class="ghost" id="oDel" style="margin-right:auto;display:none;color:var(--brand)" onclick="delO()">🗑 Xóa</button>
+    <button class="ghost" onclick="closeO()">Hủy</button><button class="act" onclick="saveO()">💾 Lưu</button>
+  </div>
+</div></div>
+
+<!-- Modal khách hàng -->
+<div class="modal-bg" id="cModal"><div class="modal">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="cTitle" style="margin:0">Khách hàng</h3><button class="ghost" onclick="closeC()">✕</button></div>
+  <input type="hidden" id="c_id">
+  <div class="row2">
+    <div class="field"><label>Tên khách / công ty *</label><input id="c_name" placeholder="Công ty ABC"></div>
+    <div class="field"><label>Điện thoại / Zalo</label><input id="c_phone"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Email</label><input id="c_email"></div>
+    <div class="field"><label>Ngành / Lĩnh vực</label><input id="c_industry" placeholder="Xi măng, thép, giấy..."></div>
+  </div>
+  <div class="field"><label>Máy móc / Thiết bị đang dùng</label><input id="c_machines" placeholder="Bơm, quạt, gearbox, motor 75kW..."></div>
+  <div class="field"><label>Địa chỉ</label><input id="c_address"></div>
+  <div class="field"><label>Ghi chú</label><textarea id="c_note" rows="2"></textarea></div>
+  <div id="cHistory" class="small" style="margin-top:4px"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+    <button class="ghost" id="cDel" style="margin-right:auto;display:none;color:var(--brand)" onclick="delC()">🗑 Xóa</button>
+    <button class="ghost" onclick="closeC()">Hủy</button><button class="act" onclick="saveC()">💾 Lưu</button>
+  </div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="dhp_core.js"></script>
+<script>
+const RB={viewer:'👁 Xem',worker:'👷 Thợ',editor:'🛠 Điều phối',admin:'👑 Quản lý',sale:'💼 Sale',tech:'🛠 Kỹ thuật'};
+const STAGES=[
+  {k:'lead',    l:'Lead',       c:'#64748b', p:10},
+  {k:'inquiry', l:'Hỏi hàng',   c:'#0ea5e9', p:30},
+  {k:'quoted',  l:'Đã báo giá', c:'#f59e0b', p:50},
+  {k:'followup',l:'Theo dõi',   c:'#8b5cf6', p:65},
+  {k:'won',     l:'Thắng',      c:'#16a34a', p:100},
+  {k:'lost',    l:'Thua',       c:'#ef4444', p:0}
+];
+const LOST=['Giá cao','Lead time / giao hàng','Đối thủ','Không đúng model','Khách hủy','Không phản hồi','Khác'];
+const SOURCES=['Website daihongphat.asia','Điện thoại','Zalo','Giới thiệu','Khách cũ','Hội chợ / triển lãm','Khác'];
+const T_OPP='crm_opps', T_CUST='crm_customers';
+
+let TAB=(location.hash||'').replace('#','').match(/^(pipe|list|cust|ana)$/)?location.hash.replace('#',''):'pipe';
+let DB={opp:[],cust:[]};
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function role(){return DHPCore.role();}
+function canEdit(){return DHPCore.canEdit();}
+function stageOf(k){return STAGES.find(s=>s.k===k)||STAGES[0];}
+function nID(p){return p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function num(v){return Number(String(v||'').replace(/[^\d.-]/g,''))||0;}
+function fmt(v){const n=num(v);return n?n.toLocaleString('vi-VN'):'';}
+function fmtVND(v){const n=num(v);return n?(n.toLocaleString('vi-VN')+'₫'):'—';}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function cache(){try{localStorage.setItem('dhp_crm_cache',JSON.stringify(DB));}catch(e){}}
+function loadCache(){try{const c=JSON.parse(localStorage.getItem('dhp_crm_cache')||'{}');DB.opp=c.opp||[];DB.cust=c.cust||[];}catch(e){}}
+
+function go(t){TAB=t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.t===t));render();}
+
+function render(){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.t===TAB));
+  $('roleBadge').textContent=RB[role()]||('👤 '+role());
+  $('editBar').style.display=canEdit()?'inline-flex':'none';
+  $('addBtn').textContent=TAB==='cust'?'＋ Thêm khách':'＋ Thêm cơ hội';
+  // datalist khách
+  $('custList').innerHTML=uniqCustomers().map(n=>'<option value="'+esc(n)+'">').join('');
+  if(TAB==='pipe')renderPipe();
+  else if(TAB==='list')renderList();
+  else if(TAB==='cust')renderCust();
+  else renderAna();
+}
+function uniqCustomers(){
+  const s=new Set();DB.cust.forEach(c=>c.name&&s.add(c.name));DB.opp.forEach(o=>o.customer&&s.add(o.customer));
+  return [...s].sort();
+}
+function matchQ(o){
+  const q=($('q').value||'').toLowerCase();if(!q)return true;
+  return [o.customer,o.product,o.owner,o.contact,o.note].some(v=>String(v||'').toLowerCase().includes(q));
+}
+
+/* ---------- Pipeline (Kanban) ---------- */
+function renderPipe(){
+  const opps=DB.opp.filter(matchQ);
+  $('count').textContent=opps.length+' / '+DB.opp.length+' cơ hội';
+  let h='<div class="kan">';
+  STAGES.forEach(s=>{
+    const list=opps.filter(o=>o.stage===s.k);
+    const sum=list.reduce((a,o)=>a+num(o.value),0);
+    h+='<div class="col" data-stage="'+s.k+'" ondragover="dOver(event)" ondragleave="dLeave(event)" ondrop="dDrop(event,\''+s.k+'\')">';
+    h+='<div class="colhd"><span><span class="dot" style="background:'+s.c+'"></span>'+s.l+' ('+list.length+')</span><span class="colsum">'+(sum?fmtVND(sum):'')+'</span></div>';
+    list.forEach(o=>{
+      const over=o.nextDate&&o.nextDate<today()&&!['won','lost'].includes(o.stage);
+      h+='<div class="opp" style="border-left-color:'+s.c+'" draggable="'+canEdit()+'" ondragstart="dStart(event,\''+o.id+'\')" onclick="editO(\''+o.id+'\')">';
+      h+='<div class="cust">'+esc(o.customer||'(chưa có tên)')+'</div>';
+      h+='<div class="prod">'+esc(o.product||'')+'</div>';
+      if(num(o.value))h+='<div class="val">'+fmtVND(o.value)+'</div>';
+      if(o.stage==='lost'&&o.lostReason)h+='<div class="small" style="color:#dc2626">✗ '+esc(o.lostReason)+'</div>';
+      if(o.nextAction)h+='<div class="nxt'+(over?' over':'')+'">→ '+esc(o.nextAction)+(o.nextDate?' ('+o.nextDate+')':'')+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  $('view').innerHTML=h;
+}
+let dragId=null;
+function dStart(e,id){dragId=id;e.dataTransfer.effectAllowed='move';}
+function dOver(e){if(!canEdit())return;e.preventDefault();e.currentTarget.classList.add('drag');}
+function dLeave(e){e.currentTarget.classList.remove('drag');}
+function dDrop(e,stage){e.preventDefault();e.currentTarget.classList.remove('drag');if(!canEdit()||!dragId)return;moveStage(dragId,stage);dragId=null;}
+async function moveStage(id,stage){
+  const o=DB.opp.find(x=>x.id===id);if(!o||o.stage===stage)return;
+  if(stage==='lost'){
+    const r=prompt('Lý do THUA? (bắt buộc)\n'+LOST.map((x,i)=>(i+1)+'. '+x).join('\n')+'\n\nNhập số hoặc gõ lý do:');
+    if(r===null)return;
+    const idx=parseInt(r,10);o.lostReason=(idx>=1&&idx<=LOST.length)?LOST[idx-1]:(r.trim()||'Khác');
+  }
+  o.stage=stage;o.prob=stageOf(stage).p;
+  if(stage==='won'||stage==='lost')o.closedAt=o.closedAt||today();else o.closedAt='';
+  o.updatedAt=new Date().toISOString();
+  cache();render();await push(T_OPP,o);
+}
+
+/* ---------- Danh sách ---------- */
+function renderList(){
+  const opps=DB.opp.filter(matchQ).sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+  $('count').textContent=opps.length+' / '+DB.opp.length+' cơ hội';
+  const head='<tr><th>Khách</th><th>Sản phẩm</th><th>Giai đoạn</th><th>Giá trị</th><th>Phụ trách</th><th>Việc tiếp theo</th><th>Nguồn</th></tr>';
+  const body=opps.length?opps.map(o=>{const s=stageOf(o.stage);const over=o.nextDate&&o.nextDate<today()&&!['won','lost'].includes(o.stage);
+    return '<tr onclick="editO(\''+o.id+'\')"><td><b>'+esc(o.customer||'')+'</b><div class="small muted">'+esc(o.contact||'')+'</div></td>'+
+    '<td>'+esc(o.product||'')+'</td>'+
+    '<td><span class="badge" style="background:'+s.c+'">'+s.l+'</span>'+(o.stage==='lost'&&o.lostReason?'<div class="small" style="color:#dc2626">'+esc(o.lostReason)+'</div>':'')+'</td>'+
+    '<td>'+fmtVND(o.value)+'</td><td>'+esc(o.owner||'')+'</td>'+
+    '<td'+(over?' style="color:#dc2626;font-weight:700"':'')+'>'+esc(o.nextAction||'')+(o.nextDate?'<div class="small">'+o.nextDate+'</div>':'')+'</td>'+
+    '<td class="small">'+esc(o.source||'')+'</td></tr>';}).join('')
+    :'<tr><td colspan="7" class="muted" style="padding:14px">Chưa có cơ hội nào.'+(canEdit()?' Bấm <b>＋ Thêm cơ hội</b>.':'')+'</td></tr>';
+  $('view').innerHTML='<div class="card"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+
+/* ---------- Khách hàng ---------- */
+function renderCust(){
+  const q=($('q').value||'').toLowerCase();
+  const cs=DB.cust.filter(c=>!q||[c.name,c.industry,c.machines,c.phone].some(v=>String(v||'').toLowerCase().includes(q)))
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  $('count').textContent=cs.length+' / '+DB.cust.length+' khách';
+  const head='<tr><th>Khách</th><th>Ngành</th><th>Máy / Thiết bị</th><th>Điện thoại</th><th>Cơ hội</th><th>Đã thắng</th></tr>';
+  const body=cs.length?cs.map(c=>{const o=DB.opp.filter(x=>x.customer===c.name);const won=o.filter(x=>x.stage==='won');
+    const wonVal=won.reduce((a,x)=>a+num(x.value),0);
+    return '<tr onclick="editC(\''+c.id+'\')"><td><b>'+esc(c.name||'')+'</b><div class="small muted">'+esc(c.contact||'')+'</div></td>'+
+    '<td>'+esc(c.industry||'')+'</td><td class="small">'+esc(c.machines||'')+'</td><td>'+esc(c.phone||'')+'</td>'+
+    '<td>'+o.length+'</td><td>'+(won.length?won.length+' · '+fmtVND(wonVal):'—')+'</td></tr>';}).join('')
+    :'<tr><td colspan="6" class="muted" style="padding:14px">Chưa có khách. Khách sẽ tự gợi ý từ cơ hội, hoặc bấm <b>＋ Thêm khách</b>.</td></tr>';
+  $('view').innerHTML='<div class="card"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+
+/* ---------- Phân tích ---------- */
+function renderAna(){
+  $('count').textContent='';
+  const o=DB.opp;
+  const won=o.filter(x=>x.stage==='won'),lost=o.filter(x=>x.stage==='lost');
+  const open=o.filter(x=>!['won','lost'].includes(x.stage));
+  const closed=won.length+lost.length;
+  const wr=closed?Math.round(won.length/closed*100):0;
+  const wonVal=won.reduce((a,x)=>a+num(x.value),0);
+  const pipeVal=open.reduce((a,x)=>a+num(x.value)*(num(x.prob)||stageOf(x.stage).p)/100,0);
+  let h='<div class="stats">';
+  h+='<div class="stat"><div class="v">'+open.length+'</div><div class="l">Đang theo dõi</div></div>';
+  h+='<div class="stat"><div class="v" style="color:var(--ok)">'+wr+'%</div><div class="l">Tỷ lệ thắng ('+won.length+'/'+closed+')</div></div>';
+  h+='<div class="stat"><div class="v" style="color:var(--ok)">'+fmtVND(wonVal)+'</div><div class="l">Doanh số đã thắng</div></div>';
+  h+='<div class="stat"><div class="v" style="color:var(--brand)">'+fmtVND(Math.round(pipeVal))+'</div><div class="l">Pipeline kỳ vọng</div></div>';
+  h+='</div>';
+  // Lý do thua
+  h+='<div class="card" style="padding:14px;margin-bottom:14px"><b>❌ Lý do THUA</b> <span class="muted small">(mỏ vàng dữ liệu — vì sao mất đơn)</span>';
+  if(!lost.length)h+='<div class="muted small" style="margin-top:6px">Chưa có đơn thua nào được ghi nhận.</div>';
+  else{const by={};lost.forEach(x=>{const r=x.lostReason||'Khác';by[r]=(by[r]||0)+1;});
+    const max=Math.max(...Object.values(by));
+    h+=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([r,n])=>bar(r,n,lost.length,max)).join('');}
+  h+='</div>';
+  // Theo nguồn
+  h+='<div class="card" style="padding:14px"><b>📥 Cơ hội theo nguồn</b>';
+  const bs={};o.forEach(x=>{const s=x.source||'Khác';bs[s]=(bs[s]||0)+1;});
+  if(!Object.keys(bs).length)h+='<div class="muted small" style="margin-top:6px">Chưa có dữ liệu.</div>';
+  else{const max=Math.max(...Object.values(bs));h+=Object.entries(bs).sort((a,b)=>b[1]-a[1]).map(([s,n])=>bar(s,n,o.length,max)).join('');}
+  h+='</div>';
+  $('view').innerHTML=h;
+}
+function bar(name,n,total,max){
+  const pc=total?Math.round(n/total*100):0;const w=max?Math.round(n/max*100):0;
+  return '<div class="barrow"><div class="nm">'+esc(name)+'</div><div class="track"><div class="fill" style="width:'+w+'%"></div></div><div class="pc">'+n+' · '+pc+'%</div></div>';
+}
+
+/* ---------- Thêm/Sửa cơ hội ---------- */
+function fillSelect(sel,arr,valFn,labFn){sel.innerHTML=arr.map(x=>'<option value="'+esc(valFn(x))+'">'+esc(labFn(x))+'</option>').join('');}
+function addRec(){if(TAB==='cust')editC();else editO();}
+function editO(id){
+  if(!canEdit()){return;}
+  const o=id?DB.opp.find(x=>x.id===id):null;
+  $('oTitle').textContent=id?'Sửa cơ hội':'Cơ hội mới';
+  fillSelect($('o_stage'),STAGES,s=>s.k,s=>s.l);
+  fillSelect($('o_source'),SOURCES,s=>s,s=>s);
+  $('o_lostReason').innerHTML=LOST.map(r=>'<option>'+esc(r)+'</option>').join('');
+  $('o_id').value=id||'';
+  $('o_customer').value=o?o.customer||'':'';
+  $('o_contact').value=o?o.contact||'':'';
+  $('o_phone').value=o?o.phone||'':'';
+  $('o_product').value=o?o.product||'':'';
+  $('o_stage').value=o?o.stage||'lead':'lead';
+  $('o_value').value=o?fmt(o.value):'';
+  $('o_prob').value=o?(o.prob!=null?o.prob:stageOf(o.stage).p):10;
+  $('o_source').value=o?o.source||SOURCES[0]:SOURCES[0];
+  $('o_owner').value=o?o.owner||'':'';
+  $('o_nextAction').value=o?o.nextAction||'':'';
+  $('o_nextDate').value=o?o.nextDate||'':'';
+  $('o_lostReason').value=o?o.lostReason||LOST[0]:LOST[0];
+  $('o_note').value=o?o.note||'':'';
+  $('oDel').style.display=id?'inline-block':'none';
+  onStageChange();
+  $('oModal').classList.add('show');
+}
+function onStageChange(){$('lostWrap').style.display=$('o_stage').value==='lost'?'block':'none';}
+function closeO(){$('oModal').classList.remove('show');}
+async function saveO(){
+  if(!canEdit())return;
+  const cust=$('o_customer').value.trim(),prod=$('o_product').value.trim();
+  if(!cust){alert('Cần tên khách hàng.');return;}
+  if(!prod){alert('Cần Sản phẩm / Yêu cầu.');return;}
+  const stage=$('o_stage').value;
+  if(stage==='lost'&&!$('o_lostReason').value){alert('Đơn THUA cần lý do.');return;}
+  const id=$('o_id').value||nID('OPP');
+  const old=DB.opp.find(x=>x.id===id)||{};
+  const rec={...old,id,customer:cust,contact:$('o_contact').value.trim(),phone:$('o_phone').value.trim(),
+    product:prod,stage,value:num($('o_value').value),prob:num($('o_prob').value),
+    source:$('o_source').value,owner:$('o_owner').value.trim(),
+    nextAction:$('o_nextAction').value.trim(),nextDate:$('o_nextDate').value,
+    lostReason:stage==='lost'?$('o_lostReason').value:'',note:$('o_note').value.trim(),
+    updatedAt:new Date().toISOString()};
+  if(!rec.createdAt)rec.createdAt=rec.updatedAt;
+  if((stage==='won'||stage==='lost')&&!rec.closedAt)rec.closedAt=today();
+  if(stage!=='won'&&stage!=='lost')rec.closedAt='';
+  const i=DB.opp.findIndex(x=>x.id===id);if(i>=0)DB.opp[i]=rec;else DB.opp.push(rec);
+  ensureCustomer(cust,{phone:rec.phone,contact:rec.contact});
+  cache();closeO();render();await push(T_OPP,rec);
+}
+async function delO(){
+  const id=$('o_id').value;if(!id||!confirm('Xóa cơ hội này?'))return;
+  DB.opp=DB.opp.filter(x=>x.id!==id);cache();closeO();render();
+  try{if(DHPCore.connected())await DHPCore.remove(T_OPP,id);}catch(e){}
+}
+
+/* ---------- Thêm/Sửa khách ---------- */
+function ensureCustomer(name,extra){
+  if(!name)return;if(DB.cust.some(c=>c.name===name))return;
+  const c={id:nID('CUS'),name,phone:(extra&&extra.phone)||'',contact:(extra&&extra.contact)||'',createdAt:new Date().toISOString()};
+  DB.cust.push(c);push(T_CUST,c);
+}
+function editC(id){
+  if(!canEdit())return;
+  const c=id?DB.cust.find(x=>x.id===id):null;
+  $('cTitle').textContent=id?'Sửa khách hàng':'Khách hàng mới';
+  $('c_id').value=id||'';
+  ['name','phone','email','industry','machines','address','note'].forEach(f=>$('c_'+f).value=c?c[f]||'':'');
+  $('cDel').style.display=id?'inline-block':'none';
+  // lịch sử kỹ thuật
+  if(c){const o=DB.opp.filter(x=>x.customer===c.name);
+    $('cHistory').innerHTML=o.length?('<b>Lịch sử ('+o.length+' cơ hội):</b><br>'+o.map(x=>{const s=stageOf(x.stage);return '<span class="chip" style="background:'+s.c+';color:#fff">'+s.l+'</span> '+esc(x.product||'')+' '+(num(x.value)?'· '+fmtVND(x.value):'')+(x.stage==='lost'&&x.lostReason?' · ✗'+esc(x.lostReason):'');}).join('<br>')):'<span class="muted">Chưa có cơ hội nào.</span>';
+  }else $('cHistory').innerHTML='';
+  $('cModal').classList.add('show');
+}
+function closeC(){$('cModal').classList.remove('show');}
+async function saveC(){
+  if(!canEdit())return;
+  const name=$('c_name').value.trim();if(!name){alert('Cần tên khách.');return;}
+  const id=$('c_id').value||nID('CUS');const old=DB.cust.find(x=>x.id===id)||{};
+  const rec={...old,id,name};['phone','email','industry','machines','address','note'].forEach(f=>rec[f]=$('c_'+f).value.trim());
+  if(!rec.createdAt)rec.createdAt=new Date().toISOString();
+  const i=DB.cust.findIndex(x=>x.id===id);if(i>=0)DB.cust[i]=rec;else DB.cust.push(rec);
+  cache();closeC();render();await push(T_CUST,rec);
+}
+async function delC(){
+  const id=$('c_id').value;if(!id||!confirm('Xóa khách này? (Cơ hội liên quan vẫn giữ)'))return;
+  DB.cust=DB.cust.filter(x=>x.id!==id);cache();closeC();render();
+  try{if(DHPCore.connected())await DHPCore.remove(T_CUST,id);}catch(e){}
+}
+
+/* ---------- Đồng bộ ---------- */
+async function push(table,rec){try{if(DHPCore.connected()||DHPCore.connect())await DHPCore.upsert(table,rec);}catch(e){console.warn(e.message);}}
+function markConn(){$('conn').textContent=DHPCore.connected()?'● Supabase':'● cục bộ';}
+async function pull(){
+  if(!DHPCore.connected())return;
+  try{const o=await DHPCore.list(T_OPP);DB.opp=o;}catch(e){console.warn(e.message);}
+  try{const c=await DHPCore.list(T_CUST);DB.cust=c;}catch(e){console.warn(e.message);}
+  cache();render();
+}
+async function reload(){markConn();if(DHPCore.connected())await pull();else render();}
+
+async function seed(){
+  if(!canEdit())return;
+  if(!confirm('Nạp 6 cơ hội + 3 khách MẪU để xem thử? (có thể xóa sau)'))return;
+  const now=new Date().toISOString();
+  const sc=[
+    {id:nID('CUS'),name:'Cty Xi măng Bỉm Sơn',industry:'Xi măng',machines:'Quạt ID 250kW, băng tải, gearbox',phone:'0912xxxxxx',createdAt:now},
+    {id:nID('CUS'),name:'Nhà máy Giấy An Bình',industry:'Giấy',machines:'Bơm, motor 75kW, máy nghiền',phone:'0903xxxxxx',createdAt:now},
+    {id:nID('CUS'),name:'Cty Thép Hòa Phát',industry:'Thép',machines:'Cán, bơm thủy lực, quạt làm mát',phone:'0987xxxxxx',createdAt:now}
+  ];
+  const so=[
+    {customer:'Cty Xi măng Bỉm Sơn',product:'Khớp nối Gear coupling thay thế cho quạt ID',stage:'quoted',value:85000000,source:'Khách cũ',owner:'Kiệt',nextAction:'Gọi chốt sau Tết',nextDate:today()},
+    {customer:'Cty Xi măng Bỉm Sơn',product:'Bộ Jaw coupling D160 dự phòng',stage:'won',value:42000000,source:'Khách cũ',owner:'Kiệt'},
+    {customer:'Nhà máy Giấy An Bình',product:'Pin bush coupling cho bơm',stage:'inquiry',value:18000000,source:'Website daihongphat.asia',owner:'Sale 1',nextAction:'Gửi catalogue + báo giá'},
+    {customer:'Nhà máy Giấy An Bình',product:'Tyre coupling motor nghiền',stage:'lost',value:25000000,source:'Website daihongphat.asia',owner:'Sale 1',lostReason:'Giá cao'},
+    {customer:'Cty Thép Hòa Phát',product:'Gear coupling cỡ lớn cho cán',stage:'followup',value:160000000,source:'Giới thiệu',owner:'Kiệt',nextAction:'Khảo sát hiện trường',nextDate:today()},
+    {customer:'Cty Thép Hòa Phát',product:'Khớp nối thủy lực thay thế',stage:'lost',value:55000000,source:'Điện thoại',owner:'Sale 1',lostReason:'Không đúng model'}
+  ].map(o=>({id:nID('OPP'),prob:stageOf(o.stage).p,createdAt:now,updatedAt:now,closedAt:(o.stage==='won'||o.stage==='lost')?today():'',...o}));
+  // tránh trùng nếu đã nạp
+  const have=new Set(DB.cust.map(c=>c.name));sc.forEach(c=>{if(!have.has(c.name))DB.cust.push(c);});
+  so.forEach(o=>DB.opp.push(o));
+  cache();render();
+  try{if(DHPCore.connected()||DHPCore.connect()){await DHPCore.upsertMany(T_CUST,DB.cust);await DHPCore.upsertMany(T_OPP,DB.opp);}}catch(e){console.warn(e.message);}
+  alert('✓ Đã nạp dữ liệu mẫu'+(DHPCore.connected()?' + đẩy lên Supabase.':' (cục bộ).'));
+}
+
+/* ---------- Khởi động ---------- */
+loadCache();
+async function start(){
+  try{DHPCore.connect();}catch(e){}
+  markConn();render();
+  if(DHPCore.connected()){await pull();
+    try{DHPCore.subscribe(T_OPP,()=>pull());DHPCore.subscribe(T_CUST,()=>0);}catch(e){}
+  }
+}
+function showGate(){
+  const g=document.createElement('div');g.style.cssText='position:fixed;inset:0;background:#b91c1c;display:flex;align-items:center;justify-content:center;z-index:999';
+  g.innerHTML="<div style='background:#fff;border-radius:14px;padding:24px;width:320px;max-width:90vw;text-align:center'><h3 style='color:#b91c1c;margin:0 0 10px'>DHP CRM — Sales Pipeline</h3><input id='gp' type='password' placeholder='Mật khẩu' style='width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;box-sizing:border-box;font-family:inherit'><div id='ge' style='color:#b91c1c;font-size:12px;min-height:14px'></div><button id='gb' style='width:100%;padding:9px;background:#b91c1c;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit'>Đăng nhập</button><div style='color:#94a3b8;font-size:11px;margin-top:8px'>👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div></div>";
+  document.body.appendChild(g);
+  const ok=()=>{const r=DHPCore.roleFromPass(document.getElementById('gp').value);if(!r){document.getElementById('ge').textContent='Sai mật khẩu.';return;}localStorage.setItem('dhp_role',r);localStorage.setItem('dhp_gate_ok','1');g.remove();start();};
+  document.getElementById('gb').onclick=ok;document.getElementById('gp').addEventListener('keydown',e=>{if(e.key==='Enter')ok();});document.getElementById('gp').focus();
+}
+if(localStorage.getItem('dhp_role')||localStorage.getItem('dhp_gate_ok')==='1')start();else showGate();
+</script>
+</body>
+</html>

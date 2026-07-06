@@ -210,6 +210,7 @@
 
     <!-- COMMON -->
     <div class="field"><label>Tên / mô tả sản phẩm</label><input id="p_name" placeholder="Tên / mô tả" oninput="showSimilar()"></div>
+    <div class="field"><label>🗂 Mã cũ / Tên gọi khác <span class="muted small">(mã CK368 cũ, tên khách hay gọi… — vẫn TRA RA được sau khi chuẩn hóa; ngăn cách bằng dấu phẩy)</span></label><input id="p_oldcode" placeholder="VD: OLC_CK368_4040, CK368-4040, ống lót 4040"></div>
     <div class="row3">
       <div class="field"><label>Vật liệu</label><input id="p_material" placeholder="Gang / Thép..."></div>
       <div class="field"><label>PN / Mã NCC</label><input id="p_pn"></div>
@@ -534,7 +535,7 @@ function filtered(){
     if(c&&p.category!==c) return false;
     if(pf&&prodPrefix(p)!==pf) return false;
     if(cc){ const v25=/^\d\./.test(p.sku||''); if(cc==='v25'&&!v25) return false; if(cc==='old'&&v25) return false; }
-    if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.category||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
+    if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.oldCode||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.category||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
     return true;
   });
 }
@@ -565,7 +566,7 @@ function rowHtml(p){
   return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
     <td class="csku">${esc(p.sku||'')}${isV25(p)?'<span class="tag-v25">v2.5</span>':'<span class="tag-old">cũ</span>'}</td>
     <td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>
-    <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
+    <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}${p.oldCode?`<div class="muted" style="font-size:11px">🗂 mã cũ: ${esc(p.oldCode)}</div>`:''}</td>
     <td>${esc(p.brand||'')}</td>
     <td>${esc(p.category||'')}</td>
     <td>${esc(p.series||'')}</td>
@@ -731,7 +732,7 @@ function openProduct(id){
   $('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm mã';
   $('p_id').value=id||'';
   // reset fields
-  ['p_series','p_size','p_bore','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project'].forEach(k=>{ if($(k))$(k).value=''; });
+  ['p_series','p_size','p_bore','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
   $('serChips').innerHTML=''; document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.remove('active'));
   // điền từ bản ghi
   const pf = p?prodPrefix(p):'';
@@ -750,6 +751,8 @@ function openProduct(id){
     $('p_sku').value=p.sku||'';
     $('p_name').value=p.name||''; $('p_material').value=p.material||''; $('p_pn').value=p.pn||'';
     $('p_price').value=p.price||''; $('p_image').value=p.imageUrl||''; $('p_note').value=p.note||'';
+    // Mã cũ: nếu chưa lưu mà đây là mã cũ (chưa chuẩn v2.5) → tự điền SKU cũ để chuẩn hóa xong vẫn tra ra được
+    $('p_oldcode').value = p.oldCode || (!isV25(p) ? (p.sku||'') : '');
     $('p_project').value=p.projectCode||''; $('p_projType').value=p.projectType||'';
   }
   const pv=$('p_prev'); pv.src=p&&p.imageUrl?p.imageUrl:''; pv.style.display=p&&p.imageUrl?'inline-block':'none';
@@ -809,6 +812,7 @@ async function saveProduct(){
     category:categoryDisp,
     // common
     material:g('p_material'), pn:g('p_pn'), price:g('p_price'), imageUrl:g('p_image'), note:g('p_note'),
+    oldCode:g('p_oldcode'),
     projectCode:g('p_project'), projectType:$('p_projType').value||'',
     updatedAt:new Date().toISOString()
   };
@@ -841,7 +845,7 @@ async function importCsv(file){
       const rows=parseCsv(fr.result); if(rows.length<2){ alert('CSV trống.'); return; }
       const head=rows[0].map(h=>norm(h).replace(/[^a-z0-9]/g,''));
       const col=(...n)=>{ for(const x of n){ const i=head.indexOf(x); if(i>=0) return i; } return -1; };
-      const ix={sku:col('sku','ma'),name:col('ten','name','model'),brand:col('hang','brand'),category:col('nhom','category'),series:col('series'),size:col('kichthuoc','size','dn'),pn:col('pn'),material:col('vatlieu','material'),price:col('gia','price'),image:col('linkanh','image','imageurl'),note:col('ghichu','note')};
+      const ix={sku:col('sku','ma'),name:col('ten','name','model'),brand:col('hang','brand'),category:col('nhom','category'),series:col('series'),size:col('kichthuoc','size','dn'),pn:col('pn'),material:col('vatlieu','material'),price:col('gia','price'),image:col('linkanh','image','imageurl'),note:col('ghichu','note'),oldcode:col('macu','oldcode','tengoikhac')};
       const bySku={}; PRODUCTS.forEach(p=>{ if(p.sku) bySku[norm(p.sku)]=p; });
       const batch=[]; let add=0,upd=0;
       for(let r=1;r<rows.length;r++){ const row=rows[r], get=k=>ix[k]>=0?String(row[ix[k]]||'').trim():'';
@@ -849,7 +853,7 @@ async function importCsv(file){
         if(!sku&&!model) continue;
         const ex=bySku[norm(sku)];
         const rec=Object.assign(ex?{...ex}:{id:'PRD-'+Date.now().toString(36)+r+Math.random().toString(36).slice(2,5)},
-          {sku,name:model||sku,brand,brandCode:brandCodeOf(brand),category:get('category'),series:get('series'),size,pn:get('pn'),material:get('material'),price:get('price'),imageUrl:get('image'),note:get('note'),updatedAt:new Date().toISOString()});
+          {sku,name:model||sku,brand,brandCode:brandCodeOf(brand),category:get('category'),series:get('series'),size,pn:get('pn'),material:get('material'),price:get('price'),imageUrl:get('image'),note:get('note'),oldCode:get('oldcode'),updatedAt:new Date().toISOString()});
         batch.push({id:rec.id,data:rec,updated_at:rec.updatedAt}); bySku[norm(sku)]=rec;
         if(ex){ const i=PRODUCTS.findIndex(p=>p.id===rec.id); PRODUCTS[i]=rec; upd++; } else { PRODUCTS.push(rec); add++; }
       }
@@ -863,8 +867,8 @@ async function importCsv(file){
 }
 function csvCell(v){ v=(v==null?'':String(v)); return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportCsv(){
-  const head=['SKU','Prefix','Tên','Hãng','Nhóm','Series','KíchThước','Bore','BiếnThể','PN','VậtLiệu','Giá','DựÁn','LinkẢnh','GhiChú'];
-  const rows=PRODUCTS.map(p=>[p.sku,prodPrefix(p),p.name,p.brand,p.category,p.series,p.size,p.bore,p.variant,p.pn,p.material,p.price,p.projectCode,p.imageUrl,p.note]);
+  const head=['SKU','MãCũ','Prefix','Tên','Hãng','Nhóm','Series','KíchThước','Bore','BiếnThể','PN','VậtLiệu','Giá','DựÁn','LinkẢnh','GhiChú'];
+  const rows=PRODUCTS.map(p=>[p.sku,p.oldCode||'',prodPrefix(p),p.name,p.brand,p.category,p.series,p.size,p.bore,p.variant,p.pn,p.material,p.price,p.projectCode,p.imageUrl,p.note]);
   const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'}));
   a.download='DHP_catalogue.csv'; document.body.appendChild(a); a.click(); a.remove();

@@ -25,6 +25,9 @@
   .muted{color:var(--muted)} .small{font-size:12px}
   .badge{display:inline-block;background:#eef2ff;color:#4338ca;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
   .pfx-badge{display:inline-block;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:800;font-family:'JetBrains Mono',monospace;background:#1e293b;color:#fff}
+  .tag-old{display:inline-block;background:#fef3c7;color:#b45309;border-radius:5px;padding:0 5px;font-size:9.5px;font-weight:800;font-family:Arial,sans-serif;vertical-align:middle;margin-left:5px}
+  .tag-v25{display:inline-block;background:#dcfce7;color:#15803d;border-radius:5px;padding:0 5px;font-size:9.5px;font-weight:800;font-family:Arial,sans-serif;vertical-align:middle;margin-left:5px}
+  .ptbl th.sortable{cursor:pointer;user-select:none} .ptbl th.sortable:hover{color:var(--brand)}
   /* Bảng */
   .ptbl{width:100%;border-collapse:collapse;font-size:13px}
   .ptbl th{position:sticky;top:0;background:var(--paper);text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569;white-space:nowrap}
@@ -535,22 +538,32 @@ function filtered(){
     return true;
   });
 }
+function isV25(p){ return /^\d\./.test(p.sku||''); }
+let SORT={col:'sku',dir:1};
+const SORT_VAL={ sku:p=>p.sku, vaitro:p=>prodPrefix(p), name:p=>p.name, brand:p=>p.brand, category:p=>p.category, series:p=>p.series, size:p=>p.size };
+function sortBy(col){ if(SORT.col===col) SORT.dir*=-1; else { SORT.col=col; SORT.dir=1; } renderGrid(); }
+function sArrow(col){ return SORT.col===col?(SORT.dir>0?' ▲':' ▼'):''; }
+function th(col,label){ return `<th class="sortable" onclick="sortBy('${col}')">${label}${sArrow(col)}</th>`; }
 function renderGrid(){
-  const rows=filtered(), CAP=600, shown=rows.slice(0,CAP);
-  $('count').textContent=`${rows.length} / ${PRODUCTS.length} mã`;
+  let rows=filtered();
+  const val=SORT_VAL[SORT.col]||SORT_VAL.sku;
+  rows=rows.slice().sort((a,b)=> SORT.dir * String(val(a)||'').localeCompare(String(val(b)||''),'en',{numeric:true,sensitivity:'base'}));
+  const CAP=600, shown=rows.slice(0,CAP);
+  const v25=PRODUCTS.filter(isV25).length, old=PRODUCTS.length-v25;
+  $('count').innerHTML=`${rows.length}/${PRODUCTS.length} mã · <span style="color:#15803d">✓ ${v25} chuẩn v2.5</span> · <span style="color:#b45309">🗂 ${old} mã cũ</span>`;
   const grid=$('grid');
   if(PRODUCTS.length===0){ grid.innerHTML=`<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm mã</b>.':''}</div>`; return; }
   if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
   grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
     <table class="ptbl"><thead><tr>
-      <th>Mã SKU</th><th>Vai trò</th><th>Tên sản phẩm</th><th>Hãng</th><th>Nhóm</th><th>Series</th><th>Cỡ</th>${canTag()?'<th></th>':''}
+      ${th('sku','Mã SKU')}${th('vaitro','Vai trò')}${th('name','Tên sản phẩm')}${th('brand','Hãng')}${th('category','Nhóm')}${th('series','Series')}${th('size','Cỡ')}${canTag()?'<th></th>':''}
     </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
     ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
 }
 function rowHtml(p){
   const pf=prodPrefix(p);
   return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
-    <td class="csku">${esc(p.sku||'')}</td>
+    <td class="csku">${esc(p.sku||'')}${isV25(p)?'<span class="tag-v25">v2.5</span>':'<span class="tag-old">cũ</span>'}</td>
     <td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>
     <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
     <td>${esc(p.brand||'')}</td>

@@ -320,6 +320,34 @@ const BRANDS = [
   {c:'STB', n:'Stieber Germany'},{c:'TWF', n:'Twiflex Germany'},{c:'SVB', n:'Svendborg / Stromag'},
   {c:'DHP', n:'Đại Hồng Phát — gia công nội bộ'}
 ];
+/* Nhóm sản phẩm → các HÃNG thực sự làm loại đó (seed kiến thức ngành).
+   Dùng để xếp hãng đúng lên đầu khi tạo mã, tránh chọn nhầm. DHP luôn có (tự chế tạo).
+   Nhóm không khai báo / rỗng → hiện tất cả hãng. Danh sách tự bổ sung từ dữ liệu thực. */
+const CAT_BRANDS = {
+  KNL:['KTR','TBW','FNR','CRM','RTH','HEN','WST','ITG','JAC','WJN','PTI','MAV','RNL','MTN','MAG'],
+  KND:['FLD','RXN','KTR','HUC','ETP'],
+  KNB:['CRM','WST'],
+  KNX:['PTI','JAC','WJN'],
+  KNE:['KTR','HUC','MAV','RSP'],
+  KNS:['KTR','RSP','MAV','HUC','ETP'],
+  KNC:['RGF','MAV','ETP','RSP'],
+  KNR:['FLD','RXN','KTR','RNL','MTN'],
+  KCD:['RGF','FLD','TFL'],
+  KTL:['TFL','FLD','WST'],
+  KEG:['KTR','FLD','RGF','SVB','STB'],
+  KXI:['RNL','MTN','FNR'],
+  KKT:['RGF','ETP','STB','WCH','MAV','RSP'],
+  TBT:['RGF','ETP','STB','RSP'],
+  PLY:['FNR','MTN','CRM'],
+  XCN:['RNL','MTN','FNR'],
+  DAI:['FNR','CRM'],
+  KQT:['RSP','STB','MAV','CRM','RGF'],
+  VCQ:['STB','RSP'],
+  PCN:['TWF','SVB','STB'],
+  CSG:['KTR','TBW','FNR','RTH','HEN','WST','ITG','JAC','WJN','PTI'],
+  NCB:['CRM','WST'],
+  DCU:['TONE']
+};
 const SERIES_HINTS = {
   'KTR':['ROTEX','BOWEX','RADEX-N','REVOLEX','POLY-NORM','TOOLFLEX','MINEX','RUFLEX'],
   'RGF':['TNM','TNS','TNB','TNR','TNT','TNZ','TND','GWB','GWE','TNK','RLB','RLP','RLT','RLU','RfN-7012','RfN-7013','RfN-7015','RfN-7110','RfN-4051','RfN-4071'],
@@ -582,7 +610,28 @@ function onCatChange(){
   const subs=SUBTYPES[MS.cat]||[];
   if(!subs.length){ $('p_subtype').innerHTML='<option value="">— Không có sub-type —</option>'; $('p_subtype').disabled=true; }
   else{ $('p_subtype').innerHTML='<option value="">— Tùy chọn —</option>'+subs.map(s=>`<option value="${s.c}" ${MS.subtype===s.c?'selected':''}>${s.c} — ${esc(s.n)}</option>`).join(''); $('p_subtype').disabled=false; }
+  fillBrandForCat();
   genSku();
+}
+function optBrand(b){ return `<option value="${b.c}">${b.c} — ${esc(b.n)}</option>`; }
+// Tập hãng gợi ý cho nhóm: seed ngành + hãng đã có trong dữ liệu thực + DHP. null = không hạn chế.
+function brandsForCat(cat){
+  const seed=CAT_BRANDS[cat]||[];
+  const nm=catName(cat);
+  const fromData=[...new Set(PRODUCTS.filter(p=>p.category===nm).map(p=>p.brandCode||brandCodeOf(p.brand)).filter(Boolean))];
+  if(!seed.length && !fromData.length) return null;
+  return new Set([...seed, ...fromData, 'DHP']);
+}
+// Đổ dropdown Hãng: nhóm "✔ thường dùng cho nhóm này" lên đầu, "Hãng khác" xuống dưới (không ẩn hẳn).
+function fillBrandForCat(){
+  const cur=$('p_brand').value, allow=MS.cat?brandsForCat(MS.cat):null;
+  let html='<option value="">— Chọn hãng —</option>';
+  if(allow){
+    const prim=BRANDS.filter(b=>allow.has(b.c)), rest=BRANDS.filter(b=>!allow.has(b.c));
+    html+='<optgroup label="✔ Hãng thường dùng cho nhóm này">'+prim.map(optBrand).join('')+'</optgroup>';
+    if(rest.length) html+='<optgroup label="Hãng khác (ít gặp cho nhóm này)">'+rest.map(optBrand).join('')+'</optgroup>';
+  } else html+=BRANDS.map(optBrand).join('');
+  $('p_brand').innerHTML=html; $('p_brand').value=cur;
 }
 function onBrandChange(){
   const code=$('p_brand').value;

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHP Manager — Hướng dẫn theo vai trò</title>
+<style>
+  /* Tối giản màu: nền xám/trắng, chữ đậm để phân cấp. CHỈ tô màu cho CẢNH BÁO. */
+  :root{ --ink:#1f2937; --muted:#6b7280; --line:#d1d5db; --bg:#f3f4f6; --card:#fff;
+         --warn:#b45309; --warn-bg:#fffbeb; --danger:#b91c1c; --danger-bg:#fef2f2; --ok:#15803d; }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;color:var(--ink);background:var(--bg);line-height:1.5;font-size:14px}
+  .wrap{max-width:920px;margin:0 auto;padding:22px 18px 60px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+  header h1{margin:0;font-size:20px}
+  header .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  h2{font-size:16px;margin:26px 0 8px;padding:6px 10px;background:#e5e7eb;border-left:4px solid var(--ink);border-radius:0 4px 4px 0}
+  h3{font-size:14px;margin:16px 0 6px}
+  p,li{margin:5px 0}
+  ol,ul{margin:6px 0 6px 20px;padding:0}
+  ol li{margin:6px 0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);font-size:13px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#e5e7eb;font-weight:700}
+  code,.kbd{background:#e5e7eb;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:10px 0}
+  .muted{color:var(--muted)}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 16px;margin:12px 0}
+  .toc a{color:var(--ink);text-decoration:none;font-weight:700}
+  .toc a:hover{text-decoration:underline}
+  /* Chỉ 3 loại nhấn màu — dành cho cảnh báo/lưu ý, không dùng trang trí */
+  .note{border-left:4px solid var(--muted);background:#f9fafb;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+  .warn{border-left:4px solid var(--warn);background:var(--warn-bg);padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+  .danger{border-left:4px solid var(--danger);background:var(--danger-bg);padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+  .step{counter-reset:none}
+  .role-badge{display:inline-block;border:1px solid var(--line);border-radius:5px;padding:1px 8px;font-weight:700;font-size:12px;background:#e5e7eb}
+  @media print{ body{background:#fff} .toc{display:none} h2{background:#eee} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>DHP Manager — Hướng dẫn sử dụng theo vai trò</h1>
+  <div class="sub">Hệ thống quản lý sản xuất CK368 · dùng chung dữ liệu trên đám mây (Supabase) · truy cập bằng trình duyệt trên máy tính hoặc điện thoại</div>
+</header>
+
+<div class="note">
+  <b>Nguyên tắc màu của tài liệu &amp; của app:</b> nền xám/trắng, phân cấp bằng chữ đậm. <b>Chỉ tô màu khi cần chú ý</b> —
+  <span style="color:var(--warn);font-weight:700">cam = lưu ý</span>, <span style="color:var(--danger);font-weight:700">đỏ = cảnh báo/quá hạn</span>,
+  <span style="color:var(--ok);font-weight:700">xanh = đã xong/đạt</span>. Không có màu = thông tin bình thường.
+</div>
+
+<div class="toc">
+  <b>Mục lục</b>
+  <ol>
+    <li><a href="#batdau">Bắt đầu — Đăng nhập &amp; 4 cấp quyền</a></li>
+    <li><a href="#admin">Vai trò A — ADMIN LÊN ĐƠN (tạo &amp; nhập đơn hàng)</a></li>
+    <li><a href="#dieuhanh">Vai trò B — ĐIỀU HÀNH / ĐIỀU PHỐI (phân công &amp; theo dõi sản xuất)</a></li>
+    <li><a href="#kinhdoanh">Vai trò C — PHÒNG KINH DOANH (chỉ xem &amp; theo dõi)</a></li>
+    <li><a href="#tho">Vai trò D — THỢ (báo tiến độ tại xưởng)</a></li>
+    <li><a href="#chung">Quy tắc chung &amp; xử lý sự cố</a></li>
+  </ol>
+</div>
+
+<h2 id="batdau">1. Bắt đầu — Đăng nhập &amp; 4 cấp quyền</h2>
+<p>Mở link app trên trình duyệt (máy tính hoặc điện thoại). Lần đầu sẽ hỏi <b>mật khẩu</b> — mật khẩu quyết định bạn thuộc cấp nào. Nhập 1 lần, máy nhớ cho các lần sau.</p>
+<table>
+  <tr><th>Cấp quyền</th><th>Mật khẩu</th><th>Ai dùng</th><th>Làm được gì</th></tr>
+  <tr><td><span class="role-badge">👁 Xem</span></td><td><code>dhp368</code></td><td><b>Phòng kinh doanh</b>, sếp xem nhanh</td><td>Xem tất cả: đơn, tiến độ, KPI. <b>Không sửa được gì.</b></td></tr>
+  <tr><td><span class="role-badge">👷 Thợ</span></td><td><code>tho368</code></td><td>Thợ tại xưởng</td><td>Tick hoàn thành công đoạn, nhập số đo. Không sửa đơn.</td></tr>
+  <tr><td><span class="role-badge">🛠 Điều phối</span></td><td><code>edit368</code></td><td><b>Điều hành/điều phối, TPKT</b></td><td>Tạo &amp; sửa đơn, phân công, kiểm đầu vào, QC. (Gồm cả quyền Thợ.)</td></tr>
+  <tr><td><span class="role-badge">👑 Quản lý</span></td><td><code>admin368</code></td><td>Quản lý / Giám đốc</td><td>Toàn quyền + cấu hình hệ thống, nhân sự, đối tác.</td></tr>
+</table>
+<div class="note">Đổi cấp bất kỳ lúc nào bằng nút <b>🔓 Đổi cấp</b> (hoặc <b>Mở khóa sửa</b>) trên thanh trên cùng. Muốn thoát/khóa lại bấm <b>⎋</b>.</div>
+<p><b>9 thẻ (tab) trên cùng:</b> 🏠 Tổng quan · 📅 Lịch phân công &amp; Đơn hàng · 👷 Việc hôm nay · 🔧 Quy trình · 📊 KPI &amp; Báo cáo · 🔁 Outsource · ⚠ Ghi nhận NCR · 📋 Quy trình &amp; Hướng dẫn · ⚙ Dữ liệu &amp; Đồng bộ.</p>
+
+<h2 id="admin">2. Vai trò A — ADMIN LÊN ĐƠN</h2>
+<p class="muted">Cấp quyền: <span class="role-badge">🛠 Điều phối</span> (<code>edit368</code>) trở lên. Nhiệm vụ: mỗi khi có đơn mới từ Sale/khách, nhập vào hệ thống đầy đủ, chuẩn ngay từ đầu.</p>
+
+<h3>Bước 1 — Tạo đơn mới</h3>
+<ol>
+  <li>Vào tab <b>📅 Lịch phân công &amp; Đơn hàng</b>.</li>
+  <li>Bấm nút <b>＋ Thêm đơn</b> (nếu chưa mở khóa, bấm <b>🔓 Mở khóa sửa</b> và nhập <code>edit368</code>).</li>
+  <li>Nhập <b>Mã đơn / Tên đơn hàng</b> và <b>Khách hàng</b>.</li>
+</ol>
+
+<h3>Bước 2 — Điền khối “🗒 G0 — Thông tin đơn hàng”</h3>
+<p>Đây là phần <b>bắt buộc</b> của admin. Điền đủ:</p>
+<ul>
+  <li><b>Số lượng</b> + <b>ĐVT</b> (Cái/Bộ…) + <b>Độ ưu tiên</b> (Cao/TB/Thấp).</li>
+  <li><b>Ngày nhận đơn</b> và <b>Hạn giao hàng</b> — app tự tính số ngày còn lại.</li>
+  <li><b>Phân công thực hiện:</b> Nội bộ (xưởng) / Gia công ngoài (outsource) / Hỗn hợp. Nếu outsource → chọn <b>Đối tác</b>.</li>
+  <li><b>📁 Thư mục Google Drive của đơn:</b> dán link thư mục chứa bản vẽ, tài liệu Sale, ảnh, report đo. (Trên Drive: <i>Chia sẻ → Sao chép liên kết</i>.)</li>
+  <li><b>🔗 Tài liệu đính kèm:</b> bấm <b>＋ Thêm link tài liệu</b>, đặt tên rõ (Bản vẽ / Ảnh đo / Report kích thước…) + dán link.</li>
+</ul>
+<div class="warn"><b>Lưu ý:</b> Bản vẽ và tài liệu <b>chỉ dán LINK Drive</b>, không tải file nặng vào app. Đặt tên link rõ ràng để xưởng không mở nhầm.</div>
+
+<h3>Bước 3 — G1: Kiểm tra thông tin đầu vào</h3>
+<p>Khối <b>“✅ G1 — Kiểm tra thông tin đầu vào”</b> là cổng chặn: đủ thông tin mới cho xuống xưởng.</p>
+<ol>
+  <li>Tick 5 mục: <b>Có bản vẽ/catalogue · Kích thước rõ · Dung sai/yêu cầu KT · Vật liệu xác định · Số lượng xác nhận.</b></li>
+  <li>Chọn <b>Người kiểm đầu vào</b> + <b>Ngày kiểm</b>.</li>
+  <li>Nếu <b>đủ</b> → bấm <b>✅ Thông tin đã OK (cho gia công)</b>. Lúc này đơn mới mở sang chia công đoạn (G2).</li>
+  <li>Nếu <b>thiếu</b> → ghi chú vào ô feedback → bấm <b>✉ Chưa rõ — gửi mail Sale/KT</b> xin bổ sung. <b>Không</b> mở gia công cho tới khi OK.</li>
+</ol>
+<div class="danger"><b>Cảnh báo:</b> Đừng bỏ qua G1. Cho xưởng chạy khi thông tin còn thiếu là nguyên nhân số 1 gây phay sai / làm lại / trễ đơn.</div>
+<p class="muted">Có thể bấm <b>🖨 In phiếu G1</b> để ký tay rồi chụp đính lại vào app.</p>
+<p>Bấm <b>💾 Lưu</b>. Đơn xuất hiện trên danh sách và lưới lịch. Vì dùng chung đám mây, các máy khác thấy ngay.</p>
+
+<h2 id="dieuhanh">3. Vai trò B — ĐIỀU HÀNH / ĐIỀU PHỐI</h2>
+<p class="muted">Cấp quyền: <span class="role-badge">🛠 Điều phối</span> (<code>edit368</code>). Nhiệm vụ: chia việc cho thợ theo ngày, theo dõi tiến độ, chốt QC, quản lý outsource.</p>
+
+<h3>3.1 Phân công việc trên lưới lịch</h3>
+<ol>
+  <li>Vào tab <b>📅 Lịch phân công &amp; Đơn hàng</b> → phần lưới <b>Lịch phân công</b> (hàng = nhân sự/đối tác, cột = ngày).</li>
+  <li><b>Bấm vào một ô</b> (người × ngày) để <b>gán/đổi việc</b> cho người đó vào ngày đó. Ô có màu = đang có đơn được theo dõi.</li>
+  <li>Chuyển tháng bằng <b>‹ Tháng trước / Tháng sau ›</b>. Cột <b>HÔM NAY</b> được làm nổi để dễ nhìn.</li>
+  <li>Quản lý danh sách người/đối tác bằng nút <b>👥 Quản lý nhân sự &amp; đối tác</b>.</li>
+</ol>
+<div class="note">Cột outsource hiển thị mờ hơn nội bộ; hệ thống chống trùng việc trong cùng ngày để bạn không xếp quá tải một người.</div>
+
+<h3>3.2 Theo dõi công đoạn &amp; QC</h3>
+<ol>
+  <li>Mở một đơn → phần <b>công đoạn (G2)</b>: chia các bước gia công (tiện, phay, khoan, nhiệt luyện, QC…).</li>
+  <li>Thợ sẽ tick hoàn thành + nhập số đo ở tab <b>👷 Việc hôm nay</b>. Bạn theo dõi tại đây.</li>
+  <li>Tới cổng <b>QC</b>: kiểm kích thước theo dung sai, đạt thì chốt; không đạt → ghi <b>NCR</b> (xem 3.4).</li>
+  <li>Xem chuẩn quy trình các bước ở tab <b>🔧 Quy trình</b>.</li>
+</ol>
+
+<h3>3.3 Outsource (gia công ngoài)</h3>
+<p>Tab <b>🔁 Outsource</b>: theo dõi các đơn/công đoạn giao ngoài — ngày giao đối tác, ngày hẹn nhận, trạng thái. Đơn quá hạn nhận sẽ được <b>tô đỏ cảnh báo</b>.</p>
+
+<h3>3.4 Ghi nhận NCR (hàng không đạt)</h3>
+<ol>
+  <li>Vào tab <b>⚠ Ghi nhận NCR</b> → tạo phiếu: đơn nào, công đoạn nào, lỗi gì, nguyên nhân, hướng xử lý (sửa/làm lại/nhân nhượng).</li>
+  <li>NCR liên kết với đơn để tính tỷ lệ lỗi trong KPI.</li>
+</ol>
+<div class="warn"><b>Lưu ý:</b> Ghi NCR ngay khi phát hiện, đừng để cuối kỳ — dữ liệu lỗi là cơ sở để cải tiến và tính KPI chính xác.</div>
+
+<h2 id="kinhdoanh">4. Vai trò C — PHÒNG KINH DOANH (chỉ xem)</h2>
+<p class="muted">Cấp quyền: <span class="role-badge">👁 Xem</span> (<code>dhp368</code>). Xem mọi thứ, không sửa — an toàn, không sợ lỡ tay đổi dữ liệu sản xuất.</p>
+<h3>Cần theo dõi gì</h3>
+<ol>
+  <li><b>🏠 Tổng quan:</b> nhìn nhanh 4 chỉ số — <b>Đơn đang theo dõi · Tỷ lệ giao đúng hạn · Đơn quá hạn (tô đỏ) · Tỷ lệ NCR.</b></li>
+  <li><b>📅 Lịch phân công &amp; Đơn hàng:</b> tra trạng thái từng đơn của khách mình phụ trách (đang làm / xong / trễ). Mở đơn để xem tài liệu, ngày giao dự kiến.</li>
+  <li><b>📊 KPI &amp; Báo cáo:</b> đúng hạn, lead-time, sản lượng theo kỳ — số liệu để trả lời khách và làm báo cáo.</li>
+</ol>
+<div class="note"><b>Mẹo cho Sale:</b> khách hỏi “đơn tới đâu rồi?” → mở đơn trên tab Lịch phân công, đọc trạng thái + hạn giao dự kiến, không cần gọi xuống xưởng.</div>
+<div class="danger"><b>Đơn tô đỏ = quá hạn hoặc sắp trễ.</b> Thấy đỏ ở đơn của khách mình → báo điều phối ngay.</div>
+
+<h2 id="tho">5. Vai trò D — THỢ (báo tiến độ tại xưởng)</h2>
+<p class="muted">Cấp quyền: <span class="role-badge">👷 Thợ</span> (<code>tho368</code>). Dùng ngay trên điện thoại tại máy.</p>
+<ol>
+  <li>Mở tab <b>👷 Việc hôm nay</b> — chỉ hiện việc được giao cho hôm nay.</li>
+  <li>Làm xong công đoạn nào → <b>tick hoàn thành</b> công đoạn đó.</li>
+  <li>Công đoạn có đo kích thước → <b>nhập số đo</b> vào ô tương ứng (để QC đối chiếu dung sai).</li>
+  <li>Không sửa được thông tin đơn — nếu thấy sai, báo điều phối.</li>
+</ol>
+
+<h2 id="chung">6. Quy tắc chung &amp; xử lý sự cố</h2>
+<ul>
+  <li><b>Dữ liệu chung, tức thời:</b> mọi máy nhập/sửa đều đồng bộ qua đám mây. Không cần gửi file cho nhau.</li>
+  <li><b>Máy mới / điện thoại mới:</b> lần đầu vào tab <b>⚙ Dữ liệu &amp; Đồng bộ</b>, dán <b>Project URL + anon key</b> (giống các máy khác) rồi Lưu &amp; Kết nối. Làm 1 lần cho mỗi thiết bị.</li>
+  <li><b>Không thấy đơn / trống trơn:</b> gần như luôn là do thiết bị đó chưa dán cấu hình kết nối (xem gạch đầu dòng trên). Dữ liệu <b>không mất</b>, nó nằm trên đám mây.</li>
+  <li><b>Ý nghĩa màu:</b> <span style="color:var(--danger);font-weight:700">đỏ = quá hạn / cảnh báo</span>, <span style="color:var(--warn);font-weight:700">cam = cần lưu ý</span>, <span style="color:var(--ok);font-weight:700">xanh = đạt / hoàn thành</span>. Còn lại để trắng cho đỡ rối mắt.</li>
+  <li><b>Bảo mật:</b> đừng chia mật khẩu <code>edit368</code>/<code>admin368</code> cho người chỉ cần xem — cho họ <code>dhp368</code>.</li>
+</ul>
+
+<div class="note" style="margin-top:24px">Tài liệu v1 — nếu quy trình thực tế của xưởng có bước khác, báo để cập nhật cho khớp. In tài liệu này: <b>Ctrl/⌘ + P</b>.</div>
+</div>
+</body>
+</html>

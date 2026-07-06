@@ -279,11 +279,22 @@ function gateCheck(){
       <label>Loại công việc / trạng thái trong ngày</label>
       <select id="as_kind" onchange="toggleAssignOrderField()">
         <option value="order">Làm đơn hàng (chọn từ danh sách đơn)</option>
-        <option value="available">Có mặt — chờ việc (A)</option>
-        <option value="leave">Nghỉ phép (AL)</option>
-        <option value="training">Đào tạo (TRAIN)</option>
-        <option value="holiday">Nghỉ lễ / BHXH (Lễ)</option>
-        <option value="other">Khác (tự ghi chú)</option>
+        <optgroup label="Kỹ thuật / Lập trình">
+          <option value="design">Thiết kế bản vẽ</option>
+          <option value="wiredraw">Làm bản vẽ cắt dây</option>
+          <option value="cncprog">Lập trình phay CNC</option>
+          <option value="wireprog">Lập trình máy cắt dây</option>
+        </optgroup>
+        <optgroup label="Phụ trợ">
+          <option value="warehouse">Phụ trợ kho — tư vấn mã / tên theo mã cũ</option>
+          <option value="other">Khác (tự ghi chú)</option>
+        </optgroup>
+        <optgroup label="Vắng / trạng thái">
+          <option value="available">Có mặt — chờ việc (A)</option>
+          <option value="leave">Nghỉ phép (AL)</option>
+          <option value="training">Đào tạo (TRAIN)</option>
+          <option value="holiday">Nghỉ lễ / BHXH (Lễ)</option>
+        </optgroup>
       </select>
     </div>
     <div class="field" id="as_order_field">
@@ -413,11 +424,12 @@ function gateCheck(){
       <div class="field" id="ord_partner_field" style="display:none;margin:6px 0 0">
         <label>Đối tác outsource</label><select id="ord_partner"></select>
       </div>
-      <div class="field" style="margin:8px 0 0">
+      <!-- Ẩn theo yêu cầu (tài liệu quản lý trên NAS). Giữ element để không vỡ JS lưu/đọc. -->
+      <div class="field" style="margin:8px 0 0;display:none">
         <label>📁 Thư mục Google Drive của đơn <span class="muted small">(bản vẽ, tài liệu Sale, ảnh SP, report đo đạc...)</span></label>
         <input id="ord_drive" placeholder="Dán link thư mục Drive (Chia sẻ → Sao chép liên kết)">
       </div>
-      <div class="field" style="margin:8px 0 0">
+      <div class="field" style="margin:8px 0 0;display:none">
         <label>🔗 Tài liệu / hình ảnh đính kèm <span class="muted small">(đặt tên + dán link Drive: Bản vẽ, Ảnh đo đạc, Report kích thước...)</span></label>
         <div id="ord_att_list"></div>
         <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
@@ -728,6 +740,11 @@ function stageChainHtml(o){
   return `<div style="margin-top:3px;line-height:1.7">${chips}${curTxt}</div>`;
 }
 const ASSIGN_KINDS = {
+  design:    {code:'BV',    label:'Thiết kế bản vẽ',        color:'#6366F1'},
+  wiredraw:  {code:'BV-CD', label:'Bản vẽ cắt dây',         color:'#0EA5E9'},
+  cncprog:   {code:'LT-P',  label:'Lập trình phay CNC',     color:'#14B8A6'},
+  wireprog:  {code:'LT-CD', label:'Lập trình máy cắt dây',  color:'#06B6D4'},
+  warehouse: {code:'KHO',   label:'Phụ trợ kho — tư vấn mã', color:'#A78BFA'},
   available: {code:'A',     label:'Có mặt — chờ việc',  color:'#9CA3AF'},
   leave:     {code:'AL',    label:'Nghỉ phép',          color:'#93C5FD'},
   training:  {code:'TRAIN', label:'Đào tạo',            color:'#FB923C'},

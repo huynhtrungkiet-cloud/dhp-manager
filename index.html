@@ -20,7 +20,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --brand:#C8102E; --brand-dark:#8B0A1F; --ink:#1f2937; --muted:#6b7280;
+    /* Chrome trung tính (xám slate) — màu đỏ chỉ dành cho CẢNH BÁO (xem --st-late) */
+    --brand:#334155; --brand-dark:#1e293b; --ink:#1f2937; --muted:#6b7280;
     --bg:#f4f6f9; --card:#ffffff; --line:#e5e9f0;
     --st-new:#9CA3AF; --st-planned:#3B82F6; --st-prod:#F59E0B;
     --st-qc:#8B5CF6; --st-wait:#14B8A6; --st-done:#22C55E; --st-late:#EF4444;
@@ -94,7 +95,7 @@
   table.tg{border-collapse:separate;border-spacing:0;font-size:11.5px;min-width:100%;}
   table.tg th, table.tg td{border:1px solid var(--line);padding:0;text-align:center;}
   table.tg thead th{position:sticky;top:0;z-index:3;background:#f8fafc;padding:7px 4px;font-weight:700;color:var(--muted);}
-  table.tg thead th.dow-sat,table.tg thead th.dow-sun{background:#fef2f2;color:#b91c1c;}
+  table.tg thead th.dow-sat,table.tg thead th.dow-sun{background:#f1f5f9;color:#64748b;}
   table.tg th.namecol, table.tg td.namecol{position:sticky;left:0;z-index:2;background:#fff;text-align:left;padding:8px 12px;min-width:190px;max-width:220px;border-right:2px solid var(--line);}
   table.tg thead th.namecol{z-index:4;background:#f8fafc;}
   table.tg td.namecol .nm{font-weight:700;font-size:12.5px;}
@@ -103,9 +104,9 @@
   table.tg td.daycell:hover{filter:brightness(0.96);outline:2px solid var(--brand);outline-offset:-2px;}
   table.tg td.daycell.empty-cell{background:#fff;color:var(--line);font-weight:400;}
   table.tg td.daycell.empty-cell:hover{background:#fafafa;color:var(--muted);}
-  table.tg td.weekend{background:#fef9f9;}
-  table.tg th.today-col{background:#fff1f2 !important;color:var(--brand);box-shadow:inset 0 -3px 0 var(--brand);}
-  table.tg td.today-col{background:#fff5f6;box-shadow:inset 2px 0 0 var(--brand),inset -2px 0 0 var(--brand);}
+  table.tg td.weekend{background:#f8fafc;}
+  table.tg th.today-col{background:#eef2f7 !important;color:var(--brand);box-shadow:inset 0 -3px 0 var(--brand);}
+  table.tg td.today-col{background:#f5f7fa;box-shadow:inset 2px 0 0 var(--brand),inset -2px 0 0 var(--brand);}
   .joblist{display:flex;flex-direction:column;gap:1.5px;height:100%;justify-content:center;position:relative;z-index:1;}
   .dayfill{position:absolute;left:0;right:0;bottom:0;z-index:0;pointer-events:none;background:rgba(34,197,94,.18);border-top:1px solid rgba(22,163,74,.45);}
   .dayfill.full{background:rgba(22,163,74,.26);}
@@ -129,7 +130,7 @@
 <body>
 
 <!-- ===== CỔNG MẬT KHẨU (chặn người lạ mở giao diện) ===== -->
-<div id="gate" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#C8102E,#8B0A1F);display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
+<div id="gate" style="position:fixed;inset:0;z-index:9999;background:#334155;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
   <div style="background:#fff;border-radius:16px;padding:32px 28px;width:320px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
     <div style="width:56px;height:56px;border-radius:14px;background:#C8102E;color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">DHP</div>
     <h2 style="margin:0 0 4px;font-size:18px;color:#1f2937">DHP Manager</h2>
@@ -138,7 +139,7 @@
       style="width:100%;padding:11px 12px;border:1px solid #e5e9f0;border-radius:9px;font-size:14px;margin-bottom:10px"
       onkeydown="if(event.key==='Enter')gateCheck()">
     <div id="gateErr" style="display:none;color:#EF4444;font-size:12px;margin-bottom:8px">Sai mật khẩu, thử lại.</div>
-    <button onclick="gateCheck()" style="width:100%;padding:11px;border:0;border-radius:9px;background:#C8102E;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Đăng nhập</button>
+    <button onclick="gateCheck()" style="width:100%;padding:11px;border:0;border-radius:9px;background:#334155;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Đăng nhập</button>
     <label style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:12px;font-size:11.5px;color:#6b7280;cursor:pointer">
       <input type="checkbox" id="gateRemember" checked> Ghi nhớ trên thiết bị này
     </label>

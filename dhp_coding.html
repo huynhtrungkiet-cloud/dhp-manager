@@ -665,9 +665,10 @@ function buildCode(){
   if(m==='product'){
     const cat=clean($('p_cat').value), sub=clean($('p_subtype').value), br=clean($('p_brand').value),
           ser=clean($('p_series').value), sz=clean($('p_size').value), bore=clean($('p_bore').value), va=clean($('p_variant').value);
-    body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+bore:'', va].filter(Boolean);
+    const boreTxt=bore.replace(/-/g,'x');  // dual bore d1-d2 → D24x38 (rõ 2 lỗ, không lẫn dấu ngăn đoạn)
+    body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+boreTxt:'', va].filter(Boolean);
     if(cat) desc.push(catName($('p_cat').value)); if(br) desc.push(brandName($('p_brand').value));
-    if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore);
+    if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore.replace(/-/g,'×'));
   } else if(m==='doc'){
     const dt=clean($('p_docType').value), br=clean($('p_docBrand').value), ref=clean($('p_docRef').value);
     body=['DOC', dt, br, ref].filter(Boolean);

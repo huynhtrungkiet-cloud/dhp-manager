@@ -70,11 +70,11 @@
 <div class="card">
   <table>
     <tr><th>Mật khẩu</th><th>Quyền</th><th>Thấy được gì</th></tr>
-    <tr><td><code>dhp368</code></td><td><span class="pill">👁 Xem</span></td><td>Chỉ <b>Tư vấn kỹ thuật</b> + <b>Tra cứu &amp; So sánh</b>. Dành cho thợ / kinh doanh tra cứu.</td></tr>
-    <tr><td><code>edit368</code></td><td><span class="pill">🔓 Quản lý</span></td><td>Mở thêm <b>Ca thực tế · Báo giá gia công · Báo giá đã lưu · Cấu hình giá</b>.</td></tr>
+    <tr><td><code>mật khẩu Xem</code></td><td><span class="pill">👁 Xem</span></td><td>Chỉ <b>Tư vấn kỹ thuật</b> + <b>Tra cứu &amp; So sánh</b>. Dành cho thợ / kinh doanh tra cứu.</td></tr>
+    <tr><td><code>mật khẩu quyền sửa</code></td><td><span class="pill">🔓 Quản lý</span></td><td>Mở thêm <b>Ca thực tế · Báo giá gia công · Báo giá đã lưu · Cấu hình giá</b>.</td></tr>
   </table>
-  <div class="tip">4 tab có dấu <span class="lock">🔒</span> và bị làm mờ là phần <b>chỉ quyền sửa</b>. Bấm vào sẽ hỏi mật khẩu <code>edit368</code>. Nhập đúng 1 lần là mở hết trong phiên.</div>
-  <p class="small">Đang ở chế độ Xem mà cần tính giá → bấm <b>🔓 Mở khóa sửa</b> ở góc trên phải, nhập <code>edit368</code>.</p>
+  <div class="tip">4 tab có dấu <span class="lock">🔒</span> và bị làm mờ là phần <b>chỉ quyền sửa</b>. Bấm vào sẽ hỏi mật khẩu <code>mật khẩu quyền sửa</code>. Nhập đúng 1 lần là mở hết trong phiên.</div>
+  <p class="small">Đang ở chế độ Xem mà cần tính giá → bấm <b>🔓 Mở khóa sửa</b> ở góc trên phải, nhập <code>mật khẩu quyền sửa</code>.</p>
 </div>
 
 <h2 id="kn">2. Kết nối server (làm 1 lần trên mỗi máy)</h2>
@@ -121,7 +121,7 @@
   </ul>
 </div>
 
-<h2 id="ca">5. Tab “Ca thực tế” <span class="lock">🔒 edit368</span></h2>
+<h2 id="ca">5. Tab “Ca thực tế” <span class="lock">🔒 mật khẩu quyền sửa</span></h2>
 <div class="card">
   <p>Kho ca tư vấn đã làm — <b>tài sản tri thức của DHP, dày lên theo thời gian</b>.</p>
   <ul>
@@ -131,7 +131,7 @@
   </ul>
 </div>
 
-<h2 id="bg">6. Tab “Báo giá gia công” <span class="lock">🔒 edit368</span></h2>
+<h2 id="bg">6. Tab “Báo giá gia công” <span class="lock">🔒 mật khẩu quyền sửa</span></h2>
 <div class="card">
   <p>Tính giá kết hợp 3 cách: <b>vật tư theo kg</b> + <b>công đoạn theo giờ</b> + <b>soát khung giá loại hàng</b>.</p>
   <ol>
@@ -143,7 +143,7 @@
   </ol>
 </div>
 
-<h2 id="cg">7. Tab “Cấu hình giá” <span class="lock">🔒 edit368</span></h2>
+<h2 id="cg">7. Tab “Cấu hình giá” <span class="lock">🔒 mật khẩu quyền sửa</span></h2>
 <div class="card">
   <p>Nơi đặt <b>đơn giá thật của DHP</b>: đ/giờ từng máy (tiện, phay, CNC…), đ/kg vật liệu, khung giá tham khảo từng loại hàng, % lãi/dao cụ/VAT mặc định.</p>
   <div class="warn">Số ban đầu là <b>giá mẫu thị trường</b> — phải chỉnh đúng giá DHP rồi bấm <b>💾 Lưu cấu hình</b>. Lưu trên máy đang dùng.</div>
@@ -151,7 +151,7 @@
 
 <h2 id="mk">8. Đổi mật khẩu khi thay nhân sự (bảo mật)</h2>
 <div class="card">
-  <p>Hiện tại 2 mật khẩu <code>dhp368</code> (xem) và <code>edit368</code> (sửa) <b>dùng chung cho cả 3 app</b> (Manager · Coding · Tools).</p>
+  <p>Hiện tại 2 mật khẩu <code>mật khẩu Xem</code> (xem) và <code>mật khẩu quyền sửa</code> (sửa) <b>dùng chung cho cả 3 app</b> (Manager · Coding · Tools).</p>
   <div class="step"><b>Khi có người nghỉ / đổi nhân sự</b>, nên đổi mật khẩu để chặn truy cập cũ:
     <ol>
       <li>Báo người quản trị (hoặc nhờ Claude) đổi 2 mật khẩu trong file mã <code>dhp_core.js</code> (biến <code>VIEW_PASSCODE</code>, <code>EDIT_PASSCODE</code>) và trong cổng đăng nhập của từng app.</li>
@@ -169,7 +169,7 @@
     <tr><td>Badge “● chưa kết nối”</td><td>Dán URL + anon key vào thẻ “🔌 Kết nối Supabase” (mục 2).</td></tr>
     <tr><td>“Tải 0 ca”</td><td>Bình thường nếu chưa lưu ca nào. Lưu 1 ca rồi tải lại để kiểm tra.</td></tr>
     <tr><td>Lỗi khi tải ca (cần bảng)</td><td>Người quản trị chạy file <code>supabase_tools.sql</code> trong Supabase → SQL Editor (1 lần).</td></tr>
-    <tr><td>Tab bị mờ, bấm không vào</td><td>Đó là tab khóa — nhập <code>edit368</code> để mở.</td></tr>
+    <tr><td>Tab bị mờ, bấm không vào</td><td>Đó là tab khóa — nhập <code>mật khẩu quyền sửa</code> để mở.</td></tr>
     <tr><td>App vẫn bản cũ sau khi cập nhật</td><td>Tải lại trang bằng <b>Ctrl + Shift + R</b>.</td></tr>
   </table>
 </div>

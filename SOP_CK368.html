@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>SOP Xưởng CK368 — Đại Hồng Phát</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --red:#b91c1c; --red2:#E8392B; --ink:#111; --line:#cbd5e1; --g0:#D97706; --gc:#2563EB; --qc:#15803D; --ncr:#b91c1c; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;color:var(--ink);margin:0;background:#eef2f7}
+  .logo{height:46px;width:auto;display:block}
+  .page{width:210mm;min-height:297mm;background:#fff;margin:10px auto;padding:14mm 14mm 12mm;box-shadow:0 2px 10px rgba(0,0,0,.15);position:relative}
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--red);padding-bottom:8px;margin-bottom:10px}
+  .co{font-weight:800;color:var(--red);font-size:18px;line-height:1.1}
+  .co small{display:block;color:#555;font-weight:600;font-size:11px;margin-top:2px}
+  .doccode{text-align:right;font-size:11px;color:#444}
+  h1{font-size:21px;text-align:center;margin:6px 0 2px;text-transform:uppercase;letter-spacing:.5px}
+  .sub{text-align:center;color:#444;font-size:12px;margin-bottom:12px}
+  .principle{background:#fff7ed;border:1.5px solid #fbbf24;border-radius:10px;padding:10px 14px;margin:10px 0;font-size:13px;text-align:center;font-weight:700;color:#92400e}
+  .principle b{color:var(--red)}
+  /* Flow */
+  .flow{display:flex;flex-direction:column;gap:0;margin:14px 0}
+  .step{display:flex;align-items:stretch;gap:10px}
+  .badge{min-width:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;border-radius:10px;font-weight:800;font-size:13px;padding:8px 6px;text-align:center}
+  .body{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;justify-content:center}
+  .body b{font-size:13.5px}
+  .body span{font-size:11.5px;color:#444}
+  .arrow{height:16px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:18px;margin:1px 0 1px 38px}
+  .b-g0{background:var(--g0)} .b-gc{background:var(--gc)} .b-qc{background:var(--qc)} .b-ncr{background:var(--ncr)} .b-out{background:#0f766e}
+  .split{display:flex;gap:10px}
+  .split>div{flex:1}
+  .rulebox{border:1.5px solid var(--red);border-radius:10px;padding:8px 12px;margin-top:6px;background:#fff5f5}
+  .rulebox h3{margin:0 0 4px;color:var(--red);font-size:13px}
+  .rulebox ol{margin:0;padding-left:18px;font-size:12px;line-height:1.5}
+  .foot{position:absolute;bottom:8mm;left:14mm;right:14mm;border-top:1px solid var(--line);padding-top:5px;font-size:10px;color:#777;display:flex;justify-content:space-between}
+  /* page 2 */
+  table{width:100%;border-collapse:collapse;margin:6px 0}
+  th,td{border:1px solid #999;padding:5px 7px;font-size:11.5px;vertical-align:top;text-align:left}
+  th{background:#f1f5f9}
+  h2{font-size:14px;margin:14px 0 4px;color:var(--red);border-left:4px solid var(--red);padding-left:8px}
+  .tag{display:inline-block;color:#fff;border-radius:5px;padding:1px 7px;font-weight:700;font-size:11px}
+  .printbar{max-width:210mm;margin:10px auto;text-align:center}
+  .printbar button{padding:9px 22px;font-size:14px;background:var(--red);color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700}
+  @page{ size:A4; margin:0 }
+  @media print{ body{background:#fff} .page{box-shadow:none;margin:0} .printbar{display:none} }
+</style>
+</head>
+<body>
+
+<div class="printbar"><button onclick="window.print()">🖨 In SOP (A4)</button> &nbsp; <span style="font-size:12px;color:#555">Mẹo: chọn "Save as PDF" để lưu, hoặc in ra giấy treo xưởng.</span></div>
+
+<!-- ============ TRANG 1 — SƠ ĐỒ LUỒNG (treo tường) ============ -->
+<div class="page">
+  <div class="hd">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';} else{this.style.display='none';}">
+      <div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CƠ KHÍ CHÍNH XÁC CK368 · Power Transmission Solutions</small></div>
+    </div>
+    <div class="doccode"><b>SOP-CK368</b><br>Ban hành: ______<br>Phiên bản: 1.0</div>
+  </div>
+
+  <h1>Quy trình vận hành xưởng CK368</h1>
+  <div class="sub">Sơ đồ luồng chuẩn — từ nhận đơn đến xuất xưởng (treo tại xưởng)</div>
+
+  <div class="principle">NGUYÊN TẮC GỐC: <b>App DHP Manager là nguồn dữ liệu duy nhất.</b><br>Việc gì không có trên app = CHƯA LÀM. Đo gì không nhập app = CHƯA ĐO.</div>
+
+  <div class="flow">
+    <div class="step"><div class="badge b-g0">CỔNG G0<br>Đầu vào</div>
+      <div class="body"><b>Nhận đơn → tạo Order trên app + đính link bản vẽ (Drive)</b>
+        <span>Tick đủ 5 mục mới cho xuống xưởng: ✔ Bản vẽ đúng Rev · ✔ Kích thước & dung sai · ✔ Vật tư/phôi · ✔ Số lượng · ✔ Hạn giao khả thi. Thiếu 1 mục → đơn “Chờ G0”, KHÔNG phân công.</span></div></div>
+    <div class="arrow">▼</div>
+    <div class="step"><div class="badge b-gc">PHÂN<br>CÔNG</div>
+      <div class="body"><b>Điều phối phân công trên lưới lịch (người × ngày)</b>
+        <span>Gán người làm + giờ công cho từng công đoạn → app tự dàn lịch (8h/ngày, bỏ CN) + báo tăng ca.</span></div></div>
+    <div class="arrow">▼</div>
+    <div class="step"><div class="badge b-gc">GIA CÔNG<br>A→B→C…</div>
+      <div class="body"><b>Mỗi công đoạn: làm mẫu đầu → đo → người thứ 2 kiểm chéo → chạy loạt → đo nghiệm thu</b>
+        <span>Thợ ghi số đo + giờ thực tế vào PHIẾU GIA CÔNG (in từ app). Điều phối nhập lại vào app trong ngày.</span></div></div>
+    <div class="arrow">▼</div>
+    <div class="step"><div class="badge b-qc">CỔNG QC<br>Pass/Fail</div>
+      <div class="body"><b>QC kiểm cuối → chọn ĐẠT / KHÔNG ĐẠT trên app (ghi tên + ngày)</b>
+        <span>Người chạy máy ≠ người QC. Đính phiếu đo/ảnh.</span></div></div>
+    <div class="arrow">▼</div>
+    <div class="split">
+      <div class="step"><div class="badge b-out">XUẤT<br>XƯỞNG</div>
+        <div class="body"><b>ĐẠT → in Chứng nhận xuất xưởng từ app</b><span>Đóng dấu, ký, giao hàng. Cập nhật trạng thái “Đã giao”.</span></div></div>
+      <div class="step"><div class="badge b-ncr">NCR</div>
+        <div class="body"><b>KHÔNG ĐẠT → mở NCR ngay</b><span>Ghi mức độ, nguyên nhân, công đoạn lỗi, hướng xử lý (sửa/làm lại/loại). Có người chịu trách nhiệm mới đóng.</span></div></div>
+    </div>
+  </div>
+
+  <div class="split" style="margin-top:6px">
+    <div class="rulebox"><h3>⛔ 3 KHÔNG QUA CỔNG</h3><ol>
+      <li>Chưa có số đo công đoạn trước → không bắt đầu công đoạn sau.</li>
+      <li>Không đạt dung sai → không chuyển tiếp, phải mở NCR.</li>
+      <li>Không đúng người được giao → không tự ý chốt công đoạn.</li></ol></div>
+    <div class="rulebox" style="border-color:var(--gc);background:#eff6ff"><h3 style="color:var(--gc)">🛡 KIỂM CHÉO 2 LỚP</h3><ol>
+      <li>Đầu vào G0: người tạo đơn ≠ người duyệt.</li>
+      <li>Mẫu đầu: người làm ≠ người kiểm mẫu đầu.</li>
+      <li>QC cuối: người chạy máy ≠ người QC.</li></ol></div>
+  </div>
+
+  <div class="foot"><span>SOP-CK368 v1.0 — Đại Hồng Phát</span><span>Người soạn: __________ · Duyệt (GĐ): __________</span></div>
+</div>
+
+<!-- ============ TRANG 2 — CHI TIẾT CÁC BƯỚC ============ -->
+<div class="page">
+  <div class="hd">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';} else{this.style.display='none';}">
+      <div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CƠ KHÍ CHÍNH XÁC CK368</small></div>
+    </div>
+    <div class="doccode"><b>SOP-CK368</b> · Trang 2/2<br>Chi tiết quy trình</div>
+  </div>
+
+  <h2>QT-00 · Quy định chung (mọi người bắt buộc)</h2>
+  <table><tbody>
+    <tr><td style="width:30px">1</td><td>Mọi thao tác gắn tên người thực hiện (ô “Người làm”). Không nhập hộ mà không ghi rõ.</td></tr>
+    <tr><td>2</td><td>Cập nhật theo ngày, <b>chốt sổ cuối ca</b> — không để dồn, không nhập “nhớ lại”.</td></tr>
+    <tr><td>3</td><td>Không khẩu lệnh suông: giao việc / đổi ưu tiên / kết quả đo / QC phải lên app trong 1 giờ. Zalo chỉ là tạm.</td></tr>
+    <tr><td>4</td><td>Đúng vai trò mới được chốt công đoạn/QC. Không “qua cổng” thay người khác.</td></tr>
+    <tr><td>5</td><td>Sai thì khai báo — mở NCR ngay. <b>Giấu lỗi bị xử lý nặng hơn gây lỗi.</b></td></tr>
+  </tbody></table>
+
+  <h2>QT-01 · Cổng G0 — Đầu vào (Điều phối / Người nhận đơn)</h2>
+  <table><tbody>
+    <tr><td>B1</td><td>Tạo Order trên app: khách, sản phẩm, SL, vật tư, hạn giao, ưu tiên, loại đơn.</td></tr>
+    <tr><td>B2</td><td>Đính link Drive bản vẽ/quy cách/ảnh mẫu. <b>Cấm</b> lưu bản vẽ rời ngoài app.</td></tr>
+    <tr><td>B3</td><td>Tick đủ checklist G0 (bản vẽ đúng Rev · dung sai · vật tư/phôi · SL · hạn giao). Thiếu → “Chờ G0”, không phân công.</td></tr>
+  </tbody></table>
+
+  <h2>QT-02 · Đo đạc & cập nhật hàng ngày</h2>
+  <table><thead><tr><th style="width:90px">Thời điểm</th><th>Việc làm</th></tr></thead><tbody>
+    <tr><td><b>Đầu ca</b></td><td>Xem việc trên lưới lịch → nhận việc (trạng thái “Đang làm”).</td></tr>
+    <tr><td><b>Trong ca</b></td><td>Đo tới đâu ghi tới đó (con số thực, không “OK” chung chung) → so dung sai → Đạt/Không. Không đạt → mở NCR, dừng chuyển.</td></tr>
+    <tr><td><b>Cuối ca</b></td><td>Cập nhật %/SL đã làm + giờ công. Đơn kẹt phôi/máy → ghi lý do. <i>Không cập nhật = tính chưa làm trong KPI.</i></td></tr>
+  </tbody></table>
+
+  <h2>QT-03 · Luồng công đoạn gia công (A→B→C…)</h2>
+  <table><thead><tr><th style="width:34px">Bước</th><th>Việc làm</th><th style="width:170px">Ghi trên app</th></tr></thead><tbody>
+    <tr><td>1</td><td>Nhận công đoạn</td><td>“Đang làm” + gắn tên</td></tr>
+    <tr><td>2</td><td>Đối chiếu bản vẽ + Rev trước khi gá</td><td>Tick “đã xem bản vẽ đúng Rev”</td></tr>
+    <tr><td>3</td><td>Gia công chi tiết ĐẦU TIÊN (mẫu đầu)</td><td>Nhập số đo mẫu đầu</td></tr>
+    <tr><td>4</td><td><b>Người thứ 2 đo lại độc lập</b> (kiểm chéo)</td><td>Người kiểm ký xác nhận</td></tr>
+    <tr><td>5</td><td>Mẫu đầu đạt → chạy loạt</td><td>Cập nhật SL đang chạy</td></tr>
+    <tr><td>6</td><td>Kết thúc → đo nghiệm thu</td><td>Số đo + Đạt/Không</td></tr>
+    <tr><td>7</td><td>Bàn giao công đoạn sau</td><td>“Chờ công đoạn kế”</td></tr>
+  </tbody></table>
+  <p style="font-size:11.5px;margin:4px 0"><b>Outsource:</b> ghi ngày gửi + ngày hẹn về, <b>đo kiểm khi nhận về</b> rồi nhập kết quả. Không nhập = coi như chưa nhận.</p>
+
+  <h2>QT-05 · Cổng QC & NCR</h2>
+  <table><tbody>
+    <tr><td><span class="tag" style="background:var(--qc)">PASS</span></td><td>QC chọn Đạt (tên + ngày) → đơn “Sẵn sàng giao” → in Phiếu QC + Chứng nhận xuất xưởng từ app.</td></tr>
+    <tr><td><span class="tag" style="background:var(--ncr)">FAIL</span></td><td>Mở NCR: mức độ (nặng/nhẹ), nguyên nhân, công đoạn lỗi, hướng xử lý + người chịu trách nhiệm. <b>Không có Pass trên app → cấm xuất hàng.</b></td></tr>
+  </tbody></table>
+
+  <h2>QT-06 · Nhịp quản lý hàng ngày (Điều phối / TPKT)</h2>
+  <table><tbody>
+    <tr><td style="width:100px"><b>Đầu ngày 10’</b></td><td>Phân công lưới lịch, set ưu tiên, release đơn đã qua G0.</td></tr>
+    <tr><td><b>Giữa ngày</b></td><td>Theo dõi nút thắt theo mã công đoạn / vị trí.</td></tr>
+    <tr><td><b>Cuối ngày 30’</b></td><td>Chốt sổ 3 thứ: (1) ai chưa cập nhật, (2) công đoạn “Đạt” có đủ số đo không, (3) NCR trong ngày đã có hướng xử lý chưa.</td></tr>
+    <tr><td><b>Cuối tuần</b></td><td>Xuất KPI &amp; Reports, đẩy đồng bộ (Data &amp; Sync).</td></tr>
+  </tbody></table>
+
+  <div class="foot"><span>SOP-CK368 v1.0 — Đại Hồng Phát · Áp dụng từ: ____________</span><span>GĐ duyệt: __________</span></div>
+</div>
+
+</body>
+</html>

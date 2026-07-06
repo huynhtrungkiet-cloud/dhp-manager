@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bộ biểu mẫu xưởng CK368 — Đại Hồng Phát</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --red:#b91c1c; --ink:#111; --line:#94a3b8; --g0:#D97706; --qc:#15803D; --ncr:#b91c1c; }
+  *{box-sizing:border-box}
+  body{font-family:'Play','Segoe UI',Arial,sans-serif;color:var(--ink);margin:0;background:#eef2f7}
+  .page{width:210mm;min-height:297mm;background:#fff;margin:10px auto;padding:13mm 13mm 11mm;box-shadow:0 2px 10px rgba(0,0,0,.15);position:relative;page-break-after:always}
+  .hd{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--red);padding-bottom:7px;margin-bottom:8px}
+  .lf{display:flex;align-items:center;gap:11px}
+  .logo{height:42px;width:auto;display:block}
+  .co{font-weight:800;color:var(--red);font-size:15px;line-height:1.1}
+  .co small{display:block;color:#555;font-weight:600;font-size:10px;margin-top:2px}
+  .code{text-align:right;font-size:11px;color:#444}
+  h1{font-size:19px;text-align:center;margin:8px 0 2px;text-transform:uppercase}
+  .sub{text-align:center;color:#555;font-size:11.5px;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;margin:6px 0}
+  th,td{border:1px solid var(--line);padding:6px 8px;font-size:12px;vertical-align:top;text-align:left}
+  th{background:#f1f5f9;font-weight:700}
+  .lbl{background:#f8fafc;width:130px;font-weight:700;color:#334155}
+  .fill{height:26px}
+  .fill2{height:46px}
+  .note{font-size:11px;color:#555;margin:4px 0}
+  .sign{display:flex;justify-content:space-around;margin-top:26px;text-align:center}
+  .sign div{width:31%}
+  .sign .line{margin-top:48px;border-top:1px solid #333;padding-top:3px;font-size:11px}
+  .ribbon{display:inline-block;color:#fff;border-radius:6px;padding:2px 10px;font-weight:800;font-size:12px}
+  .foot{position:absolute;bottom:8mm;left:13mm;right:13mm;border-top:1px solid var(--line);padding-top:5px;font-size:10px;color:#777;display:flex;justify-content:space-between}
+  .pick{font-size:12px} .pick b{font-weight:700}
+  .box{display:inline-block;width:13px;height:13px;border:1.4px solid #333;border-radius:3px;vertical-align:-2px;margin-right:3px}
+  .printbar{max-width:210mm;margin:10px auto;text-align:center}
+  .printbar button{padding:9px 22px;font-size:14px;background:var(--red);color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700}
+  @page{ size:A4; margin:0 }
+  @media print{ body{background:#fff} .page{box-shadow:none;margin:0} .printbar{display:none} }
+</style>
+</head>
+<body>
+<div class="printbar"><button onclick="window.print()">🖨 In bộ biểu mẫu (4 tờ A4)</button> &nbsp; <span style="font-size:12px;color:#555">In theo xấp, để tại từng vị trí cho anh em điền tay.</span></div>
+
+<!-- ===== BM-01: PHIẾU GIA CÔNG CÔNG ĐOẠN ===== -->
+<div class="page">
+  <div class="hd"><div class="lf"><img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';}else{this.style.display='none';}"><div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CK368</small></div></div>
+    <div class="code"><b>BM-01</b><br>Phiếu gia công công đoạn</div></div>
+  <h1>Phiếu gia công công đoạn</h1>
+  <div class="sub">Mỗi công đoạn 1 phiếu — thợ điền tay tại máy, nộp điều phối nhập app cuối ca</div>
+  <table>
+    <tr><td class="lbl">Mã đơn</td><td></td><td class="lbl">Ngày</td><td></td></tr>
+    <tr><td class="lbl">Sản phẩm</td><td colspan="3"></td></tr>
+    <tr><td class="lbl">Công đoạn (mã)</td><td>A&nbsp;/&nbsp;B&nbsp;/&nbsp;C&nbsp;/&nbsp;D&nbsp;/&nbsp;…&nbsp;: ____________</td><td class="lbl">Số lượng</td><td></td></tr>
+    <tr><td class="lbl">Người làm</td><td></td><td class="lbl">Máy / Vị trí</td><td></td></tr>
+    <tr><td class="lbl">Bản vẽ Rev</td><td>Rev: ______ &nbsp; <span class="box"></span> Đã đối chiếu đúng Rev trước khi gá</td><td class="lbl">Giờ bắt đầu / xong</td><td></td></tr>
+  </table>
+  <h3 style="font-size:13px;margin:10px 0 3px;color:var(--red)">Đo đạc thực tế (ghi CON SỐ, không ghi “OK”)</h3>
+  <table>
+    <thead><tr><th style="width:34px">TT</th><th>Thông số / kích thước</th><th style="width:120px">Yêu cầu (bản vẽ)</th><th style="width:120px">Thực đo</th><th style="width:90px">Đạt/Không</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="fill"></td><td></td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>5</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>6</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="pick">Kết quả công đoạn: <span class="box"></span> <b>ĐẠT — bàn giao công đoạn kế</b> &nbsp;&nbsp; <span class="box"></span> <b>KHÔNG ĐẠT — lập phiếu NCR (BM-04), dừng chuyển</b></p>
+  <table><tr><td class="lbl">Giờ công thực tế</td><td></td><td class="lbl">Lý do kẹt (nếu có)</td><td></td></tr></table>
+  <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, họ tên)</div></div><div><b>Tổ trưởng</b><div class="line">(Ký)</div></div></div>
+  <div class="foot"><span>BM-01 v1.0 — Đại Hồng Phát · CK368</span><span>Nhập app bởi: __________ · Ngày nhập: ______</span></div>
+</div>
+
+<!-- ===== BM-02: PHIẾU KIỂM MẪU ĐẦU + KIỂM CHÉO ===== -->
+<div class="page">
+  <div class="hd"><div class="lf"><img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';}else{this.style.display='none';}"><div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CK368</small></div></div>
+    <div class="code"><b>BM-02</b><br>Kiểm mẫu đầu (First-Article)</div></div>
+  <h1>Phiếu kiểm mẫu đầu &amp; kiểm chéo</h1>
+  <div class="sub">Bắt buộc cho chi tiết mới / dung sai chặt — <b>người đo lần 2 ≠ người gia công</b>, đo độc lập</div>
+  <table>
+    <tr><td class="lbl">Mã đơn</td><td></td><td class="lbl">Công đoạn</td><td></td></tr>
+    <tr><td class="lbl">Sản phẩm</td><td colspan="3"></td></tr>
+    <tr><td class="lbl">Người gia công</td><td></td><td class="lbl">Người kiểm chéo</td><td></td></tr>
+  </table>
+  <table>
+    <thead><tr><th style="width:30px">TT</th><th>Thông số / kích thước</th><th style="width:110px">Yêu cầu + dung sai</th><th style="width:95px">Đo lần 1<br>(người làm)</th><th style="width:95px">Đo lần 2<br>(kiểm chéo)</th><th style="width:75px">Lệch?</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="fill"></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>4</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>5</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="pick">Kết luận mẫu đầu: <span class="box"></span> <b>2 số KHỚP trong dung sai → cho chạy loạt</b> &nbsp;&nbsp; <span class="box"></span> <b>LỆCH → dừng, lập NCR, truy nguyên</b></p>
+  <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, họ tên)</div></div><div><b>Người kiểm chéo</b><div class="line">(Ký, họ tên)</div></div><div><b>Điều phối</b><div class="line">(Ký duyệt cho chạy loạt)</div></div></div>
+  <div class="foot"><span>BM-02 v1.0 — Đại Hồng Phát · CK368</span><span>Nhập app bởi: __________</span></div>
+</div>
+
+<!-- ===== BM-03: PHIẾU NGHIỆM THU QC ===== -->
+<div class="page">
+  <div class="hd"><div class="lf"><img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';}else{this.style.display='none';}"><div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CK368</small></div></div>
+    <div class="code"><b>BM-03</b><br>Nghiệm thu QC/QA</div></div>
+  <h1>Phiếu nghiệm thu QC/QA</h1>
+  <div class="sub">Cổng QC cuối — <b>người QC ≠ người chạy máy</b>. Đạt mới được xuất xưởng</div>
+  <table>
+    <tr><td class="lbl">Mã đơn</td><td></td><td class="lbl">Khách hàng</td><td></td></tr>
+    <tr><td class="lbl">Sản phẩm</td><td colspan="3"></td></tr>
+    <tr><td class="lbl">Số lượng</td><td></td><td class="lbl">Ngày kiểm</td><td></td></tr>
+  </table>
+  <table>
+    <thead><tr><th style="width:34px">TT</th><th>Thông số / kích thước</th><th style="width:120px">Yêu cầu (bản vẽ)</th><th style="width:120px">Thực đo</th><th style="width:90px">Đạt/Không</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="fill"></td><td></td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>5</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>6</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="pick">KẾT LUẬN QC: &nbsp; <span class="ribbon" style="background:var(--qc)">ĐẠT ✓</span> <span class="box" style="margin-left:6px"></span> &nbsp;&nbsp; <span class="ribbon" style="background:var(--ncr)">KHÔNG ĐẠT ✕</span> <span class="box" style="margin-left:6px"></span> → lập NCR (BM-04)</p>
+  <div class="sign"><div><b>Người gia công</b><div class="line">(Ký)</div></div><div><b>Người kiểm QC</b><div class="line">(Ký, họ tên)</div></div><div><b>Điều phối / TPKT</b><div class="line">(Ký)</div></div></div>
+  <div class="foot"><span>BM-03 v1.0 — Đại Hồng Phát · CK368</span><span>Đạt → in Chứng nhận xuất xưởng từ app</span></div>
+</div>
+
+<!-- ===== BM-04: PHIẾU NCR ===== -->
+<div class="page">
+  <div class="hd"><div class="lf"><img class="logo" src="logo.png" alt="DHP" onerror="var f=this.dataset.f=(+this.dataset.f||0)+1; if(f===1){this.src='LOGO.PNG';}else{this.style.display='none';}"><div class="co">CÔNG TY ĐẠI HỒNG PHÁT<small>XƯỞNG CK368</small></div></div>
+    <div class="code"><b>BM-04</b><br>Báo cáo không phù hợp (NCR)</div></div>
+  <h1 style="color:var(--ncr)">Phiếu NCR — Không phù hợp</h1>
+  <div class="sub">Phát hiện sai số / hỏng → lập ngay, KHÔNG giấu lỗi. Nhập app sau khi xử lý</div>
+  <table>
+    <tr><td class="lbl">Mã đơn</td><td></td><td class="lbl">Ngày phát hiện</td><td></td></tr>
+    <tr><td class="lbl">Sản phẩm</td><td colspan="3"></td></tr>
+    <tr><td class="lbl">Công đoạn gây lỗi</td><td></td><td class="lbl">Người phát hiện</td><td></td></tr>
+    <tr><td class="lbl">Mức độ</td><td colspan="3" class="pick"><span class="box"></span> Nhẹ (sửa được) &nbsp;&nbsp; <span class="box"></span> Nặng (làm lại) &nbsp;&nbsp; <span class="box"></span> Loại bỏ</td></tr>
+  </table>
+  <table>
+    <tr><td class="lbl">Mô tả lỗi<br>(số đo lệch, hiện tượng)</td><td class="fill2" colspan="3"></td></tr>
+    <tr><td class="lbl">Nguyên nhân</td><td class="fill2" colspan="3"></td></tr>
+    <tr><td class="lbl">Hướng xử lý<br>(sửa / làm lại / loại)</td><td class="fill2" colspan="3"></td></tr>
+    <tr><td class="lbl">Người chịu trách nhiệm</td><td></td><td class="lbl">Hạn xử lý</td><td></td></tr>
+    <tr><td class="lbl">Kết quả sau xử lý</td><td colspan="3" class="pick"><span class="box"></span> Đã khắc phục — đo lại Đạt &nbsp;&nbsp; <span class="box"></span> Chưa đạt — tiếp tục</td></tr>
+  </table>
+  <div class="sign"><div><b>Người lập</b><div class="line">(Ký)</div></div><div><b>Điều phối / TPKT</b><div class="line">(Ký xác nhận xử lý)</div></div><div><b>Giám đốc (nếu nặng)</b><div class="line">(Ký)</div></div></div>
+  <div class="foot"><span>BM-04 v1.0 — Đại Hồng Phát · CK368</span><span>Đã nhập NCR vào app: <span class="box"></span> Có</span></div>
+</div>
+
+</body>
+</html>

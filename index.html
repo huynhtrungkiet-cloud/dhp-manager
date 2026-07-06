@@ -3960,10 +3960,12 @@ function renderGuide(){
     ${step('#0f766e','','Xuất xưởng — chỉ khi QC ĐẠT','Điều phối / GĐ',[
       '<b>Chỉ khi QC = ĐẠT</b> app mới mở nút <b>📜 Chứng nhận xuất xưởng</b> (liệt kê đủ kích thước đạt).',
       'In chứng nhận → ký 3 lớp (QC · Điều phối · GĐ) → giao → đặt trạng thái <b>Đã giao</b>.'])}
-    ${step('#7c3aed','KPI','Chấm điểm tự động (không sửa tay)','App',[
+    ${step('#7c3aed','KPI','Chấm điểm tự động (không sửa tay) — áp dụng từ 06/07/2026','App',[
       '<b>Đơn TRỄ</b> → trừ điểm <b>người điều phối</b> (người sắp xếp công việc).',
-      '<b>Hàng hư (NCR)</b> → trừ điểm <b>thợ đứng máy chịu trách nhiệm</b>: hư <b>còn dùng được</b> (nhẹ) vs <b>phế/mất khả năng phục hồi</b> (nặng).',
-      '<b>Thưởng</b> cho thợ: công đoạn xong <b>đúng hạn/sớm</b> + <b>chất lượng</b> (mọi kích thước đạt). Xem tab <b>KPI & Báo cáo</b> → "Bảng điểm KPI tự động".'])}
+      '<b>Trễ cập nhật tiến độ</b> (công đoạn quá hạn mà chưa báo Xong) → trừ điểm <b>thợ phụ trách công đoạn</b>.',
+      '<b>Sai kích thước</b> (đo không đạt dung sai) → trừ điểm <b>thợ đứng máy</b>.',
+      '<b>Hàng hư (NCR)</b> → trừ điểm thợ chịu trách nhiệm: hư <b>còn dùng được</b> (nhẹ) vs <b>phế</b> (nặng).',
+      '<b>Thưởng</b>: công đoạn xong <b>đúng hạn/sớm</b> + <b>chất lượng</b> (mọi kích thước đạt). Xem tab <b>KPI & Báo cáo</b> → "Bảng điểm KPI tự động". KPI chỉ tính từ ngày áp dụng, không tính dữ liệu cũ.'])}
     <h2 class="sec"><span class="bar"></span>📄 In tài liệu (ban hành / treo xưởng)</h2>
     <div class="card">
       <div class="toolbar">
@@ -3977,23 +3979,31 @@ function renderGuide(){
 }
 // ===== KPI TỰ ĐỘNG (không cho can thiệp): trễ→điều phối, hư hỏng→thợ, thưởng tốc độ+chất lượng =====
 function _kn(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }
+const KPI_START_DATE='2026-07-06';  // KPI chỉ tính sự kiện TỪ ngày này trở đi (áp dụng từ hôm nay)
 function kpiScores(){
+  const S=KPI_START_DATE, today=todayStr();
   const staff=DATA.staff.filter(s=>s&&s.active!==false);
   const dispatchers=staff.filter(s=>_kn(s.role).includes('dieu phoi'));
-  const m={}; staff.forEach(s=>m[s.id]={s, dispatcher:dispatchers.some(d=>d.id===s.id), late:0, ncrUsable:0, ncrScrap:0, onTime:0, quality:0});
-  // ĐƠN TRỄ → người điều phối (người sắp xếp công việc)
-  const lateOrders=(DATA.orders||[]).filter(o=>{ const ref=o.requestedDate||o.dueDate; if(!ref) return false;
+  const m={}; staff.forEach(s=>m[s.id]={s, dispatcher:dispatchers.some(d=>d.id===s.id), late:0, ncrUsable:0, ncrScrap:0, onTime:0, quality:0, dimFail:0, lateUpd:0});
+  // ĐƠN TRỄ (từ KPI_START) → người điều phối (người sắp xếp công việc)
+  const lateOrders=(DATA.orders||[]).filter(o=>{ const ref=o.requestedDate||o.dueDate; if(!ref||ref<S) return false;
     if(o.status==='delivered') return !!(o.deliveredDate && daysBetween(ref,o.deliveredDate)>0);
-    return o.status!=='hold' && ref<todayStr(); });
+    return o.status!=='hold' && ref<today; });
   if(dispatchers.length) lateOrders.forEach(()=>dispatchers.forEach(d=>m[d.id].late++));
-  // HƯ HỎNG (NCR) → người gia công chịu trách nhiệm, theo tình trạng
-  (DATA.ncrRecords||[]).forEach(n=>{ if(n.responsible && m[n.responsible]){ if(n.recover==='scrap') m[n.responsible].ncrScrap++; else m[n.responsible].ncrUsable++; } });
-  // THƯỞNG: công đoạn xong ĐÚNG HẠN/SỚM + CHẤT LƯỢNG (mọi kích thước đạt) → thợ làm
+  // HƯ HỎNG (NCR, từ KPI_START) → người gia công chịu trách nhiệm, theo tình trạng
+  (DATA.ncrRecords||[]).forEach(n=>{ if(n.date && n.date<S) return; if(n.responsible && m[n.responsible]){ if(n.recover==='scrap') m[n.responsible].ncrScrap++; else m[n.responsible].ncrUsable++; } });
+  // Duyệt công đoạn: thưởng đúng hạn/chất lượng + phạt sai kích thước + phạt trễ cập nhật
   let allStages=[]; (DATA.orders||[]).forEach(o=>{ (o.stages||[]).filter(Boolean).forEach(s=>allStages.push(s)); (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>allStages.push(s))); });
   allStages.forEach(s=>{ if(!s.assignee||!m[s.assignee]) return;
-    if(stageState(s)==='done'){ const end=stageEndDate(s), done=s.doneDate||''; if(end&&done&&done<=end) m[s.assignee].onTime++;
-      const ck=(s.checks||[]).filter(Boolean); if(ck.length && ck.every(c=>c.pass==='pass')) m[s.assignee].quality++; } });
-  Object.values(m).forEach(x=>{ x.score=Math.max(0, 100 - x.late*8 - x.ncrUsable*4 - x.ncrScrap*12 + x.onTime*2 + x.quality*1); });
+    const end=stageEndDate(s), st=stageState(s), done=s.doneDate||'';
+    if(st==='done'){ if(end&&done&&done<=end) m[s.assignee].onTime++;
+      const ck=(s.checks||[]).filter(Boolean); if(ck.length && ck.every(c=>c.pass==='pass')) m[s.assignee].quality++; }
+    // SAI KÍCH THƯỚC (từ KPI_START): số kích thước đo KHÔNG đạt
+    const dref=done||end||''; if(!dref||dref>=S){ const fails=(s.checks||[]).filter(c=>c&&c.pass==='fail').length; if(fails) m[s.assignee].dimFail+=fails; }
+    // TRỄ TIẾN ĐỘ CẬP NHẬT (từ KPI_START): công đoạn quá hạn mà chưa cập nhật "Xong"
+    if(end && end>=S && end<today && st!=='done') m[s.assignee].lateUpd++;
+  });
+  Object.values(m).forEach(x=>{ x.score=Math.max(0, 100 - x.late*8 - x.ncrUsable*4 - x.ncrScrap*12 - x.dimFail*5 - x.lateUpd*3 + x.onTime*2 + x.quality*1); });
   return m;
 }
 function kpiGrade(sc){ return sc>=90?{g:'A',c:'#15803D'}:sc>=75?{g:'B',c:'#2563EB'}:sc>=60?{g:'C',c:'#D97706'}:{g:'D',c:'#b91c1c'}; }
@@ -4032,7 +4042,7 @@ function renderKpi(){
   const lateStaffRows = staffRows.filter(x=>x.late>0);
   // Bảng điểm KPI tự động
   const kpi = kpiScores();
-  const kpiRows = Object.values(kpi).filter(x=>x.onTime||x.quality||x.late||x.ncrUsable||x.ncrScrap).sort((a,b)=>b.score-a.score);
+  const kpiRows = Object.values(kpi).filter(x=>x.onTime||x.quality||x.late||x.ncrUsable||x.ncrScrap||x.dimFail||x.lateUpd).sort((a,b)=>b.score-a.score);
 
   // NCR theo công đoạn
   const ncrByStage = {};
@@ -4048,20 +4058,22 @@ function renderKpi(){
 
     <h2 class="sec"><span class="bar"></span>🏆 Bảng điểm KPI tự động <span class="muted small" style="font-weight:400">(app tính — KHÔNG sửa tay)</span></h2>
     <div class="card" style="padding:0;overflow:auto">
-      ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ — quy về điều phối">⚠ Trễ</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>
+      ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ — quy về điều phối">⚠ Trễ đơn</th><th title="Công đoạn quá hạn mà chưa cập nhật Xong">🕗 Trễ cập nhật</th><th title="Số kích thước đo KHÔNG đạt (sai dung sai)">📏 Sai KT</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>
         ${kpiRows.map(x=>{ const g=kpiGrade(x.score); return `<tr>
           <td><b>${esc(x.s.name)}</b>${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td>
           <td class="small muted">${x.dispatcher?'Điều phối':'Thợ'}</td>
           <td>${x.onTime?'<b style="color:#15803D">+'+x.onTime+'</b>':'0'}</td>
           <td>${x.quality?'<b style="color:#15803D">+'+x.quality+'</b>':'0'}</td>
           <td>${x.late?'<b style="color:var(--st-late)">'+x.late+'</b>':'0'}</td>
+          <td>${x.lateUpd?'<b style="color:#D97706">'+x.lateUpd+'</b>':'0'}</td>
+          <td>${x.dimFail?'<b style="color:var(--st-late)">'+x.dimFail+'</b>':'0'}</td>
           <td>${x.ncrUsable?'<b style="color:#D97706">'+x.ncrUsable+'</b>':'0'}</td>
           <td>${x.ncrScrap?'<b style="color:var(--st-late)">'+x.ncrScrap+'</b>':'0'}</td>
           <td><b style="font-size:14px">${x.score}</b></td>
           <td><span style="background:${g.c};color:#fff;border-radius:5px;padding:1px 9px;font-weight:800">${g.g}</span></td>
         </tr>`; }).join('')}
       </tbody></table>` : '<div class="empty">Chưa đủ dữ liệu (công đoạn Xong / NCR / đơn trễ) để chấm điểm.</div>'}
-      <div class="small muted" style="padding:8px 10px;line-height:1.5">Quy tắc tự động: <b>+2</b> mỗi công đoạn xong đúng hạn/sớm · <b>+1</b> chất lượng (mọi kích thước đạt) · <b>−8</b> mỗi đơn trễ (quy về <b>điều phối</b>) · <b>−4</b> hàng hư còn dùng được · <b>−12</b> hàng phế (quy về <b>thợ đứng máy</b> trong NCR). Điểm = 100 + thưởng − phạt. Hạng A≥90 · B≥75 · C≥60 · D&lt;60.</div>
+      <div class="small muted" style="padding:8px 10px;line-height:1.5">Quy tắc tự động: <b>+2</b> công đoạn xong đúng hạn/sớm · <b>+1</b> chất lượng (mọi kích thước đạt) · <b>−8</b> đơn trễ (quy về <b>điều phối</b>) · <b>−3</b> trễ cập nhật tiến độ (công đoạn quá hạn chưa báo Xong) · <b>−5</b> sai kích thước (mỗi kích thước không đạt) · <b>−4</b> hàng hư còn dùng được · <b>−12</b> hàng phế (quy về <b>thợ đứng máy</b>). Điểm = 100 + thưởng − phạt. Hạng A≥90 · B≥75 · C≥60 · D&lt;60.<br><b>KPI chỉ tính sự kiện từ ${KPI_START_DATE.split('-').reverse().join('/')}</b> (không tính dữ liệu cũ trước ngày áp dụng).</div>
     </div>
 
     <h2 class="sec"><span class="bar"></span>Phân bố đơn hàng theo trạng thái</h2>

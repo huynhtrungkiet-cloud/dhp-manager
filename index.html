@@ -2581,7 +2581,19 @@ function productImageBySku(sku){
 }
 function fillProdDatalist(){
   const dl=document.getElementById('prodDatalist'); if(!dl) return;
-  dl.innerHTML=(DATA.products||[]).slice(0,1500).map(p=>`<option value="${esc(p.sku||'')}">${esc(p.name||'')}${p.brand?' · '+esc(p.brand):''}</option>`).join('');
+  dl.innerHTML=(DATA.products||[]).slice(0,3000).map(p=>`<option value="${esc(p.sku||'')}">${esc(p.name||'')}${p.brand?' · '+esc(p.brand):''}</option>`).join('');
+}
+// Kéo lại catalogue (bảng products) từ cloud rồi dựng lại ô gợi ý — để mã mới tạo bên Coding hiện ngay
+async function refreshCatalogFromCloud(){
+  try{
+    if(!(_sb || (typeof initSupabase==='function' && initSupabase()))) return;
+    const { data, error } = await _sb.from('products').select('id,data');
+    if(!error && Array.isArray(data)){
+      DATA.products = data.map(r=>r.data).filter(Boolean);
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+      fillProdDatalist();
+    }
+  }catch(e){ /* offline thì bỏ qua, vẫn dùng danh sách cục bộ */ }
 }
 function onPickProduct(){
   const sku=document.getElementById('ord_product').value.trim();
@@ -2590,7 +2602,7 @@ function onPickProduct(){
 }
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';
-  fillProdDatalist();
+  fillProdDatalist(); refreshCatalogFromCloud();  // dựng ngay từ local + kéo mã mới nhất từ cloud
   (function(){ const insp=document.getElementById('ord_inspector'); if(insp) insp.innerHTML='<option value="">— 👤 Người đo / QC —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false).map(s=>'<option>'+esc(s.name)+'</option>').join('');
     const chk=document.getElementById('ord_g0_checker'); if(chk) chk.innerHTML='<option value="">— 👤 Người kiểm đầu vào —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false&&s.type!=='outsource').map(s=>'<option>'+esc(s.name)+'</option>').join(''); })();
   const sSel = document.getElementById('ord_status');
@@ -3309,6 +3321,7 @@ function supaSubscribe(){
             if(rec&&rec.id!=null) snap[String(rec.id)]=JSON.stringify(rec); // đã đồng bộ → không đẩy ngược
           }
           if(appT==='orders'){ sanitizeOrderDates(); }
+          if(appT==='products'){ try{ fillProdDatalist(); }catch(e){} }
           rebuildPartners();
           try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
           renderAll();

@@ -299,7 +299,7 @@
 
   <!-- ============ CẤU HÌNH GIÁ ============ -->
   <div id="tab-config" style="display:none">
-    <div class="alert warn" style="margin-bottom:12px">⚠️ Đây là <b>số mẫu thị trường cơ khí VN 2026</b> — hãy chỉnh đúng đơn giá thực tế của DHP rồi bấm <b>Lưu cấu hình</b>. Cần quyền <b>edit368</b> để sửa.</div>
+    <div class="alert warn" style="margin-bottom:12px">⚠️ Đây là <b>số mẫu thị trường cơ khí VN 2026</b> — hãy chỉnh đúng đơn giá thực tế của DHP rồi bấm <b>Lưu cấu hình</b>. Cần <b>quyền sửa</b> (Điều phối/Quản lý).</div>
     <div class="card"><h3>⚙️ Đơn giá giờ máy theo công đoạn (đ/giờ)</h3><div id="cfgProc"></div><button class="ghost sm" onclick="cfgAddProc()">＋ Thêm công đoạn</button></div>
     <div class="card"><h3>🧱 Đơn giá vật liệu (đ/kg)</h3><div id="cfgMat"></div><button class="ghost sm" onclick="cfgAddMat()">＋ Thêm vật liệu</button></div>
     <div class="card"><h3>📐 Khung đơn giá tham khảo theo loại mặt hàng (đ/đơn vị)</h3>
@@ -322,8 +322,8 @@
 <div id="unlockModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;padding:22px;width:320px;max-width:90vw;text-align:center">
     <h3 style="margin:0 0 4px;color:var(--brand)">🔓 Mở khóa sửa</h3>
-    <div class="muted small" style="margin-bottom:12px">Nhập mật khẩu quyền SỬA (<b>edit368</b> điều phối / <b>admin368</b> quản lý) — dùng chung với DHP Manager.</div>
-    <input id="unlockPass" type="password" placeholder="edit368 / admin368" style="width:100%;margin-bottom:8px" onkeydown="if(event.key==='Enter')unlockOk()">
+    <div class="muted small" style="margin-bottom:12px">Nhập mật khẩu <b>quyền sửa</b> (Điều phối / Quản lý) — dùng chung với DHP Manager.</div>
+    <input id="unlockPass" type="password" placeholder="Mật khẩu quyền sửa" style="width:100%;margin-bottom:8px" onkeydown="if(event.key==='Enter')unlockOk()">
     <div class="small" style="color:var(--brand);min-height:14px" id="unlockErr"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="ghost" style="flex:1" onclick="unlockClose()">Hủy</button>
@@ -1258,7 +1258,7 @@ function applyRole(){
 }
 /* Quyền NỘI BỘ — không phụ thuộc phiên bản dhp_core.js trên server.
    Dùng CHUNG localStorage.dhp_role với DHP Manager/Coding (đăng nhập 1 app = nhận quyền mọi app). */
-const PASS_ROLE={dhp368:'viewer',tho368:'worker',edit368:'editor',admin368:'admin'};
+const PASS_ROLE={dhpxem195:'viewer',dhpdieuphoi308:'editor',dhpquanly714:'admin'};
 function passToRole(v){
   v=(v||'').trim();
   try{ if(window.DHPCore&&DHPCore.roleFromPass){ const r=DHPCore.roleFromPass(v); if(r) return r; } }catch(e){}
@@ -1316,7 +1316,6 @@ function startApp(){
   renderPortal();   // trang chủ Trung tâm
 }
 function showGate(){
-  const VIEW='dhp368', EDIT='edit368';
   const g=document.createElement('div'); g.id='toolsGate';
   g.style.cssText="position:fixed;inset:0;z-index:9999;background:var(--brand);display:flex;align-items:center;justify-content:center";
   g.innerHTML="<div style='background:#fff;border-radius:16px;padding:28px;width:330px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)'>"+
@@ -1325,7 +1324,7 @@ function showGate(){
     "<input id='tgPass' type='password' placeholder='Mật khẩu' style='width:100%;margin-bottom:8px'>"+
     "<div class='small' style='color:var(--brand);min-height:14px' id='tgErr'></div>"+
     "<button style='width:100%' id='tgBtn'>Đăng nhập</button>"+
-    "<div class='muted small' style='margin-top:10px'>👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div></div>";
+    "<div class='muted small' style='margin-top:10px'>Mật khẩu được cấp riêng theo vai trò.</div></div>";
   document.body.appendChild(g);
   const go=()=>{ const v=document.getElementById('tgPass').value;
     const r=passToRole(v);

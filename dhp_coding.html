@@ -376,7 +376,7 @@ const PROJECT_TYPES = [
 /* ============================================================ */
 /* Mật khẩu 4 cấp — lưu BĂM trên Supabase (đồng bộ mọi máy), admin tự đổi.
    Khi CHƯA cấu hình lần đầu: dùng tạm 2 mật khẩu mặc định bên dưới rồi đặt lại trong Quản trị. */
-const LEGACY_DEFAULTS={'edit368':'admin','dhp368':'viewer'};
+const LEGACY_DEFAULTS={'dhpquanly714':'admin','dhpdieuphoi308':'admin','dhpxem195':'viewer'};
 const ROLE_INFO={viewer:{badge:'👁 Xem'},sale:{badge:'🧾 Sale'},tech:{badge:'🔧 Kỹ thuật'},admin:{badge:'🔓 Quản trị'}};
 const ACCESS_ID='__dhp_access_coding__';
 const STORAGE_KEY='dhp_hub_v3';
@@ -428,7 +428,7 @@ function openAdmin(){
   ['viewer','sale','tech','admin'].forEach(k=>{ $('ac_'+k).value=''; });
   const set=ACCESS||{};
   $('acStatus').textContent='Đã đặt: '+['viewer','sale','tech','admin'].filter(k=>set[k]).map(k=>ROLE_INFO[k].badge).join(' · ')||'Chưa đặt mật khẩu nào (đang dùng mặc định).';
-  if(!ACCESS) $('acStatus').textContent='Chưa cấu hình — đang dùng tạm dhp368 (Xem) / edit368 (Quản trị). Hãy đặt mật khẩu mới.';
+  if(!ACCESS) $('acStatus').textContent='Chưa cấu hình — đang dùng pass mặc định (Xem / Quản trị). Nên đặt mật khẩu riêng ở đây.';
   $('adminModal').classList.add('show');
 }
 function closeAdmin(){ $('adminModal').classList.remove('show'); }

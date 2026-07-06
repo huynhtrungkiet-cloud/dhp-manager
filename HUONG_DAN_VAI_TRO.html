@@ -57,30 +57,30 @@
     <li><a href="#admin">Vai trò A — ADMIN LÊN ĐƠN (tạo &amp; nhập đơn hàng)</a></li>
     <li><a href="#dieuhanh">Vai trò B — ĐIỀU HÀNH / ĐIỀU PHỐI (phân công &amp; theo dõi sản xuất)</a></li>
     <li><a href="#kinhdoanh">Vai trò C — PHÒNG KINH DOANH (chỉ xem &amp; theo dõi)</a></li>
-    <li><a href="#tho">Vai trò D — THỢ (báo tiến độ tại xưởng)</a></li>
+    <li><a href="#tho">Thợ tại xưởng (báo tiến độ)</a></li>
     <li><a href="#chung">Quy tắc chung &amp; xử lý sự cố</a></li>
   </ol>
 </div>
 
-<h2 id="batdau">1. Bắt đầu — Đăng nhập &amp; 4 cấp quyền</h2>
+<h2 id="batdau">1. Bắt đầu — Đăng nhập &amp; 3 cấp quyền</h2>
 <p>Mở link app trên trình duyệt (máy tính hoặc điện thoại). Lần đầu sẽ hỏi <b>mật khẩu</b> — mật khẩu quyết định bạn thuộc cấp nào. Nhập 1 lần, máy nhớ cho các lần sau.</p>
+<div class="warn"><b>Mật khẩu do Quản lý cấp riêng cho từng người</b> — không ghi trong app, không ghi trong tài liệu này. Ai cần thì xin Quản lý. Đừng chuyền tay mật khẩu cấp cao cho người chỉ cần xem.</div>
 <table>
-  <tr><th>Cấp quyền</th><th>Mật khẩu</th><th>Ai dùng</th><th>Làm được gì</th></tr>
-  <tr><td><span class="role-badge">👁 Xem</span></td><td><code>dhp368</code></td><td><b>Phòng kinh doanh</b>, sếp xem nhanh</td><td>Xem tất cả: đơn, tiến độ, KPI. <b>Không sửa được gì.</b></td></tr>
-  <tr><td><span class="role-badge">👷 Thợ</span></td><td><code>tho368</code></td><td>Thợ tại xưởng</td><td>Tick hoàn thành công đoạn, nhập số đo. Không sửa đơn.</td></tr>
-  <tr><td><span class="role-badge">🛠 Điều phối</span></td><td><code>edit368</code></td><td><b>Điều hành/điều phối, TPKT</b></td><td>Tạo &amp; sửa đơn, phân công, kiểm đầu vào, QC. (Gồm cả quyền Thợ.)</td></tr>
-  <tr><td><span class="role-badge">👑 Quản lý</span></td><td><code>admin368</code></td><td>Quản lý / Giám đốc</td><td>Toàn quyền + cấu hình hệ thống, nhân sự, đối tác.</td></tr>
+  <tr><th>Cấp quyền</th><th>Ai dùng</th><th>Làm được gì</th></tr>
+  <tr><td><span class="role-badge">👑 Quản lý</span></td><td>Quản lý / Giám đốc</td><td>Toàn quyền + cấu hình hệ thống, nhân sự, đối tác, mật khẩu.</td></tr>
+  <tr><td><span class="role-badge">🛠 Điều phối chung</span></td><td><b>Admin lên đơn + điều phối + thợ</b></td><td>Tạo &amp; sửa đơn, phân công, kiểm đầu vào, QC, tick công đoạn, nhập số đo.</td></tr>
+  <tr><td><span class="role-badge">👁 Xem</span></td><td><b>Phòng kinh doanh &amp; các phòng ban khác</b>, sếp xem nhanh</td><td>Xem tất cả: đơn, tiến độ, KPI. <b>Không sửa được gì.</b></td></tr>
 </table>
 <div class="note">Đổi cấp bất kỳ lúc nào bằng nút <b>🔓 Đổi cấp</b> (hoặc <b>Mở khóa sửa</b>) trên thanh trên cùng. Muốn thoát/khóa lại bấm <b>⎋</b>.</div>
 <p><b>9 thẻ (tab) trên cùng:</b> 🏠 Tổng quan · 📅 Lịch phân công &amp; Đơn hàng · 👷 Việc hôm nay · 🔧 Quy trình · 📊 KPI &amp; Báo cáo · 🔁 Outsource · ⚠ Ghi nhận NCR · 📋 Quy trình &amp; Hướng dẫn · ⚙ Dữ liệu &amp; Đồng bộ.</p>
 
 <h2 id="admin">2. Vai trò A — ADMIN LÊN ĐƠN</h2>
-<p class="muted">Cấp quyền: <span class="role-badge">🛠 Điều phối</span> (<code>edit368</code>) trở lên. Nhiệm vụ: mỗi khi có đơn mới từ Sale/khách, nhập vào hệ thống đầy đủ, chuẩn ngay từ đầu.</p>
+<p class="muted">Cấp quyền: <span class="role-badge">🛠 Điều phối chung</span> trở lên. Nhiệm vụ: mỗi khi có đơn mới từ Sale/khách, nhập vào hệ thống đầy đủ, chuẩn ngay từ đầu.</p>
 
 <h3>Bước 1 — Tạo đơn mới</h3>
 <ol>
   <li>Vào tab <b>📅 Lịch phân công &amp; Đơn hàng</b>.</li>
-  <li>Bấm nút <b>＋ Thêm đơn</b> (nếu chưa mở khóa, bấm <b>🔓 Mở khóa sửa</b> và nhập <code>edit368</code>).</li>
+  <li>Bấm nút <b>＋ Thêm đơn</b> (nếu chưa mở khóa, bấm <b>🔓 Mở khóa sửa</b> và nhập mật khẩu Điều phối chung).</li>
   <li>Nhập <b>Mã đơn / Tên đơn hàng</b> và <b>Khách hàng</b>.</li>
 </ol>
 
@@ -108,7 +108,7 @@
 <p>Bấm <b>💾 Lưu</b>. Đơn xuất hiện trên danh sách và lưới lịch. Vì dùng chung đám mây, các máy khác thấy ngay.</p>
 
 <h2 id="dieuhanh">3. Vai trò B — ĐIỀU HÀNH / ĐIỀU PHỐI</h2>
-<p class="muted">Cấp quyền: <span class="role-badge">🛠 Điều phối</span> (<code>edit368</code>). Nhiệm vụ: chia việc cho thợ theo ngày, theo dõi tiến độ, chốt QC, quản lý outsource.</p>
+<p class="muted">Cấp quyền: <span class="role-badge">🛠 Điều phối chung</span>. Nhiệm vụ: chia việc cho thợ theo ngày, theo dõi tiến độ, chốt QC, quản lý outsource.</p>
 
 <h3>3.1 Phân công việc trên lưới lịch</h3>
 <ol>
@@ -138,7 +138,7 @@
 <div class="warn"><b>Lưu ý:</b> Ghi NCR ngay khi phát hiện, đừng để cuối kỳ — dữ liệu lỗi là cơ sở để cải tiến và tính KPI chính xác.</div>
 
 <h2 id="kinhdoanh">4. Vai trò C — PHÒNG KINH DOANH (chỉ xem)</h2>
-<p class="muted">Cấp quyền: <span class="role-badge">👁 Xem</span> (<code>dhp368</code>). Xem mọi thứ, không sửa — an toàn, không sợ lỡ tay đổi dữ liệu sản xuất.</p>
+<p class="muted">Cấp quyền: <span class="role-badge">👁 Xem</span>. Xem mọi thứ, không sửa — an toàn, không sợ lỡ tay đổi dữ liệu sản xuất.</p>
 <h3>Cần theo dõi gì</h3>
 <ol>
   <li><b>🏠 Tổng quan:</b> nhìn nhanh 4 chỉ số — <b>Đơn đang theo dõi · Tỷ lệ giao đúng hạn · Đơn quá hạn (tô đỏ) · Tỷ lệ NCR.</b></li>
@@ -148,8 +148,8 @@
 <div class="note"><b>Mẹo cho Sale:</b> khách hỏi “đơn tới đâu rồi?” → mở đơn trên tab Lịch phân công, đọc trạng thái + hạn giao dự kiến, không cần gọi xuống xưởng.</div>
 <div class="danger"><b>Đơn tô đỏ = quá hạn hoặc sắp trễ.</b> Thấy đỏ ở đơn của khách mình → báo điều phối ngay.</div>
 
-<h2 id="tho">5. Vai trò D — THỢ (báo tiến độ tại xưởng)</h2>
-<p class="muted">Cấp quyền: <span class="role-badge">👷 Thợ</span> (<code>tho368</code>). Dùng ngay trên điện thoại tại máy.</p>
+<h2 id="tho">5. Thợ tại xưởng (báo tiến độ)</h2>
+<p class="muted">Thợ đăng nhập bằng chính mật khẩu <span class="role-badge">🛠 Điều phối chung</span> (dùng ngay trên điện thoại tại máy). Việc của thợ:</p>
 <ol>
   <li>Mở tab <b>👷 Việc hôm nay</b> — chỉ hiện việc được giao cho hôm nay.</li>
   <li>Làm xong công đoạn nào → <b>tick hoàn thành</b> công đoạn đó.</li>
@@ -163,7 +163,7 @@
   <li><b>Máy mới / điện thoại mới:</b> lần đầu vào tab <b>⚙ Dữ liệu &amp; Đồng bộ</b>, dán <b>Project URL + anon key</b> (giống các máy khác) rồi Lưu &amp; Kết nối. Làm 1 lần cho mỗi thiết bị.</li>
   <li><b>Không thấy đơn / trống trơn:</b> gần như luôn là do thiết bị đó chưa dán cấu hình kết nối (xem gạch đầu dòng trên). Dữ liệu <b>không mất</b>, nó nằm trên đám mây.</li>
   <li><b>Ý nghĩa màu:</b> <span style="color:var(--danger);font-weight:700">đỏ = quá hạn / cảnh báo</span>, <span style="color:var(--warn);font-weight:700">cam = cần lưu ý</span>, <span style="color:var(--ok);font-weight:700">xanh = đạt / hoàn thành</span>. Còn lại để trắng cho đỡ rối mắt.</li>
-  <li><b>Bảo mật:</b> đừng chia mật khẩu <code>edit368</code>/<code>admin368</code> cho người chỉ cần xem — cho họ <code>dhp368</code>.</li>
+  <li><b>Bảo mật:</b> mật khẩu do Quản lý cấp riêng theo vai trò. Người chỉ cần xem → chỉ đưa mật khẩu <b>Xem</b>, đừng đưa mật khẩu Điều phối/Quản lý. Nghi lộ pass → báo Quản lý đổi.</li>
 </ul>
 
 <div class="note" style="margin-top:24px">Tài liệu v1 — nếu quy trình thực tế của xưởng có bước khác, báo để cập nhật cho khớp. In tài liệu này: <b>Ctrl/⌘ + P</b>.</div>

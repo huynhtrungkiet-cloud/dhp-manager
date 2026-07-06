@@ -9,16 +9,18 @@
 (function (global) {
   'use strict';
 
-  const VIEW_PASSCODE  = 'dhp368';
-  const WORK_PASSCODE  = 'tho368';
-  const EDIT_PASSCODE  = 'edit368';
-  const ADMIN_PASSCODE = 'admin368';
+  // 3 cấp quyền (không hiển thị trong app — cấp riêng cho từng người):
+  //  Quản lý = admin · Điều phối chung (admin+điều phối+thợ) = editor · Xem (kinh doanh + phòng khác) = viewer
+  const VIEW_PASSCODE  = 'dhpxem195';
+  const WORK_PASSCODE  = 'dhpdieuphoi308';   // thợ dùng chung pass Điều phối
+  const EDIT_PASSCODE  = 'dhpdieuphoi308';
+  const ADMIN_PASSCODE = 'dhpquanly714';
   const CFG_KEY = 'dhp_hub_v3';   // dùng chung config Supabase với DHP Manager (cùng origin)
 
   let _sb = null;
 
   // ---- Vai trò (4 cấp, DÙNG CHUNG dhp_role với DHP Manager / Coding cùng origin) ----
-  // Mọi mật khẩu cấp sửa từ app nào (edit368/admin368, kể cả 'tech'/'admin' của Coding) đều = quyền sửa ở đây.
+  // Mọi mật khẩu cấp sửa (Điều phối / Quản lý, kể cả 'tech'/'admin' của Coding) đều = quyền sửa ở đây.
   function roleFromPass(v){
     if (v === ADMIN_PASSCODE) return 'admin';
     if (v === EDIT_PASSCODE)  return 'editor';
@@ -142,7 +144,7 @@
       '<input id="dhpGatePass" type="password" placeholder="Mật khẩu">' +
       '<div class="err" id="dhpGateErr"></div>' +
       '<button id="dhpGateBtn">Đăng nhập</button>' +
-      '<div class="hint">👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div></div>';
+      '<div class="hint">Nhập mật khẩu được cấp. Chưa có? Liên hệ quản lý.</div></div>';
     document.body.appendChild(g);
     const tryLogin = () => {
       const v = document.getElementById('dhpGatePass').value;

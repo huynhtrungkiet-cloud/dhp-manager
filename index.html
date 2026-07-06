@@ -142,7 +142,7 @@
     <label style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:12px;font-size:11.5px;color:#6b7280;cursor:pointer">
       <input type="checkbox" id="gateRemember" checked> Ghi nhớ trên thiết bị này
     </label>
-    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">4 cấp: 👁 Xem (mọi người) · 👷 Thợ · 🛠 Điều phối/TPKT · 👑 Quản lý/GĐ</p>
+    <p style="margin:10px 0 0;font-size:11px;color:#9ca3af">Mật khẩu được cấp riêng theo vai trò. Chưa có? Liên hệ quản lý.</p>
   </div>
   <p style="color:rgba(255,255,255,.7);font-size:11px;margin-top:18px">Chỉ dành cho nội bộ Đại Hồng Phát</p>
 </div>
@@ -151,10 +151,11 @@
    ĐỔI MẬT KHẨU: sửa giá trị APP_PASSCODE bên dưới rồi upload lại index.html.
    Lưu ý: đây là lớp chặn cơ bản cho nội bộ — bảo vệ thật sự nằm ở URL Google Sheets (chìa khóa dữ liệu). */
 // ĐỔI MẬT KHẨU: sửa các giá trị này rồi upload lại index.html.
-window.VIEW_PASSCODE  = 'dhp368';    // 1. XEM — mọi người
-window.WORK_PASSCODE  = 'tho368';    // 2. THỢ — tick công đoạn + nhập đo đạc
-window.EDIT_PASSCODE  = 'edit368';   // 3. ĐIỀU PHỐI/TPKT — sửa đơn, công đoạn, QC
-window.ADMIN_PASSCODE = 'admin368';  // 4. QUẢN LÝ/GĐ — tất cả + cấu hình
+// 3 cấp quyền (mật khẩu KHÔNG hiển thị trong app — cấp riêng từng người)
+window.VIEW_PASSCODE  = 'dhpxem195';       // XEM — kinh doanh + các phòng ban khác
+window.WORK_PASSCODE  = 'dhpdieuphoi308';  // Thợ dùng chung pass Điều phối
+window.EDIT_PASSCODE  = 'dhpdieuphoi308';  // ĐIỀU PHỐI CHUNG (admin+điều phối) — lên đơn, phân công, QC
+window.ADMIN_PASSCODE = 'dhpquanly714';    // QUẢN LÝ/GĐ — tất cả + cấu hình
 window.roleFromPass = function(v){
   if(v===window.ADMIN_PASSCODE) return 'admin';
   if(v===window.EDIT_PASSCODE)  return 'editor';

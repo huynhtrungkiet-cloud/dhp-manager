@@ -54,7 +54,7 @@
     <input id="gpass" type="password" placeholder="Mật khẩu" onkeydown="if(event.key==='Enter')gIn()">
     <div id="gerr" style="color:var(--brand);font-size:12px;min-height:14px;margin-bottom:6px"></div>
     <button onclick="gIn()">Đăng nhập</button>
-    <div style="color:#9ca3af;font-size:11px;margin-top:10px">👁 dhp368 · 👷 tho368 · 🛠 edit368 · 👑 admin368</div>
+    <div style="color:#9ca3af;font-size:11px;margin-top:10px">Mật khẩu được cấp riêng theo vai trò.</div>
   </div>
 </div>
 
@@ -98,7 +98,7 @@
 
 <script src="dhp_core.js"></script>
 <script>
-const PASS={dhp368:'viewer',tho368:'worker',edit368:'editor',admin368:'admin'};
+const PASS={dhpxem195:'viewer',dhpdieuphoi308:'editor',dhpquanly714:'admin'};
 const RB={viewer:'👁 Xem',worker:'👷 Thợ',editor:'🛠 Điều phối',admin:'👑 Quản lý',sale:'💼 Sale',tech:'🛠 Kỹ thuật'};
 function roleFromPass(v){ return (window.DHPCore&&DHPCore.roleFromPass)?DHPCore.roleFromPass(v):(PASS[v]||null); }
 function getRole(){ return localStorage.getItem('dhp_role')||'viewer'; }

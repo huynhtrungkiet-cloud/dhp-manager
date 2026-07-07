@@ -156,7 +156,7 @@
         <div class="field" style="margin:0"><label>Sub-type (tùy chọn)</label><select id="p_subtype" onchange="genSku()"></select></div>
       </div>
       <div class="row2" style="margin-top:8px">
-        <div class="field" style="margin:0"><label>Hãng</label><select id="p_brand" onchange="onBrandChange()"></select></div>
+        <div class="field" style="margin:0"><label>Hãng</label><select id="p_brand" onchange="onBrandChange()"></select><div id="brandWarn" class="small" style="color:var(--brand);margin-top:3px;font-weight:700"></div></div>
         <div class="field" style="margin:0"><label>Series / dòng</label><input id="p_series" placeholder="ROTEX / N-EUPEX..." oninput="genSku()">
           <div class="chips" id="serChips"></div></div>
       </div>
@@ -628,7 +628,7 @@ function onCatChange(){
   if(!subs.length){ $('p_subtype').innerHTML='<option value="">— Không có sub-type —</option>'; $('p_subtype').disabled=true; }
   else{ $('p_subtype').innerHTML='<option value="">— Tùy chọn —</option>'+subs.map(s=>`<option value="${s.c}" ${MS.subtype===s.c?'selected':''}>${s.c} — ${esc(s.n)}</option>`).join(''); $('p_subtype').disabled=false; }
   fillBrandForCat();
-  genSku();
+  checkBrandCat(); genSku();
 }
 function optBrand(b){ return `<option value="${b.c}">${b.c} — ${esc(b.n)}</option>`; }
 // Tập hãng gợi ý cho nhóm: seed ngành + hãng đã có trong dữ liệu thực + DHP. null = không hạn chế.
@@ -656,7 +656,15 @@ function onBrandChange(){
   const dbSer=[...new Set(PRODUCTS.filter(p=>brandCodeOf(p.brand)===code).map(p=>p.series).filter(Boolean))];
   const hints=[...new Set([...(SERIES_HINTS[code]||[]), ...dbSer])];
   $('serChips').innerHTML=hints.map(s=>`<span class="chip" onclick="setSeries('${esc(s)}')">${esc(s)}</span>`).join('') || '<span class="muted small">— chưa có gợi ý cho hãng này, gõ tay —</span>';
-  genSku();
+  checkBrandCat(); genSku();
+}
+// Link 2 chiều: cảnh báo nếu hãng không cung cấp nhóm đã chọn (và ngược lại)
+function checkBrandCat(){
+  const w=$('brandWarn'); if(!w) return;
+  const cat=MS.cat, br=$('p_brand').value, allow=CAT_BRANDS[cat];
+  if(cat && br && br!=='DHP' && allow && allow.length && !allow.includes(br))
+    w.textContent='⚠ '+brandName(br)+' thường KHÔNG làm nhóm "'+catName(cat)+'" — kiểm tra lại loại/hãng.';
+  else w.textContent='';
 }
 function setSeries(v){ $('p_series').value=v; genSku(); }
 function addVariant(v){ const cur=$('p_variant').value.trim(); $('p_variant').value=cur?(cur.endsWith(v)?cur:cur+v):v; genSku(); }

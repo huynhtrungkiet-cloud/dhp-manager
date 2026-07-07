@@ -3273,6 +3273,7 @@ function initSupabase(){
 async function supaPush(changedOnly){
   if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
   for(const appT of Object.keys(SUPA_TABLES)){
+    if(appT==='products') continue;   // Coding sở hữu catalogue — Manager CHỈ ĐỌC, tuyệt đối không đẩy/xóa products
     const cur = _snapOf(appT), prev = _syncSnap[appT]||{};
     let ids;
     if(changedOnly){ ids = Object.keys(cur).filter(id=>cur[id]!==prev[id]); }

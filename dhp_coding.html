@@ -162,10 +162,11 @@
       </div>
       <div class="row3" style="margin-top:8px">
         <div class="field" style="margin:0"><label>Cỡ / Size (catalog)</label><input id="p_size" placeholder="28 / 110" oninput="genSku()"></div>
-        <div class="field" style="margin:0"><label>Bore lẻ Ø mm (tùy chọn)</label><input id="p_bore" placeholder="30" oninput="genSku()"></div>
-        <div class="field" style="margin:0"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / 98SH / KW8" oninput="genSku()">
-          <div class="chips" id="varChips"></div></div>
+        <div class="field" style="margin:0"><label>Lỗ trục d1 Ø mm</label><input id="p_d1" placeholder="24" oninput="genSku()"></div>
+        <div class="field" style="margin:0"><label>Lỗ trục d2 <span class="muted small">(nếu khác d1)</span></label><input id="p_d2" placeholder="38" oninput="genSku()"></div>
       </div>
+      <div class="field" style="margin-top:8px"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / 98SH / KW8 / NBR..." oninput="genSku()">
+        <div class="chips" id="varChips"></div></div>
     </div>
 
     <!-- 3. DOC (prefix 6) -->
@@ -540,8 +541,9 @@ function filtered(){
   });
 }
 function isV25(p){ return /^\d\./.test(p.sku||''); }
-let SORT={col:'sku',dir:1};
-const SORT_VAL={ sku:p=>p.sku, vaitro:p=>prodPrefix(p), name:p=>p.name, brand:p=>p.brand, category:p=>p.category, series:p=>p.series, size:p=>p.size };
+function fmtDate(s){ if(!s) return ''; const d=new Date(s); return isNaN(d)?'':(String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()); }
+let SORT={col:'updated',dir:-1};   // mặc định: mã mới cập nhật nhất lên đầu → tạo xong thấy ngay
+const SORT_VAL={ sku:p=>p.sku, vaitro:p=>prodPrefix(p), name:p=>p.name, brand:p=>p.brand, category:p=>p.category, series:p=>p.series, size:p=>p.size, updated:p=>p.updatedAt||'' };
 function sortBy(col){ if(SORT.col===col) SORT.dir*=-1; else { SORT.col=col; SORT.dir=1; } renderGrid(); }
 function sArrow(col){ return SORT.col===col?(SORT.dir>0?' ▲':' ▼'):''; }
 function th(col,label){ return `<th class="sortable" onclick="sortBy('${col}')">${label}${sArrow(col)}</th>`; }
@@ -557,7 +559,7 @@ function renderGrid(){
   if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
   grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
     <table class="ptbl"><thead><tr>
-      ${th('sku','Mã SKU')}${th('vaitro','Vai trò')}${th('name','Tên sản phẩm')}${th('brand','Hãng')}${th('category','Nhóm')}${th('series','Series')}${th('size','Cỡ')}${canTag()?'<th></th>':''}
+      ${th('sku','Mã SKU')}${th('vaitro','Vai trò')}${th('name','Tên sản phẩm')}${th('brand','Hãng')}${th('category','Nhóm')}${th('series','Series')}${th('size','Cỡ')}${th('updated','Ngày')}${canTag()?'<th></th>':''}
     </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
     ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
 }
@@ -571,6 +573,7 @@ function rowHtml(p){
     <td>${esc(p.category||'')}</td>
     <td>${esc(p.series||'')}</td>
     <td>${esc(p.size||'')}</td>
+    <td class="small muted" style="white-space:nowrap">${fmtDate(p.updatedAt)}</td>
     ${canTag()?`<td class="cact">${canEdit()?'✎':'🏷'}</td>`:''}
   </tr>`;
 }
@@ -664,11 +667,12 @@ function buildCode(){
   const m=modeOf(); let body=[], desc=[];
   if(m==='product'){
     const cat=clean($('p_cat').value), sub=clean($('p_subtype').value), br=clean($('p_brand').value),
-          ser=clean($('p_series').value), sz=clean($('p_size').value), bore=clean($('p_bore').value), va=clean($('p_variant').value);
-    const boreTxt=bore.replace(/-/g,'x');  // dual bore d1-d2 → D24x38 (rõ 2 lỗ, không lẫn dấu ngăn đoạn)
-    body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+boreTxt:'', va].filter(Boolean);
+          ser=clean($('p_series').value), sz=clean($('p_size').value),
+          d1=clean($('p_d1').value), d2=clean($('p_d2').value), va=clean($('p_variant').value);
+    const bore = d1 ? (d2 && d2!==d1 ? d1+'x'+d2 : d1) : (d2||'');   // 2 lỗ khác nhau → D24x38 · giống nhau/1 lỗ → D24
+    body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+bore:'', va].filter(Boolean);
     if(cat) desc.push(catName($('p_cat').value)); if(br) desc.push(brandName($('p_brand').value));
-    if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore.replace(/-/g,'×'));
+    if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore.replace(/x/g,'×'));
   } else if(m==='doc'){
     const dt=clean($('p_docType').value), br=clean($('p_docBrand').value), ref=clean($('p_docRef').value);
     body=['DOC', dt, br, ref].filter(Boolean);
@@ -733,7 +737,7 @@ function openProduct(id){
   $('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm mã';
   $('p_id').value=id||'';
   // reset fields
-  ['p_series','p_size','p_bore','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
+  ['p_series','p_size','p_d1','p_d2','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
   $('serChips').innerHTML=''; document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.remove('active'));
   // điền từ bản ghi
   const pf = p?prodPrefix(p):'';
@@ -745,7 +749,9 @@ function openProduct(id){
       const cat=CATEGORIES.find(c=>c.c===p.cat); if(cat) setFamily(cat.f);
       if(p.cat){ $('p_cat').value=p.cat; onCatChange(); $('p_subtype').value=p.subtype||''; }
       const bc=p.brandCode||brandCodeOf(p.brand); $('p_brand').value=bc; onBrandChange();
-      $('p_series').value=p.series||''; $('p_size').value=p.size||''; $('p_bore').value=p.bore||''; $('p_variant').value=p.variant||'';
+      $('p_series').value=p.series||''; $('p_size').value=p.size||'';
+      { const bp=String(p.bore||'').split(/[x×\-\/]/); $('p_d1').value=(p.bore1!=null?p.bore1:(bp[0]||'')); $('p_d2').value=(p.bore2!=null?p.bore2:(bp[1]||'')); }
+      $('p_variant').value=p.variant||'';
     } else if(m==='doc'){ $('p_docType').value=p.docType||'DS'; $('p_docBrand').value=p.brandCode||brandCodeOf(p.brand)||''; $('p_docRef').value=p.docRef||''; }
     else if(m==='combo'){ $('p_comboInd').value=p.comboInd||'GEN'; $('p_comboApp').value=p.comboApp||''; $('p_comboSeq').value=p.comboSeq||''; }
     else if(m==='svc'){ $('p_svcType').value=p.svcType||'ALIGN'; $('p_svcVar').value=p.svcVar||''; }
@@ -804,7 +810,7 @@ async function saveProduct(){
     // product
     family:MS.family||'', cat, subtype:m==='product'?$('p_subtype').value:'',
     brandCode, brand:brandCode?brandName(brandCode):'', series:g('p_series'),
-    size:g('p_size'), bore:g('p_bore'), variant:g('p_variant'),
+    size:g('p_size'), bore:(function(){const a=clean($('p_d1').value),b=clean($('p_d2').value);return a?(b&&b!==a?a+'x'+b:a):(b||'');})(), bore1:clean($('p_d1').value), bore2:clean($('p_d2').value), variant:g('p_variant'),
     // doc / combo / svc
     docType:m==='doc'?$('p_docType').value:'', docRef:m==='doc'?g('p_docRef'):'',
     comboInd:m==='combo'?$('p_comboInd').value:'', comboApp:m==='combo'?g('p_comboApp'):'', comboSeq:m==='combo'?g('p_comboSeq'):'',

@@ -922,6 +922,7 @@ function doAdvise(){
     <div style="margin-top:10px" class="noprint">
       <button onclick="quoteFromFam('${top.fk}')">💰 Lập báo giá gia công hub này</button>
       <button class="ok" onclick="saveCase()">💾 Lưu ca tư vấn này</button>
+      <button class="ghost" onclick="advToCoding('${top.fk}')" title="Mang đề xuất này sang DHP Coding để sinh mã SKU">🏷 Tạo mã trong Coding</button>
       <button class="ghost" onclick="goTab('kb');document.getElementById('kbFam').value='${top.fk}';renderDatasheet()">📑 Xem datasheet đầy đủ</button>
     </div>
   </div></div>`;
@@ -934,6 +935,18 @@ function doAdvise(){
 }
 function VND0(n){ return (Math.round(+n||0)).toLocaleString('vi-VN'); }
 function shortName(fk){ return FAMILIES[fk].name; }
+// Nối Advisor → Coding: mang đề xuất sang app Coding để sinh mã (chuỗi dùng chung dữ liệu)
+const ADV2CAT={ jaw:{cat:'KNL',sub:'JAW'}, tyre:{cat:'KNL',sub:'TYR'}, disc:{cat:'KND'}, gear:{cat:'KNR'}, grid:{cat:'KNX'}, rigid:{cat:'KNC'}, cardan:{cat:'KCD'}, fluid:{cat:'KTL'} };
+function advToCoding(fk){
+  const a=window.LAST_ADV||{}; const map=ADV2CAT[fk]||{};
+  const isJaw=(fk==='jaw'); const sizeNum=(String(a.size||'').match(/GS(\d+)/)||[])[1]||'';
+  const payload={ cat:map.cat||'', sub:map.sub||'', brand:isJaw?'KTR':'', series:isJaw?'ROTEX':'',
+    size:sizeNum, bore:(a.snap&&a.snap.shaft)?String(a.snap.shaft):'',
+    name:(shortName(fk)||'')+(a.Td?(' · Tdesign≈'+a.Td+'Nm'):'')+(a.snap&&a.snap.drivenL?(' · '+a.snap.drivenL):''),
+    material:a.matHub||'', note:'Từ Advisor'+(a.snap&&a.snap.P?(' · '+a.snap.P+'kW/'+(a.snap.n||'')+'rpm'):'') };
+  try{ localStorage.setItem('dhp_adv2coding', JSON.stringify(payload)); }catch(e){}
+  window.open('dhp_coding.html','_blank');
+}
 function reasonList(fk,shock,env,mis,n){
   const out=[]; const f=FAMILIES[fk];
   if(shock>=3) out.push('Tải va đập mạnh');

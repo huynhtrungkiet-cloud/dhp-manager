@@ -890,7 +890,27 @@ function exportCsv(){
 }
 
 /* ---- boot ---- */
-function boot(){ buildPfxGrid(); buildFamTabs(); fillStaticSelects(); if(connect()) loadProducts(); }
+function boot(){ buildPfxGrid(); buildFamTabs(); fillStaticSelects(); if(connect()) loadProducts(); checkAdvisorHandoff(); }
+// Nhận đề xuất từ Advisor (dhp_tools) → mở sẵn modal tạo mã, điền nhóm/hãng/series/cỡ
+function checkAdvisorHandoff(){
+  let h; try{ h=JSON.parse(localStorage.getItem('dhp_adv2coding')||'null'); }catch(e){}
+  if(!h) return; try{ localStorage.removeItem('dhp_adv2coding'); }catch(e){}
+  if(!canTag()) return;
+  try{
+    openProduct(); setPrefix('1');   // hàng đặt gia công
+    const cat=CATEGORIES.find(c=>c.c===h.cat);
+    if(cat){ setFamily(cat.f); $('p_cat').value=h.cat; onCatChange(); if(h.sub){ $('p_subtype').value=h.sub; } }
+    if(h.brand){ $('p_brand').value=h.brand; onBrandChange(); }
+    if(h.series) $('p_series').value=h.series;
+    if(h.size) $('p_size').value=h.size;
+    if(h.bore) $('p_d1').value=h.bore;
+    if(h.name) $('p_name').value=h.name;
+    if(h.material) $('p_material').value=h.material;
+    if(h.note) $('p_note').value=h.note;
+    genSku();
+    setTimeout(()=>{ try{ alert('✓ Đã chuyển đề xuất từ Advisor sang đây. Kiểm tra & bổ sung lỗ trục/then rồi Lưu.'); }catch(e){} }, 100);
+  }catch(e){ console.warn('handoff', e); }
+}
 $('p_sku').addEventListener('input',()=>{ MS._skuTouched=true; });
 (function(){
   if(localStorage.getItem('dhp_coding_ok')==='1' || localStorage.getItem('dhp_gate_ok')==='1'){ $('gate').style.display='none'; applyRole(); boot(); }

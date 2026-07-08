@@ -1751,6 +1751,31 @@ function renderStagesEditor(){
   wrap.innerHTML = stageTplBarHtml() + `<datalist id="stageLocs">${locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>` +
     editingStages.map((s,i)=>{
       const st = stageState(s);
+      // ĐƠN NỘI BỘ / THƯƠNG MẠI: dòng GỌN — chỉ Hạng mục · Ai làm · Từ→Tới ngày · Trạng thái
+      if(isNonMfgOrder()){
+        return `<div style="border:1px solid var(--line);border-left:4px solid ${STAGE_COLORS[st]};border-radius:8px;padding:7px 9px;margin-bottom:6px;background:#fafcff">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <input style="flex:1;min-width:190px;font-weight:600" value="${esc(s.name||'')}" placeholder="Hạng mục công việc..." oninput="updStage(${i},'name',this.value)">
+          <span style="font-size:11px;color:#6366F1;font-weight:700">👤</span>
+          <select style="width:180px" onchange="updStage(${i},'assignee',this.value);renderStagesEditor()" title="Ai làm">
+            <option value="">— ai làm —</option>
+            ${DATA.staff.filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}${x.type==='outsource'?' (ngoài)':''}</option>`).join('')}
+          </select>
+          <span class="small muted">từ</span><input type="date" style="width:120px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value);renderStagesEditor()">
+          <span class="small muted">tới</span><input type="date" style="width:120px" value="${esc(s.endDate||'')}" min="${esc(s.startDate||'')}" onchange="updStage(${i},'endDate',this.value);renderStagesEditor()">
+          <select style="width:106px" onchange="updStage(${i},'status',this.value);renderStagesEditor()" title="Trạng thái">
+            <option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa làm</option>
+            <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
+            <option value="done" ${s.status==='done'?'selected':''}>Xong ✓</option>
+          </select>
+          <span style="display:flex;gap:4px">
+            <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Lên">↑</a>
+            <a onclick="moveStage(${i},1)" style="cursor:pointer;font-weight:800" title="Xuống">↓</a>
+            <a onclick="rmStage(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa">✕</a>
+          </span>
+        </div>
+      </div>`;
+      }
       const isOut = isOutsourceStaff(s.assignee);   // outsource: bỏ OT + không cảnh báo giờ
       return `<div style="border:1px solid var(--line);border-left:4px solid ${STAGE_COLORS[st]};border-radius:8px;padding:7px;margin-bottom:6px;background:#fafcff">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">

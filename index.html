@@ -465,6 +465,7 @@ function gateCheck(){
         <div id="ord_stages_list"></div>
         <div class="toolbar" style="margin-top:8px">
           <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
+          <button type="button" class="ghost sm" onclick="addStagesFromList()" style="border-color:#0EA5E9;color:#0369a1" title="Dán danh sách — mỗi dòng thành 1 hạng mục việc (hợp đơn nội bộ)">📋 Dán danh sách việc (mỗi dòng 1 hạng mục)</button>
           <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
           <button type="button" class="ghost sm" onclick="printStageSheetsFromForm()" style="border-color:#0EA5E9;color:#0369a1" title="In phiếu đo đạc kích thước cho TỪNG công đoạn — BẮT BUỘC in trước khi qua QC">🖨 In phiếu gia công (BẮT BUỘC)</button>
         </div>
@@ -1880,6 +1881,16 @@ function g0LockGuard(){ if(!intakeApproved(collectG0())){ alert('🔒 BƯỚC G1
 function addStage(){
   if(!g0LockGuard()) return;
   editingStages.push({id:localId('ST'), code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', endDate:'', assignee:'', hours:null, otHours:null, checks:[], doneDate:'', note:''});
+  renderStagesEditor();
+}
+// Dán 1 danh sách nhiều dòng → mỗi dòng thành 1 hạng mục việc (đơn nội bộ). Sau đó gán người + ngày cho từng dòng.
+function addStagesFromList(){
+  if(!isNonMfgOrder() && !g0LockGuard()) return;   // đơn gia công vẫn cần qua G1
+  const txt=prompt('Dán DANH SÁCH việc — MỖI DÒNG = 1 hạng mục:\n(vd:\nDọn dẹp văn phòng\nGom phôi về pallet\nKiểm panme / thước kẹp\nKiểm dụng cụ tool, ghi sheet TOOL\n... )');
+  if(txt===null) return;
+  const lines=txt.split(/\r?\n/).map(s=>s.replace(/^[\s•\-–\d.\)]+/,'').trim()).filter(Boolean);
+  if(!lines.length){ alert('Không có dòng nào để thêm.'); return; }
+  lines.forEach(name=>editingStages.push({id:localId('ST'), code:'', name:name, location:'', plannedDays:null, status:'pending', startDate:'', endDate:'', assignee:'', hours:null, otHours:null, checks:[], doneDate:'', note:''}));
   renderStagesEditor();
 }
 function updStage(i,k,v){

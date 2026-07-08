@@ -1791,7 +1791,16 @@ function renderStagesEditor(){
     </div>`;}).join('');
   updateFormGates();
 }
-const MEAS_TOOLS=['Thước cặp','Panme','Đồng hồ so','Calip','Thước lá','CMM','Dưỡng','Mắt thường','Khác'];
+const MEAS_TOOLS=['Thước cặp','Panme','Đồng hồ so','Calip','Calip nút GO/NO-GO','Thước lá','CMM','Dưỡng','Cờ lê lực','Mắt thường','Khác'];
+// Checklist QC LÕI (đo được bằng dụng cụ đang có — pass/fail nhanh). Cái khó (cân bằng/hàn) để "khuyến nghị", không bắt buộc.
+const QC_STD_CHECKLIST=[
+  {param:'Vệ sinh + ngoại quan (ba via/nứt/gỉ/va đập)', spec:'Sạch, không lỗi bề mặt', tool:'Mắt thường'},
+  {param:'Lỗ lắp trục — GO/NO-GO', spec:'GO lọt · NO-GO KHÔNG lọt (H7)', tool:'Calip nút GO/NO-GO'},
+  {param:'Rãnh then (rộng/sâu)', spec:'Js9/P9 · DIN 6885', tool:'Dưỡng'},
+  {param:'Độ đảo TIR (lỗ↔OD / mặt bích)', spec:'≤ 0.05–0.10 (theo bản vẽ)', tool:'Đồng hồ so'},
+  {param:'Momen siết bu lông (nếu có)', spec:'Theo bảng momen', tool:'Cờ lê lực'},
+  {param:'Kích thước tới hạn theo bản vẽ', spec:'(điền theo bản vẽ)', tool:''}
+];
 // Bảng KÍCH THƯỚC CẦN KIỂM của 1 công đoạn (đo L1 + đo chéo L2 cho mẫu đầu)
 // 1 công đoạn coi là ĐỦ thông số khi có ≥1 kích thước điền CẢ Thông số + Yêu cầu/dung sai
 function stageHasFullDim(s){ return (s.checks||[]).some(c=>(c.param||'').trim() && (c.spec||'').trim()); }
@@ -1811,12 +1820,15 @@ function stageChecksHtml(s,i){
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
       <span style="font-size:10.5px;font-weight:800;color:${stageHasFullDim(s)?'#0EA5E9':'#b91c1c'}">📐 KÍCH THƯỚC CẦN KIỂM${ck.length?' ('+ck.length+')':''}${stageHasFullDim(s)?'':' ⚠ BẮT BUỘC'}</span>
       <a onclick="addStageCheck(${i})" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11px">＋ Thêm kích thước</a>
+      <a onclick="addStandardChecklist(${i})" style="cursor:pointer;color:#0EA5E9;font-weight:700;font-size:11px" title="Nạp 6 mục QC lõi (Đạt/Không) — sạch·GO/NO-GO·then·runout·momen·kích thước tới hạn">✓ Nạp checklist QC chuẩn</a>
       ${stageHasFullDim(s)?'<span class="small muted">đo L2 = kiểm chéo người thứ 2 (mẫu đầu)</span>':'<span class="small" style="color:#b91c1c">phải điền Thông số + Yêu cầu/dung sai mới cho Xong &amp; in</span>'}
     </div>
     ${rows}
   </div>`;
 }
 function addStageCheck(i){ if(!editingStages[i])return; editingStages[i].checks=editingStages[i].checks||[]; editingStages[i].checks.push({param:'',spec:'',tool:'',actual1:'',actual2:'',pass:''}); renderStagesEditor(); }
+function addStandardChecklist(i){ if(!editingStages[i])return; editingStages[i].checks=editingStages[i].checks||[];
+  QC_STD_CHECKLIST.forEach(x=>editingStages[i].checks.push({param:x.param,spec:x.spec,tool:x.tool,actual1:'',actual2:'',pass:''})); renderStagesEditor(); }
 function rmStageCheck(i,ci){ if(editingStages[i]&&editingStages[i].checks){ editingStages[i].checks.splice(ci,1); renderStagesEditor(); } }
 function updStageCheck(i,ci,k,v){ const c=editingStages[i]&&editingStages[i].checks&&editingStages[i].checks[ci]; if(c) c[k]=v; }
 function staffName(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return s?s.name:'(?)'; }
@@ -3983,6 +3995,7 @@ function renderGuide(){
     <div class="card">
       <div class="toolbar">
         <button onclick="window.open('HUONG_DAN_VAI_TRO.html','_blank')">👥 Hướng dẫn theo vai trò (Admin lên đơn · Điều phối · Kinh doanh · Thợ)</button>
+        <button onclick="window.open('HUONG_DAN_QC_QCP.html','_blank')">🔍 Chuẩn QC &amp; Kế hoạch kiểm soát (QCP · gauge · cardan/cân bằng/hàn)</button>
         <button class="secondary" onclick="window.open('HUONG_DAN_VAN_HANH_CK368.html','_blank')">📋 Hướng dẫn vận hành + Quy trình (A4)</button>
         <button class="secondary" onclick="window.open('SOP_CK368.html','_blank')">🗺 Sơ đồ luồng SOP (treo tường)</button>
         <button class="secondary" onclick="window.open('BieuMau_CK368.html','_blank')">📑 Bộ biểu mẫu (mẫu đầu / NCR…)</button>

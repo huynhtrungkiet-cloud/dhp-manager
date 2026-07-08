@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DHP — Chuẩn QC & Kế hoạch kiểm soát chất lượng (QCP)</title>
+<style>
+  :root{ --ink:#1f2937; --muted:#6b7280; --line:#d1d5db; --bg:#f3f4f6; --card:#fff;
+         --warn:#b45309; --warn-bg:#fffbeb; --danger:#b91c1c; --ok:#15803d; }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;color:var(--ink);background:var(--bg);line-height:1.5;font-size:14px}
+  .wrap{max-width:960px;margin:0 auto;padding:22px 18px 60px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+  header h1{margin:0;font-size:20px}
+  header .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  h2{font-size:16px;margin:26px 0 8px;padding:6px 10px;background:#e5e7eb;border-left:4px solid var(--ink);border-radius:0 4px 4px 0}
+  h3{font-size:14px;margin:16px 0 6px}
+  p,li{margin:5px 0}
+  ul,ol{margin:6px 0 6px 20px;padding:0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);font-size:13px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#e5e7eb;font-weight:700}
+  code{background:#e5e7eb;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;font-weight:700}
+  .muted{color:var(--muted)}
+  .note{border-left:4px solid var(--muted);background:#f9fafb;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+  .warn{border-left:4px solid var(--warn);background:var(--warn-bg);padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+  .danger{border-left:4px solid var(--danger);background:#fef2f2;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+  .tag{display:inline-block;border:1px solid var(--line);border-radius:5px;padding:0 7px;font-weight:700;font-size:11px;background:#e5e7eb}
+  .tag.core{background:#dcfce7;color:var(--ok);border-color:#86efac}
+  .tag.rec{background:var(--warn-bg);color:var(--warn);border-color:#fcd34d}
+  @media print{ body{background:#fff} h2{background:#eee} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>DHP — Chuẩn QC &amp; Kế hoạch kiểm soát chất lượng (QCP)</h1>
+  <div class="sub">Thực dụng cho xưởng CK368 · chỉ kiểm cái ĐO ĐƯỢC · Đạt/Không · cái khó → khuyến nghị + đòi chứng từ</div>
+</header>
+
+<div class="danger"><b>Nguyên tắc số 1 — QCP giả còn tệ hơn không có.</b> Chỉ đưa vào checklist đặc tính <b>đo được bằng dụng cụ đang có</b>. Ghi "lỗ H7" mà đo bằng <b>thước kẹp</b> là vô nghĩa (H7 ≈ 21 micron, thước kẹp sai ±20–50 micron). Cái đo không được → hoặc <b>mua đúng gauge</b>, hoặc hạ xuống <b>khuyến nghị</b>.</div>
+
+<h2>1. Bộ dụng cụ đo tối thiểu (mua trước — ROI cao nhất)</h2>
+<table>
+  <tr><th>Dụng cụ</th><th>Đo cái gì</th><th>Vì sao</th></tr>
+  <tr><td><b>Calip nút GO/NO-GO</b> (theo cỡ H7 hay dùng)</td><td>Lỗ lắp trục H7</td><td>Không cần đọc số, không cần tay nghề — chỉ <b>lọt/không lọt</b> = Đạt/Không. Rẻ, nhanh, không cãi nhau.</td></tr>
+  <tr><td><b>Đồng hồ so + đế từ</b></td><td>Độ đảo (TIR) lỗ↔OD, mặt bích</td><td>Runout là "cổng vàng" — bắt gần hết lỗi rung. Rất rẻ, đáng đầu tư nhất.</td></tr>
+  <tr><td><b>Dưỡng / calip lá then</b></td><td>Rãnh then (rộng/sâu)</td><td>Kiểm Js9/P9 theo DIN 6885.</td></tr>
+  <tr><td><b>Cờ lê lực</b></td><td>Momen siết bu lông</td><td>Khớp bích/bu lông siết đúng lực.</td></tr>
+  <tr><td>Panme trong / đồng hồ đo lỗ <span class="muted">(khi cần)</span></td><td>Lỗ cỡ lớn cần số cụ thể</td><td>Khi GO/NO-GO chưa đủ (đo giá trị thực).</td></tr>
+</table>
+<div class="note"><b>Tư duy Đạt/Không (pass/fail)</b> hợp hàng đặt + hợp thợ, và vào thẳng cột <b>"Sai kích thước"</b> trong KPI (Không đạt = trừ điểm).</div>
+
+<h2>2. Checklist QC LÕI — <span class="tag core">BẮT BUỘC mọi hàng</span></h2>
+<p>Trong app: mở công đoạn → bấm <b>✓ Nạp checklist QC chuẩn</b> để nạp sẵn 6 mục, thợ chỉ tick Đạt/Không.</p>
+<table>
+  <tr><th>#</th><th>Mục kiểm</th><th>Tiêu chí (Đạt)</th><th>Dụng cụ</th></tr>
+  <tr><td>1</td><td>Vệ sinh + ngoại quan</td><td>Sạch; không ba via/nứt/gỉ/va đập</td><td>Mắt thường</td></tr>
+  <tr><td>2</td><td>Lỗ lắp trục — GO/NO-GO</td><td>GO lọt · NO-GO không lọt (H7)</td><td>Calip nút</td></tr>
+  <tr><td>3</td><td>Rãnh then</td><td>Js9/P9 · DIN 6885</td><td>Dưỡng</td></tr>
+  <tr><td>4</td><td>Độ đảo TIR (lỗ↔OD/mặt)</td><td>≤ 0.05–0.10 (theo bản vẽ)</td><td>Đồng hồ so</td></tr>
+  <tr><td>5</td><td>Momen siết bu lông <span class="muted">(nếu có)</span></td><td>Theo bảng momen</td><td>Cờ lê lực</td></tr>
+  <tr><td>6</td><td>Kích thước tới hạn theo bản vẽ</td><td>Điền theo bản vẽ (VHG…)</td><td>Tùy</td></tr>
+</table>
+<div class="warn"><b>VHG DATA / hàng có bản vẽ:</b> không cần QCP đồ sộ — chỉ cần đánh dấu <b>3–5 kích thước TỚI HẠN + cách đo (gauge nào)</b> vào mục 6. Đó chính là "chuẩn đầu ra" đang thiếu.</div>
+
+<h2>3. Khuyến nghị theo loại — <span class="tag rec">KHÔNG bắt buộc tick, đọc &amp; áp khi cần</span></h2>
+
+<h3>Khớp nối tiện lỗ + then</h3>
+<ul><li>Giữ <b>H7</b> làm mặc định (đúng catalogue hãng). Quan trọng hơn con số H7 là <b>đồng tâm lỗ↔OD</b> và <b>vuông góc mặt bích</b> (đo bằng đồng hồ so).</li>
+<li>Cắt then bằng máy cắt dây molipden: OK cho tải êm; tải sốc/tốc độ cao nên <b>đánh bóng nhẹ rãnh / khử ứng suất</b> (lớp tái đúc EDM dễ nứt mỏi).</li></ul>
+
+<h3>Cardan (khớp các-đăng)</h3>
+<ul><li>Nạng (yoke): 2 lỗ bearing <b>đồng trục, đúng khoảng tâm, vuông góc</b>.</li>
+<li><b>Hàn then hoa vào ống/nạng — điểm chí mạng:</b> hàn ngấu hết, kiểm <b>độ đảo sau hàn</b> (thường phải nắn/gia công lại), <b>định pha (phasing)</b> 2 nạng đúng để triệt tiêu rung, khử ứng suất sau hàn.</li>
+<li><b>Cân bằng động 2 mặt phẳng</b> (bắt buộc với Cardan) + báo cáo.</li></ul>
+
+<h3>Brake drum / Phanh</h3>
+<ul><li>Kiểm: <b>độ tròn + đồng tâm bề mặt ma sát với lỗ (TIR)</b>, độ cứng bề mặt, độ dày thành đều, nhám, không nứt.</li>
+<li>Quy trình: phôi → tiện thô → khử ứng suất → tiện bán tinh → (tôi cao tần nếu spec) → tiện/mài tinh + doa lỗ + then → cân bằng → QC.</li></ul>
+
+<h3>Puly</h3>
+<ul><li>Kiểm: <b>biên dạng rãnh (dưỡng SPA/SPB/SPC)</b>, lỗ/ống lót côn, <b>độ đảo (TIR)</b>. Puly nhẹ có thể chỉ cần <b>cân bằng tĩnh</b>.</li></ul>
+
+<h3>Chi tiết HÀN solid shaft vào thân khớp → làm then hoa</h3>
+<ul><li>Hàn <b>ngấu hết (full penetration)</b>; thép hợp kim → <b>tiền nhiệt</b>.</li>
+<li><b>NDT mối hàn</b> (siêu âm/thấm màu) vì mối hàn truyền momen.</li>
+<li><b>Khử ứng suất sau hàn (PWHT)</b> → kiểm/nắn độ đảo → <b>gia công then hoa SAU hàn</b>, đồng tâm với tâm khớp (DIN 5480/5482).</li></ul>
+
+<h2>4. Cân bằng động — tiêu chuẩn &amp; kiểm soát Outsource</h2>
+<ul>
+  <li>Tiêu chuẩn <b>ISO 21940-11</b> (trước là ISO 1940-1), cấp <b>G</b>. Khớp thường <b>G6.3</b>; tốc độ cao/chính xác <b>G2.5</b>.</li>
+  <li>Không phải khớp nào cũng cần — phụ thuộc <b>RPM + khối lượng</b>. Thường cần khi <b>&gt; ~1500–3000 RPM</b> hoặc khách yêu cầu; Cardan/spacer dài <b>gần như luôn cần</b>.</li>
+  <li><b>Kiểm outsource = kiểm CHỨNG TỪ, không tự đo:</b> ghi rõ trên PO (cấp G, RPM, 1/2 mặt phẳng, giới hạn g·mm) và <b>đòi báo cáo cân bằng</b> (trước/sau) + <b>chứng chỉ hiệu chuẩn máy</b>. Không đưa được report có số + gắn cấp ISO = "cân bằng bằng miệng".</li>
+</ul>
+
+<h2>5. Kiểm soát Outsource (PPAP rút gọn)</h2>
+<ol>
+  <li>DHP gửi <b>bản vẽ + yêu cầu kiểm</b> (không chỉ "làm giống mẫu").</li>
+  <li>Đối tác làm <b>mẫu đầu (FAI)</b> → DHP duyệt trước khi chạy loạt.</li>
+  <li>Mỗi lần giao kèm <b>Phiếu chứng nhận (CoC)</b> + số đo / báo cáo cân bằng / NDT.</li>
+  <li>DHP làm <b>kiểm đầu vào (IQC)</b> bằng calip/gauge khi nhận.</li>
+</ol>
+
+<div class="note" style="margin-top:22px"><b>Tóm lại:</b> Lõi = <b>đo được, Đạt/Không, mọi hàng</b> (sạch · GO/NO-GO · then · runout · momen). Cái khó (cân bằng/hàn/NDT) = <b>khuyến nghị + đòi chứng từ</b>, thường thuê ngoài. Đầu tư <b>gauge trước</b>, viết QCP sau. In tài liệu: <b>Ctrl/⌘ + P</b>. Tài liệu v1 — cập nhật theo thực tế xưởng.</div>
+</div>
+</body>
+</html>

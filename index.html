@@ -435,7 +435,7 @@ function gateCheck(){
         <button type="button" class="ghost sm" onclick="addAttachment()" style="margin-top:6px">＋ Thêm link tài liệu</button>
       </div>
     </div>
-    <div class="field" style="border:1px solid #fbbf24;border-radius:10px;padding:12px;background:#fffbeb">
+    <div class="field" id="g1Field" style="border:1px solid #fbbf24;border-radius:10px;padding:12px;background:#fffbeb">
       <label>✅ G1 — Kiểm tra thông tin đầu vào <span class="muted small">(sau khi nhận/tạo đơn = G0) — điều phối kiểm đủ mới cho xuống xưởng. Thiếu → 📧 feedback Sale/KT.</span></label>
       <div style="display:flex;flex-wrap:wrap;gap:10px 18px;margin:6px 0">
         <label class="small" style="font-weight:600"><input type="checkbox" id="ord_g0_drawing" onchange="g0Changed()" style="width:auto"> Có bản vẽ / catalogue</label>
@@ -1884,8 +1884,8 @@ function addStage(){
 }
 function updStage(i,k,v){
   if(!editingStages[i]) return;
-  // CHẶN: không cho đánh "Xong" nếu công đoạn chưa có kích thước (Thông số + dung sai)
-  if(k==='status' && v==='done' && !stageHasFullDim(editingStages[i])){
+  // CHẶN: không cho đánh "Xong" nếu công đoạn chưa có kích thước (Thông số + dung sai) — TRỪ đơn nội bộ/thương mại (không QC kích thước)
+  if(k==='status' && v==='done' && !stageHasFullDim(editingStages[i]) && !isNonMfgOrder()){
     alert('⛔ Công đoạn "'+(editingStages[i].code||'')+' '+(editingStages[i].name||'')+'" chưa thể đánh XONG.\n\nPhải nhập ÍT NHẤT 1 KÍCH THƯỚC đủ "Thông số gia công" + "Yêu cầu/dung sai"\n(vd: Phay rãnh then = 12P9; Tiện Ø ngoài = Ø80→Ø50 ±0.05).\n\nBấm "📐 + Thêm kích thước" trong công đoạn này.');
     renderStagesEditor(); return;
   }
@@ -2500,8 +2500,22 @@ function g0FeedbackOk(){
   renderG0Badge(); updateFormGates();
 }
 // QUY TRÌNH CỨNG: khóa BƯỚC 2 (công đoạn) đến khi G0 OK; khóa BƯỚC 3 (QC) đến khi mọi công đoạn Xong
+function isNonMfgOrder(){ const t=(document.getElementById('ord_type')||{}).value; return t==='Nội bộ'||t==='Thương mại'; }
 function updateFormGates(){
   const rl=document.getElementById('routingLock'); if(!rl) return;   // modal chưa mở
+  const nonMfg=isNonMfgOrder();
+  const g1=document.getElementById('g1Field'), qcF=document.getElementById('qcField');
+  if(g1) g1.style.display=nonMfg?'none':'';
+  if(qcF) qcF.style.display=nonMfg?'none':'';
+  if(nonMfg){
+    // Đơn nội bộ / thương mại: KHÔNG cổng G1-G2 — công đoạn dùng như DANH SÁCH TASK (ngày + trạng thái), mở tự do
+    rl.style.display='none';
+    const rb=document.getElementById('routingBody'); if(rb){ rb.style.opacity=''; rb.style.pointerEvents='auto'; }
+    let last2=''; (editingStages||[]).forEach(s=>{ if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last2||e>last2)) last2=e; } });
+    const fc2=document.getElementById('ord_forecast'); if(fc2) fc2.value=last2||'';
+    const fi2=document.getElementById('ord_forecastInfo'); if(fi2) fi2.textContent=last2?('📅 Dự kiến xong: '+fmtDate(last2)):'';
+    return;
+  }
   // BƯỚC 2: khóa CỨNG (mờ + không bấm được) tới khi G0 đủ + Feedback OK
   const routingLocked = !intakeApproved(collectG0());
   rl.style.display = routingLocked?'block':'none';
@@ -2691,6 +2705,7 @@ function openOrderModal(id){
 function toggleTargetField(){
   const f=document.getElementById('ord_target_field');
   if(f) f.style.display = (document.getElementById('ord_type').value==='Nội bộ') ? 'block' : 'none';
+  updateFormGates();   // áp mode đơn nội bộ (ẩn/hiện G1-G2)
 }
 function toggleOutsourceField(){
   const v = document.getElementById('ord_assignment').value;

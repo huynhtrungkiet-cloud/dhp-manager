@@ -618,9 +618,30 @@ function setPrefix(k){
 function setFamily(k){
   MS.family=k;
   document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.toggle('active',b.dataset.f===k));
-  const cats=CATEGORIES.filter(c=>c.f===k);
-  $('p_cat').innerHTML='<option value="">— Chọn nhóm —</option>'+cats.map(c=>`<option value="${c.c}" ${MS.cat===c.c?'selected':''}>${c.c} — ${esc(c.n)}</option>`).join('');
+  fillCatSelect();
   onCatChange();
+}
+function optCat(c){ return `<option value="${c.c}" ${MS.cat===c.c?'selected':''}>${c.c} — ${esc(c.n)}</option>`; }
+// Nhóm có được hãng này làm? seed ngành ∪ dữ liệu thực. Không hãng / DHP → luôn true.
+function catMadeByBrand(cc,br){
+  if(!br||br==='DHP') return true;
+  if((CAT_BRANDS[cc]||[]).includes(br)) return true;
+  const nm=catName(cc);
+  return PRODUCTS.some(p=>p.category===nm && (p.brandCode===br||brandCodeOf(p.brand)===br));
+}
+// Đổ dropdown Nhóm theo họ đang chọn; nếu đã chọn hãng → "✔ Nhóm hãng này làm" lên đầu, "Nhóm khác" xuống dưới
+function fillCatSelect(){
+  const fam=MS.family; if(!fam){ $('p_cat').innerHTML='<option value="">— Chọn nhóm —</option>'; return; }
+  const cats=CATEGORIES.filter(c=>c.f===fam), br=($('p_brand')&&$('p_brand').value)||'';
+  let html='<option value="">— Chọn nhóm —</option>';
+  if(br && br!=='DHP'){
+    const mk=cats.filter(c=>catMadeByBrand(c.c,br)), other=cats.filter(c=>!catMadeByBrand(c.c,br));
+    if(mk.length && other.length){
+      html+='<optgroup label="✔ Nhóm '+br+' làm">'+mk.map(optCat).join('')+'</optgroup>';
+      html+='<optgroup label="Nhóm khác">'+other.map(optCat).join('')+'</optgroup>';
+    } else html+=cats.map(optCat).join('');
+  } else html+=cats.map(optCat).join('');
+  $('p_cat').innerHTML=html;
 }
 function onCatChange(){
   MS.cat=$('p_cat').value;
@@ -656,7 +677,7 @@ function onBrandChange(){
   const dbSer=[...new Set(PRODUCTS.filter(p=>brandCodeOf(p.brand)===code).map(p=>p.series).filter(Boolean))];
   const hints=[...new Set([...(SERIES_HINTS[code]||[]), ...dbSer])];
   $('serChips').innerHTML=hints.map(s=>`<span class="chip" onclick="setSeries('${esc(s)}')">${esc(s)}</span>`).join('') || '<span class="muted small">— chưa có gợi ý cho hãng này, gõ tay —</span>';
-  checkBrandCat(); genSku();
+  fillCatSelect(); checkBrandCat(); genSku();
 }
 // Link 2 chiều: cảnh báo nếu hãng không cung cấp nhóm đã chọn (và ngược lại)
 function checkBrandCat(){

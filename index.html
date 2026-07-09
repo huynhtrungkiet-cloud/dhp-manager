@@ -486,6 +486,7 @@ function gateCheck(){
       <label>Chi tiết con của đơn <span class="muted small">(tùy chọn — cho đơn nhiều chi tiết / dự án, vd VHG DATA: nhiều van mang gia công ngoài)</span></label>
       <div id="ord_items_list"></div>
       <button type="button" class="ghost sm" onclick="addOrderItem()" style="margin-top:6px">＋ Thêm chi tiết con</button>
+      <button type="button" class="ghost sm" onclick="applyFamilyBom()" style="margin-top:6px;border-color:#16A34A;color:#15803d;font-weight:700" title="1 BỘ khớp nối gồm chi tiết con nào + quy trình riêng từng chi tiết — app tự nhận diện nhóm từ Tên hàng. ĐVT Cái (nguyên chiếc) thì không tách.">⚙ Tách BOM theo nhóm (bộ → chi tiết con)</button>
     </div>
     <!-- % hoàn thành: app TỰ TÍNH theo công đoạn Xong/tổng. Ngày hoàn thành/giao: tự set khi đổi trạng thái. (ẩn) -->
     <input id="ord_progress" type="hidden"><input id="ord_completed" type="hidden"><input id="ord_delivered" type="hidden">
@@ -2190,6 +2191,64 @@ function applyFamilyRouting(fk){
     return s; });
   renderStagesEditor();
   const sel=document.getElementById('famRoutingSel'); if(sel) sel.value='';
+}
+/* BOM THEO NHÓM: 1 BỘ khớp nối gồm những chi tiết con nào + quy trình riêng từng chi tiết.
+   make:1 = chế tạo (có công đoạn gia công) · make:0 = MUA (chỉ mua + kiểm đầu vào).
+   Đơn vị CÁI (hàng nguyên chiếc catalogue) thì KHÔNG tách BOM. */
+const BOM_FAM={
+  jaw:[
+    {name:'Hub 1 (moay-ơ)', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện hub'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Hub 2 (moay-ơ)', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện hub'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Spider / vòng đệm đàn hồi (theo size + ShA)', per:1, make:0, tpl:[['L','Mua element chính hãng'],['K','Kiểm đầu vào']]}
+  ],
+  gear:[
+    {name:'Hub răng 1', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện hub'],['R','Phay lăn răng'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Hub răng 2', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện hub'],['R','Phay lăn răng'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Vỏ răng (sleeve) — 2 nửa', per:2, make:1, tpl:[['L','Mua phôi'],['A','Tiện vỏ'],['R','Xọc răng trong'],['K','Đo & QC']]},
+    {name:'Gioăng + phớt + bu lông', per:1, make:0, tpl:[['L','Mua bộ phụ kiện'],['K','Kiểm đầu vào']]}
+  ],
+  disc:[
+    {name:'Hub 1', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện hub'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Hub 2', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện hub'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Bộ lá đĩa đàn hồi (disc pack)', per:1, make:0, tpl:[['L','Mua disc pack chính hãng'],['K','Kiểm đầu vào']]},
+    {name:'Bộ bu lông lắp (siết momen)', per:1, make:0, tpl:[['L','Mua bu lông cấp bền'],['K','Kiểm đầu vào']]}
+  ],
+  cardan:[
+    {name:'Nạng bích (yoke) ×2', per:2, make:1, tpl:[['L','Mua phôi'],['A','Gia công nạng'],['D','Doa 2 lỗ bearing đồng trục'],['K','Đo & QC']]},
+    {name:'Thân giữa + then hoa', per:1, make:1, tpl:[['L','Mua phôi/ống'],['A','Tiện'],['E','Hàn (WPS) + khử ứng suất'],['F','Nắn/đo đảo'],['O','Then hoa'],['K','Đo & QC']]},
+    {name:'Chữ thập + bearing (bộ)', per:2, make:0, tpl:[['L','Mua bộ chữ thập'],['K','Kiểm đầu vào']]}
+  ],
+  brake:[
+    {name:'Tang phanh / đĩa phanh', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện thô'],['H','Khử ứng suất'],['A','Tiện tinh mặt ma sát'],['V','Cân bằng'],['K','Đo & QC (TIR·độ cứng)']]},
+    {name:'Mayơ / hub lắp trục', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện'],['O','Rãnh then'],['K','Đo & QC']]},
+    {name:'Bu lông + phụ kiện', per:1, make:0, tpl:[['L','Mua'],['K','Kiểm đầu vào']]}
+  ],
+  pulley:[
+    {name:'Thân puly (rãnh SPA/SPB/SPC)', per:1, make:1, tpl:[['L','Mua phôi'],['A','Tiện rãnh + côn'],['K','Đo & QC (dưỡng rãnh)']]},
+    {name:'Ống lót côn (taper bush)', per:1, make:0, tpl:[['L','Mua ống lót'],['K','Kiểm đầu vào']]}
+  ]
+};
+/* Tách BOM: sinh chi tiết con + quy trình riêng từng chi tiết từ nhóm sản phẩm. */
+function applyFamilyBom(){
+  if(!g0LockGuard()) return;
+  const nameTxt=(document.getElementById('ord_name')||{}).value||'';
+  const fk=detectFamily(nameTxt);
+  if(!fk||!BOM_FAM[fk]){ alert('Chưa nhận diện được nhóm sản phẩm từ "Tên hàng" (vấu/răng/đĩa/cardan/phanh/puly).\nGõ rõ hơn hoặc thêm chi tiết con thủ công.'); return; }
+  const unit=((document.getElementById('ord_unit')||{}).value||'').toLowerCase();
+  if(unit && !/bộ|bo|set/.test(unit.normalize('NFD').replace(/[̀-ͯ]/g,''))){
+    if(!confirm('ĐVT hiện là "'+unit+'" — hàng nguyên chiếc (Cái) thường KHÔNG tách chi tiết con.\nVẫn tách BOM?')) return;
+  }
+  const setQty=parseFloat((document.getElementById('ord_qty')||{}).value)||1;
+  const fam=ROUTING_FAM[fk]||{};
+  if(editingItems.length && !confirm('Đã có '+editingItems.length+' chi tiết con — THÊM bộ BOM "'+(fam.label||fk)+'" vào sau?')) return;
+  BOM_FAM[fk].forEach(b=>{
+    editingItems.push({ id:localId('IT'), name:b.name, qty:b.per*setQty, unit:'cái',
+      process:b.make?'Gia công':'MUA', estHours:null, assignment:b.make?'inhouse':'purchase',
+      status:'new', progress:null,
+      stages:b.tpl.map(([c,n])=>({id:localId('IST'),code:c,name:n,location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,note:''})),
+      note:b.make?'':'(mua — kiểm đầu vào khi nhận)' });
+  });
+  renderItemsEditor();
 }
 // Áp dụng mẫu đã lưu vào chuỗi công đoạn hiện tại
 function applyNamedTemplate(){

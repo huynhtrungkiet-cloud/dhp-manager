@@ -212,7 +212,8 @@
 
     <!-- COMMON -->
     <div class="field"><label>Tên / mô tả sản phẩm</label><input id="p_name" placeholder="Tên / mô tả" oninput="showSimilar()"></div>
-    <div class="field"><label>🗂 Mã cũ / Tên gọi khác <span class="muted small">(mã CK368 cũ, tên khách hay gọi… — vẫn TRA RA được sau khi chuẩn hóa; ngăn cách bằng dấu phẩy)</span></label><input id="p_oldcode" placeholder="VD: OLC_CK368_4040, CK368-4040, ống lót 4040"></div>
+    <div class="field"><label>🗂 Mã cũ / Tên gọi khác <span class="muted small">(mã CK368 cũ, tên khách hay gọi… — vẫn TRA RA được sau khi chuẩn hóa; ngăn cách bằng dấu phẩy)</span></label><input id="p_oldcode" placeholder="VD: DHP-RB-252, CK368-DF 38, OLC_CK368_4040" oninput="oldCodeAssist()">
+      <div id="oldHint" class="small" style="margin-top:4px;font-weight:700"></div></div>
     <div class="row3">
       <div class="field"><label>Vật liệu</label><input id="p_material" placeholder="Gang / Thép..."></div>
       <div class="field"><label>PN / Mã NCC</label><input id="p_pn"></div>
@@ -406,6 +407,46 @@ function checkBoreDmax(){
   else if(big>0){ el.style.color='#15803d';
     el.textContent='✔ Ø'+big+' ≤ dmax '+sp.dmax+'mm ('+sp.model+') — hợp catalogue'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
   else { el.style.color='#6b7280'; el.textContent='ℹ '+sp.model+': lỗ trục tối đa dmax '+sp.dmax+'mm'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
+}
+/* TRỢ LÝ MÃ CŨ: gõ mã cũ (DHP-RB-252, CK368-DF 38…) → nhận diện nhóm + size, điền sẵn để sinh SKU v2.5.
+   Nguồn: (1) mã cũ đã chuẩn hóa trong dữ liệu (tự học), (2) từ điển cấu trúc mã CK368. */
+const OLD_HINTS=[
+  {re:/(^|[-_ ])RB[-_ ]?\d/i,   cat:'KNB',            note:'RB = khớp bu lông đai ốc'},
+  {re:/(^|[-_ ])DCDM[-_ ]?\d/i, cat:'KND',            note:'DCDM = khớp đĩa đàn hồi'},
+  {re:/(^|[-_ ])DF[-_ ]?\d/i,   cat:'KNL', sub:'JAW', note:'DF = khớp vấu kiểu ROTEX'},
+  {re:/OLC|ONG ?LOT/i,          cat:'PLY', sub:'TPB', note:'OLC = ống lót côn'}
+];
+function oldCodeAssist(){
+  const el=document.getElementById('oldHint'); if(!el) return;
+  const v=($('p_oldcode').value||'').split(',')[0].trim();
+  if(!v){ el.textContent=''; return; }
+  const nv=norm(v).replace(/[^a-z0-9]/g,'');
+  // 1) Mã cũ này ĐÃ chuẩn hóa? → chỉ việc mở mã đó, đừng tạo trùng
+  const myId=$('p_id')?$('p_id').value:'';
+  const ex=PRODUCTS.find(p=>p.id!==myId && p.oldCode && p.oldCode.split(',').some(o=>norm(o).replace(/[^a-z0-9]/g,'')===nv));
+  if(ex){ el.style.color='#b91c1c';
+    el.innerHTML='⚠ Mã cũ này ĐÃ chuẩn hóa thành <b>'+esc(ex.sku)+'</b> — nên mở mã đó thay vì tạo mới. <button type="button" class="ghost sm" style="padding:2px 8px" onclick="openProduct(\''+esc(ex.id)+'\')">↗ Mở</button>';
+    return; }
+  const msgs=[]; let filled=[];
+  // 2) Học từ mã cũ tương tự đã migrate (cùng tiền tố chữ)
+  const token=(v.toUpperCase().match(/[A-Z]{2,}/g)||[]).pop()||'';
+  const sib=token?PRODUCTS.find(p=>p.oldCode && p.category && norm(p.oldCode).includes(norm(token))):null;
+  // 3) Từ điển cấu trúc CK368
+  const hint=OLD_HINTS.find(h=>h.re.test(v));
+  const cat = hint?hint.cat : (sib?(CATEGORIES.find(c=>c.n===sib.category)||{}).c:'');
+  if(cat && !MS.cat){
+    MS.cat=cat;                                              // set trước → optCat giữ selected khi đổ lại select
+    setFamily((CATEGORIES.find(c=>c.c===cat)||{}).f||'A');   // đổ tab họ + nhóm + sub-type
+    msgs.push((hint?hint.note:'giống mã đã chuẩn hóa "'+sib.oldCode+'"')+' → nhóm <b>'+esc(catName(cat))+'</b>'); filled.push('nhóm'); }
+  if(hint&&hint.sub && !$('p_subtype').value && !$('p_subtype').disabled){ $('p_subtype').value=hint.sub; onSubtypeChange(); filled.push('sub-type'); }
+  // 4) Hãng: mã DHP-/CK368- là hàng tự chế tạo → DHP + prefix 1 (gia công) nếu chưa chọn
+  if(/^(DHP|CK ?368|OLC)/i.test(v) && !$('p_brand').value){ $('p_brand').value='DHP'; onBrandChange(); msgs.push('mã nội bộ → hãng <b>DHP</b>'); filled.push('hãng');
+    if(!MS.prefix){ setPrefix('1'); msgs.push('prefix <b>1 — Gia công</b> (đổi được)'); } }
+  // 5) Size: số cuối trong mã
+  const num=(v.match(/(\d{2,4})(?!.*\d)/)||[])[1];
+  if(num && !$('p_size').value){ $('p_size').value=num; genSku(); msgs.push('size <b>'+num+'</b>'); filled.push('size'); }
+  if(msgs.length){ el.style.color='#15803d'; el.innerHTML='💡 Nhận diện: '+msgs.join(' · ')+' — đã điền sẵn, thêm lỗ trục d1/d2 là ra mã mới.'; }
+  else { el.style.color='#6b7280'; el.textContent='ℹ Chưa nhận diện được cấu trúc mã này — chọn nhóm/hãng thủ công, mã cũ vẫn được lưu để tra ngược.'; }
 }
 const SERIES_HINTS = {
   'KTR':['ROTEX','BOWEX','RADEX-N','REVOLEX','POLY-NORM','TOOLFLEX','MINEX','RUFLEX'],

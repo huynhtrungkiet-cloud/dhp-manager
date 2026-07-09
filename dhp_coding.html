@@ -165,6 +165,7 @@
         <div class="field" style="margin:0"><label>Lỗ trục d1 Ø mm</label><input id="p_d1" placeholder="24" oninput="genSku()"></div>
         <div class="field" style="margin:0"><label>Lỗ trục d2 <span class="muted small">(nếu khác d1)</span></label><input id="p_d2" placeholder="38" oninput="genSku()"></div>
       </div>
+      <div id="boreWarn" class="small" style="margin-top:5px;font-weight:700"></div>
       <div class="field" style="margin-top:8px"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / 98SH / KW8 / NBR..." oninput="genSku()">
         <div class="chips" id="varChips"></div></div>
     </div>
@@ -369,6 +370,43 @@ const SERIES_CAT={
   RSP:[{s:'FB',cat:'KKT'},{s:'FXN',cat:'KKT'},{s:'RFN',cat:'KKT'}],
   ETP:[{s:'ETP-HYLOC',cat:'KKT'},{s:'ETP-EXPRESS',cat:'KKT'},{s:'ETP-CLASSIC',cat:'KKT'}]
 };
+/* THÔNG SỐ CATALOGUE (scrape từ web DHP, đã kiểm chứng): model → dmax = lỗ trục TỐI ĐA (mm), tkmax = mô-men max (Nm).
+   Dùng cảnh báo khi chọn lỗ trục vượt catalogue. Mở rộng dần khi có thêm bảng sạch / catalogue gốc. */
+const SPECS={
+  'E 100 P':{dmax:32},'E 120 P':{dmax:45},'E 140 P':{dmax:55},'E 160 P':{dmax:60},'E 180 P':{dmax:65},
+  'E 200 P':{dmax:75},'E 225 P':{dmax:90},'E 250 P':{dmax:95},'E 300 P':{dmax:110},'E 350 P':{dmax:120},
+  'E 400 P':{dmax:140},'E 450 P':{dmax:160},'E 500 P':{dmax:180},'E 550 P':{dmax:210},
+  'ROTEX 19':{dmax:19,tkmax:34},'ROTEX 24':{dmax:24,tkmax:120},'ROTEX 28':{dmax:28,tkmax:320},
+  'ROTEX 38':{dmax:40,tkmax:650},'ROTEX 42':{dmax:45,tkmax:900},'ROTEX 48':{dmax:52},'ROTEX 55':{dmax:60},
+  'ROTEX 65':{dmax:70},'ROTEX 75':{dmax:80},'ROTEX 90':{dmax:97},'ROTEX 100':{dmax:115},'ROTEX 110':{dmax:125},
+  'ROTEX 125':{dmax:145},'ROTEX 140':{dmax:160},'ROTEX 160':{dmax:185},'ROTEX 180':{dmax:200},
+  'WS0105':{dmax:25},'WS0107':{dmax:38},'WS0108':{dmax:40},'WS0110':{dmax:48},'WS0112':{dmax:55},
+  'WS0114':{dmax:65},'WS0117':{dmax:85},'WS0120':{dmax:95},'WS0123':{dmax:105},'WS0126':{dmax:125},
+  'WS0130':{dmax:140},'WS0136':{dmax:150},'WS0140':{dmax:160}
+};
+/* Tra dmax theo series+size người dùng nhập. Trả {model,dmax,tkmax} hoặc null nếu chưa có dữ liệu. */
+function specLookup(series,size){
+  series=clean(series); size=clean(size); if(!series&&!size) return null;
+  const keys=Object.keys(SPECS);
+  // khớp chính xác "SERIES SIZE" hoặc gộp không dấu cách
+  for(const k of keys){ const kc=clean(k); if(kc===clean(series+size) || kc===clean(size) ) return Object.assign({model:k},SPECS[k]); }
+  // khớp series là tiền tố + size là hậu tố số
+  for(const k of keys){ const parts=k.split(/\s+/); const base=clean(parts[0]); const num=clean(parts.slice(1).join(''));
+    if(series && base===clean(series) && num && num===size) return Object.assign({model:k},SPECS[k]); }
+  return null;
+}
+function checkBoreDmax(){
+  const el=document.getElementById('boreWarn'); if(!el) return;
+  const sp=specLookup($('p_series')?$('p_series').value:'', $('p_size')?$('p_size').value:'');
+  if(!sp){ el.textContent=''; el.style.color=''; return; }
+  const d1=parseFloat($('p_d1')?$('p_d1').value:'')||0, d2=parseFloat($('p_d2')?$('p_d2').value:'')||0;
+  const big=Math.max(d1,d2);
+  if(big>sp.dmax){ el.style.color='#b91c1c';
+    el.textContent='⛔ Lỗ trục Ø'+big+' VƯỢT dmax '+sp.dmax+'mm của '+sp.model+' (theo catalogue). Chọn cỡ lớn hơn hoặc kiểm tra lại.'; }
+  else if(big>0){ el.style.color='#15803d';
+    el.textContent='✔ Ø'+big+' ≤ dmax '+sp.dmax+'mm ('+sp.model+') — hợp catalogue'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
+  else { el.style.color='#6b7280'; el.textContent='ℹ '+sp.model+': lỗ trục tối đa dmax '+sp.dmax+'mm'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
+}
 const SERIES_HINTS = {
   'KTR':['ROTEX','BOWEX','RADEX-N','REVOLEX','POLY-NORM','TOOLFLEX','MINEX','RUFLEX'],
   'RGF':['TNM','TNS','TNB','TNR','TNT','TNZ','TND','GWB','GWE','TNK','RLB','RLP','RLT','RLU','RfN-7012','RfN-7013','RfN-7015','RfN-7110','RfN-4051','RfN-4071'],
@@ -782,6 +820,7 @@ function showSimilar(){
         <button type="button" class="ghost sm" style="padding:3px 8px" onclick="openProduct('${esc(p.id)}')">↗ Mở</button></div>`).join('');
   }
   box.innerHTML=html;
+  checkBoreDmax();
 }
 
 /* ---- mở / lưu / xóa ---- */

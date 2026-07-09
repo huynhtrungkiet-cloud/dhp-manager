@@ -378,6 +378,7 @@ function gateCheck(){
         <a href="dhp_coding.html" target="_blank" class="small" style="color:#0EA5E9;white-space:nowrap">＋ tạo mã</a>
       </div>
       <datalist id="prodDatalist"></datalist>
+      <div id="ord_famHint" class="small" style="margin-top:5px"></div>
     </div>
     <div class="field"><label>Loại đơn</label>
       <select id="ord_type" onchange="toggleTargetField()">
@@ -466,7 +467,17 @@ function gateCheck(){
         <div class="toolbar" style="margin-top:8px">
           <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
           <button type="button" class="ghost sm" onclick="addStagesFromList()" style="border-color:#0EA5E9;color:#0369a1" title="Dán danh sách — mỗi dòng thành 1 hạng mục việc (hợp đơn nội bộ)">📋 Dán danh sách việc (mỗi dòng 1 hạng mục)</button>
-          <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Dùng mẫu chuẩn (Mua phôi → Tiện → Phay → Đo → Đóng gói → Xuất)</button>
+          <select id="famRoutingSel" onchange="applyFamilyRouting(this.value)" style="border:1px solid #16A34A;color:#15803d;font-weight:700;border-radius:8px;padding:5px 8px;font-size:11.5px;max-width:290px" title="Nạp quy trình gia công + QC theo nhóm sản phẩm (số hóa catalogue)">
+            <option value="">⚙ Nạp quy trình + QC theo NHÓM SP...</option>
+            <option value="jaw">Khớp vấu/Pin/Tyre (Jaw)</option>
+            <option value="gear">Khớp răng (Gear)</option>
+            <option value="disc">Khớp đĩa (Disc)</option>
+            <option value="cardan">Cardan (các đăng)</option>
+            <option value="brake">Phanh / Brake drum</option>
+            <option value="pulley">Puly / Ống lót côn</option>
+            <option value="general">Gia công chung</option>
+          </select>
+          <button type="button" class="ghost sm" onclick="applyStageTemplate()" style="border-color:#6366F1;color:#6366F1">⚡ Mẫu chung (Phôi→Tiện→Phay→Đo→Đóng gói→Xuất)</button>
           <button type="button" class="ghost sm" onclick="printStageSheetsFromForm()" style="border-color:#0EA5E9;color:#0369a1" title="In phiếu đo đạc kích thước cho TỪNG công đoạn — BẮT BUỘC in trước khi qua QC">🖨 In phiếu gia công (BẮT BUỘC)</button>
         </div>
       </div>
@@ -2151,6 +2162,35 @@ function applyStageTemplate(){
   editingStages = tpl.map(([c,n])=>({id:localId('ST'), code:c, name:n, location:'', plannedDays:null, status:'pending', startDate:'', doneDate:'', assignee:'', hours:null, note:''}));
   renderStagesEditor();
 }
+// MẪU QUY TRÌNH + QC theo NHÓM sản phẩm (số hóa catalogue → sản xuất). Công đoạn K (QC) tự gắn checklist chuẩn.
+const ROUTING_FAM={
+  jaw:   {label:'Khớp vấu/Pin/Tyre (Jaw)', tpl:[['L','Mua phôi'],['A','Tiện hub'],['O','Xọc/phay rãnh then'],['D','Khoan/doa lỗ'],['K','Đo & QC'],['I','Xử lý bề mặt'],['J','Lắp element'],['N','Đóng gói'],['X','Xuất xưởng']]},
+  gear:  {label:'Khớp răng (Gear)', tpl:[['L','Mua phôi'],['A','Tiện hub'],['R','Phay lăn răng'],['H','Nhiệt luyện răng'],['W','Mài răng'],['O','Rãnh then'],['K','Đo & QC'],['I','Xử lý bề mặt'],['N','Đóng gói'],['X','Xuất xưởng']]},
+  disc:  {label:'Khớp đĩa (Disc)', tpl:[['L','Mua phôi + đĩa'],['A','Tiện hub'],['O','Rãnh then'],['J','Lắp bộ đĩa + siết bu lông'],['K','Đo & QC'],['N','Đóng gói'],['X','Xuất xưởng']]},
+  cardan:{label:'Cardan (các đăng)', tpl:[['A','Gia công nạng (yoke)'],['E','Hàn then hoa (WPS)'],['H','Khử ứng suất sau hàn'],['F','Nắn / đo đảo'],['J','Lắp chữ thập + bearing'],['V','Cân bằng động 2 mặt phẳng'],['K','Đo runout + test'],['I','Sơn'],['N','Đóng gói'],['X','Xuất xưởng']]},
+  brake: {label:'Phanh / Brake drum', tpl:[['L','Mua phôi'],['A','Tiện thô'],['H','Khử ứng suất'],['A','Tiện tinh bề mặt ma sát'],['D','Doa lỗ + then'],['V','Cân bằng động'],['K','Đo & QC (TIR·độ cứng)'],['N','Đóng gói'],['X','Xuất xưởng']]},
+  pulley:{label:'Puly / Ống lót côn', tpl:[['L','Mua phôi'],['A','Tiện (rãnh/côn)'],['O','Rãnh then'],['D','Doa lỗ'],['K','Đo & QC'],['I','Xử lý bề mặt'],['N','Đóng gói'],['X','Xuất xưởng']]},
+  general:{label:'Gia công chung', tpl:[['L','Mua phôi'],['A','Tiện'],['B','Phay'],['K','Đo/QC'],['N','Đóng gói'],['X','Xuất xưởng']]}
+};
+function detectFamily(txt){ const t=(txt||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d');
+  if(/cardan|cac dang/.test(t)) return 'cardan';
+  if(/rang|gear/.test(t)) return 'gear';
+  if(/dia|disc/.test(t)) return 'disc';
+  if(/phanh|brake|drum/.test(t)) return 'brake';
+  if(/puly|pulley|ong lot con|taper/.test(t)) return 'pulley';
+  if(/khop|coupling|vau|jaw|pin|tyre|lop/.test(t)) return 'jaw';
+  return ''; }
+function applyFamilyRouting(fk){
+  if(!fk) return;
+  if(!isNonMfgOrder() && !g0LockGuard()){ const s=document.getElementById('famRoutingSel'); if(s)s.value=''; return; }
+  const fam=ROUTING_FAM[fk]||ROUTING_FAM.general;
+  if(editingStages.length && !confirm('Thay chuỗi công đoạn bằng mẫu "'+fam.label+'" (kèm QC chuẩn)?')){ const s=document.getElementById('famRoutingSel'); if(s)s.value=''; return; }
+  editingStages = fam.tpl.map(([c,n])=>{ const s={id:localId('ST'),code:c,name:n,location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,checks:[],note:''};
+    if(c==='K') s.checks=QC_STD_CHECKLIST.map(x=>({param:x.param,spec:x.spec,tool:x.tool,actual1:'',actual2:'',pass:''}));
+    return s; });
+  renderStagesEditor();
+  const sel=document.getElementById('famRoutingSel'); if(sel) sel.value='';
+}
 // Áp dụng mẫu đã lưu vào chuỗi công đoạn hiện tại
 function applyNamedTemplate(){
   if(!g0LockGuard()) return;
@@ -2661,6 +2701,12 @@ function onPickProduct(){
   const sku=document.getElementById('ord_product').value.trim();
   const img=productImageBySku(sku); const el=document.getElementById('ord_product_img');
   if(img){ el.src=img; el.style.display='inline-block'; } else { el.src=''; el.style.display='none'; }
+  // Gợi ý quy trình + QC theo NHÓM của mã đã chọn
+  const hint=document.getElementById('ord_famHint'); if(!hint) return;
+  const p=productBySku(sku); const fk=p?detectFamily((p.category||'')+' '+(p.name||'')+' '+(p.series||'')):(sku?detectFamily(sku):'');
+  if(fk && typeof ROUTING_FAM!=='undefined' && ROUTING_FAM[fk] && !isNonMfgOrder()){
+    hint.innerHTML='💡 Nhóm: <b>'+esc(ROUTING_FAM[fk].label)+'</b> — <a onclick="applyFamilyRouting(\''+fk+'\')" style="color:#0EA5E9;cursor:pointer;font-weight:700">⚡ Nạp quy trình + QC cho nhóm này</a>';
+  } else hint.innerHTML='';
 }
 function openOrderModal(id){
   document.getElementById('ord_id').value = id||'';

@@ -353,6 +353,20 @@ const CAT_BRANDS = {
   NCB:['CRM','WST'],
   DCU:['TONE']
 };
+/* SỐ HÓA CATALOGUE: series ↔ nhóm (+sub-type) của các hãng chính — để cascade "chọn nhóm/sub-type → chỉ hiện series đúng".
+   Dựa trên dòng sản phẩm chuẩn của hãng. Mở rộng dần; còn lại tự học từ dữ liệu thực. */
+const SERIES_CAT={
+  KTR:[{s:'ROTEX',cat:'KNL',sub:'JAW'},{s:'ROTEX GS',cat:'KNL',sub:'JAW'},{s:'POLY-NORM',cat:'KNL',sub:'PIN'},{s:'REVOLEX KX',cat:'KNL',sub:'TYR'},{s:'BOWEX',cat:'KNR'},{s:'RADEX-N',cat:'KND'},{s:'RADEX-NC',cat:'KNC'},{s:'TOOLFLEX',cat:'KNE'},{s:'RUFLEX',cat:'KQT'},{s:'MINEX',cat:'KNL'},{s:'COUNTEX',cat:'KNL'}],
+  FLD:[{s:'N-EUPEX',cat:'KNL',sub:'PIN'},{s:'N-EUPEX DS',cat:'KNL',sub:'PIN'},{s:'RUPEX',cat:'KNL',sub:'PIN'},{s:'ARPEX',cat:'KND'},{s:'N-ARPEX',cat:'KND'},{s:'ZAPEX',cat:'KNR'},{s:'BIPEX',cat:'KNL'},{s:'FLUDEX',cat:'KTL'},{s:'ELPEX',cat:'KNL'},{s:'ELPEX-B',cat:'KNL'}],
+  RGF:[{s:'TNM',cat:'KNL',sub:'JAW'},{s:'TNS',cat:'KNL',sub:'JAW'},{s:'TNB',cat:'KNL',sub:'JAW'},{s:'TNR',cat:'KNL',sub:'PIN'},{s:'TNT',cat:'KNL',sub:'TYR'},{s:'TNZ',cat:'KNR'},{s:'TND',cat:'KND'},{s:'GWB',cat:'KNE'},{s:'GWE',cat:'KNS'},{s:'RfN-7012',cat:'KKT'},{s:'RfN-7013',cat:'KKT'},{s:'RfN-7015',cat:'KKT'},{s:'RfN-7110',cat:'KKT'},{s:'RfN-4051',cat:'TBT'},{s:'RfN-4071',cat:'TBT'},{s:'RLB',cat:'KKT'},{s:'RLP',cat:'KKT'},{s:'RLT',cat:'KKT'},{s:'RLU',cat:'KKT'}],
+  RXN:[{s:'STEELFLEX',cat:'KNX'},{s:'FALK',cat:'KNR'},{s:'THOMAS',cat:'KND'},{s:'OMEGA',cat:'KNL'},{s:'VIVA',cat:'KNL'}],
+  CRM:[{s:'HRC',cat:'KNL',sub:'JAW'},{s:'L',cat:'KNL',sub:'JAW'},{s:'GF',cat:'KNL'},{s:'GFA',cat:'KNL'},{s:'CS',cat:'KNL'}],
+  TBW:[{s:'SURE-FLEX',cat:'KNL',sub:'TYR'},{s:'DURA-FLEX',cat:'KNL'},{s:'FORM-FLEX',cat:'KND'},{s:'HEX-A-FLEX',cat:'KNL'}],
+  FNR:[{s:'FENAFLEX',cat:'KNL',sub:'TYR'},{s:'HRC',cat:'KNL',sub:'JAW'},{s:'TYRE',cat:'KNL',sub:'TYR'}],
+  STB:[{s:'ASK',cat:'VCQ'},{s:'RSBW',cat:'VCQ'},{s:'RIWI',cat:'VCQ'}],
+  RSP:[{s:'FB',cat:'KKT'},{s:'FXN',cat:'KKT'},{s:'RFN',cat:'KKT'}],
+  ETP:[{s:'ETP-HYLOC',cat:'KKT'},{s:'ETP-EXPRESS',cat:'KKT'},{s:'ETP-CLASSIC',cat:'KKT'}]
+};
 const SERIES_HINTS = {
   'KTR':['ROTEX','BOWEX','RADEX-N','REVOLEX','POLY-NORM','TOOLFLEX','MINEX','RUFLEX'],
   'RGF':['TNM','TNS','TNB','TNR','TNT','TNZ','TND','GWB','GWE','TNK','RLB','RLP','RLT','RLU','RfN-7012','RfN-7013','RfN-7015','RfN-7110','RfN-4051','RfN-4071'],
@@ -680,11 +694,14 @@ function refreshSeriesChips(){
   const w=$('serChips'); if(!w) return;
   const code=$('p_brand').value, catNm=MS.cat?catName(MS.cat):'', sub=$('p_subtype')?$('p_subtype').value:'';
   const chip=s=>`<span class="chip" onclick="setSeries('${esc(s)}')">${esc(s)}</span>`;
-  const dataSer=[...new Set(PRODUCTS.filter(p=>(p.brandCode===code||brandCodeOf(p.brand)===code) && (!catNm||p.category===catNm) && (!sub||p.subtype===sub) && p.series).map(p=>p.series))];
-  const rest=[...new Set(SERIES_HINTS[code]||[])].filter(s=>!dataSer.includes(s));
+  const cat=MS.cat;
+  const dataSer=PRODUCTS.filter(p=>(p.brandCode===code||brandCodeOf(p.brand)===code) && (!catNm||p.category===catNm) && (!sub||p.subtype===sub) && p.series).map(p=>p.series);
+  const curated=(SERIES_CAT[code]||[]).filter(x=>(!cat||x.cat===cat) && (!sub||!x.sub||x.sub===sub)).map(x=>x.s);
+  const good=[...new Set([...dataSer, ...curated])];
+  const rest=[...new Set(SERIES_HINTS[code]||[])].filter(s=>!good.includes(s));
   let html='';
-  if(dataSer.length) html+='<span class="small" style="color:#15803d;font-weight:800;margin-right:3px">✔ hợp nhóm:</span>'+dataSer.map(chip).join(' ');
-  if(rest.length) html+=(dataSer.length?'<span class="small muted" style="margin:0 5px">· khác của hãng:</span>':'')+rest.map(chip).join(' ');
+  if(good.length) html+='<span class="small" style="color:#15803d;font-weight:800;margin-right:3px">✔ hợp nhóm:</span>'+good.map(chip).join(' ');
+  if(rest.length) html+=(good.length?'<span class="small muted" style="margin:0 5px">· khác của hãng:</span>':'')+rest.map(chip).join(' ');
   w.innerHTML=html||'<span class="muted small">— gõ series —</span>';
 }
 // Link 2 chiều: cảnh báo nếu hãng không cung cấp nhóm đã chọn (và ngược lại)

@@ -383,7 +383,27 @@ const SPECS={
   'ROTEX 125':{dmax:145},'ROTEX 140':{dmax:160},'ROTEX 160':{dmax:185},'ROTEX 180':{dmax:200},
   'WS0105':{dmax:25},'WS0107':{dmax:38},'WS0108':{dmax:40},'WS0110':{dmax:48},'WS0112':{dmax:55},
   'WS0114':{dmax:65},'WS0117':{dmax:85},'WS0120':{dmax:95},'WS0123':{dmax:105},'WS0126':{dmax:125},
-  'WS0130':{dmax:140},'WS0136':{dmax:150},'WS0140':{dmax:160}
+  'WS0130':{dmax:140},'WS0136':{dmax:150},'WS0140':{dmax:160},
+  /* Từ PDF catalogue gốc (trích 2026-07-10, nguồn: DHP_CATALOGUE_MASTER.xlsx) */
+  'ROTEX 14 ST':{dmax:16,tkn:12.5},'ROTEX 19 ST':{dmax:25,tkn:17},'ROTEX 24 ST':{dmax:35,tkn:60},'ROTEX 28 ST':{dmax:40,tkn:160},
+  'ROTEX 38 ST':{dmax:48,tkn:325},'ROTEX 42 ST':{dmax:55,tkn:450},'ROTEX 48 ST':{dmax:62,tkn:525},'ROTEX 55 ST':{dmax:75,tkn:685},
+  'ROTEX 65 ST':{dmax:80,tkn:940},'ROTEX 75 ST':{dmax:95,tkn:1920},'ROTEX 90 ST':{dmax:110,tkn:3600},'ROTEX 100 ST':{dmax:115,tkn:4950},
+  'ROTEX 110 ST':{dmax:125,tkn:7200},'ROTEX 125 ST':{dmax:145,tkn:10000},'ROTEX 140 ST':{dmax:160,tkn:12800},'ROTEX 160 ST':{dmax:185,tkn:19200},'ROTEX 180 ST':{dmax:200,tkn:28000},
+  'ROTEX GS 5':{dmax:6},'ROTEX GS 7':{dmax:7},'ROTEX GS 9':{dmax:11},'ROTEX GS 12':{dmax:12},'ROTEX GS 14':{dmax:16},
+  'ROTEX GS 19':{dmax:24},'ROTEX GS 24':{dmax:32},'ROTEX GS 28':{dmax:38},'ROTEX GS 38':{dmax:45},'ROTEX GS 42':{dmax:55},
+  'ROTEX GS 48':{dmax:62},'ROTEX GS 55':{dmax:74},'ROTEX GS 65':{dmax:80},'ROTEX GS 75':{dmax:95},'ROTEX GS 90':{dmax:110},
+  'TOOLFLEX 5':{dmax:5},'TOOLFLEX 7':{dmax:8},'TOOLFLEX 9':{dmax:10},'TOOLFLEX 12':{dmax:14},'TOOLFLEX 16':{dmax:18},
+  'TOOLFLEX 20':{dmax:25},'TOOLFLEX 30':{dmax:30},'TOOLFLEX 38':{dmax:38},'TOOLFLEX 42':{dmax:42},'TOOLFLEX 45':{dmax:45},
+  'REVOLEX KX-D 105':{dmax:110},'REVOLEX KX-D 120':{dmax:125},'REVOLEX KX-D 135':{dmax:140},'REVOLEX KX-D 150':{dmax:160},
+  'REVOLEX KX-D 170':{dmax:180},'REVOLEX KX-D 190':{dmax:205},'REVOLEX KX-D 215':{dmax:230},'REVOLEX KX-D 240':{dmax:250},
+  'BOWEX AS 24':{dmax:24},'BOWEX AS 28':{dmax:28},'BOWEX AS 32':{dmax:32},'BOWEX AS 45':{dmax:45},'BOWEX AS 65':{dmax:65},
+  'BOWEX AS 80':{dmax:90},'BOWEX AS 100':{dmax:100},'BOWEX AS 125':{dmax:125},
+  'N-EUPEX 225':{dmax:80,tkn:2300},'N-EUPEX 250':{dmax:100,tkn:3900},'N-EUPEX 280':{dmax:100,tkn:5500},'N-EUPEX 315':{dmax:145,tkn:7100},
+  'N-EUPEX 350':{dmax:165,tkn:10800},'N-EUPEX 400':{dmax:180,tkn:14000},'N-EUPEX 440':{dmax:190,tkn:19000},'N-EUPEX 480':{dmax:215,tkn:25100},'N-EUPEX 520':{dmax:225,tkn:32400},
+  'FLUDEX 222':{dmax:38},'FLUDEX 297':{dmax:38},'FLUDEX 342':{dmax:55},'FLUDEX 395':{dmax:65},'FLUDEX 450':{dmax:75},'FLUDEX 516':{dmax:55},'FLUDEX 590':{dmax:75},
+  /* RFN khóa trục: dmax = đường kính TRỤC lớn nhất có sẵn của model */
+  'RFN 7003':{dmax:400},'RFN 7004':{dmax:180},'RFN 7005':{dmax:600},'RFN 7006':{dmax:400},'RFN 7007':{dmax:200},
+  'RFN 7012':{dmax:600},'RFN 7013':{dmax:150},'RFN 7014':{dmax:300},'RFN 7015':{dmax:600},'RFN 7061':{dmax:50},'RFN 7110':{dmax:130},'RFN 7515':{dmax:600}
 };
 /* Tra dmax theo series+size người dùng nhập. Trả {model,dmax,tkmax} hoặc null nếu chưa có dữ liệu. */
 function specLookup(series,size){
@@ -403,7 +423,9 @@ function checkBoreDmax(){
   const d1=parseFloat($('p_d1')?$('p_d1').value:'')||0, d2=parseFloat($('p_d2')?$('p_d2').value:'')||0;
   const big=Math.max(d1,d2);
   if(big>sp.dmax){ el.style.color='#b91c1c';
-    el.textContent='⛔ Lỗ trục Ø'+big+' VƯỢT dmax '+sp.dmax+'mm của '+sp.model+' (theo catalogue). Chọn cỡ lớn hơn hoặc kiểm tra lại.'; }
+    var st=SPECS[sp.model+' ST'];   // bản hub THÉP cùng cỡ cho phép lỗ lớn hơn
+    var goiY=(st&&big<=st.dmax)?' 👉 Bản hub THÉP ('+sp.model+' St) cho phép tới dmax '+st.dmax+'mm — cân nhắc đặt bản thép.':' Chọn cỡ lớn hơn hoặc kiểm tra lại.';
+    el.textContent='⛔ Lỗ trục Ø'+big+' VƯỢT dmax '+sp.dmax+'mm của '+sp.model+' (theo catalogue).'+goiY; }
   else if(big>0){ el.style.color='#15803d';
     el.textContent='✔ Ø'+big+' ≤ dmax '+sp.dmax+'mm ('+sp.model+') — hợp catalogue'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
   else { el.style.color='#6b7280'; el.textContent='ℹ '+sp.model+': lỗ trục tối đa dmax '+sp.dmax+'mm'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }

@@ -141,6 +141,12 @@
     <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="mTitle" style="margin:0">Thêm mã</h3><button class="ghost sm" onclick="closeModal()">✕</button></div>
     <input type="hidden" id="p_id">
 
+    <!-- 0. DÁN TÊN ĐƠN HÀNG → tự phân tích -->
+    <div class="field" style="margin-top:8px"><label>🪄 Dán tên hàng / đề bài → tự nhảy mã <span class="muted small">(nhận hãng·series·size·biến thể từ catalogue)</span></label>
+      <div style="display:flex;gap:6px"><input id="p_paste" placeholder='VD: Khớp nối Ringfeder ECE 6418-24 lắp vòng đệm KTR Rotex 24 985hA' style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();smartParse();}">
+      <button type="button" class="sm" onclick="smartParse()" style="white-space:nowrap">Phân tích</button></div>
+      <div id="parseHint" class="small" style="margin-top:4px;font-weight:700"></div></div>
+
     <!-- 1. PREFIX / vai trò -->
     <div class="sec" style="margin-top:10px">
       <div class="sec-h">① Vai trò sản phẩm · Prefix</div>
@@ -429,6 +435,49 @@ function checkBoreDmax(){
   else if(big>0){ el.style.color='#15803d';
     el.textContent='✔ Ø'+big+' ≤ dmax '+sp.dmax+'mm ('+sp.model+') — hợp catalogue'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
   else { el.style.color='#6b7280'; el.textContent='ℹ '+sp.model+': lỗ trục tối đa dmax '+sp.dmax+'mm'+(sp.tkmax?' · momen max '+sp.tkmax+'Nm':''); }
+}
+/* PHÂN TÍCH TÊN ĐƠN HÀNG → tự nhảy hãng/series/size/biến thể (dữ liệu: BRANDS + SERIES_CAT + SPECS).
+   VD: "Khớp nối Ringfeder ECE 6418-24 lắp vòng đệm KTR Rotex 24 985hA" */
+const BRAND_ALIAS={RINGFEDER:'RGF',RATHI:'RTH',KTR:'KTR',FLENDER:'FLD',SIEMENS:'FLD',WESTCAR:'WST',KBK:'KBK',
+  HUCO:'HUC',ETP:'ETP',MAV:'MAV',RINGSPANN:'RSP',STIEBER:'STB',TWIFLEX:'TWF',TRANSFLUID:'TFL',RENOLD:'RNL',
+  FENNER:'FNR',MARTIN:'MTN',REXNORD:'RXN',WOOJIN:'WJN',JAC:'JAC',PTI:'PTI',ITALGIUNTI:'ITG',WICHMANN:'WCH',
+  MAGNALOY:'MAG',HENFEL:'HEN',CK368:'DHP',DHP:'DHP'};
+const SERIES_BRAND={ROTEX:'KTR',BOWEX:'KTR',TOOLFLEX:'KTR',REVOLEX:'KTR',RADEX:'KTR',GEAREX:'KTR',MINEX:'KTR',RUFLEX:'KTR',CLAMPEX:'KTR',
+  'POLY-NORM':'KTR','N-EUPEX':'FLD',RUPEX:'FLD',ZAPEX:'FLD',ARPEX:'FLD',BIPEX:'FLD',FLUDEX:'FLD',
+  ECE:'RGF','NOR-MEX':'RGF',TNM:'RGF',TNS:'RGF',TNB:'RGF',TNR:'RGF',TNZ:'RGF',TND:'RGF',GWE:'RGF',GWB:'RGF',RFN:'RGF',
+  ROTOGEAR:'WST',ROTOFLUID:'WST',ROTOMEC:'WST',ROTODISC:'WST',HRC:'CRM',SURE:'TBW',FENAFLEX:'FNR'};
+function smartParse(){
+  const raw=($('p_paste')?$('p_paste').value:'').trim(); if(!raw) return;
+  const U=raw.toUpperCase(); const found=[];
+  // 1) series (ưu tiên khớp dài trước) → suy ra hãng
+  let ser='',br='',pos=1e9;
+  Object.keys(SERIES_BRAND).forEach(k=>{
+    const m=U.match(new RegExp('(^|[^A-Z])'+k.replace(/[-]/g,'\\-')+'([^A-Z]|$)'));
+    if(m && m.index<pos){ pos=m.index; ser=k; br=SERIES_BRAND[k]; }   // series CHÍNH = xuất hiện sớm nhất
+  });
+  // 2) hãng nêu đích danh (ghi đè nếu series chưa chốt hãng)
+  Object.keys(BRAND_ALIAS).forEach(k=>{ if(U.includes(k) && !br) br=BRAND_ALIAS[k]; });
+  // 3) size: số ngay sau series ("ROTEX 24", "ECE 6418 - 24" lấy số sau cùng cụm)
+  let size='';
+  if(ser){ const m=U.match(new RegExp(ser.replace(/[-]/g,'\\-')+"[\\s\\-]*([A-Z]{0,4})[\\s\\-]*(\\d{1,4})")); if(m) size=m[2]; }
+  if(!size){ const m2=U.match(/(?:SIZE|CỠ|Cỡ)\s*(\d{2,4})/); if(m2) size=m2[1]; }
+  // 4) biến thể ShA (985hA / 98SHA / 92 SH)
+  let varr=''; const vm=U.replace(/\s/g,'').match(/(\d{2})(?:5)?S?HA/); if(vm) varr=vm[1]+'SHA';
+  // 5) nhóm từ SERIES_CAT
+  let cat='';
+  if(br&&ser){ const e=(SERIES_CAT[br]||[]).find(x=>x.s.toUpperCase().startsWith(ser)); if(e) cat=e.cat; }
+  if(!cat&&ser){ if(/^RFN|CLAMPEX/.test(ser)) cat='KKT'; else if(/BOWEX|ZAPEX|ROTOGEAR|GEAREX/.test(ser)) cat='KNR'; else if(/TND|ARPEX|RADEX/.test(ser)) cat='KND'; else if(/FLUDEX|ROTOFLUID/.test(ser)) cat='KTL'; else cat='KNL'; }
+  // áp vào form
+  if(cat && !MS.cat){ MS.cat=cat; setFamily((CATEGORIES.find(c=>c.c===cat)||{}).f||'A'); found.push('nhóm '+catName(cat)); }
+  if(br && !$('p_brand').value){ $('p_brand').value=br; onBrandChange(); found.push('hãng '+br); }
+  if(ser && !$('p_series').value){ $('p_series').value=ser; found.push('series '+ser); }
+  if(size && !$('p_size').value){ $('p_size').value=size; found.push('size '+size); }
+  if(varr && !$('p_variant').value){ $('p_variant').value=varr; found.push('biến thể '+varr); }
+  if(!$('p_name').value) $('p_name').value=raw.slice(0,120);
+  if(!MS.prefix) setPrefix(br==='DHP'?'1':'0');
+  genSku();
+  const el=$('parseHint'); if(el){ el.style.color=found.length?'#15803d':'#6b7280';
+    el.textContent=found.length?('🪄 Đã nhận: '+found.join(' · ')+' — kiểm tra rồi bổ sung lỗ trục.'):'ℹ Chưa nhận diện được — chọn tay giúp mình.'; }
 }
 /* TRỢ LÝ MÃ CŨ: gõ mã cũ (DHP-RB-252, CK368-DF 38…) → nhận diện nhóm + size, điền sẵn để sinh SKU v2.5.
    Nguồn: (1) mã cũ đã chuẩn hóa trong dữ liệu (tự học), (2) từ điển cấu trúc mã CK368. */
@@ -895,7 +944,8 @@ function openProduct(id){
   $('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm mã';
   $('p_id').value=id||'';
   // reset fields
-  ['p_series','p_size','p_d1','p_d2','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
+  ['p_paste','p_series','p_size','p_d1','p_d2','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
+  const _ph=$('parseHint'); if(_ph) _ph.textContent='';
   $('serChips').innerHTML=''; document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.remove('active'));
   // điền từ bản ghi
   const pf = p?prodPrefix(p):'';

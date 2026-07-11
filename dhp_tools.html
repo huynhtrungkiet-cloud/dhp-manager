@@ -232,6 +232,26 @@
   <!-- ============ BÁO GIÁ ============ -->
   <div id="tab-quote" style="display:none">
     <div class="card">
+      <div class="card" style="border-left:4px solid #16A34A;margin-bottom:14px;padding:12px">
+        <b>⚙+🛒 Estimate LAI — CK368 chế hub + mua element hãng</b>
+        <div class="muted small" style="margin:2px 0 8px">Giá thép/giờ công/element/margin <b>để trống — bạn điền</b>, app áp công thức: (kg phôi × giá thép) + (giờ × đơn giá) + element, rồi × (1+margin). Thanh toán 60/40.</div>
+        <div class="row3">
+          <div class="field"><label>Phôi hub: Ø ngoài (mm)</label><input id="hbD" type="number" placeholder="VD 78" oninput="hybridCalc()"></div>
+          <div class="field"><label>Dài phôi L (mm)</label><input id="hbL" type="number" placeholder="VD 55" oninput="hybridCalc()"></div>
+          <div class="field"><label>Số hub / bộ</label><input id="hbN" type="number" value="2" oninput="hybridCalc()"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Giá thép (đ/kg) <span class="muted small">tự điền</span></label><input id="hbKg" type="number" placeholder="—" oninput="hybridCalc()"></div>
+          <div class="field"><label>Giờ công / bộ <span class="muted small">tự điền</span></label><input id="hbH" type="number" placeholder="—" oninput="hybridCalc()"></div>
+          <div class="field"><label>Đơn giá giờ (đ/h) <span class="muted small">tự điền</span></label><input id="hbRate" type="number" placeholder="—" oninput="hybridCalc()"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Element mua (đ/bộ) <span class="muted small">spider/vòng đệm</span></label><input id="hbEl" type="number" placeholder="—" oninput="hybridCalc()"></div>
+          <div class="field"><label>Margin (%) <span class="muted small">tùy loại — tự điền</span></label><input id="hbMg" type="number" placeholder="—" oninput="hybridCalc()"></div>
+          <div class="field"><label>Số bộ</label><input id="hbQty" type="number" value="1" oninput="hybridCalc()"></div>
+        </div>
+        <div id="hbOut" class="small" style="margin-top:6px;font-weight:700;line-height:1.7"></div>
+      </div>
       <h3>💰 Lập báo giá gia công</h3>
       <div class="row3">
         <div class="field"><label>Khách hàng</label><input id="qCust" placeholder="Công ty..."></div>
@@ -1092,6 +1112,23 @@ function readQuote(){
   const cost=matTotal+opTotal+tool+extra, margin=+document.getElementById('qMargin').value||0, sell=cost*(1+margin/100);
   const qty=+document.getElementById('qQty').value||1, vatPct=+document.getElementById('qVat').value||0, subtotal=sell*qty, vat=subtotal*vatPct/100, grand=subtotal+vat;
   return {mats,ops,matTotal,opTotal,tool,toolPct,extra,cost,margin,sell,qty,vatPct,subtotal,vat,grand};
+}
+/* Estimate LAI: hub CK368 chế + element mua. Ô giá để TRỐNG — người dùng điền, app áp công thức. */
+function hybridCalc(){
+  const v=id=>parseFloat((document.getElementById(id)||{}).value)||0;
+  const D=v('hbD'), L=v('hbL'), n=v('hbN')||2, kgP=v('hbKg'), h=v('hbH'), rate=v('hbRate'), el=v('hbEl'), mg=v('hbMg'), qty=v('hbQty')||1;
+  const out=document.getElementById('hbOut'); if(!out) return;
+  if(!D||!L){ out.textContent=''; return; }
+  const kg=Math.PI/4*D*D*L*7.85e-6*n;                    // kg thép / bộ (thép ρ=7.85)
+  const mat=kg*kgP, lab=h*rate, cost=mat+lab+el;
+  const sell=cost*(1+mg/100), tot=sell*qty;
+  const f=x=>x?x.toLocaleString('vi-VN',{maximumFractionDigits:0})+' đ':'<i class="muted">chưa đủ số</i>';
+  let miss=[]; if(!kgP)miss.push('giá thép'); if(!h||!rate)miss.push('giờ công/đơn giá'); if(!el)miss.push('element'); if(!mg)miss.push('margin');
+  out.innerHTML='Phôi: <b>'+kg.toFixed(1)+' kg/bộ</b> ('+n+' hub Ø'+D+'×'+L+') · Vật liệu: '+f(mat)+' · Công: '+f(lab)+' · Element: '+f(el)
+    +'<br>→ Giá vốn/bộ: <b>'+f(cost)+'</b> · Giá bán/bộ (margin '+(mg||0)+'%): <b style="color:#15803d">'+f(sell)+'</b>'
+    +(qty>1?' · <b>'+qty+' bộ = '+f(tot)+'</b>':'')
+    +'<br>Thanh toán 60/40: tạm ứng <b>'+f(tot*0.6)+'</b> · trước giao <b>'+f(tot*0.4)+'</b>'
+    +(miss.length?'<br><span style="color:#b45309">⚠ Còn trống: '+miss.join(', ')+' — điền để ra giá đủ.</span>':'');
 }
 function quoteRecalc(){
   const q=readQuote();

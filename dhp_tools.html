@@ -190,7 +190,25 @@
           </select>
         </div>
       </div>
-      <button class="big" onclick="doAdvise()">🔎 Phân tích &amp; Tư vấn</button>
+      <div class="row3">
+        <div class="field"><label>Vị trí lắp trong truyền động</label>
+          <select id="inPos"><option value="">— Chung —</option>
+            <option value="mg">Motor → Gearbox (tốc độ cao)</option>
+            <option value="gm">Gearbox → Máy (momen lớn)</option>
+            <option value="span">Khoảng cách trục xa (cần spacer)</option></select></div>
+        <div class="field"><label>Kiểu khớp mong muốn (nếu KH chỉ định)</label>
+          <select id="inKind"><option value="">— App tự chọn —</option>
+            <option value="fluid">Thủy lực (fluid)</option><option value="jaw">Vấu đàn hồi</option>
+            <option value="pin">Bu lông đai ốc / pin-bush</option><option value="disc">Đĩa lá thép</option>
+            <option value="gear">Răng</option><option value="tyre">Lốp (tyre)</option></select></div>
+        <div class="field"><label>Phụ kiện đi kèm</label>
+          <select id="inAcc"><option value="">— Không —</option>
+            <option value="dbrake">Thắng ĐĨA (disc brake)</option>
+            <option value="drum">Thắng TANG TRỐNG (drum)</option>
+            <option value="backstop">Chống quay ngược (backstop)</option>
+            <option value="spacer">Spacer / DZ tháo bơm nhanh</option></select></div>
+      </div>
+      <button class="big" onclick="doAdvise();scenarioAdvice()">🔎 Phân tích &amp; Tư vấn</button>
       <button class="ghost" onclick="loadExample()">↳ Nạp ví dụ (Motor 45kW · Bơm · Ø65 · Rotex 65)</button>
       <div class="alert info" style="margin-top:10px">ℹ️ Bảng cỡ <b>ROTEX trích từ catalogue KTR chính hãng</b> (dùng cho họ khớp vấu: ROTEX/Lovejoy L/TNM/Rathi — tương đương cỡ). Các họ khác (N-EUPEX, đĩa, răng...) hiện chọn cỡ theo momen thiết kế — sẽ nạp bảng riêng khi có catalogue. Luôn đối chiếu bản vẽ &amp; catalogue trước khi chốt.</div>
     </div>
@@ -204,6 +222,11 @@
       <h3>🔁 Tra khớp đang có → tương đương &amp; Hub-mixing</h3>
       <input id="kbXref" placeholder="🔎 Rotex / N-EUPEX / Lovejoy / Fenaflex / Disc / Gear / Ringfeder..." style="width:100%" oninput="renderXref()">
       <div id="xrefResult" style="margin-top:10px"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>📚 Dòng tư vấn theo series — dùng khi nào, mạnh/yếu, so hãng, biến thể</h3>
+      <input id="kbSeries" placeholder="🔎 Gõ series (ROTEX, TNM, FLUDEX, RFN…) hoặc loại (vấu, răng, thủy lực, đĩa…)" style="width:100%" oninput="renderKbSeries()">
+      <div id="kbSeriesOut"></div>
     </div>
     <div class="card">
       <h3>📑 Datasheet từng loại khớp</h3>
@@ -842,6 +865,68 @@ function rotexPick(Tdesign, shaft, n){
     }
   }
   return {over:true};
+}
+/* ===== TRI THỨC SERIES: dùng khi nào / mạnh / yếu / khác gì hãng cùng loại / biến thể để linh hoạt ===== */
+const KB_SERIES={
+ 'ROTEX':{b:'KTR',t:'Vấu đàn hồi',use:'Bơm, quạt, máy nén, thủy lực — tải êm→vừa, motor→gearbox. Chuẩn "mặc định" của ngành.',str:'Sẵn hàng nhất VN, lắp nhanh, spider thay 5 phút không rút máy, dải size 14→180.',wk:'Spider mòn phải thay định kỳ; nhiệt >90° cần T-PUR; không chịu lệch tâm lớn.',vs:'So NOR-MEX (RGF): ROTEX phổ biến & rẻ hơn, NOR-MEX vòng đệm bắt vít chịu momen cao hơn cùng cỡ. So Lovejoy L: tương đương, đổi lẫn cỡ.',opt:'92ShA vàng=êm máy rung · 98ShA đỏ=phổ thông · 64ShD xanh=momen max/servo · hub THÉP=bore lớn hơn (24: 24→35) · BTAN=tang thắng · ZS-DKM=spacer'},
+ 'ROTEX GS':{b:'KTR',t:'Vấu không backlash',use:'Servo, vitme CNC, encoder — cần không rơ (backlash-free).',str:'Spider ép trước → zero backlash, cân bằng tốt tốc độ cao.',wk:'Momen thấp hơn ROTEX thường; giá cao hơn.',vs:'So KBK bellows: GS chịu sốc tốt hơn + rẻ hơn; bellows chính xác góc xoắn hơn.',opt:'Clamping ring=kẹp không then · P/HP=thép momen cao'},
+ 'POLY-NORM':{b:'KTR',t:'Pin/vấu chịu sốc',use:'Tải giật vừa, đảo chiều; thay thế trực tiếp N-EUPEX.',str:'Đổi lẫn kích thước với N-EUPEX (hub-mixing được).',wk:'Ít phổ biến hơn N-EUPEX ở VN.',vs:'So N-EUPEX (FLD): tương đương cỡ, KTR giao nhanh hơn, Flender chuẩn dự án châu Âu.',opt:'ADR=tháo nhanh · AR-BTA=tang thắng'},
+ 'REVOLEX KX-D':{b:'KTR',t:'Pin & bush',use:'Băng tải, nghiền, trộn — tải nặng va đập, gearbox→máy.',str:'Bush thay được khi máy đứng yên; chịu sốc rất tốt.',wk:'To nặng; không cho tốc độ cao.',vs:'So RUPEX (FLD): tương đương; REVOLEX bush đổi không rút máy tiện hơn.',opt:'SB=tang thắng'},
+ 'BOWEX':{b:'KTR',t:'Răng vỏ nylon',use:'Motor→bơm thủy lực, diesel; cần bù lệch góc, không bôi trơn.',str:'Nylon tự bôi trơn — KHÔNG cần mỡ (khác răng thép); nhẹ.',wk:'Momen < răng thép; nhiệt ≤80°.',vs:'So ZAPEX/ROTOGEAR răng thép: BOWEX miễn bảo trì nhưng yếu hơn nhiều.',opt:'M=2 hub nylon · FLE-PA=bích SAE cho diesel · AS=trục-trục'},
+ 'GEAREX':{b:'KTR',t:'Răng thép',use:'Momen rất lớn, trục lớn, cán thép, cẩu.',str:'Momen/kích thước cao nhất trong các họ.',wk:'PHẢI bơm mỡ định kỳ, hỏng nếu bỏ quên; cần đồng tâm tốt.',vs:'So ZAPEX (FLD): ZAPEX chuẩn dự án lớn; GEAREX giao lẻ nhanh.',opt:'FA/FB=đơn/đôi khớp'},
+ 'RADEX-N':{b:'KTR',t:'Đĩa lá thép',use:'Tốc độ cao, chính xác, không bảo trì — máy nén, quạt lớn, test bench.',str:'Không mòn, không bôi trơn, cân bằng tốt, chịu nhiệt cao.',wk:'KHÔNG chịu lệch tâm lớn — lắp phải chuẩn; đắt hơn vấu.',vs:'So ARPEX (FLD)/RSK (Rathi): cùng nguyên lý; ARPEX dải size lớn hơn, Rathi giá tốt.',opt:'NC=compact · spacer DBSE theo yêu cầu'},
+ 'RUFLEX':{b:'KTR',t:'Bảo vệ quá tải ma sát',use:'Chuỗi truyền cần bảo vệ khi kẹt — trượt khi quá momen cài đặt.',str:'Chỉnh được momen trượt bằng lò xo đĩa.',wk:'Trượt sinh nhiệt — không cho trượt lâu.',vs:'So KBK safety: KBK nhả hoàn toàn (chính xác hơn), RUFLEX rẻ bền hơn.',opt:'Kết hợp ROTEX = vừa đàn hồi vừa bảo vệ'},
+ 'CLAMPEX':{b:'KTR',t:'Khóa trục côn',use:'Ghép mayơ–trục không then: puly, bánh răng, tang.',str:'Tháo lắp lặp lại, tự định tâm, không rơ.',wk:'Cần momen siết đúng bảng; bề mặt sạch.',vs:'So RFN (RGF): RFN dải to hơn (tới Ø600+), CLAMPEX nhỏ gọn dễ mua.',opt:'KTR 130/150/200/250 theo kiểu tự định tâm hay không'},
+ 'N-EUPEX':{b:'FLD',t:'Pin đàn hồi',use:'Chuẩn công nghiệp nặng châu Âu: bơm, quạt, gearbox — fail-safe (đứt cao su vẫn truyền).',str:'Fail-safe; bền; dữ liệu dự án đầy đủ (Siemens).',wk:'Cao su mòn phải thay; nặng hơn ROTEX cùng momen.',vs:'So ROTEX: N-EUPEX fail-safe & bền dự án, ROTEX rẻ + sẵn hàng. So POLY-NORM: đổi lẫn cỡ.',opt:'DS=không fail-safe (đứt là dừng — bảo vệ máy) · H/HDS=spacer'},
+ 'RUPEX':{b:'FLD',t:'Pin & bush',use:'Tải nặng va đập, momen lớn, gearbox→máy nghiền/băng tải.',str:'Chịu sốc, size tới trục 500+.',wk:'To nặng.',vs:'So REVOLEX: tương đương, RUPEX theo chuẩn dự án Flender.',opt:'RWN/RWS=thép đúc/hàn · RBS=tang thắng'},
+ 'ZAPEX':{b:'FLD',t:'Răng thép',use:'Cán thép, cẩu cảng, momen cực lớn, có lệch trục.',str:'Momen khủng, bù lệch góc tốt (răng cầu).',wk:'Bơm mỡ định kỳ bắt buộc.',vs:'So GEAREX/ROTOGEAR: cùng loại; chọn theo dự án & giao hàng.',opt:'ZW=2 khớp · ZN=1 khớp'},
+ 'ARPEX':{b:'FLD',t:'Đĩa lá thép',use:'API bơm dầu khí, tốc độ cao, miễn bảo trì.',str:'Chuẩn API 610/671 được; lá thép không mòn.',wk:'Đắt; nhạy lắp lệch.',vs:'So RADEX-N: ARPEX dải và chứng chỉ dầu khí mạnh hơn.',opt:'ARS=spacer · NAN/NEN theo momen'},
+ 'FLUDEX':{b:'FLD',t:'Thủy lực (fluid)',use:'Khởi động êm motor lồng sóc tải nặng: nghiền, băng tải dài — motor→gearbox.',str:'Khởi động không sốc, tự bảo vệ quá tải (cầu chì nhiệt).',wk:'Trượt ~2-3% (mất hiệu suất); có dầu — cần kín.',vs:'So ROTOFLUID (WST): tương đương nguyên lý; Westcar nhiều option thắng/puly hơn, FLUDEX chuẩn Siemens.',opt:'Kèm N-EUPEX phía tải · vành thắng theo yêu cầu'},
+ 'NOR-MEX TNM':{b:'RGF',t:'Vấu đàn hồi',use:'Như ROTEX nhưng vòng đệm bắt VÍT — bơm quạt tải vừa.',str:'Vòng đệm giữ vít không văng, momen nhỉnh hơn cùng cỡ; DHP chế hub được (đơn 49!).',wk:'Ít sẵn hàng hơn ROTEX tại VN.',vs:'So ROTEX: TNM đệm bắt vít an toàn hơn ở đảo chiều; ROTEX sẵn hàng.',opt:'TNM E/G/H: G,H có tang thắng · vòng đệm 92/98ShA'},
+ 'NOR-MEX TNS':{b:'RGF',t:'Vấu tải nặng',use:'Cỡ lớn, momen cao hơn TNM.',str:'Dải size lớn.',wk:'Nặng.',vs:'Trong họ RGF: TNM nhỏ→vừa, TNS vừa→lớn.',opt:'SDDL/BSV theo kết cấu'},
+ 'TNR':{b:'RGF',t:'Pin & bush',use:'Tải sốc, đảo chiều nhiều.',str:'Bush đổi nhanh.',wk:'—',vs:'So RUPEX/REVOLEX: cùng loại, chọn theo giá & giao.',opt:'—'},
+ 'TNZ':{b:'RGF',t:'Răng thép',use:'Momen lớn.',str:'—',wk:'Bơm mỡ.',vs:'Như ZAPEX/GEAREX.',opt:'—'},
+ 'TND':{b:'RGF',t:'Đĩa lá thép',use:'Tốc độ cao miễn bảo trì; nhiều kiểu lắp.',str:'Nhiều biến thể kết cấu nhất (VDV/XSX/XDX/QCQ…).',wk:'Nhạy lắp lệch.',vs:'So ARPEX/RADEX: tương đương.',opt:'XSX/XDX=spacer đơn/đôi · QCQ=tháo nhanh'},
+ 'ECE':{b:'RGF',t:'Vấu gang/thép/nhôm',use:'Bơm quạt phổ thông, giá tốt (đơn 49 dùng ECE 6418 thép).',str:'Thân đúc sẵn 3 vật liệu; kết hợp vòng đệm KTR được (hub-mixing DHP hay làm).',wk:'—',vs:'ECE 6118 nhôm=nhẹ · 6418 thép=khỏe · 6518 gang=rẻ.',opt:'Lỗ trơn để DHP tiện theo trục KH'},
+ 'GWE':{b:'RGF',t:'Vấu servo',use:'Servo/encoder chính xác.',str:'—',wk:'—',vs:'So ROTEX GS: tương đương.',opt:'—'},
+ 'RFN 7012':{b:'RGF',t:'Khóa trục côn',use:'Khóa mayơ–trục momen LỚN nhất họ, tự định tâm — tang cẩu, bánh răng lớn (tới d600).',str:'Chuẩn ngành, bảng momen đầy đủ (app có SPECS).',wk:'Siết đúng trình tự + momen.',vs:'7012=2 côn tự định tâm · 7110=mỏng gọn (d130) · 7013/7014=không tự định tâm cần gối · 7003/7005/7015=hạng nặng.',opt:'Xem Excel master đủ 600 cỡ d×D'},
+ 'ROTOFLUID':{b:'WST',t:'Thủy lực (fluid)',use:'Khởi động êm + option thắng phong phú — nghiền đá, băng tải mỏ.',str:'Option nhiều nhất: CA=bích THẮNG ĐĨA, KDA=tang trống, puly, chậm trễ dầu (delay chamber).',wk:'Trượt 2-3%; bảo dưỡng dầu.',vs:'So FLUDEX: Westcar linh hoạt option + giá mềm; FLUDEX chuẩn Siemens dự án.',opt:'CA/KDA/KRG… theo phụ kiện thắng — ĐÚNG câu hỏi motor+gearbox+thắng đĩa: chọn ROTOFLUID CA'},
+ 'ROTOGEAR':{b:'WST',t:'Răng thép',use:'Momen lớn giá Ý mềm.',str:'—',wk:'Bơm mỡ.',vs:'Như ZAPEX/GEAREX/TNZ.',opt:'RE=chuẩn'},
+ 'FENAFLEX':{b:'FNR',t:'Lốp (tyre)',use:'Lệch tâm LỚN, rung mạnh, môi trường bẩn — nghiền, sàng đá.',str:'Chịu lệch tâm cao nhất các họ đàn hồi; thay lốp không rút máy.',wk:'Momen/kích thước thấp; lốp sợ dầu+nắng.',vs:'So SURE-FLEX (TBW): tương đương; Fenner chuẩn Anh phổ biến VN.',opt:'F=vấu tiêu chuẩn · taper bush lắp nhanh'},
+ 'HRC':{b:'CRM',t:'Vấu gang',use:'Phổ thông giá rẻ, tải nhẹ→vừa.',str:'Rẻ, taper bush lắp nhanh.',wk:'Đệm mỏng — giảm chấn kém hơn ROTEX.',vs:'So ROTEX: HRC rẻ hơn nhưng êm kém; nhiều xưởng VN quen HRC.',opt:'B/F/H theo kiểu lắp bush'},
+ 'KB (bellows)':{b:'KBK',t:'Ống xếp inox',use:'Encoder, đo lường, servo nhỏ — chính xác tuyệt đối.',str:'Zero backlash, bù lệch 3 chiều, quán tính cực nhỏ.',wk:'Momen nhỏ; sợ quá tải đứt ống xếp.',vs:'So ROTEX GS: bellows chính xác hơn, GS khỏe hơn.',opt:'KB1/2/4/5 + kẹp hoặc vít'},
+ 'KBK safety':{b:'KBK',t:'Bảo vệ quá tải nhả bi',use:'Máy CNC, đóng gói — kẹt là NHẢ HOÀN TOÀN trong mili-giây.',str:'Điểm nhả chính xác, tự đóng lại.',wk:'Đắt hơn ma sát.',vs:'So RUFLEX: RUFLEX trượt (đơn giản), KBK nhả (chính xác).',opt:'CP/CK/CA + kết hợp bellows/đĩa'},
+ 'GWN cardan':{b:'ITG',t:'Các đăng',use:'Hai trục XA + lệch góc lớn (5–35°), cán tôn, máy in (DHP chế GWN-25x50).',str:'Truyền qua góc lớn duy nhất; DHP chế được theo bản vẽ.',wk:'PHẢI cân bằng động + định pha 2 nạng; bảo trì chữ thập.',vs:'ITG/Wichmann/KTR cardan: chọn theo size & giao; hàng chế CK368 cần QC hàn + G6.3.',opt:'Telescopic=thò thụt · bích DIN/SAE'}
+};
+/* Kịch bản phức tạp: vị trí + kiểu + phụ kiện → gợi ý option đúng (vd motor→gearbox thủy lực + thắng đĩa) */
+function scenarioAdvice(){
+  const pos=(document.getElementById('inPos')||{}).value, kind=(document.getElementById('inKind')||{}).value, acc=(document.getElementById('inAcc')||{}).value;
+  if(!pos&&!kind&&!acc) return;
+  let tips=[];
+  if(kind==='fluid'){
+    tips.push('Thủy lực đặt ở <b>motor→gearbox</b> (tốc độ cao, momen nhỏ → khớp nhỏ hơn, khởi động êm hơn). KHÔNG đặt phía tải.');
+    if(acc==='dbrake') tips.push('<b>Thủy lực + THẮNG ĐĨA</b> → chọn <b>Westcar ROTOFLUID CA</b> (bích thắng đĩa liền) hoặc <b>Flender FLUDEX + vành thắng</b>. Thắng đặt PHÍA TẢI của khớp để giữ máy khi mất điện — hỏi thêm: đường kính đĩa & kẹp thắng hãng nào (Twiflex sẵn ở DHP).');
+    if(acc==='drum') tips.push('Thủy lực + tang trống → <b>ROTOFLUID KDA</b>; hoặc vấu <b>NOR-MEX TNM G/H</b>, <b>ROTEX BTAN</b> nếu không cần khởi động êm.');
+  } else {
+    if(acc==='dbrake') tips.push('Cần thắng đĩa → ưu tiên series có bích thắng: <b>ROTOFLUID CA</b> (thủy lực), <b>RUPEX RBS</b>, hoặc bích thắng rời + khớp đĩa.');
+    if(acc==='drum') tips.push('Tang trống → <b>NOR-MEX TNM G/H</b> · <b>ROTEX BTAN/SBAN</b> · <b>POLY-NORM AR-BTA</b> · <b>REVOLEX SB</b>.');
+  }
+  if(acc==='backstop') tips.push('Chống quay ngược → <b>vòng bi backstop</b> (Stieber/Ringspann/Cross+Morse — nhóm VCQ) lắp trên trục tốc độ CAO của gearbox, không thay khớp.');
+  if(acc==='spacer'||pos==='span') tips.push('Cần rút bơm không tháo motor → biến thể spacer: <b>ROTEX ZS-DKM</b> · <b>N-EUPEX H</b> · <b>TND XSX/XDX</b> · <b>ARPEX ARS</b> — báo DBSE (khoảng cách 2 đầu trục).');
+  if(pos==='mg'&&!kind) tips.push('Motor→gearbox: ưu tiên khớp <b>đàn hồi/vấu</b> (ROTEX, TNM, N-EUPEX) — nhẹ, cân bằng tốt ở rpm cao.');
+  if(pos==='gm'&&!kind) tips.push('Gearbox→máy: momen LỚN — ưu tiên <b>pin&bush (RUPEX/REVOLEX/TNR)</b>, <b>răng (ZAPEX/GEAREX)</b> nếu momen cực lớn, <b>tyre (FENAFLEX)</b> nếu lệch tâm/rung mạnh.');
+  const out=document.getElementById('advOut'); if(!out||!tips.length) return;
+  out.insertAdjacentHTML('afterbegin','<div class="card" style="border-left:4px solid #16A34A"><b>🧩 Kịch bản lắp đặt của bạn</b><ul style="margin:6px 0 0 18px">'+tips.map(t=>'<li>'+t+'</li>').join('')+'</ul></div>');
+}
+/* Tra dòng tư vấn theo series */
+function renderKbSeries(){
+  const q=(document.getElementById('kbSeries')||{}).value.trim().toUpperCase();
+  const box=document.getElementById('kbSeriesOut'); if(!box) return;
+  const keys=Object.keys(KB_SERIES).filter(k=>!q||k.toUpperCase().includes(q)||KB_SERIES[k].t.toUpperCase().includes(q)||KB_SERIES[k].b.includes(q));
+  box.innerHTML=keys.slice(0,12).map(k=>{const e=KB_SERIES[k];
+    return `<div class="card" style="margin-top:8px"><b>${k}</b> <span class="muted small">· ${e.b} · ${e.t}</span>
+      <div class="small" style="line-height:1.65;margin-top:4px">📌 <b>Dùng khi:</b> ${e.use}<br>✅ <b>Mạnh:</b> ${e.str}<br>⚠️ <b>Yếu:</b> ${e.wk}<br>⚖️ <b>So hãng cùng loại:</b> ${e.vs}<br>🧩 <b>Biến thể để linh hoạt:</b> ${e.opt}</div></div>`;}).join('')
+    ||'<div class="muted small">Không khớp series nào — thử: ROTEX, TNM, FLUDEX, RFN, FENAFLEX…</div>';
 }
 function doAdvise(){
   const P=parseFloat(inP.value), n=parseFloat(inN.value), shaft=parseFloat(inD.value), mis=parseFloat(inMis.value), tempC=parseFloat(inTemp.value);

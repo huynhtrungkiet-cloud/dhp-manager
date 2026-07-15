@@ -289,6 +289,11 @@ function gateCheck(){
           <option value="warehouse">Phụ trợ kho — tư vấn mã / tên theo mã cũ</option>
           <option value="other">Khác (tự ghi chú)</option>
         </optgroup>
+        <optgroup label="Quy định xưởng (nội quy · 5S)">
+          <option value="fives">Vệ sinh 5S — máy / khu vực ngăn nắp sạch sẽ</option>
+          <option value="toolcal">Kiểm / hiệu chuẩn dụng cụ đo (thước, calip, đồng hồ so)</option>
+          <option value="maint">Bảo trì / bảo dưỡng máy định kỳ</option>
+        </optgroup>
         <optgroup label="Vắng / trạng thái">
           <option value="available">Có mặt — chờ việc (A)</option>
           <option value="leave">Nghỉ phép (AL)</option>
@@ -758,6 +763,9 @@ const ASSIGN_KINDS = {
   cncprog:   {code:'LT-P',  label:'Lập trình phay CNC',     color:'#14B8A6'},
   wireprog:  {code:'LT-CD', label:'Lập trình máy cắt dây',  color:'#06B6D4'},
   warehouse: {code:'KHO',   label:'Phụ trợ kho — tư vấn mã', color:'#A78BFA'},
+  fives:     {code:'5S',    label:'Vệ sinh 5S — ngăn nắp máy/khu vực', color:'#22C55E'},
+  toolcal:   {code:'DCĐ',   label:'Kiểm / hiệu chuẩn dụng cụ đo',      color:'#F59E0B'},
+  maint:     {code:'BT',    label:'Bảo trì / bảo dưỡng máy',           color:'#F97316'},
   available: {code:'A',     label:'Có mặt — chờ việc',  color:'#9CA3AF'},
   leave:     {code:'AL',    label:'Nghỉ phép',          color:'#93C5FD'},
   training:  {code:'TRAIN', label:'Đào tạo',            color:'#FB923C'},

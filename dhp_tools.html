@@ -228,6 +228,19 @@
       <input id="kbSeries" placeholder="🔎 Gõ series (ROTEX, TNM, FLUDEX, RFN…) hoặc loại (vấu, răng, thủy lực, đĩa…)" style="width:100%" oninput="renderKbSeries()">
       <div id="kbSeriesOut"></div>
     </div>
+    <div class="card" style="margin-top:12px;border-left:4px solid #16A34A">
+      <h3>🔄 Bộ chuyển đổi HÀNG LOẠT (retrofit) — dán bảng vị trí, app gộp về ít chủng loại nhất</h3>
+      <div class="muted small" style="margin-bottom:6px">Mỗi dòng: <b>Vị trí | Model cũ | bore bơm | bore motor | SL</b> — bore nhận cả inch (<code>2 3/8</code> hoặc <code>1-5/8</code>). Model cũ nhận: Magnaloy M###, Lovejoy L###, Nortek A2/A3, HRC##, hoặc bỏ trống (chỉ chọn theo bore).</div>
+      <textarea id="convIn" rows="7" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" placeholder="Tuần hoàn AA1 | M200 | 7/8 | 1 3/8 | 3
+Bơm chính AA2 | M600 | 1 3/4 | 2 3/8 | 3
+Lube B | Nortek A2 | 24 | 38 | 2"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <label class="small">Chuyển về: <select id="convTarget"><option value="TNM">Ringfeder Nor-Mex TNM E</option><option value="ROTEX">KTR ROTEX (GJL/thép)</option></select></label>
+        <label class="small">Số chủng loại mục tiêu: <select id="convMax"><option>2</option><option>3</option><option selected>tự động</option></select></label>
+        <button onclick="convRun()">🔄 Phân tích & gộp</button>
+      </div>
+      <div id="convOut" style="margin-top:10px"></div>
+    </div>
     <div class="card">
       <h3>📑 Datasheet từng loại khớp</h3>
       <select id="kbFam" onchange="renderDatasheet()" style="min-width:260px"></select>
@@ -919,6 +932,76 @@ function scenarioAdvice(){
   out.insertAdjacentHTML('afterbegin','<div class="card" style="border-left:4px solid #16A34A"><b>🧩 Kịch bản lắp đặt của bạn</b><ul style="margin:6px 0 0 18px">'+tips.map(t=>'<li>'+t+'</li>').join('')+'</ul></div>');
 }
 /* Tra dòng tư vấn theo series */
+/* ===== BỘ CHUYỂN ĐỔI RETROFIT: model cũ → Nor-Mex/ROTEX, gộp ít chủng loại nhất =====
+   XREF_DB: momen danh định (Nm) + bore max (mm) của khớp CŨ — số tham khảo catalogue, đối chiếu khi chốt đơn. */
+const XREF_DB={
+  'M100':{tkn:45,dmax:22.2},'M200':{tkn:110,dmax:34.9},'M300':{tkn:250,dmax:41.3},'M400':{tkn:400,dmax:47.6},
+  'M500':{tkn:650,dmax:60.3},'M600':{tkn:1280,dmax:66.7},'M700':{tkn:2200,dmax:76.2},
+  'L095':{tkn:43,dmax:28},'L099':{tkn:74,dmax:35},'L100':{tkn:124,dmax:35},'L110':{tkn:231,dmax:42},
+  'L150':{tkn:452,dmax:48},'L190':{tkn:678,dmax:55},'L225':{tkn:1017,dmax:65},
+  'A2':{tkn:150,dmax:42},'A3':{tkn:560,dmax:60},
+  'HRC90':{tkn:100,dmax:25},'HRC110':{tkn:160,dmax:32},'HRC130':{tkn:315,dmax:40},'HRC150':{tkn:500,dmax:48},
+  'HRC180':{tkn:800,dmax:55},'HRC230':{tkn:1250,dmax:65}
+};
+/* Bảng cỡ ĐÍCH (tăng dần). TNM E: số tham khảo — đối chiếu catalogue Ringfeder khi chốt. ROTEX: từ SPECS PDF KTR. */
+const CONV_TARGETS={
+  TNM:[{s:'TNM E 82',tkn:90,dmax:38},{s:'TNM E 97',tkn:180,dmax:42},{s:'TNM E 112',tkn:320,dmax:48},
+       {s:'TNM E 128',tkn:560,dmax:55},{s:'TNM E 148',tkn:880,dmax:65},{s:'TNM E 168',tkn:1340,dmax:75},
+       {s:'TNM E 194',tkn:2200,dmax:85},{s:'TNM E 214',tkn:3300,dmax:95}],
+  ROTEX:[{s:'ROTEX 28',tkn:160,dmax:28},{s:'ROTEX 38',tkn:325,dmax:40},{s:'ROTEX 42',tkn:450,dmax:45},
+       {s:'ROTEX 48',tkn:525,dmax:52},{s:'ROTEX 55',tkn:685,dmax:60},{s:'ROTEX 65',tkn:940,dmax:70},
+       {s:'ROTEX 75',tkn:1920,dmax:80},{s:'ROTEX 90',tkn:3600,dmax:97}]
+};
+function parseBore(s){ // '2 3/8', '1-5/8', '7/8', '60.3', '42'
+  s=String(s||'').trim().replace(',','.'); if(!s) return 0;
+  const m=s.match(/^(\d+)?[\s\-]?(\d+)\/(\d+)$/);
+  if(m){ const whole=parseFloat(m[1]||0); return Math.round((whole + parseInt(m[2])/parseInt(m[3]))*25.4*10)/10; }
+  const v=parseFloat(s); return v<=5?Math.round(v*25.4*10)/10:v; // số quá nhỏ coi như inch nguyên
+}
+function convRun(){
+  const lines=(document.getElementById('convIn').value||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  const tgt=CONV_TARGETS[document.getElementById('convTarget').value];
+  const maxKinds=document.getElementById('convMax').value;
+  const out=document.getElementById('convOut');
+  if(!lines.length){ out.innerHTML='<div class="muted small">Dán bảng vị trí trước đã.</div>'; return; }
+  const rows=[], warns=[];
+  for(const ln of lines){
+    const c=ln.split(/[|;\t]/).map(x=>x.trim());
+    const pos=c[0]||'?', model=(c[1]||'').toUpperCase().replace(/[^A-Z0-9]/g,''), b1=parseBore(c[2]), b2=parseBore(c[3]), qty=parseFloat(c[4])||1;
+    const old=Object.keys(XREF_DB).find(k=>model.includes(k));
+    const oldTkn=old?XREF_DB[old].tkn:0;
+    if(model && !old) warns.push('Không nhận ra model "'+(c[1]||'')+'" ('+pos+') — chỉ chọn theo bore, bổ sung momen nếu có.');
+    const bore=Math.max(b1,b2);
+    // luật ①: bore max ≥ bore; sát max (≥95%) thì nâng 1 cỡ
+    let idx=tgt.findIndex(t=>t.dmax>=bore); if(idx<0){ warns.push(pos+': bore '+bore+' vượt cỡ lớn nhất bảng đích!'); idx=tgt.length-1; }
+    if(bore>=tgt[idx].dmax*0.95 && idx<tgt.length-1) idx++;
+    // luật ②: cân nhắc momen — KHÔNG ép nâng theo tkn cũ (thường dư), chỉ cảnh báo nếu tkn cũ > tkn đích
+    rows.push({pos,old:old||model||'—',oldTkn,b1,b2,bore,qty,idx});
+  }
+  // luật ③: GỘP — nâng các nhóm nhỏ lên cỡ gần nhất phía trên đến khi đạt số chủng loại mục tiêu
+  let kinds=[...new Set(rows.map(r=>r.idx))].sort((a,b)=>a-b);
+  const want = maxKinds==='tự động' ? (kinds.length>3?Math.max(2,Math.ceil(kinds.length/2)):kinds.length) : parseInt(maxKinds);
+  while(kinds.length>want){
+    // gộp từ cỡ NHỎ NHẤT lên cỡ kế trên (cỡ to luôn nuốt được bore nhỏ; cỡ nhỏ oversize rẻ nhất)
+    const from=kinds[0], to=kinds[1];
+    rows.forEach(r=>{ if(r.idx===from) r.idx=to; });
+    kinds=[...new Set(rows.map(r=>r.idx))].sort((a,b)=>a-b);
+  }
+  // kiểm momen SAU khi gộp (gộp lên cỡ to thường tự hết cảnh báo)
+  rows.forEach(r=>{ if(r.oldTkn>tgt[r.idx].tkn)
+    warns.push(r.pos+': momen danh định '+r.old+' ('+r.oldTkn+' Nm) CAO hơn '+tgt[r.idx].s+' ('+tgt[r.idx].tkn+' Nm) — xin công suất motor thực để chốt (thường motor nhỏ hơn nhiều so với cấp khớp cũ).'); });
+  // render
+  const esc2=s=>String(s).replace(/</g,'&lt;');
+  let html='<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:#e5e7eb"><th style="border:1px solid #d1d5db;padding:4px">Vị trí</th><th style="border:1px solid #d1d5db;padding:4px">Khớp cũ</th><th style="border:1px solid #d1d5db;padding:4px">Bore (mm)</th><th style="border:1px solid #d1d5db;padding:4px">SL</th><th style="border:1px solid #d1d5db;padding:4px">→ Đề xuất</th></tr>';
+  rows.forEach(r=>{ html+='<tr><td style="border:1px solid #d1d5db;padding:4px">'+esc2(r.pos)+'</td><td style="border:1px solid #d1d5db;padding:4px">'+esc2(r.old)+(r.oldTkn?' <span class="muted">('+r.oldTkn+'Nm)</span>':'')+'</td><td style="border:1px solid #d1d5db;padding:4px">'+r.b1+' / '+r.b2+'</td><td style="border:1px solid #d1d5db;padding:4px">'+r.qty+'</td><td style="border:1px solid #d1d5db;padding:4px"><b>'+tgt[r.idx].s+'</b> <span class="muted">(bore tiện '+r.b1+'/'+r.b2+')</span></td></tr>'; });
+  html+='</table>';
+  const summ=kinds.map(k=>{ const g=rows.filter(r=>r.idx===k); const n=g.reduce((s,r)=>s+r.qty,0);
+    return '<b>'+tgt[k].s+'</b> ×'+n+' bộ (max bore '+Math.max(...g.map(r=>r.bore))+'/'+tgt[k].dmax+'mm · '+tgt[k].tkn+'Nm)'; }).join(' · ');
+  html='<div class="small" style="margin-bottom:6px">✅ <b>Gộp còn '+kinds.length+' chủng loại:</b> '+summ+'<br><span class="muted">Các vị trí chỉ khác bore + rãnh then (kể cả then inch ANSI) — DHP tiện theo từng vị trí; kho spare chỉ còn '+kinds.length+' loại vòng đàn hồi.</span></div>'+html;
+  if(warns.length) html+='<div class="small" style="margin-top:8px;color:#b45309"><b>⚠ Cảnh báo:</b><br>'+warns.map(esc2).join('<br>')+'</div>';
+  html+='<div class="small muted" style="margin-top:6px">Momen/bore max = tham khảo catalogue — đối chiếu bản chính hãng + kiểm đường kính ngoài/chiều dài vs khoang lắp (bell housing) trước khi chốt. Điều khoản chuẩn: tạm ứng 60%, 40% trước giao.</div>';
+  out.innerHTML=html;
+}
 function renderKbSeries(){
   const q=(document.getElementById('kbSeries')||{}).value.trim().toUpperCase();
   const box=document.getElementById('kbSeriesOut'); if(!box) return;

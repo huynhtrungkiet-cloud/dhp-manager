@@ -4174,7 +4174,10 @@ function kpiScores(){
   const S=KPI_START_DATE, today=todayStr();
   const staff=DATA.staff.filter(s=>s&&s.active!==false);
   const dispatchers=staff.filter(s=>_kn(s.role).includes('dieu phoi'));
-  const m={}; staff.forEach(s=>m[s.id]={s, dispatcher:dispatchers.some(d=>d.id===s.id), late:0, ncrUsable:0, ncrScrap:0, onTime:0, quality:0, dimFail:0, lateUpd:0, hourShort:0, hourOver:0, orderStale:0});
+  const m={}; staff.forEach(s=>m[s.id]={s, dispatcher:dispatchers.some(d=>d.id===s.id), late:0, ncrUsable:0, ncrScrap:0, onTime:0, quality:0, dimFail:0, lateUpd:0, hourShort:0, hourOver:0, orderStale:0,
+    det:{late:[],onTime:[],quality:[],dimFail:[],hourShort:[],hourOver:[],ncrUsable:[],ncrScrap:[]}});
+  const causeDet={out:[],ship:[],overload:[],stale:[],lateUpd:[],company:[]};   // chi tiết cho banner cấp Kho/Công ty
+  const oCode=o=>o.code||o.id||'—', oCo=o=>(o.company||'').slice(0,28), oNm=o=>(o.name||'').slice(0,40);
   // ĐƠN TRỄ — TRÁCH NHIỆM THEO NGUYÊN NHÂN (trễ ai người đó chịu, KHÔNG đổ đồng điều phối):
   //  • Xưởng hết trách nhiệm tại mốc "Hoàn thành — chờ giao" (completedDate/done_waiting).
   //  • Giao trễ SAU mốc đó = KHO/giao vận.  • Nút thắt ở đối tác ngoài = OUTSOURCE (trừ chính đối tác đó).
@@ -4195,7 +4198,10 @@ function kpiScores(){
       const cd=o.completedDate||o.deliveredDate;
       const wsLate = cd ? daysBetween(ref,cd)>0 : false;
       if(!wsLate){   // xưởng xong đúng hạn
-        if(o.status==='delivered' && o.deliveredDate && daysBetween(ref,o.deliveredDate)>0){ cause.ship++; if(khoStaff) m[khoStaff.id].late++; }
+        if(o.status==='delivered' && o.deliveredDate && daysBetween(ref,o.deliveredDate)>0){
+          const dd=daysBetween(ref,o.deliveredDate); const ev={code:oCode(o),co:oCo(o),name:oNm(o),due:ref,on:o.deliveredDate,days:dd,note:'giao trễ '+dd+' ngày (xưởng đã xong đúng hạn)'};
+          cause.ship++; causeDet.ship.push(ev); if(khoStaff){ m[khoStaff.id].late++; m[khoStaff.id].det.late.push(ev); }
+        }
         return;
       }
     } else if(ref>=today) return;                                          // chưa tới hạn
@@ -4205,23 +4211,29 @@ function kpiScores(){
     let bn=sts.find(s=>stageState(s)!=='done');
     if(!bn){ const L=sts.filter(s=>s.doneDate&&daysBetween(ref,s.doneDate)>0).sort((a,b)=> a.doneDate<b.doneDate?1:-1); bn=L[0]; }
     const bs = bn&&bn.assignee ? staff.find(x=>x.id===bn.assignee) : null;
-    if(bs&&bs.type==='outsource'){ cause.out++; m[bs.id].late++; }          // đối tác ngoài chịu
-    else if(overloaded){ cause.overload++; }                               // quá tải → công ty (không trừ ai)
-    else if(bs&&m[bs.id]){ cause.worker++; m[bs.id].late++; }              // thợ nội bộ đúng người
-    else { cause.company++; }                                             // chưa gán/không rõ → công ty
+    const bnNm = bn?(bn.code||bn.name||'công đoạn'):'—';
+    const ev={code:oCode(o),co:oCo(o),name:oNm(o),due:ref,stage:bnNm};
+    if(bs&&bs.type==='outsource'){ cause.out++; m[bs.id].late++; m[bs.id].det.late.push({...ev,note:'nút thắt ở đối tác'}); causeDet.out.push({...ev,who:bs.name}); }
+    else if(overloaded){ cause.overload++; causeDet.overload.push({...ev,note:'xưởng quá tải'}); }
+    else if(bs&&m[bs.id]){ cause.worker++; m[bs.id].late++; m[bs.id].det.late.push({...ev,note:'nút thắt: '+bnNm}); }
+    else { cause.company++; causeDet.company.push({...ev,note:'chưa gán người'}); }
   });
   // HƯ HỎNG (NCR, từ KPI_START) → người gia công chịu trách nhiệm, theo tình trạng
-  (DATA.ncrRecords||[]).forEach(n=>{ if(n.date && n.date<S) return; if(n.responsible && m[n.responsible]){ if(n.recover==='scrap') m[n.responsible].ncrScrap++; else m[n.responsible].ncrUsable++; } });
+  (DATA.ncrRecords||[]).forEach(n=>{ if(n.date && n.date<S) return; if(n.responsible && m[n.responsible]){
+    const ev={code:n.orderCode||n.orderId||'—',date:n.date||'',desc:(n.desc||n.description||'').slice(0,60),stage:n.stage||''};
+    if(n.recover==='scrap'){ m[n.responsible].ncrScrap++; m[n.responsible].det.ncrScrap.push(ev); }
+    else { m[n.responsible].ncrUsable++; m[n.responsible].det.ncrUsable.push(ev); } } });
   // Duyệt công đoạn: thưởng đúng hạn/chất lượng + phạt sai kích thước (trễ cập nhật → công ty)
-  let allStages=[]; (DATA.orders||[]).forEach(o=>{ (o.stages||[]).filter(Boolean).forEach(s=>allStages.push(s)); (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>allStages.push(s))); });
-  allStages.forEach(s=>{ if(!s.assignee||!m[s.assignee]) return;
-    const end=stageEndDate(s), st=stageState(s), done=s.doneDate||'';
-    if(st==='done'){ if(end&&done&&done<=end) m[s.assignee].onTime++;
-      const ck=(s.checks||[]).filter(Boolean); if(ck.length && ck.every(c=>c.pass==='pass')) m[s.assignee].quality++; }
+  let allStages=[];
+  (DATA.orders||[]).forEach(o=>{ (o.stages||[]).filter(Boolean).forEach(s=>allStages.push({s,o})); (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>allStages.push({s,o}))); });
+  allStages.forEach(({s,o})=>{ if(!s.assignee||!m[s.assignee]) return;
+    const end=stageEndDate(s), st=stageState(s), done=s.doneDate||'', sn=s.code||s.name||'công đoạn';
+    if(st==='done'){ if(end&&done&&done<=end){ m[s.assignee].onTime++; m[s.assignee].det.onTime.push({code:oCode(o),stage:sn,on:done,due:end}); }
+      const ck=(s.checks||[]).filter(Boolean); if(ck.length && ck.every(c=>c.pass==='pass')){ m[s.assignee].quality++; m[s.assignee].det.quality.push({code:oCode(o),stage:sn,on:done}); } }
     // SAI KÍCH THƯỚC (từ KPI_START): số kích thước đo KHÔNG đạt → THỢ
-    const dref=done||end||''; if(!dref||dref>=S){ const fails=(s.checks||[]).filter(c=>c&&c.pass==='fail').length; if(fails) m[s.assignee].dimFail+=fails; }
+    const dref=done||end||''; if(!dref||dref>=S){ (s.checks||[]).filter(c=>c&&c.pass==='fail').forEach(c=>{ m[s.assignee].dimFail++; m[s.assignee].det.dimFail.push({code:oCode(o),stage:sn,param:(c.param||'kích thước').slice(0,30),on:dref}); }); }
     // TRỄ CẬP NHẬT: công đoạn quá hạn chưa báo "Xong" → CÔNG TY (ngoài dự kiến, không trừ cá nhân)
-    if(end && end>=S && end<today && st!=='done') cause.lateUpd++;
+    if(end && end>=S && end<today && st!=='done'){ cause.lateUpd++; causeDet.lateUpd.push({code:oCode(o),stage:sn,due:end,note:'chưa báo Xong'}); }
   });
   // THIẾU GIỜ (từ KPI_START..hôm qua) → điều phối: mỗi ngày-người nội bộ có tổng giờ < chuẩn (8h T2-6, 7h T7, CN 0)
   const needHours = ds=>{ const wd=new Date(ds+'T00:00:00').getDay(); return wd===0?0:(wd===6?7:8); };
@@ -4229,21 +4241,23 @@ function kpiScores(){
   const dh={}; (DATA.assignments||[]).forEach(a=>{ if(!a||!a.staffId||!a.date||a.date<S||a.date>=today) return;
     const h=(a.hours!=null?parseFloat(a.hours):(a.kind==='order'?(typeof HOURS_PER_DAY!=='undefined'?HOURS_PER_DAY:8):0))||0;
     (dh[a.staffId]=dh[a.staffId]||{}); dh[a.staffId][a.date]=(dh[a.staffId][a.date]||0)+h; });
-  let shortfall=0, overCount=0;
+  let shortfall=0, overCount=0; const shortEv=[], overEv=[];
   for(let d=new Date(S+'T00:00:00'), endD=new Date(today+'T00:00:00'); d<endD; d.setDate(d.getDate()+1)){
     const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const need=needHours(ds); if(!need) continue;
     internal.forEach(s=>{ const got=(dh[s.id]&&dh[s.id][ds])||0;
-      if(got<need) shortfall++;
-      else if(got>need+1) overCount++;   // VƯỢT GIỜ: khai giờ thường >chuẩn quá 1h = sai nhập chưa sửa
+      if(got<need){ shortfall++; shortEv.push({date:ds,who:s.name,got:got,need:need}); }
+      else if(got>need+1){ overCount++; overEv.push({date:ds,who:s.name,got:got,need:need}); }   // VƯỢT GIỜ: khai giờ >chuẩn quá 1h
     });
   }
-  if(dispatchers.length) dispatchers.forEach(d=>{ m[d.id].hourShort+=shortfall; m[d.id].hourOver+=overCount; });
+  if(dispatchers.length) dispatchers.forEach(d=>{ m[d.id].hourShort+=shortfall; m[d.id].hourOver+=overCount; m[d.id].det.hourShort=shortEv; m[d.id].det.hourOver=overEv; });
   // RA ĐƠN CHẬM: đơn admin tạo đã qua ngày mà chưa xử lý/gán việc → CÔNG TY (ngoài dự kiến, không trừ điều phối)
   (DATA.orders||[]).forEach(o=>{ const rd=o.receivedDate||o.requestedDate; if(!rd||rd<S||rd>=today) return;
     const hasAssign=(DATA.assignments||[]).some(a=>a&&a.orderId===o.id);
-    if((o.status==='new'||!o.status) && !hasAssign) cause.stale++; });
+    if((o.status==='new'||!o.status) && !hasAssign){ cause.stale++; causeDet.stale.push({code:oCode(o),co:oCo(o),name:oNm(o),date:rd,note:'nhận '+rd+', chưa gán việc'}); } });
   window._kpiCauses={...cause, overloadRatio, khoName:(khoStaff?khoStaff.name:'')};
+  window._kpiDet={}; Object.values(m).forEach(x=>window._kpiDet[x.s.id]=x.det);
+  window._kpiCauseDet=causeDet;
   Object.values(m).forEach(x=>{
     const bonus=Math.min(10, x.onTime*1 + x.quality*1);   // thưởng +1/công đoạn đúng hạn & +1/đạt chất lượng — TRẦN +10 (tránh phồng điểm)
     x.score=Math.max(0, 100 + bonus - x.late*5 - x.hourShort*1 - x.hourOver*2 - x.dimFail*3 - x.ncrUsable*3 - x.ncrScrap*10);
@@ -4251,6 +4265,45 @@ function kpiScores(){
   return m;
 }
 function kpiGrade(sc){ return sc>=90?{g:'A',c:'#15803D'}:sc>=75?{g:'B',c:'#2563EB'}:sc>=60?{g:'C',c:'#D97706'}:{g:'D',c:'#b91c1c'}; }
+/* ===== DRILL-DOWN KPI: click ô số → hiện đơn/ngày đằng sau ===== */
+function kpiCell(id, metric, val, color, prefix){
+  if(!val) return '0';
+  return `<b style="color:${color};cursor:pointer;border-bottom:1.5px dotted ${color}" title="Bấm xem chi tiết" onclick="kpiDetail('${id}','${metric}')">${prefix||''}${val}</b>`;
+}
+const KPI_DET_META = {
+  late:{t:'⚠ Đơn trễ',cols:['Mã đơn','Khách hàng','Hạn giao','Nguyên nhân'],row:d=>[d.code,d.co||'',d.due||'',d.note||d.stage||'']},
+  onTime:{t:'⏱ Công đoạn xong đúng hạn',cols:['Mã đơn','Công đoạn','Ngày xong','Hạn'],row:d=>[d.code,d.stage,d.on,d.due]},
+  quality:{t:'✓ Công đoạn đạt chất lượng',cols:['Mã đơn','Công đoạn','Ngày'],row:d=>[d.code,d.stage,d.on]},
+  dimFail:{t:'📏 Kích thước sai',cols:['Mã đơn','Công đoạn','Thông số','Ngày'],row:d=>[d.code,d.stage,d.param,d.on]},
+  hourShort:{t:'⏳ Thiếu giờ (ngày-người)',cols:['Ngày','Nhân sự','Đã có (h)','Chuẩn (h)'],row:d=>[d.date,d.who,d.got,d.need]},
+  hourOver:{t:'⏫ Vượt giờ (ngày-người)',cols:['Ngày','Nhân sự','Đã khai (h)','Chuẩn (h)'],row:d=>[d.date,d.who,d.got,d.need]},
+  ncrUsable:{t:'🔧 Hàng hư còn dùng',cols:['Mã đơn','Ngày','Mô tả'],row:d=>[d.code,d.date,d.desc]},
+  ncrScrap:{t:'✕ Hàng phế',cols:['Mã đơn','Ngày','Mô tả'],row:d=>[d.code,d.date,d.desc]},
+};
+function kpiDetail(id, metric){
+  const meta=KPI_DET_META[metric]; if(!meta) return;
+  const det=(window._kpiDet&&window._kpiDet[id])?window._kpiDet[id][metric]:[];
+  const name=(DATA.staff.find(s=>s.id===id)||{}).name||'';
+  showKpiModal(meta.t+' — '+name, meta.cols, (det||[]).map(meta.row));
+}
+function kpiCauseDetail(key){
+  const det=(window._kpiCauseDet||{})[key]||[];
+  const T={out:'⚠ Trễ do OUTSOURCE (tính KPI đối tác)',ship:'🏬 Giao trễ — Kho/Giao vận',overload:'🏢 Trễ do xưởng QUÁ TẢI (công ty)',stale:'🏢 Admin ra đơn chậm (công ty)',lateUpd:'🏢 Trễ cập nhật công đoạn (công ty)',company:'🏢 Trễ chưa gán rõ người (công ty)'};
+  const isUpd=key==='lateUpd';
+  const cols = isUpd?['Mã đơn','Công đoạn','Hạn','Ghi chú'] : ['Mã đơn','Khách hàng','Hạn/Ngày','Ghi chú'];
+  const row  = isUpd? d=>[d.code,d.stage,d.due,d.note] : d=>[d.code,d.co||d.who||'',d.due||d.date||'',d.note||d.stage||''];
+  showKpiModal(T[key]||key, cols, det.map(row));
+}
+function showKpiModal(title, cols, rows){
+  let ov=document.getElementById('kpiDetOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='kpiDetOv'; ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px'; ov.onclick=e=>{if(e.target===ov)ov.remove();}; document.body.appendChild(ov); }
+  const body = rows.length? `<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>${cols.map(c=>`<th style="border:1px solid #d1d5db;padding:5px;background:#e5e7eb;text-align:left">${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td style="border:1px solid #d1d5db;padding:5px">${c==null||c===''?'—':esc(String(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<div class="muted" style="padding:12px">Không có dữ liệu chi tiết.</div>';
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 12px 44px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e5e7eb;position:sticky;top:0;background:#fff">
+      <b style="font-size:15px">${esc(title)} <span class="muted" style="font-weight:400">· ${rows.length} mục</span></b>
+      <button class="ghost sm" onclick="document.getElementById('kpiDetOv').remove()">✕ Đóng</button></div>
+    <div style="padding:12px 16px">${body}</div></div>`;
+}
 function renderKpi(){
   const el = document.getElementById('view-kpi');
   const orders = DATA.orders;
@@ -4304,22 +4357,22 @@ function renderKpi(){
     </div>
 
     ${(kHourShort||kHourOver)?`<div class="card" style="border-left:4px solid #D97706;background:#fffbeb;margin-top:12px"><b style="color:#b45309">⚠ Cảnh báo điều phối:</b> ${kHourShort?`<b>${kHourShort}</b> lượt ngày-người <b>thiếu giờ</b> (chưa đủ 8h T2–6 / 7h T7) — cần gán thêm việc (thiết kế/lập trình/phụ trợ kho/chờ việc). `:''}${kHourOver?`<b style="color:#b91c1c">${kHourOver}</b> lượt <b>khai giờ VƯỢT chuẩn quá 1h</b> (nhập sai chưa sửa) — sửa lại giờ trên lịch để hết trừ. `:''}<span class="muted small">Thiếu giờ −1, vượt giờ −2 mỗi lượt (cảnh báo, không chặn thao tác).</span></div>`:''}
-    ${((KC.out||0)+(KC.ship||0))?`<div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-top:8px"><b style="color:#b45309">⚠ Trễ do bên khác — quy đúng trách nhiệm:</b> ${KC.out?`<b>${KC.out}</b> đơn trễ do <b>OUTSOURCE</b> → tính vào KPI đối tác (xem hàng có nhãn OUT). `:''}${KC.ship?`<b>${KC.ship}</b> đơn xưởng xong ĐÚNG HẠN nhưng <b>giao trễ</b> → <b>Kho/Giao vận${KC.khoName?' ('+esc(KC.khoName)+')':' chịu trách nhiệm'}</b>. `:''}</div>`:''}
-    ${((KC.overload||0)+(KC.stale||0)+(KC.lateUpd||0)+(KC.company||0))?`<div class="card" style="border-left:4px solid #64748B;background:#f8fafc;margin-top:8px"><b>🏢 Ngoài dự kiến — trách nhiệm CÔNG TY (KHÔNG trừ cá nhân):</b> ${KC.overload?`<b>${KC.overload}</b> đơn trễ do <b>xưởng QUÁ TẢI</b> (nhận việc ~${Math.round((KC.overloadRatio||0)*100)}% năng lực — cần tăng người/ca). `:''}${KC.stale?`<b>${KC.stale}</b> đơn admin <b>ra chậm/chưa xử lý</b>. `:''}${KC.lateUpd?`<b>${KC.lateUpd}</b> công đoạn <b>trễ cập nhật</b> trạng thái. `:''}${KC.company?`<b>${KC.company}</b> đơn trễ chưa gán rõ người. `:''}<span class="muted small">Xưởng hết trách nhiệm tại mốc "7. Hoàn thành — chờ giao" — nhập ngày hoàn thành để tách bạch.</span></div>`:''}
+    ${((KC.out||0)+(KC.ship||0))?`<div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-top:8px"><b style="color:#b45309">⚠ Trễ do bên khác — quy đúng trách nhiệm:</b> ${KC.out?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('out')">${KC.out}</b> đơn trễ do <b>OUTSOURCE</b> → tính vào KPI đối tác (xem hàng có nhãn OUT). `:''}${KC.ship?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('ship')">${KC.ship}</b> đơn xưởng xong ĐÚNG HẠN nhưng <b>giao trễ</b> → <b>Kho/Giao vận${KC.khoName?' ('+esc(KC.khoName)+')':' chịu trách nhiệm'}</b>. `:''}<span class="muted small">(bấm số để xem đơn)</span></div>`:''}
+    ${((KC.overload||0)+(KC.stale||0)+(KC.lateUpd||0)+(KC.company||0))?`<div class="card" style="border-left:4px solid #64748B;background:#f8fafc;margin-top:8px"><b>🏢 Ngoài dự kiến — trách nhiệm CÔNG TY (KHÔNG trừ cá nhân):</b> ${KC.overload?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('overload')">${KC.overload}</b> đơn trễ do <b>xưởng QUÁ TẢI</b> (nhận việc ~${Math.round((KC.overloadRatio||0)*100)}% năng lực — cần tăng người/ca). `:''}${KC.stale?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('stale')">${KC.stale}</b> đơn admin <b>ra chậm/chưa xử lý</b>. `:''}${KC.lateUpd?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('lateUpd')">${KC.lateUpd}</b> công đoạn <b>trễ cập nhật</b> trạng thái. `:''}${KC.company?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('company')">${KC.company}</b> đơn trễ chưa gán rõ người. `:''}<span class="muted small">(bấm số để xem đơn) · Xưởng hết trách nhiệm tại mốc "7. Hoàn thành — chờ giao".</span></div>`:''}
     <h2 class="sec"><span class="bar"></span>🏆 Bảng điểm KPI tự động <span class="muted small" style="font-weight:400">(app tính — KHÔNG sửa tay)</span></h2>
     <div class="card" style="padding:0;overflow:auto">
       ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ do CHÍNH người/đối tác này (nút thắt) — tính tới mốc Hoàn thành chờ giao">⚠ Trễ đơn</th><th title="Ngày-người nội bộ thiếu giờ (chưa đủ 8h T2-6 / 7h T7) — quy về điều phối">⏳ Thiếu giờ</th><th title="Khai giờ thường VƯỢT chuẩn quá 1h/ngày mà chưa sửa (nhập sai) — quy về điều phối">⏫ Vượt giờ</th><th title="Số kích thước đo KHÔNG đạt (sai dung sai)">📏 Sai KT</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>
         ${kpiRows.map(x=>{ const g=kpiGrade(x.score); return `<tr>
           <td><b>${esc(x.s.name)}</b>${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td>
           <td class="small muted">${x.dispatcher?'Điều phối':'Thợ'}</td>
-          <td>${x.onTime?'<b style="color:#15803D">+'+x.onTime+'</b>':'0'}</td>
-          <td>${x.quality?'<b style="color:#15803D">+'+x.quality+'</b>':'0'}</td>
-          <td>${x.late?'<b style="color:var(--st-late)">'+x.late+'</b>':'0'}</td>
-          <td>${x.hourShort?'<b style="color:#D97706">'+x.hourShort+'</b>':'0'}</td>
-          <td>${x.hourOver?'<b style="color:var(--st-late)">'+x.hourOver+'</b>':'0'}</td>
-          <td>${x.dimFail?'<b style="color:var(--st-late)">'+x.dimFail+'</b>':'0'}</td>
-          <td>${x.ncrUsable?'<b style="color:#D97706">'+x.ncrUsable+'</b>':'0'}</td>
-          <td>${x.ncrScrap?'<b style="color:var(--st-late)">'+x.ncrScrap+'</b>':'0'}</td>
+          <td>${kpiCell(x.s.id,'onTime',x.onTime,'#15803D','+')}</td>
+          <td>${kpiCell(x.s.id,'quality',x.quality,'#15803D','+')}</td>
+          <td>${kpiCell(x.s.id,'late',x.late,'var(--st-late)')}</td>
+          <td>${kpiCell(x.s.id,'hourShort',x.hourShort,'#D97706')}</td>
+          <td>${kpiCell(x.s.id,'hourOver',x.hourOver,'var(--st-late)')}</td>
+          <td>${kpiCell(x.s.id,'dimFail',x.dimFail,'var(--st-late)')}</td>
+          <td>${kpiCell(x.s.id,'ncrUsable',x.ncrUsable,'#D97706')}</td>
+          <td>${kpiCell(x.s.id,'ncrScrap',x.ncrScrap,'var(--st-late)')}</td>
           <td><b style="font-size:14px">${x.score}</b></td>
           <td><span style="background:${g.c};color:#fff;border-radius:5px;padding:1px 9px;font-weight:800">${g.g}</span></td>
         </tr>`; }).join('')}

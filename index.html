@@ -742,6 +742,17 @@ function stageState(s){
   return 'pending';
 }
 const STAGE_COLORS = { done:'#22C55E', doing:'#F59E0B', late:'#EF4444', pending:'#CBD5E1' };
+// ===== GIAI ĐOẠN của đơn (dòng chảy lớn) — để nhìn phát biết "đơn đang nằm ở đâu" =====
+// Khác với CÔNG ĐOẠN (routing A/B/C...): đây là 5 chặng xuyên suốt từ nhận đơn tới giao hàng.
+const ORDER_PHASES = [
+  {k:'intake', ic:'📥', label:'G0 Tiếp nhận',   en:'G0 Intake'},
+  {k:'prep',   ic:'📦', label:'Phôi / Vật tư',  en:'Material'},
+  {k:'prod',   ic:'🔧', label:'Gia công',       en:'Production'},
+  {k:'qc',     ic:'🛡', label:'QC nghiệm thu',  en:'QC'},
+  {k:'deliver',ic:'🚚', label:'Giao hàng',      en:'Delivery'},
+];
+// Mốc % khi đơn CHƯA khai công đoạn nào — suy từ trạng thái để không bị đứng ở 0%
+const STATUS_BASE_PCT = {new:0, planned:10, wait_material:15, wait_sample:15, in_production:50, qc:85, done_waiting:95, delivered:100, hold:0};
 // Chuỗi chip công đoạn hiển thị trong bảng: A✓ B(đang) C...
 function stageChainHtml(o){
   if(!o.stages || !o.stages.length) return '';
@@ -1636,26 +1647,51 @@ function refreshOrders(){
   if(active && active.id==='view-grid') renderGrid();
   else renderOrders();
 }
+function ordersTableOrEmptyHtml(){
+  return DATA.orders.length===0
+    ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nạp dữ liệu.</div>'
+    : ordersTable();
+}
+// ===== Ô TÌM KIẾM ĐƠN =====
+// Trước đây mỗi ký tự gõ vào gọi refreshOrders() → vẽ lại CẢ khối (kể cả chính ô search),
+// nên con trỏ bị mất / nhảy đi chỗ khác. Giờ chỉ thay ruột BẢNG + số đếm, ô search giữ nguyên.
+let ordSearchTimer = null;
+function onOrderSearchInput(v){
+  orderFilter.q = v;
+  clearTimeout(ordSearchTimer);
+  ordSearchTimer = setTimeout(refreshOrdersTableOnly, 150);   // gõ nhanh không vẽ lại từng phím
+}
+function refreshOrdersTableOnly(){
+  // Chỉ tìm trong view đang mở — vì khối đơn hàng có mặt ở cả tab "Đơn hàng" lẫn dưới "Lịch phân công"
+  const root = document.querySelector('.view.active') || document;
+  const wrap = root.querySelector('[data-ord-table]');
+  if(!wrap){ refreshOrders(); return; }        // chưa render kiểu mới → quay về cách cũ cho chắc
+  wrap.innerHTML = ordersTableOrEmptyHtml();
+  const cnt = root.querySelector('[data-ord-count]');
+  if(cnt) cnt.textContent = `${filteredOrders().length} / ${DATA.orders.length} ${t('lb_orders')}`;
+}
 // HTML phần đơn hàng (toolbar + bộ lọc + bảng) — dùng chung cho cả tab riêng lẫn khi nhúng dưới Lịch
 function ordersSectionHtml(){
   return `
     <div class="toolbar">
       ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
-      <input id="ofQ" placeholder="${t('search_ph')}" style="min-width:240px" oninput="orderFilter.q=this.value;refreshOrders()" value="${esc(orderFilter.q)}">
+      <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
+             oninput="onOrderSearchInput(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onOrderSearchInput('');}"
+             value="${esc(orderFilter.q)}">
       <select onchange="orderFilter.assignment=this.value;refreshOrders()">
         <option value="">${t('f_allAssign')}</option>
         <option value="inhouse" ${orderFilter.assignment==='inhouse'?'selected':''}>${t('f_inhouse')}</option>
         <option value="outsource" ${orderFilter.assignment==='outsource'?'selected':''}>${t('f_outsource')}</option>
       </select>
-      <span class="muted small" style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} ${t('lb_orders')}</span>
+      <span class="muted small" data-ord-count style="margin-left:auto">${filteredOrders().length} / ${DATA.orders.length} ${t('lb_orders')}</span>
     </div>
     <div class="legend" style="align-items:center">
       <span class="small muted" style="font-weight:700;margin-right:2px">Lọc trạng thái (chọn nhiều):</span>
       <span class="chip" onclick="clearStatusFilter()" style="cursor:pointer;${orderFilter.statuses.length===0?'outline:2px solid var(--brand);font-weight:800':''}" title="Xem tất cả">⭐ Tất cả</span>
       ${ORDER_STATUSES.map(s=>{ const on=orderFilter.statuses.includes(s.k); return `<span class="chip" onclick="toggleStatusFilter('${s.k}')" style="cursor:pointer;${on?'outline:2px solid '+s.color+';font-weight:800;background:'+s.color+'1a':''}" title="${on?'Bỏ chọn':'Thêm vào lọc'}">${on?'✓ ':''}<i style="background:${s.color}"></i>${esc(stLabel(s))}</span>`; }).join('')}
     </div>
-    <div class="card" style="overflow:auto;padding:0">
-      ${ DATA.orders.length===0 ? '<div class="empty">Chưa có đơn hàng nào. Bấm “Thêm đơn hàng”, hoặc qua tab “Dữ liệu &amp; Đồng bộ” để nạp dữ liệu.</div>' : ordersTable() }
+    <div class="card" data-ord-table style="overflow:auto;padding:0">
+      ${ ordersTableOrEmptyHtml() }
     </div>`;
 }
 function renderOrders(){
@@ -2396,6 +2432,7 @@ function openOrderView(id){
   const measHtml = (o.measures||[]).filter(Boolean).length ? '<ul style="margin:4px 0;padding-left:18px">'+(o.measures||[]).filter(Boolean).map(m=>`<li>${esc(m.param||'')}: KH ${esc(m.spec||'-')} / đo ${esc(m.actual||'-')} ${m.pass==='pass'?'✓ Đạt':m.pass==='fail'?'<span style="color:var(--st-late)">✕ Không đạt</span>':''}</li>`).join('')+'</ul>' : '';
   const attHtml = (o.attachments||[]).filter(a=>a&&a.url).map(a=>`<a href="${esc(a.url)}" target="_blank" style="color:#0EA5E9;margin-right:10px">🔗 ${esc(a.label||'link')}</a>`).join('');
   document.getElementById('ord_view_body').innerHTML = `
+    ${orderProgressBlockHtml(o)}
     <table style="font-size:12.5px;border-collapse:collapse;width:100%">
       ${row('Tên hàng', esc(o.name||''))}
       ${row('Mã SP (Coding)', o.productSku?`<b style="color:#0EA5E9">${esc(o.productSku)}</b>${(function(){const im=productImageBySku(o.productSku);return im?` <img src="${esc(im)}" style="height:40px;max-width:70px;object-fit:contain;vertical-align:middle;border:1px solid var(--line);border-radius:5px;margin-left:6px">`:'';})()}`:'')}
@@ -2403,7 +2440,6 @@ function openOrderView(id){
       ${row('Loại', esc(o.orderType||'Gia công'))}
       ${row('Số lượng', (o.qty!=null?esc(String(o.qty)):'')+(o.unit?' '+esc(o.unit):''))}
       ${row('Trạng thái', `<span style="background:${statusByKey(o.status).color};color:#fff;border-radius:5px;padding:1px 8px;font-weight:700">${esc(stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''))}</span>`)}
-      ${row('% hoàn thành', orderOverallProgress(o)+'%')}
       ${row('Cổng G0 đầu vào', intakeComplete(o.intake)?`<span style="color:#15803D;font-weight:700">✓ Đủ thông tin</span>${o.intake&&o.intake.checker?' · '+esc(o.intake.checker):''}${o.intake&&o.intake.date?' · '+fmtDate(o.intake.date):''}`:`<span style="color:#D97706;font-weight:700">⚠ Chưa đủ${o.intake&&o.intake.note?': '+esc(o.intake.note):''}</span>`)}
       ${row('Kết luận QC', o.qcResult==='pass'?'<span style="color:#15803D;font-weight:700">✓ ĐẠT</span>':o.qcResult==='fail'?'<span style="color:var(--st-late);font-weight:700">✕ KHÔNG ĐẠT</span>':'<span class="muted">— chưa kiểm —</span>')}
       ${row('Ghi chú QC', o.qcNote?'<span style="white-space:pre-wrap">'+esc(o.qcNote)+'</span>':'')}
@@ -2981,38 +3017,172 @@ function stageDonePct(stages){
   const done = valid.filter(s=>stageState(s)==='done').length;
   return Math.round(done/valid.length*100);
 }
+// Mức hoàn tất của MỘT công đoạn (0..1). Xong = 1. Đang làm = tính theo số ngày công đã trôi qua
+// so với số ngày kế hoạch → đơn đang chạy không còn đứng ở 0%. Chưa bấm "Xong" thì tối đa 0.9.
+function stageFraction(s){
+  const st = stageState(s);
+  if(st==='done') return 1;
+  if(st!=='doing' && st!=='late') return 0;
+  const days = stageWorkingDays(s);
+  if(!days.length) return 0.5;              // đang làm nhưng chưa khai ngày → coi như giữa chừng
+  const today = todayStr();
+  const passed = days.filter(d=>d<=today).length;
+  return Math.min(0.9, Math.max(0.15, passed/days.length));
+}
+// % của một chuỗi công đoạn — CÓ TRỌNG SỐ theo số giờ (công đoạn 16h nặng gấp đôi công đoạn 8h)
+function stageWeightedPct(stages){
+  if(!Array.isArray(stages)) return null;
+  const valid = stages.filter(s=>s && typeof s==='object');
+  if(!valid.length) return null;
+  let tot=0, got=0;
+  valid.forEach(s=>{ const w = Math.max(0.5, stageHours(s)||0); tot += w; got += w*stageFraction(s); });
+  return tot ? Math.round(got/tot*100) : 0;
+}
 // % của 1 chi tiết con: ưu tiên theo công đoạn của nó, sau đó tới % nhập tay
 function itemProgress(it){
   if(!it || typeof it!=='object') return 0;
   if(it.status==='delivered') return 100;
-  const sp = stageDonePct(it.stages);
+  const sp = stageWeightedPct(it.stages);
   if(sp!=null) return sp;
   return parseFloat(it.progress)||0;
 }
-// % tổng của đơn: nếu có chi tiết con → trung bình các chi tiết; nếu không → theo công đoạn đơn; cuối cùng % tay
-function orderOverallProgress(o){
-  if(o.status==='delivered') return 100;
+// ===== TIẾN ĐỘ TỔNG — APP TỰ TÍNH, không nhập tay =====
+// Chia điểm: G0 đủ thông tin 5% · gia công (công đoạn) 75% · QC Đạt 10% · đã giao 10%.
+// Trả về cả "đang ở giai đoạn nào" + "đang ở công đoạn nào" để hiển thị trong ô Xem đơn.
+function orderProgressInfo(o){
+  const g = {pct:0, phaseIdx:0, phaseDone:false, mach:0, total:0, done:0, doing:0,
+             late:false, current:null, currentItem:'', next:null, nextItem:''};
+  if(!o) return g;
+  // Gom công đoạn của đơn tổng + của mọi chi tiết con, giữ nguyên thứ tự khai báo
+  const all = [];
+  (o.stages||[]).filter(Boolean).forEach(s=>all.push({s, it:''}));
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>all.push({s, it:it.name||''})));
+  g.total = all.length;
+  g.done  = all.filter(x=>stageState(x.s)==='done').length;
+  g.doing = all.filter(x=>{const st=stageState(x.s); return st==='doing'||st==='late';}).length;
+  g.late  = all.some(x=>stageState(x.s)==='late');
+  // Đang ở đâu: công đoạn đang làm đầu tiên; nếu không có ai đang làm thì lấy công đoạn CHƯA kế tiếp
+  const curIdx = (function(){
+    const i = all.findIndex(x=>{const st=stageState(x.s); return st==='doing'||st==='late';});
+    if(i>=0) return i;
+    return all.findIndex(x=>stageState(x.s)==='pending');
+  })();
+  if(curIdx>=0){ g.current = all[curIdx].s; g.currentItem = all[curIdx].it; }
+  const nxt = all.slice(curIdx>=0?curIdx+1:0).find(x=>stageState(x.s)!=='done');
+  if(nxt){ g.next = nxt.s; g.nextItem = nxt.it; }
+  // Phần gia công (0..100)
+  let mach;
   if(o.items && o.items.length){
-    const vals=o.items.filter(Boolean).map(itemProgress);
-    if(!vals.length) return parseFloat(o.progress)||0;
-    return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    const vals = o.items.filter(Boolean).map(itemProgress);
+    mach = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+  } else {
+    mach = stageWeightedPct(o.stages);
   }
-  const sp = stageDonePct(o.stages);
-  if(sp!=null) return sp;
-  return parseFloat(o.progress)||0;
+  if(mach==null){                                   // chưa khai công đoạn nào
+    const manual = parseFloat(o.progress);
+    mach = !isNaN(manual) ? manual : (STATUS_BASE_PCT[o.status]!=null ? STATUS_BASE_PCT[o.status] : 0);
+  }
+  g.mach = Math.max(0, Math.min(100, Math.round(mach)));
+  // Cộng điểm các cổng
+  const g0 = intakeComplete(o.intake) ? 5 : 0;
+  const qc = o.qcResult==='pass' ? 10 : 0;
+  const dl = o.status==='delivered' ? 10 : 0;
+  let pct = Math.round(g0 + g.mach*0.75 + qc + dl);
+  if(o.status==='delivered') pct = 100;
+  else pct = Math.min(99, pct);                     // chưa giao thì không bao giờ báo 100%
+  g.pct = Math.max(0, pct);
+  // Đang ở GIAI ĐOẠN nào (5 chặng lớn)
+  let ph = intakeComplete(o.intake) ? 1 : 0;
+  if(o.status==='wait_material' || o.status==='wait_sample') ph = 1;
+  if(g.done>0 || g.doing>0 || o.status==='in_production') ph = 2;
+  if((g.total>0 && g.done===g.total) || o.status==='qc' || o.qcResult) ph = 3;
+  if(o.status==='done_waiting' || o.status==='delivered') ph = 4;
+  g.phaseIdx = ph;
+  g.phaseDone = (o.status==='delivered');
+  return g;
+}
+// % tổng của đơn (dùng cho bảng, xuất Excel, dự báo giao)
+function orderOverallProgress(o){ return orderProgressInfo(o).pct; }
+// Mô tả 1 công đoạn thành 1 dòng gọn: [A] Tiện @CK368 · 👤 Sê · từ 21/7 · 2h
+function stageInlineHtml(s, itemName){
+  if(!s) return '';
+  const st = stageState(s);
+  return `<span style="background:${STAGE_COLORS[st]};color:${st==='pending'?'#475569':'#fff'};border-radius:4px;padding:1px 6px;font-weight:800;margin-right:5px">${esc(s.code||'?')}</span>`
+    + `<b>${esc(s.name||'')}</b>`
+    + (itemName?` <span class="muted">▦ ${esc(truncate(itemName,18))}</span>`:'')
+    + (s.location?` <span style="color:#0EA5E9">@${esc(s.location)}</span>`:'')
+    + (s.assignee?` · 👤 ${esc(staffName(s.assignee))}`:'')
+    + (s.startDate?` · <span class="muted">từ ${fmtDate(s.startDate)}</span>`:'')
+    + ` · <span class="muted">${stageHours(s)}h</span>`;
+}
+// KHỐI TIẾN ĐỘ trong ô Xem đơn: thanh %, chuỗi 5 giai đoạn, đang ở công đoạn nào, kế tiếp là gì.
+// Tất cả TỰ TÍNH từ công đoạn + cổng G0/QC — không có ô nào nhập tay.
+function orderProgressBlockHtml(o){
+  const g = orderProgressInfo(o);
+  const barColor = g.late ? 'var(--st-late)' : (g.pct>=100?'var(--st-done)':(g.pct>=50?'var(--st-prod)':'var(--st-planned)'));
+  // Chuỗi 5 giai đoạn. Các chặng CÓ CỔNG CỨNG (G0 / QC / Giao) chỉ được tô xanh khi cổng đó
+  // thực sự đạt — đã đi qua mà cổng chưa đạt thì báo ⚠ (bỏ qua quy trình), không tô xanh giả.
+  const gateOf = i => (i===0 ? intakeComplete(o.intake)
+                    : i===3 ? (o.qcResult==='pass')
+                    : i===4 ? (o.status==='delivered') : null);
+  const steps = ORDER_PHASES.map((p,i)=>{
+    const passed = g.phaseDone || i < g.phaseIdx;
+    const now    = !g.phaseDone && i === g.phaseIdx;
+    const gate   = gateOf(i);
+    const state  = (gate===true) ? 'done' : (passed ? (gate===false?'skip':'done') : (now?'now':'todo'));
+    const sty = {
+      done:{bg:'#22C55E', fg:'#fff',    bd:'transparent',        sfx:' ✓'},
+      skip:{bg:'#FEF3C7', fg:'#B45309', bd:'#F59E0B',            sfx:' ⚠'},
+      now :{bg:g.late?'var(--st-late)':'#F59E0B', fg:'#fff', bd:'transparent', sfx:''},
+      todo:{bg:'#F1F5F9', fg:'#94A3B8', bd:'var(--line)',        sfx:''},
+    }[state];
+    return `<span title="${state==='skip'?'Đã qua chặng này nhưng cổng chưa đạt/chưa ghi nhận':''}" style="display:inline-flex;align-items:center;gap:4px;background:${sty.bg};color:${sty.fg};border:1px ${state==='skip'?'dashed':'solid'} ${sty.bd};border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:${state==='now'?800:600};white-space:nowrap;${state==='now'?`box-shadow:0 0 0 3px ${g.late?'rgba(239,68,68,.22)':'rgba(245,158,11,.22)'}`:''}">${p.ic} ${esc(p.label)}${sty.sfx}</span>`;
+  }).join('<span style="color:#CBD5E1;font-weight:900;margin:0 1px">›</span>');
+  // Đang ở công đoạn nào
+  let whereHtml;
+  if(!g.total){
+    whereHtml = `<span class="muted">— chưa khai báo công đoạn nên % suy từ trạng thái. Vào <b>Sửa</b> → thêm công đoạn để app tính chính xác. —</span>`;
+  } else if(g.phaseDone){
+    whereHtml = `<span style="color:#15803D;font-weight:700">✓ Đã giao — đóng đơn</span>`;
+  } else if(g.current){
+    const st = stageState(g.current);
+    const tag = st==='late' ? '<span style="color:var(--st-late);font-weight:800">⏰ TRỄ</span>'
+              : (st==='doing' ? '<span style="color:#B45309;font-weight:800">▶ đang làm</span>'
+              : '<span class="muted" style="font-weight:700">⏸ chưa bắt đầu</span>');
+    whereHtml = `<div>📍 <b>Đang ở:</b> ${stageInlineHtml(g.current, g.currentItem)} — ${tag}</div>`
+      + (g.next ? `<div style="margin-top:3px;opacity:.75">⏭ <b>Kế tiếp:</b> ${stageInlineHtml(g.next, g.nextItem)}</div>` : '');
+  } else {
+    whereHtml = `<span style="color:#15803D;font-weight:700">✓ Tất cả công đoạn đã xong — chờ QC / giao hàng</span>`;
+  }
+  return `<div style="border:1px solid var(--line);border-left:4px solid ${barColor};border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#F8FAFC">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <b style="font-size:12px">📊 Tiến độ (tự tính)</b>
+      <div class="bar-track" style="flex:1;min-width:140px;margin:0"><div class="bar-fill" style="width:${g.pct}%;background:${barColor}"></div></div>
+      <span style="font-size:19px;font-weight:900;color:${barColor};min-width:52px;text-align:right">${g.pct}%</span>
+    </div>
+    <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:9px">${steps}</div>
+    <div style="margin-top:9px;font-size:12.5px;line-height:1.55">${whereHtml}</div>
+    <div class="muted" style="margin-top:7px;font-size:11px;border-top:1px dashed var(--line);padding-top:6px">
+      ${g.total?`🔧 ${g.done}/${g.total} công đoạn xong${g.doing?` · ${g.doing} đang làm`:''} · phần gia công ${g.mach}%`:'🔧 chưa có công đoạn'}
+      · ${intakeComplete(o.intake)?'G0 ✓':'G0 ✗'} · ${o.qcResult==='pass'?'QC ✓':(o.qcResult==='fail'?'QC ✕':'QC —')} · ${o.status==='delivered'?'Đã giao ✓':'Chưa giao'}
+      <span title="Cách tính: G0 đủ thông tin 5% + gia công 75% (trọng số theo giờ, công đoạn đang làm tính theo ngày đã trôi) + QC Đạt 10% + đã giao 10%. Chưa giao thì tối đa 99%.">ⓘ</span>
+    </div>
+  </div>`;
 }
 function progressCellHtml(o){
-  const p = orderOverallProgress(o);
-  const color = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
-  // Đếm tổng công đoạn (gồm cả của chi tiết con) để hiện "đã xong / tổng"
-  let allStages = (o.stages||[]).filter(Boolean).slice();
-  (o.items||[]).filter(Boolean).forEach(it=> allStages = allStages.concat((it.stages||[]).filter(Boolean)));
-  const nAll = allStages.length, nDone = allStages.filter(s=>stageState(s)==='done').length;
+  const g = orderProgressInfo(o);
+  const p = g.pct;
+  const color = g.late?'var(--st-late)':(p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)'));
+  const ph = ORDER_PHASES[g.phaseIdx] || ORDER_PHASES[0];
+  // Đang ở giai đoạn nào + công đoạn nào (hover để xem chi tiết)
+  const curTxt = g.phaseDone ? 'Đã giao'
+    : (g.current ? `${g.current.code||'?'} ${g.current.name||''}` : (g.total?'xong CĐ — chờ QC/giao':''));
   return `<div style="display:flex;align-items:center;gap:6px">
     <div class="bar-track" style="width:60px;margin:0"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
     <span style="font-size:11px;font-weight:700;min-width:30px">${p}%</span>
-    ${nAll?`<span style="font-size:9px;color:var(--muted)" title="Công đoạn đã xong / tổng (cả chi tiết con)">${nDone}/${nAll} CĐ</span>`:''}
-  </div>`;
+    ${g.total?`<span style="font-size:9px;color:var(--muted)" title="Công đoạn đã xong / tổng (cả chi tiết con)">${g.done}/${g.total} CĐ</span>`:''}
+  </div>
+  <div style="font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px" title="Giai đoạn: ${esc(ph.label)}${curTxt?' — đang ở công đoạn '+esc(curTxt):''}">${ph.ic} ${esc(ph.label)}${curTxt?' · <b>'+esc(truncate(curTxt,16))+'</b>':''}</div>`;
 }
 // Nhãn nơi thực hiện của chi tiết con: nội bộ / outsource / mua hàng
 function itemAssignLabel(a){
@@ -4116,12 +4286,17 @@ function lateOrderAttribution(){
   return map;
 }
 // QUY TRÌNH BẮT BUỘC + HƯỚNG DẪN — hiển thị ngay trong app (xưởng phải follow)
+let guideSub = 'sop';   // 'sop' = quy trình bắt buộc · 'usage' = hướng dẫn dùng app
+function setGuideSub(s){ guideSub = s; renderGuide(); }
 function renderGuide(){
   const el=document.getElementById('view-guide'); if(!el) return;
+  const tabBtn=(k,label)=>`<button class="${guideSub===k?'':'ghost'} sm" onclick="setGuideSub('${k}')" style="${guideSub===k?'':'border-color:var(--brand);color:var(--brand)'}">${label}</button>`;
+  const subNav=`<div class="toolbar" style="margin-bottom:10px">${tabBtn('sop','📋 Quy trình BẮT BUỘC')}${tabBtn('usage','📱 Hướng dẫn dùng app (laptop · điện thoại)')}</div>`;
+  if(guideSub==='usage'){ el.innerHTML = subNav + guideUsageHtml(); return; }
   const step=(cls,gate,title,who,items)=>`<div class="card" style="border-left:5px solid ${cls};margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:14px">${gate?`<span style="background:${cls};color:#fff;border-radius:5px;padding:1px 8px;font-size:11px;font-weight:800">${gate}</span> `:''}${title}</b><span style="font-size:11px;color:#fff;background:#475569;border-radius:5px;padding:1px 7px;font-weight:700">${who}</span></div>
     <ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55">${items.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
-  el.innerHTML=`
+  el.innerHTML=subNav+`
     <h2 class="sec"><span class="bar"></span>📋 Quy trình vận hành xưởng CK368 — BẮT BUỘC</h2>
     <div class="card" style="background:#fef2f2;border:1.5px solid var(--st-late)">
       <b style="color:var(--st-late)">⛔ NGUYÊN TẮC: App là nguồn dữ liệu duy nhất. Đơn chỉ ĐƯỢC XUẤT XƯỞNG khi qua đủ 3 cổng:</b>
@@ -4166,6 +4341,151 @@ function renderGuide(){
       </div>
       <p class="small muted" style="margin-bottom:0">Mở → bấm 🖨 In A4 để ban hành/treo xưởng. Quy trình trên là BẮT BUỘC cho mọi đơn trước khi xuất xưởng.</p>
     </div>`;
+}
+// ===== HƯỚNG DẪN DÙNG APP (hiển thị trong tab + xuất ra file Word gửi nhóm) =====
+function guideUsageHtml(){
+  const card=(title,body)=>`<div class="card" style="margin-bottom:10px"><b style="font-size:14px">${title}</b><div style="font-size:12.5px;line-height:1.6;margin-top:6px">${body}</div></div>`;
+  const li=arr=>`<ul style="margin:4px 0;padding-left:18px">${arr.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  const ol=arr=>`<ol style="margin:4px 0;padding-left:20px">${arr.map(x=>`<li style="margin-bottom:3px">${x}</li>`).join('')}</ol>`;
+  return `
+    <div class="card" style="background:#eff6ff;border:1.5px solid #2563EB">
+      <b style="color:#1d4ed8;font-size:15px">📱 DHP Manager là gì & vì sao có nó</b>
+      <div style="font-size:12.5px;line-height:1.6;margin-top:6px">
+        Đây là <b>một nơi duy nhất</b> để quản lý <b>tác vụ – công việc – khối lượng (workload)</b> của cả xưởng CK368:
+        đơn hàng, phân công, tiến độ, chất lượng và KPI. Ai cũng nhìn <b>cùng một dữ liệu, cập nhật real-time</b> —
+        thay cho việc mỗi người một file Google Sheet + nhắn Zalo rời rạc.
+        <div style="margin-top:6px">Mục tiêu: nhìn phát biết ngay <b>đơn đang ở đâu · ai đang làm · bao nhiêu % · có trễ không</b>, và
+        chặn hàng chưa đạt không cho xuất xưởng.</div>
+      </div>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>① Vì sao làm app này</h2>
+    ${card('Lý do',li([
+      'Đơn – việc – tiến độ trước đây nằm rải rác ở Google Sheet, Zalo, giấy → không ai nắm tổng thể.',
+      'Cần quản lý <b>khối lượng công việc</b> (workload) từng người/đối tác để biết ai quá tải, đơn nào sắp trễ.',
+      'Cần <b>ràng buộc quy trình</b>: đủ 3 cổng (G0 → Sản xuất+Đo → QC Đạt) mới được giao, tránh giao hàng lỗi.',
+      'Cần số liệu <b>khách quan để chấm KPI</b>, không cảm tính, không sửa tay.',
+    ]))}
+
+    <h2 class="sec"><span class="bar"></span>② Được gì so với Google Sheet trước đây</h2>
+    <div class="card" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)">Việc</th>
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)">Google Sheet (trước)</th>
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)">DHP Manager (nay)</th>
+        </tr></thead>
+        <tbody>
+        ${[
+          ['Biết đơn đang ở đâu / bao nhiêu %','Tự nhẩm, dễ sai','App <b>tự tính %</b> + chỉ rõ đang ở công đoạn nào'],
+          ['Dự kiến ngày xong / cảnh báo trễ','Không có','Tự suy ngày hoàn thành, <b>tô đỏ khi trễ</b>'],
+          ['Phân quyền','Ai cũng sửa được, dễ hỏng công thức','<b>4 cấp</b>: Xem · Thợ · Điều phối · Quản lý'],
+          ['Chặn giao hàng lỗi','Không ràng buộc','Chưa <b>QC Đạt</b> thì <b>khoá</b> nút xuất xưởng'],
+          ['Chấm KPI','Làm tay, cảm tính','<b>Tự chấm</b> theo sự kiện thật, không sửa tay'],
+          ['In phiếu (G0, đo, QC, chứng nhận)','Soạn lại mỗi lần','Bấm <b>in sẵn theo mẫu chuẩn</b>'],
+          ['Dùng trên điện thoại','Khó thao tác','<b>Cài như app (PWA)</b>, mở nhanh'],
+          ['Phân công','Ghi chú rời','<b>Lịch trực quan</b> gắn thẳng mã đơn'],
+          ['Hàng lỗi (NCR)','Rải rác','Gắn với <b>đơn · công đoạn · người</b>'],
+        ].map(r=>`<tr><td style="padding:6px 10px;border-bottom:1px solid var(--line);font-weight:600">${r[0]}</td><td style="padding:6px 10px;border-bottom:1px solid var(--line);color:var(--muted)">${r[1]}</td><td style="padding:6px 10px;border-bottom:1px solid var(--line)">${r[2]}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>③ Cách dùng — từng bước</h2>
+    ${card('💻 Trên LAPTOP',ol([
+      'Mở trình duyệt → vào địa chỉ app (bookmark <b>huynhtrungkiet-cloud.github.io/dhp-manager</b>). Nhập <b>mật khẩu</b> vào.',
+      'Bấm <b>🔓 Đổi quyền</b> (góc trên phải) → nhập mật khẩu của mình để có quyền Thợ / Điều phối / Quản lý.',
+      'Xem việc: tab <b>📅 Lịch phân công &amp; Đơn hàng</b> — cuộn xuống bảng <b>Đơn hàng &amp; Tiến độ</b>; gõ ô <b>Tìm</b> để lọc theo mã/tên/khách.',
+      'Xem chi tiết 1 đơn: bấm <b>Xem</b> → hiện khối <b>📊 Tiến độ</b> (đang ở giai đoạn nào, công đoạn nào, %).',
+      '<b>Thêm đơn</b> (Điều phối): <b>＋ Thêm đơn hàng</b> → điền tên hàng, khách, số lượng, hạn → tick <b>checklist G0</b> → Lưu.',
+      '<b>Khai công đoạn</b>: mở <b>Sửa</b> đơn → thêm chuỗi công đoạn (A Tiện, B Phay…) + người làm + giờ + kích thước cần đo.',
+      '<b>Cập nhật khi làm</b> (Thợ): đổi trạng thái công đoạn <b>Đang → Xong</b>, nhập số đo. % tự cập nhật.',
+      '<b>QC</b> (Điều phối/QC): nhập số đo cuối → chọn <b>Đạt / Không đạt</b>. Đạt mới mở <b>📜 Chứng nhận xuất xưởng</b>.',
+      '<b>In phiếu</b>: trong ô Xem đơn có các nút in G0 / phiếu gia công / bộ phiếu đo / QC / chứng nhận.',
+      '<b>Lưu &amp; Đồng bộ</b>: bấm <b>💾 Lưu &amp; Đồng bộ</b> để dữ liệu lên chung (real-time cho mọi người).',
+    ]))}
+    ${card('📱 Trên ĐIỆN THOẠI',ol([
+      'Mở <b>Chrome (Android)</b> hoặc <b>Safari (iPhone)</b> → vào cùng địa chỉ app → nhập mật khẩu.',
+      'Cài như app: Android bấm <b>⋮ → Thêm vào màn hình chính</b>; iPhone bấm <b>Chia sẻ ⬆ → Thêm vào MH chính</b>. Sau đó mở bằng icon như một app.',
+      '<b>🔓 Đổi quyền</b> → nhập mật khẩu để tick được công đoạn.',
+      '<b>Thợ ngoài xưởng</b>: mở đơn đang làm → bấm công đoạn <b>Đang → Xong</b>, nhập số đo ngay tại máy. Xoay ngang máy để xem bảng dễ hơn.',
+      'Xem nhanh <b>việc hôm nay</b> và các đơn <b>sắp tới hạn</b> (băng vàng đầu trang).',
+      'Nhớ bấm <b>💾 Lưu &amp; Đồng bộ</b> sau khi cập nhật để mọi người thấy.',
+    ]))}
+    <div class="card" style="background:#fffbeb;border:1px solid #f59e0b">
+      <b style="color:#b45309">⚠ Lưu ý chung</b>
+      ${li([
+        'App là <b>nguồn dữ liệu duy nhất</b> — mọi cập nhật làm trên app, không dùng file rời song song.',
+        'Mật khẩu <b>cấp riêng từng người</b>, không chia sẻ chéo (để KPI gắn đúng người).',
+        'Chưa bấm <b>Lưu &amp; Đồng bộ</b> thì người khác chưa thấy thay đổi.',
+      ])}
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>④ Phân quyền &amp; KPI theo từng phase</h2>
+    <div class="card" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)">Cấp quyền</th>
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)">Làm được gì</th>
+        </tr></thead>
+        <tbody>
+        ${[
+          ['👁 Xem','Xem mọi thứ, không sửa. Dành cho BGĐ/khách nội bộ theo dõi.'],
+          ['👷 Thợ','Xem + <b>tick công đoạn Đang/Xong</b> + <b>nhập số đo</b>. Không sửa đơn.'],
+          ['🛠 Điều phối / TPKT','Thêm/sửa đơn, khai công đoạn, phân công, làm <b>QC</b>, in chứng nhận.'],
+          ['👑 Quản lý / GĐ','Toàn quyền + <b>cấu hình</b> (nhân sự, dữ liệu, đồng bộ).'],
+        ].map(r=>`<tr><td style="padding:6px 10px;border-bottom:1px solid var(--line);font-weight:700;white-space:nowrap">${r[0]}</td><td style="padding:6px 10px;border-bottom:1px solid var(--line)">${r[1]}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${card('KPI tự chấm theo từng phase (thang 100đ, không sửa tay — từ 06/07/2026)',
+      '<div style="margin-bottom:6px">Mỗi đơn đi qua 5 phase. App gắn điểm cộng/trừ đúng người chịu trách nhiệm ở phase đó:</div>'+
+      `<div style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="text-align:left;padding:6px 9px;border-bottom:1px solid var(--line)">Phase</th>
+          <th style="text-align:left;padding:6px 9px;border-bottom:1px solid var(--line)">Ai chịu</th>
+          <th style="text-align:left;padding:6px 9px;border-bottom:1px solid var(--line)">Cộng / Trừ điểm</th>
+        </tr></thead><tbody>
+        ${[
+          ['📥 G0 Tiếp nhận','Điều phối','Ra đơn chậm / thiếu G0 → tính <b>Công ty</b> (ngoài dự kiến), không trừ cá nhân.'],
+          ['🔧 Sản xuất','Thợ','+1 công đoạn <b>đúng/sớm hạn</b> · +1 <b>đạt chất lượng</b>. −3 <b>sai kích thước</b>. Nút thắt gây trễ đơn: −5/đơn.'],
+          ['🛡 QC','QC/Điều phối','Hàng hư còn dùng −3 · <b>hàng phế −10</b> (gắn người gia công qua NCR).'],
+          ['🚚 Giao','Kho/Giao vận','Xưởng đã xong đúng hạn mà <b>giao trễ</b> → −5 tính <b>Kho/Giao vận</b>.'],
+          ['⏱ Giờ công','Điều phối','−1 <b>thiếu giờ</b> (ngày-người) · −2 <b>vượt giờ</b> khai sai chưa sửa.'],
+        ].map(r=>`<tr><td style="padding:6px 9px;border-bottom:1px solid var(--line);font-weight:700;white-space:nowrap">${r[0]}</td><td style="padding:6px 9px;border-bottom:1px solid var(--line);white-space:nowrap">${r[1]}</td><td style="padding:6px 9px;border-bottom:1px solid var(--line)">${r[2]}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div style="margin-top:7px;font-size:12px">Thưởng tốc độ + chất lượng cộng dồn nhưng <b>trần +10</b>. Trễ do <b>xưởng quá tải</b> (nhận việc >110% năng lực) tính là <b>Công ty</b>, không trừ điều phối. Xem điểm chi tiết ở tab <b>📊 KPI &amp; Báo cáo</b> — bấm vào từng số để xem đơn đằng sau.</div>`
+    )}
+
+    <h2 class="sec"><span class="bar"></span>⑤ Tải hướng dẫn (file Word gửi nhóm)</h2>
+    <div class="card">
+      <div class="toolbar">
+        <button onclick="downloadUsageDoc()" style="background:#2563EB">⬇ Tải file hướng dẫn (.doc) — gửi lên nhóm công ty</button>
+      </div>
+      <p class="small muted" style="margin-bottom:0">Tải về file Word mở bằng Microsoft Word / Google Docs, gửi thẳng lên nhóm Zalo/email công ty — khỏi tốn buổi training.</p>
+    </div>`;
+}
+// Xuất đúng nội dung hướng dẫn ra 1 file .doc (Word mở được) để gửi nhóm — không cần training
+function downloadUsageDoc(){
+  const inner = guideUsageHtml()
+    .replace(/<button[\s\S]*?<\/button>/g,'')                 // bỏ các nút bấm
+    .replace(/<div class="toolbar"[^>]*>\s*<\/div>/g,'')
+    .replace(/var\(--line\)/g,'#d1d5db').replace(/var\(--muted\)/g,'#6b7280').replace(/var\(--brand\)/g,'#DA251D');
+  const today=fmtDate(todayStr());
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Hướng dẫn dùng DHP Manager</title></head>
+  <body style="font-family:'Segoe UI',Arial,sans-serif;color:#111;max-width:820px;margin:0 auto;padding:24px">
+    <div style="text-align:center;border-bottom:3px solid #DA251D;padding-bottom:10px;margin-bottom:16px">
+      <h1 style="color:#DA251D;margin:0">DHP Manager — Hướng dẫn sử dụng</h1>
+      <div style="color:#555">Quản lý sản xuất CK368 · Đại Hồng Phát · Cập nhật ${today}</div>
+    </div>
+    ${inner}
+    <hr style="margin-top:24px"><p style="color:#888;font-size:12px;text-align:center">Tài liệu nội bộ Đại Hồng Phát — DHP Manager. Mọi cập nhật đơn/việc thực hiện trực tiếp trên app.</p>
+  </body></html>`;
+  const blob = new Blob(['﻿'+html], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='HuongDan_DHP_Manager.doc'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
 }
 // ===== KPI TỰ ĐỘNG (không cho can thiệp): trễ→điều phối, hư hỏng→thợ, thưởng tốc độ+chất lượng =====
 function _kn(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }

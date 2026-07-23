@@ -2953,6 +2953,11 @@ function saveOrder(){
     statusHistory: [],
     updatedAt: new Date().toISOString(),
   };
+  // Tự ĐÓNG MỐC NGÀY theo trạng thái (không bắt nhập tay) — KPI/dự báo dựa vào các mốc này:
+  //  • done_waiting / delivered  → đóng mốc "Hoàn thành — chờ giao" (completedDate) = xưởng xong.
+  //  • delivered                 → đóng luôn "Ngày giao" (deliveredDate).
+  if((rec.status==='done_waiting'||rec.status==='delivered') && !rec.completedDate) rec.completedDate = todayStr();
+  if(rec.status==='delivered' && !rec.deliveredDate) rec.deliveredDate = todayStr();
   const idx = DATA.orders.findIndex(o=>o.id===rec.id);
   if(idx>=0){
     rec.holdReason = DATA.orders[idx].holdReason||'';
@@ -3070,27 +3075,31 @@ function orderProgressInfo(o){
   if(curIdx>=0){ g.current = all[curIdx].s; g.currentItem = all[curIdx].it; }
   const nxt = all.slice(curIdx>=0?curIdx+1:0).find(x=>stageState(x.s)!=='done');
   if(nxt){ g.next = nxt.s; g.nextItem = nxt.it; }
-  // Phần gia công (0..100)
-  let mach;
+  // Phần gia công (0..100) — TỪ CÔNG ĐOẠN. null nếu đơn chưa khai công đoạn nào.
+  let machFromWork;
   if(o.items && o.items.length){
     const vals = o.items.filter(Boolean).map(itemProgress);
-    mach = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+    machFromWork = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
   } else {
-    mach = stageWeightedPct(o.stages);
+    machFromWork = stageWeightedPct(o.stages);
   }
-  if(mach==null){                                   // chưa khai công đoạn nào
+  let pct;
+  if(machFromWork!=null){
+    // CÓ công đoạn → chấm theo cổng: G0 5% · gia công 75% · QC Đạt 10% · đã giao 10%
+    g.mach = Math.max(0, Math.min(100, Math.round(machFromWork)));
+    const g0 = intakeComplete(o.intake) ? 5 : 0;
+    const qc = o.qcResult==='pass' ? 10 : 0;
+    const dl = o.status==='delivered' ? 10 : 0;
+    pct = Math.round(g0 + g.mach*0.75 + qc + dl);
+  } else {
+    // CHƯA khai công đoạn → suy trực tiếp từ % nhập tay (nếu có) hoặc mốc trạng thái (đã là % đầy đủ)
     const manual = parseFloat(o.progress);
-    mach = !isNaN(manual) ? manual : (STATUS_BASE_PCT[o.status]!=null ? STATUS_BASE_PCT[o.status] : 0);
+    pct = !isNaN(manual) ? manual : (STATUS_BASE_PCT[o.status]!=null ? STATUS_BASE_PCT[o.status] : 0);
+    g.mach = Math.max(0, Math.min(100, Math.round(pct)));
   }
-  g.mach = Math.max(0, Math.min(100, Math.round(mach)));
-  // Cộng điểm các cổng
-  const g0 = intakeComplete(o.intake) ? 5 : 0;
-  const qc = o.qcResult==='pass' ? 10 : 0;
-  const dl = o.status==='delivered' ? 10 : 0;
-  let pct = Math.round(g0 + g.mach*0.75 + qc + dl);
   if(o.status==='delivered') pct = 100;
   else pct = Math.min(99, pct);                     // chưa giao thì không bao giờ báo 100%
-  g.pct = Math.max(0, pct);
+  g.pct = Math.max(0, Math.round(pct));
   // Đang ở GIAI ĐOẠN nào (5 chặng lớn)
   let ph = intakeComplete(o.intake) ? 1 : 0;
   if(o.status==='wait_material' || o.status==='wait_sample') ph = 1;
@@ -3291,6 +3300,8 @@ function quickStatusChange(id, newStatus){
   o.statusHistory.push({status:newStatus, date:todayStr(), note:o.holdReason||''});
   o.status = newStatus;
   o.updatedAt = new Date().toISOString();
+  // Đóng mốc ngày: xưởng xong (done_waiting/delivered) → completedDate; đã giao → deliveredDate
+  if((newStatus==='done_waiting'||newStatus==='delivered') && !o.completedDate) o.completedDate = todayStr();
   if(newStatus==='delivered' && !o.deliveredDate) o.deliveredDate = todayStr();
   save();
 }

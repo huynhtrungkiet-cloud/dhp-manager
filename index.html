@@ -4584,7 +4584,10 @@ function kpiScores(){
     const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const need=needHours(ds); if(!need) continue;
     internal.forEach(s=>{ const got=(dh[s.id]&&dh[s.id][ds])||0;
-      if(got<need){ shortfall++; shortEv.push({date:ds,who:s.name,got:got,need:need}); }
+      // CHỈ tính "thiếu giờ" khi ngày đó ĐÃ ghi giờ một phần (got>0) nhưng < chuẩn.
+      // Ngày hoàn toàn TRỐNG (got=0) coi như CHƯA nhập lịch, KHÔNG phạt điều phối
+      // (tránh trừ oan lúc mới triển khai chưa nhập đủ giờ). Đổi lại: bỏ "got>0 &&" nếu muốn phạt cả ngày trống.
+      if(got>0 && got<need){ shortfall++; shortEv.push({date:ds,who:s.name,got:got,need:need}); }
       else if(got>need+1){ overCount++; overEv.push({date:ds,who:s.name,got:got,need:need}); }   // VƯỢT GIỜ: khai giờ >chuẩn quá 1h
     });
   }

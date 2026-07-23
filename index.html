@@ -4475,7 +4475,62 @@ function guideUsageHtml(){
         <div style="margin-top:7px;font-size:12px">Thưởng tốc độ + chất lượng cộng dồn nhưng <b>trần +10</b>. Trễ do <b>xưởng quá tải</b> (nhận việc >110% năng lực) tính là <b>Công ty</b>, không trừ điều phối. Xem điểm chi tiết ở tab <b>📊 KPI &amp; Báo cáo</b> — bấm vào từng số để xem đơn đằng sau.</div>`
     )}
 
-    <h2 class="sec"><span class="bar"></span>⑤ Tải hướng dẫn (file Word gửi nhóm)</h2>
+    <h2 class="sec"><span class="bar"></span>⑤ Đồng bộ dữ liệu — để mọi máy dùng CHUNG (Supabase)</h2>
+    <div class="card" style="background:#fffbeb;border:1px solid #f59e0b">
+      <b style="color:#b45309">Vì sao cần bước này</b>
+      <div style="font-size:12.5px;line-height:1.6;margin-top:6px">
+        Mặc định app lưu dữ liệu <b>trong trình duyệt của từng máy</b> (localStorage) → mỗi máy một bản
+        RIÊNG, không thấy của nhau. Muốn cả công ty <b>nhìn chung một dữ liệu, cập nhật tức thì</b>
+        (không cần F5), phải bật <b>Supabase</b> — làm <b>1 lần</b>, mọi máy dán cùng thông tin là xong.
+      </div>
+    </div>
+    ${card('🔧 Cài lần đầu — máy QUẢN LÝ (máy đang có dữ liệu)',ol([
+      'Vào tab <b>⚙ Dữ liệu &amp; Đồng bộ</b> → khối <b>⚡ Supabase</b>.',
+      'Dán <b>Supabase Project URL</b> (dạng <i>https://xxxxx.supabase.co</i>) vào ô trên.',
+      'Dán <b>anon public key</b> vào ô dưới.',
+      'Bấm <b>💾 Lưu &amp; Kết nối</b> → hiện dòng <b>“Đã cấu hình — mở app sẽ tự kết nối.”</b>',
+      'Bấm <b>⬆ Đẩy toàn bộ lên Supabase</b> để đưa dữ liệu hiện có lên server (chỉ máy đầu tiên làm bước này).',
+      'Tick ô <b>🔄 Tự động đồng bộ</b> (khuyên bật).',
+    ]))}
+    ${card('💻📱 Các máy KHÁC (điều phối · thợ · điện thoại)',ol([
+      'Mở app → vào tab <b>⚙ Dữ liệu &amp; Đồng bộ</b>.',
+      'Dán <b>ĐÚNG CÙNG</b> Project URL + anon key như máy quản lý → <b>💾 Lưu &amp; Kết nối</b>.',
+      'Tick <b>🔄 Tự động đồng bộ</b>. App sẽ <b>tự Tải về</b> dữ liệu chung.',
+      '<b>Không</b> bấm “⬆ Đẩy toàn bộ” ở máy mới (kẻo ghi đè dữ liệu chung bằng dữ liệu trống). Chỉ máy đầu tiên đẩy lên.',
+    ]))}
+    <div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0">
+      <b style="color:#15803d">Sau khi bật xong</b>
+      ${li([
+        'Sửa ở máy A → máy B <b>thấy ngay</b>, không cần F5.',
+        'URL + <b>anon key</b> là khoá <b>công khai</b>, dán an toàn. <b>Không</b> dán “service_role key”.',
+        'Đã bật Supabase thì dữ liệu nằm trên <b>server</b> — xoá cache / đổi máy vẫn còn, mở lại tự tải về.',
+      ])}
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>⑥ Máy bị kẹt / không vào được / thấy bản cũ → xóa cache</h2>
+    <div class="card" style="margin-bottom:10px">
+      <div style="font-size:12.5px;line-height:1.6">
+        App cài dạng <b>PWA</b> (chạy được cả khi mạng yếu) nên đôi khi máy <b>giữ lại bản cũ</b> trong bộ nhớ đệm
+        → mở ra thấy bản cũ, trắng trang, hoặc kẹt. Làm lần lượt từ nhẹ tới nặng:
+      </div>
+    </div>
+    ${card('💻 Trên máy tính',ol([
+      '<b>Bước 1 — tải lại bỏ cache (KHÔNG mất dữ liệu):</b> nhấn <b>Ctrl + F5</b> (hoặc <b>Ctrl + Shift + R</b>). Máy Mac: <b>Cmd + Shift + R</b>.',
+      '<b>Bước 2 — nếu vẫn thấy bản cũ:</b> nhấn <b>F12</b> → chọn tab <b>Application</b> → mục <b>Service Workers</b> → bấm <b>Unregister</b> → đóng F12 → <b>Ctrl + F5</b>.',
+      '<b>Cách khác của Bước 2:</b> menu Chrome <b>⋮ → Xóa dữ liệu duyệt web</b> → CHỈ tick <b>“Hình ảnh và tệp trong bộ nhớ đệm”</b> (KHÔNG tick Cookie / dữ liệu trang) → <b>Xóa</b>. An toàn, không mất dữ liệu app.',
+      '<b>Bước 3 — RESET hẳn (⚠ mất dữ liệu lưu trong máy):</b> F12 → <b>Application</b> → <b>Storage</b> → <b>Clear site data</b>. <b>Chỉ làm khi đã bật Supabase HOẶC đã Xuất JSON</b> — sau đó mở lại app rồi <b>Tải về từ Supabase</b>.',
+    ]))}
+    ${card('📱 Trên điện thoại',ol([
+      '<b>Android (Chrome):</b> <b>⋮ → Cài đặt → Quyền riêng tư và bảo mật → Xóa dữ liệu duyệt web</b> → chọn <b>“Hình ảnh và tệp được lưu trong bộ nhớ đệm”</b> → <b>Xóa</b>. Rồi mở lại app.',
+      '<b>iPhone (Safari):</b> vào <b>Cài đặt → Safari → Xóa Lịch sử và Dữ liệu Trang web</b> (lưu ý: xoá cho mọi trang) → mở lại app.',
+      'Nếu đã cài icon ra màn hình chính mà vẫn kẹt: <b>xoá icon</b> rồi mở lại bằng trình duyệt, “Thêm vào màn hình chính” lại.',
+    ]))}
+    <div class="card" style="background:#eff6ff;border:1px solid #93c5fd">
+      <b style="color:#1d4ed8">💡 Mẹo</b>
+      <div style="font-size:12.5px;line-height:1.6;margin-top:4px">Khi đã bật <b>Supabase (mục ⑤)</b>, cứ mạnh dạn xoá cache — dữ liệu nằm trên server, mở lại app tự tải về đầy đủ. Chỉ cần cẩn thận với “Clear site data” khi máy đó <b>chưa</b> đồng bộ.</div>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>⑦ Tải hướng dẫn (file Word gửi nhóm)</h2>
     <div class="card">
       <div class="toolbar">
         <button onclick="downloadUsageDoc()" style="background:#2563EB">⬇ Tải file hướng dẫn (.doc) — gửi lên nhóm công ty</button>

@@ -1,0 +1,70 @@
+﻿<!doctype html><html><head><meta charset="utf-8"><title>Hướng dẫn dùng DHP Manager</title></head>
+<body style="font-family:'Segoe UI',Arial,sans-serif;color:#111;max-width:820px;margin:0 auto;padding:24px">
+<div style="text-align:center;border-bottom:3px solid #DA251D;padding-bottom:10px;margin-bottom:16px">
+<h1 style="color:#DA251D;margin:0">DHP Manager — Hướng dẫn sử dụng</h1>
+<div style="color:#555">Quản lý sản xuất CK368 · Đại Hồng Phát · Cập nhật 23/7/2026</div></div>
+
+    <div class="card" style="background:#eff6ff;border:1.5px solid #2563EB">
+      <b style="color:#1d4ed8;font-size:15px">📱 DHP Manager là gì & vì sao có nó</b>
+      <div style="font-size:12.5px;line-height:1.6;margin-top:6px">
+        Đây là <b>một nơi duy nhất</b> để quản lý <b>tác vụ – công việc – khối lượng (workload)</b> của cả xưởng CK368:
+        đơn hàng, phân công, tiến độ, chất lượng và KPI. Ai cũng nhìn <b>cùng một dữ liệu, cập nhật real-time</b> —
+        thay cho việc mỗi người một file Google Sheet + nhắn Zalo rời rạc.
+        <div style="margin-top:6px">Mục tiêu: nhìn phát biết ngay <b>đơn đang ở đâu · ai đang làm · bao nhiêu % · có trễ không</b>, và
+        chặn hàng chưa đạt không cho xuất xưởng.</div>
+      </div>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>① Vì sao làm app này</h2>
+    <div class="card" style="margin-bottom:10px"><b style="font-size:14px">Lý do</b><div style="font-size:12.5px;line-height:1.6;margin-top:6px"><ul style="margin:4px 0;padding-left:18px"><li>Đơn – việc – tiến độ trước đây nằm rải rác ở Google Sheet, Zalo, giấy → không ai nắm tổng thể.</li><li>Cần quản lý <b>khối lượng công việc</b> (workload) từng người/đối tác để biết ai quá tải, đơn nào sắp trễ.</li><li>Cần <b>ràng buộc quy trình</b>: đủ 3 cổng (G0 → Sản xuất+Đo → QC Đạt) mới được giao, tránh giao hàng lỗi.</li><li>Cần số liệu <b>khách quan để chấm KPI</b>, không cảm tính, không sửa tay.</li></ul></div></div>
+
+    <h2 class="sec"><span class="bar"></span>② Được gì so với Google Sheet trước đây</h2>
+    <div class="card" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid #d1d5db">Việc</th>
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid #d1d5db">Google Sheet (trước)</th>
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid #d1d5db">DHP Manager (nay)</th>
+        </tr></thead>
+        <tbody>
+        <tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Biết đơn đang ở đâu / bao nhiêu %</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Tự nhẩm, dễ sai</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">App <b>tự tính %</b> + chỉ rõ đang ở công đoạn nào</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Dự kiến ngày xong / cảnh báo trễ</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Không có</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Tự suy ngày hoàn thành, <b>tô đỏ khi trễ</b></td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Phân quyền</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Ai cũng sửa được, dễ hỏng công thức</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db"><b>4 cấp</b>: Xem · Thợ · Điều phối · Quản lý</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Chặn giao hàng lỗi</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Không ràng buộc</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Chưa <b>QC Đạt</b> thì <b>khoá</b> nút xuất xưởng</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Chấm KPI</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Làm tay, cảm tính</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db"><b>Tự chấm</b> theo sự kiện thật, không sửa tay</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">In phiếu (G0, đo, QC, chứng nhận)</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Soạn lại mỗi lần</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Bấm <b>in sẵn theo mẫu chuẩn</b></td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Dùng trên điện thoại</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Khó thao tác</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db"><b>Cài như app (PWA)</b>, mở nhanh</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Phân công</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Ghi chú rời</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db"><b>Lịch trực quan</b> gắn thẳng mã đơn</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:600">Hàng lỗi (NCR)</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;color:#6b7280">Rải rác</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Gắn với <b>đơn · công đoạn · người</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>③ Cách dùng — từng bước</h2>
+    <div class="card" style="margin-bottom:10px"><b style="font-size:14px">💻 Trên LAPTOP</b><div style="font-size:12.5px;line-height:1.6;margin-top:6px"><ol style="margin:4px 0;padding-left:20px"><li style="margin-bottom:3px">Mở trình duyệt → vào địa chỉ app (bookmark <b>huynhtrungkiet-cloud.github.io/dhp-manager</b>). Nhập <b>mật khẩu</b> vào.</li><li style="margin-bottom:3px">Bấm <b>🔓 Đổi quyền</b> (góc trên phải) → nhập mật khẩu của mình để có quyền Thợ / Điều phối / Quản lý.</li><li style="margin-bottom:3px">Xem việc: tab <b>📅 Lịch phân công &amp; Đơn hàng</b> — cuộn xuống bảng <b>Đơn hàng &amp; Tiến độ</b>; gõ ô <b>Tìm</b> để lọc theo mã/tên/khách.</li><li style="margin-bottom:3px">Xem chi tiết 1 đơn: bấm <b>Xem</b> → hiện khối <b>📊 Tiến độ</b> (đang ở giai đoạn nào, công đoạn nào, %).</li><li style="margin-bottom:3px"><b>Thêm đơn</b> (Điều phối): <b>＋ Thêm đơn hàng</b> → điền tên hàng, khách, số lượng, hạn → tick <b>checklist G0</b> → Lưu.</li><li style="margin-bottom:3px"><b>Khai công đoạn</b>: mở <b>Sửa</b> đơn → thêm chuỗi công đoạn (A Tiện, B Phay…) + người làm + giờ + kích thước cần đo.</li><li style="margin-bottom:3px"><b>Cập nhật khi làm</b> (Thợ): đổi trạng thái công đoạn <b>Đang → Xong</b>, nhập số đo. % tự cập nhật.</li><li style="margin-bottom:3px"><b>QC</b> (Điều phối/QC): nhập số đo cuối → chọn <b>Đạt / Không đạt</b>. Đạt mới mở <b>📜 Chứng nhận xuất xưởng</b>.</li><li style="margin-bottom:3px"><b>In phiếu</b>: trong ô Xem đơn có các nút in G0 / phiếu gia công / bộ phiếu đo / QC / chứng nhận.</li><li style="margin-bottom:3px"><b>Lưu &amp; Đồng bộ</b>: bấm <b>💾 Lưu &amp; Đồng bộ</b> để dữ liệu lên chung (real-time cho mọi người).</li></ol></div></div>
+    <div class="card" style="margin-bottom:10px"><b style="font-size:14px">📱 Trên ĐIỆN THOẠI</b><div style="font-size:12.5px;line-height:1.6;margin-top:6px"><ol style="margin:4px 0;padding-left:20px"><li style="margin-bottom:3px">Mở <b>Chrome (Android)</b> hoặc <b>Safari (iPhone)</b> → vào cùng địa chỉ app → nhập mật khẩu.</li><li style="margin-bottom:3px">Cài như app: Android bấm <b>⋮ → Thêm vào màn hình chính</b>; iPhone bấm <b>Chia sẻ ⬆ → Thêm vào MH chính</b>. Sau đó mở bằng icon như một app.</li><li style="margin-bottom:3px"><b>🔓 Đổi quyền</b> → nhập mật khẩu để tick được công đoạn.</li><li style="margin-bottom:3px"><b>Thợ ngoài xưởng</b>: mở đơn đang làm → bấm công đoạn <b>Đang → Xong</b>, nhập số đo ngay tại máy. Xoay ngang máy để xem bảng dễ hơn.</li><li style="margin-bottom:3px">Xem nhanh <b>việc hôm nay</b> và các đơn <b>sắp tới hạn</b> (băng vàng đầu trang).</li><li style="margin-bottom:3px">Nhớ bấm <b>💾 Lưu &amp; Đồng bộ</b> sau khi cập nhật để mọi người thấy.</li></ol></div></div>
+    <div class="card" style="background:#fffbeb;border:1px solid #f59e0b">
+      <b style="color:#b45309">⚠ Lưu ý chung</b>
+      <ul style="margin:4px 0;padding-left:18px"><li>App là <b>nguồn dữ liệu duy nhất</b> — mọi cập nhật làm trên app, không dùng file rời song song.</li><li>Mật khẩu <b>cấp riêng từng người</b>, không chia sẻ chéo (để KPI gắn đúng người).</li><li>Chưa bấm <b>Lưu &amp; Đồng bộ</b> thì người khác chưa thấy thay đổi.</li></ul>
+    </div>
+
+    <h2 class="sec"><span class="bar"></span>④ Phân quyền &amp; KPI theo từng phase</h2>
+    <div class="card" style="padding:0;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid #d1d5db">Cấp quyền</th>
+          <th style="text-align:left;padding:7px 10px;border-bottom:1px solid #d1d5db">Làm được gì</th>
+        </tr></thead>
+        <tbody>
+        <tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">👁 Xem</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Xem mọi thứ, không sửa. Dành cho BGĐ/khách nội bộ theo dõi.</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">👷 Thợ</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Xem + <b>tick công đoạn Đang/Xong</b> + <b>nhập số đo</b>. Không sửa đơn.</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">🛠 Điều phối / TPKT</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Thêm/sửa đơn, khai công đoạn, phân công, làm <b>QC</b>, in chứng nhận.</td></tr><tr><td style="padding:6px 10px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">👑 Quản lý / GĐ</td><td style="padding:6px 10px;border-bottom:1px solid #d1d5db">Toàn quyền + <b>cấu hình</b> (nhân sự, dữ liệu, đồng bộ).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-bottom:10px"><b style="font-size:14px">KPI tự chấm theo từng phase (thang 100đ, không sửa tay — từ 06/07/2026)</b><div style="font-size:12.5px;line-height:1.6;margin-top:6px"><div style="margin-bottom:6px">Mỗi đơn đi qua 5 phase. App gắn điểm cộng/trừ đúng người chịu trách nhiệm ở phase đó:</div><div style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="text-align:left;padding:6px 9px;border-bottom:1px solid #d1d5db">Phase</th>
+          <th style="text-align:left;padding:6px 9px;border-bottom:1px solid #d1d5db">Ai chịu</th>
+          <th style="text-align:left;padding:6px 9px;border-bottom:1px solid #d1d5db">Cộng / Trừ điểm</th>
+        </tr></thead><tbody>
+        <tr><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">📥 G0 Tiếp nhận</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;white-space:nowrap">Điều phối</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db">Ra đơn chậm / thiếu G0 → tính <b>Công ty</b> (ngoài dự kiến), không trừ cá nhân.</td></tr><tr><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">🔧 Sản xuất</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;white-space:nowrap">Thợ</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db">+1 công đoạn <b>đúng/sớm hạn</b> · +1 <b>đạt chất lượng</b>. −3 <b>sai kích thước</b>. Nút thắt gây trễ đơn: −5/đơn.</td></tr><tr><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">🛡 QC</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;white-space:nowrap">QC/Điều phối</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db">Hàng hư còn dùng −3 · <b>hàng phế −10</b> (gắn người gia công qua NCR).</td></tr><tr><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">🚚 Giao</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;white-space:nowrap">Kho/Giao vận</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db">Xưởng đã xong đúng hạn mà <b>giao trễ</b> → −5 tính <b>Kho/Giao vận</b>.</td></tr><tr><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;font-weight:700;white-space:nowrap">⏱ Giờ công</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db;white-space:nowrap">Điều phối</td><td style="padding:6px 9px;border-bottom:1px solid #d1d5db">−1 <b>thiếu giờ</b> (ngày-người) · −2 <b>vượt giờ</b> khai sai chưa sửa.</td></tr>
+        </tbody></table></div>
+        <div style="margin-top:7px;font-size:12px">Thưởng tốc độ + chất lượng cộng dồn nhưng <b>trần +10</b>. Trễ do <b>xưởng quá tải</b> (nhận việc >110% năng lực) tính là <b>Công ty</b>, không trừ điều phối. Xem điểm chi tiết ở tab <b>📊 KPI &amp; Báo cáo</b> — bấm vào từng số để xem đơn đằng sau.</div></div></div>
+
+    <h2 class="sec"><span class="bar"></span>⑤ Tải hướng dẫn (file Word gửi nhóm)</h2>
+    <div class="card">
+      
+      <p class="small muted" style="margin-bottom:0">Tải về file Word mở bằng Microsoft Word / Google Docs, gửi thẳng lên nhóm Zalo/email công ty — khỏi tốn buổi training.</p>
+    </div>
+<hr style="margin-top:24px"><p style="color:#888;font-size:12px;text-align:center">Tài liệu nội bộ Đại Hồng Phát — DHP Manager.</p></body></html>

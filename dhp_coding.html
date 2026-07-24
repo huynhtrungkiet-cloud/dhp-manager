@@ -78,6 +78,27 @@
   .vbox.err{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c}
   .vbox.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534}
   @media(max-width:680px){ .row2,.row3,.pfx-grid,.fam-tabs{grid-template-columns:1fr 1fr} }
+  /* ===== Dashboard mã (tổng quan chuyên nghiệp) ===== */
+  .card{box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px;margin-bottom:12px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px 11px 16px;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .stat .n{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;color:var(--ink)}
+  .stat .l{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:5px}
+  .stat i.ac{position:absolute;left:0;top:0;bottom:0;width:5px}
+  .dash-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:12px}
+  @media(max-width:820px){ .dash-grid{grid-template-columns:1fr} }
+  .dh{font-size:12.5px;font-weight:800;color:#1e293b;margin:0 0 9px;display:flex;align-items:center;gap:6px}
+  .rday{font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin:9px 0 5px}
+  .rrow{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--line);border-radius:9px;background:var(--paper);margin-bottom:5px;transition:.1s}
+  .rrow:hover{background:#fff;border-color:#cbd5e1;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+  .rrow .sk{font-family:'JetBrains Mono',monospace;font-weight:700;color:#0ea5e9;font-size:12.5px;white-space:nowrap}
+  .rrow .nm{font-size:11.5px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .brow{display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer}
+  .brow .bl{font-size:12px;font-weight:700;min-width:104px;max-width:104px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brow:hover .bl{color:var(--brand)}
+  .mbar{flex:1;height:9px;border-radius:6px;background:#eef2f6;overflow:hidden}
+  .mbar>i{display:block;height:100%;border-radius:6px;transition:width .3s}
+  .brow .bn{font-size:11.5px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#64748b;min-width:26px;text-align:right}
 </style>
 </head>
 <body>
@@ -132,6 +153,7 @@
     <span class="muted small" id="count" style="margin-left:auto"></span>
   </div>
   <input type="file" id="csvIn" accept=".csv" style="display:none" onchange="importCsv(this.files[0]);this.value=''">
+  <div id="dash"></div>
   <div id="grid"></div>
 </div>
 
@@ -683,7 +705,7 @@ async function loadProducts(){
     const cfg=rows.find(r=>r.id===ACCESS_ID || (r.data&&r.data.__access)); if(cfg&&cfg.data&&cfg.data.levels) ACCESS=cfg.data.levels;
     PRODUCTS=rows.filter(r=>!(r.id===ACCESS_ID||(r.data&&r.data.__access))).map(r=>r.data).filter(Boolean);
     setConn('✓ '+PRODUCTS.length+' SP',true);
-    fillFilters(); renderGrid();
+    fillFilters(); renderGrid(); renderDashboard();
   }catch(e){ setConn('● lỗi tải: '+e.message,false); alert('Lỗi tải products: '+e.message+'\n(Đã tạo bảng products trên Supabase chưa?)'); }
 }
 
@@ -741,6 +763,52 @@ function renderGrid(){
     </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
     ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
 }
+/* ============================================================
+   DASHBOARD MÃ — tổng quan: thống kê + mã tạo gần đây (theo ngày) + theo định dạng / hãng
+   ============================================================ */
+const PFX_COLOR={ '0':'#0ea5e9','1':'#6366f1','3':'#f59e0b','4':'#16a34a','6':'#64748b','8':'#8b5cf6','9':'#ec4899' };
+function _dstr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dayLabel(iso){
+  const now=new Date(), t=_dstr(now), y=_dstr(new Date(now.getTime()-86400000));
+  if(iso===t) return 'Hôm nay'; if(iso===y) return 'Hôm qua';
+  const p=(iso||'').split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):(iso||'—');
+}
+let _dashBrands=[];
+function renderDashboard(){
+  const el=$('dash'); if(!el) return;
+  if(!PRODUCTS.length){ el.innerHTML=''; return; }
+  const total=PRODUCTS.length, v25=PRODUCTS.filter(isV25).length, old=total-v25;
+  const now=new Date(), today=_dstr(now), wkAgo=_dstr(new Date(now.getTime()-6*86400000));
+  const dOf=p=>String(p.updatedAt||'').slice(0,10);
+  const cToday=PRODUCTS.filter(p=>dOf(p)===today).length;
+  const cWeek=PRODUCTS.filter(p=>{const d=dOf(p); return d&&d>=wkAgo;}).length;
+  const stat=(n,l,c)=>`<div class="stat"><i class="ac" style="background:${c}"></i><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  const statRow=`<div class="stat-row">${stat(total,'Tổng mã','#334155')}${stat(v25,'Chuẩn v2.5','#16a34a')}${stat(old,'Mã cũ CK368','#f59e0b')}${stat(cToday,'Tạo hôm nay','#0ea5e9')}${stat(cWeek,'Trong 7 ngày','#8b5cf6')}</div>`;
+  // Mã tạo gần đây (14 mã mới nhất) — nhóm theo ngày
+  const recent=PRODUCTS.filter(p=>p.updatedAt).slice().sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,14);
+  let recHtml='', lastDay='';
+  recent.forEach(p=>{ const iso=dOf(p); if(iso!==lastDay){ lastDay=iso; recHtml+=`<div class="rday">${dayLabel(iso)}</div>`; }
+    const pf=prodPrefix(p)||'?', col=PFX_COLOR[pf]||'#64748b';
+    recHtml+=`<div class="rrow" ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
+      <span class="pfx-badge" style="background:${col}">${pf}</span>
+      <span class="sk">${esc(p.sku||'')}</span>
+      <span class="nm">${esc(p.brand||'')}${p.name?' · '+esc(p.name):''}</span></div>`; });
+  const recCard=`<div class="card"><div class="dh">🆕 Mã tạo gần đây <span class="muted small" style="font-weight:600">(bấm để mở)</span></div>${recHtml||'<div class="muted small">Chưa có.</div>'}</div>`;
+  // Theo định dạng (prefix)
+  const byP={}; PRODUCTS.forEach(p=>{const k=prodPrefix(p)||'?'; byP[k]=(byP[k]||0)+1;});
+  const maxP=Math.max(1,...Object.values(byP));
+  const pfxHtml=Object.keys(byP).sort().map(k=>{const c=PFX_COLOR[k]||'#64748b';
+    return `<div class="brow" onclick="dashFilterPrefix('${k}')" title="Lọc bảng theo prefix ${k}"><span class="bl">${k} · ${esc(prefixLabel(k)||'—')}</span><span class="mbar"><i style="width:${Math.round(byP[k]/maxP*100)}%;background:${c}"></i></span><span class="bn">${byP[k]}</span></div>`;}).join('');
+  // Theo hãng (top 7) — dùng index để tránh lỗi ký tự đặc biệt trong tên hãng
+  const byB={}; PRODUCTS.forEach(p=>{const b=p.brand||'(chưa rõ)'; byB[b]=(byB[b]||0)+1;});
+  _dashBrands=Object.keys(byB).sort((a,b)=>byB[b]-byB[a]).slice(0,7);
+  const maxB=Math.max(1,..._dashBrands.map(b=>byB[b]));
+  const brHtml=_dashBrands.map((b,i)=>`<div class="brow" onclick="dashFilterBrand(${i})" title="Lọc bảng theo hãng"><span class="bl">${esc(b)}</span><span class="mbar"><i style="width:${Math.round(byB[b]/maxB*100)}%;background:#0ea5e9"></i></span><span class="bn">${byB[b]}</span></div>`).join('');
+  const statCard=`<div class="card"><div class="dh">📊 Theo định dạng (prefix)</div>${pfxHtml}<div class="dh" style="margin-top:14px">🏭 Theo hãng</div>${brHtml}</div>`;
+  el.innerHTML=statRow+`<div class="dash-grid">${recCard}${statCard}</div>`;
+}
+function dashFilterPrefix(k){ const s=$('fPrefix'); if(s){ s.value=k; } renderGrid(); const g=$('grid'); if(g&&g.scrollIntoView) g.scrollIntoView({behavior:'smooth',block:'start'}); }
+function dashFilterBrand(i){ const b=_dashBrands[i]; const s=$('fBrand'); if(s&&b&&b!=='(chưa rõ)'){ s.value=b; onBrandFilter(); } const g=$('grid'); if(g&&g.scrollIntoView) g.scrollIntoView({behavior:'smooth',block:'start'}); }
 function rowHtml(p){
   const pf=prodPrefix(p);
   return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
@@ -1090,7 +1158,7 @@ async function saveProduct(){
     const {error}=await _sb.from('products').upsert({id, data:rec, updated_at:rec.updatedAt});
     if(error) throw new Error(error.message);
     const i=PRODUCTS.findIndex(p=>p.id===id); if(i>=0) PRODUCTS[i]=rec; else PRODUCTS.push(rec);
-    closeModal(); fillFilters(); renderGrid(); setConn('✓ '+PRODUCTS.length+' SP',true);
+    closeModal(); fillFilters(); renderGrid(); renderDashboard(); setConn('✓ '+PRODUCTS.length+' SP',true);
   }catch(e){ alert('Lỗi lưu: '+e.message); }
 }
 async function delProduct(){

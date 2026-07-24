@@ -147,6 +147,7 @@
     <select id="fCode" style="width:auto" onchange="renderGrid()" title="Lọc theo loại mã đã dùng"><option value="">— Loại mã —</option><option value="v25">✅ Chuẩn v2.5</option><option value="old">🗂 Mã cũ CK368</option></select>
     <span id="editBtns" style="display:none;gap:6px">
       <button class="sm" onclick="openProduct()">＋ Thêm mã</button>
+      <button class="ghost sm" onclick="openMigrate()" style="border-color:#8b5cf6;color:#7c3aed">🔁 Chuẩn hóa mã cũ</button>
       <button class="ghost sm" onclick="document.getElementById('csvIn').click()">📥 Nhập CSV</button>
       <button class="ghost sm" onclick="exportCsv()">📤 Xuất CSV</button>
     </span>
@@ -155,6 +156,26 @@
   <input type="file" id="csvIn" accept=".csv" style="display:none" onchange="importCsv(this.files[0]);this.value=''">
   <div id="dash"></div>
   <div id="grid"></div>
+</div>
+
+<!-- Modal: Chuẩn hóa mã cũ → v2.5 -->
+<div class="modal-bg" id="migModal">
+  <div class="modal" style="max-width:820px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0">🔁 Chuẩn hóa mã cũ → v2.5</h3>
+      <button class="ghost sm" onclick="closeMig()">✕</button>
+    </div>
+    <p class="small muted" style="margin:6px 0 4px">App tự đề xuất mã v2.5 cho các mã cũ (sửa được từng dòng). <b>Mã cũ được giữ lại</b> ở "Mã cũ / tên gọi khác" nên vẫn TRA RA được. Nên bấm <b>📤 Xuất CSV</b> sao lưu trước.</p>
+    <div id="migSummary" class="small" style="margin-bottom:8px"></div>
+    <div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px">
+      <table class="ptbl"><thead><tr><th>Mã cũ</th><th>Tên</th><th>Mã MỚI (v2.5) — sửa được</th></tr></thead>
+      <tbody id="migBody"></tbody></table>
+    </div>
+    <div class="toolbar" style="margin-top:12px;justify-content:flex-end">
+      <button class="ghost sm" onclick="closeMig()">Hủy</button>
+      <button class="sm" style="background:#7c3aed" onclick="applyMigration()">✓ Áp dụng các mã đã có</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal thêm/sửa -->
@@ -809,6 +830,72 @@ function renderDashboard(){
 }
 function dashFilterPrefix(k){ const s=$('fPrefix'); if(s){ s.value=k; } renderGrid(); const g=$('grid'); if(g&&g.scrollIntoView) g.scrollIntoView({behavior:'smooth',block:'start'}); }
 function dashFilterBrand(i){ const b=_dashBrands[i]; const s=$('fBrand'); if(s&&b&&b!=='(chưa rõ)'){ s.value=b; onBrandFilter(); } const g=$('grid'); if(g&&g.scrollIntoView) g.scrollIntoView({behavior:'smooth',block:'start'}); }
+
+/* ============================================================
+   MIGRATION — chuẩn hóa mã CŨ → v2.5 (giữ mã cũ để vẫn tra ra được)
+   ============================================================ */
+const MIG_SERIES=['RADEX-N','RADEX-NC','N-EUPEX DS','N-EUPEX','POLY-NORM','ROFLEX','BOWEX','ROTEX','REVOLEX','TOOLFLEX','RUFLEX','GEAREX','MINEX','RUPEX','ARPEX','ZAPEX','BIPEX','TNM','TNS','TNR','TNT','TND','SURE-FLEX','DURA-FLEX','FENAFLEX','LOVEJOY','HRC'];
+function migBrand(hay){
+  for(const k of Object.keys(BRAND_ALIAS)){ if(hay.includes(k)) return BRAND_ALIAS[k]; }
+  for(const b of BRANDS){ if(b.c && new RegExp('\\b'+b.c+'\\b').test(hay)) return b.c; }
+  return '';
+}
+function migSeries(hay){ let best='',pos=1e9; MIG_SERIES.forEach(s=>{ const i=hay.indexOf(s); if(i>=0&&i<pos){ pos=i; best=s; } }); return best; }
+// Đề xuất mã v2.5 từ 1 sản phẩm mã cũ. Trả '' nếu không tự đoán được (để đặt tay).
+function migrateSuggest(p){
+  const old=String(p.sku||'').trim();
+  if(/^\d\./.test(old)) return '';                                   // đã chuẩn v2.5
+  const raw=(old+' '+(p.name||'')+' '+(p.category||'')).toUpperCase();
+  const hay=raw.replace(/_/g,' ');
+  const br=migBrand(hay), ser=migSeries(hay);
+  let sz=''; { const m=old.replace(/[_\s]/g,' ').match(/(\d{2,4})/); if(m) sz=String(parseInt(m[1],10)); }   // bỏ 0 dẫn đầu (068→68)
+  const isRubber=/CAO ?SU|GIAM CHAN|GIẢM CHẤN|SPIDER|ELEMENT|VÒNG ĐỆM|VONG DEM/.test(raw) || /^CAOSU/.test(old.toUpperCase());
+  if(isRubber && br && ser) return ['3.CSG', br, ser, sz].filter(Boolean).join('-');   // cao su giảm chấn = phụ tùng lẻ (prefix 3)
+  return '';
+}
+let _migRows=[];
+function openMigrate(){
+  if(!canEdit()){ alert('⛔ Cần quyền Kỹ thuật/Quản trị. Bấm 🔓 Đổi cấp.'); return; }
+  const olds=PRODUCTS.filter(p=>!/^\d\./.test(p.sku||''));
+  if(!olds.length){ alert('✓ Không còn mã cũ nào — tất cả đã chuẩn v2.5.'); return; }
+  _migRows=olds.map(p=>({id:p.id, oldSku:p.sku||'', name:p.name||'', newSku:migrateSuggest(p)}));
+  renderMig();
+  $('migModal').classList.add('show');
+}
+function renderMig(){
+  const auto=_migRows.filter(r=>r.newSku).length;
+  $('migSummary').innerHTML=`Tổng <b>${_migRows.length}</b> mã cũ · <span style="color:#15803d">tự đề xuất <b>${auto}</b></span> · <span style="color:#b45309">cần đặt tay <b>${_migRows.length-auto}</b></span>`;
+  $('migBody').innerHTML=_migRows.map((r,i)=>`<tr>
+      <td class="small" style="font-family:'JetBrains Mono',monospace;color:#b45309;white-space:nowrap;vertical-align:middle">${esc(r.oldSku)}</td>
+      <td class="small muted" style="max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle">${esc(r.name)}</td>
+      <td><input value="${esc(r.newSku)}" placeholder="— đặt tay: 3.CSG-... —" oninput="_migRows[${i}].newSku=this.value" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12.5px;${r.newSku?'':'background:#fffbeb'}"></td>
+    </tr>`).join('');
+}
+async function applyMigration(){
+  if(!canEdit()) return;
+  if(!_sb){ alert('Chưa kết nối Supabase.'); return; }
+  const toApply=_migRows.filter(r=>r.newSku && /^\d\./.test(r.newSku.trim()) && r.newSku.trim()!==r.oldSku);
+  if(!toApply.length){ alert('Chưa có mã mới hợp lệ (phải bắt đầu bằng "số." — vd 3.CSG-KTR-ROFLEX-68).'); return; }
+  if(!confirm('Chuẩn hóa '+toApply.length+' mã sang v2.5?\n\nMã cũ sẽ được lưu vào ô "Mã cũ / tên gọi khác" (vẫn tra ra được).\n⚠ Không tự hoàn tác — nên bấm 📤 Xuất CSV sao lưu trước.')) return;
+  let ok=0, err=0; const errList=[];
+  for(const r of toApply){
+    const p=PRODUCTS.find(x=>x.id===r.id); if(!p){ err++; continue; }
+    const rec=Object.assign({}, p);
+    const oldc=(rec.oldCode||'').trim();
+    const has=oldc.split(',').map(s=>s.trim()).filter(Boolean);
+    if(rec.sku && !has.includes(rec.sku)) has.push(rec.sku);
+    rec.oldCode=has.join(', ');
+    rec.sku=r.newSku.trim();
+    const mm=rec.sku.match(/^(\d)\./); if(mm) rec.prefix=mm[1];
+    rec.updatedAt=new Date().toISOString();
+    try{ const {error}=await _sb.from('products').upsert({id:rec.id, data:rec, updated_at:rec.updatedAt}); if(error) throw new Error(error.message);
+      const i=PRODUCTS.findIndex(x=>x.id===rec.id); if(i>=0) PRODUCTS[i]=rec; ok++;
+    }catch(e){ err++; errList.push(rec.sku+': '+e.message); }
+  }
+  closeMig(); fillFilters(); renderGrid(); renderDashboard(); setConn('✓ '+PRODUCTS.length+' SP',true);
+  alert('✓ Đã chuẩn hóa '+ok+' mã sang v2.5.'+(err?('\n\n⚠ '+err+' lỗi:\n'+errList.slice(0,6).join('\n')):''));
+}
+function closeMig(){ $('migModal').classList.remove('show'); }
 function rowHtml(p){
   const pf=prodPrefix(p);
   return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>

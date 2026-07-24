@@ -33,6 +33,13 @@
   .ptbl th{position:sticky;top:0;background:var(--paper);text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569;white-space:nowrap}
   .ptbl td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
   .ptbl tbody tr:hover{background:#fff7ed}
+  .ptbl th{position:relative}
+  .ptbl tr.hdr th>span:first-child{cursor:pointer;display:inline-block}
+  .ptbl .rz{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;user-select:none}
+  .ptbl .rz:hover{background:#93c5fd}
+  .ptbl tr.frow th{top:32px;background:#fff;padding:3px 6px;border-bottom:1px solid var(--line);text-transform:none}
+  .ptbl tr.frow input.colf{padding:4px 6px;font-size:11px;font-weight:400;border-radius:6px}
+  .ptbl td{overflow:hidden}
   .ptbl .csku{font-family:'JetBrains Mono',ui-monospace,Consolas,monospace;font-weight:700;color:#0EA5E9;white-space:nowrap}
   .ptbl .cact{text-align:right;color:var(--muted)}
   /* Modal */
@@ -767,22 +774,57 @@ let SORT={col:'updated',dir:-1};   // mặc định: mã mới cập nhật nh�
 const SORT_VAL={ sku:p=>p.sku, vaitro:p=>prodPrefix(p), name:p=>p.name, oldcode:p=>p.oldCode||'', brand:p=>p.brand, category:p=>p.category, series:p=>p.series, size:p=>p.size, updated:p=>p.updatedAt||'' };
 function sortBy(col){ if(SORT.col===col) SORT.dir*=-1; else { SORT.col=col; SORT.dir=1; } renderGrid(); }
 function sArrow(col){ return SORT.col===col?(SORT.dir>0?' ▲':' ▼'):''; }
-function th(col,label){ return `<th class="sortable" onclick="sortBy('${col}')">${label}${sArrow(col)}</th>`; }
-function renderGrid(){
+// Định nghĩa cột dùng chung cho: header (sắp xếp + kéo giãn) · dòng filter · ô dữ liệu
+const GCOLS=[
+  {k:'sku',    label:'Mã SKU',       w:200, f:p=>p.sku,      cell:p=>`<td class="csku" style="white-space:normal;word-break:break-all">${esc(p.sku||'')}${isV25(p)?'<span class="tag-v25">v2.5</span>':'<span class="tag-old">cũ</span>'}</td>`},
+  {k:'vaitro', label:'Vai trò',      w:98,  f:p=>prodPrefix(p)+' '+prefixLabel(prodPrefix(p)), cell:p=>{const pf=prodPrefix(p);return `<td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>`;}},
+  {k:'name',   label:'Tên sản phẩm', w:240, f:p=>p.name,     cell:p=>`<td style="white-space:normal">${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>`},
+  {k:'oldcode',label:'Mã cũ',        w:130, f:p=>p.oldCode,  cell:p=>`<td class="small" style="color:#b45309;font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;white-space:normal">${esc(p.oldCode||'')}</td>`},
+  {k:'brand',  label:'Hãng',         w:112, f:p=>p.brand,    cell:p=>`<td style="white-space:normal">${esc(p.brand||'')}</td>`},
+  {k:'category',label:'Nhóm',        w:112, f:p=>p.category, cell:p=>`<td style="white-space:normal">${esc(p.category||'')}</td>`},
+  {k:'series', label:'Series',       w:96,  f:p=>p.series,   cell:p=>`<td style="white-space:normal">${esc(p.series||'')}</td>`},
+  {k:'size',   label:'Cỡ',           w:58,  f:p=>p.size,     cell:p=>`<td>${esc(p.size||'')}</td>`},
+  {k:'updated',label:'Ngày',         w:94,  nofilter:true,   cell:p=>`<td class="small muted" style="white-space:nowrap">${fmtDate(p.updatedAt)}</td>`},
+];
+let COLF={};   // filter từng cột
+const COLW=(function(){ try{ return JSON.parse(localStorage.getItem('dhp_coding_colw')||'{}'); }catch(e){ return {}; } })();   // độ rộng cột đã kéo
+function colW(k,def){ return COLW[k]||def; }
+function thSort(c){ return `<th data-col="${c.k}" class="sortable" style="width:${colW(c.k,c.w)}px" title="Bấm tiêu đề: sắp xếp · kéo mép phải: giãn cột"><span onclick="sortBy('${c.k}')">${esc(c.label)}${sArrow(c.k)}</span><span class="rz" data-col="${c.k}"></span></th>`; }
+function colFilterRow(){ return '<tr class="frow">'+GCOLS.map(c=>c.nofilter?'<th></th>':`<th><input class="colf" value="${esc(COLF[c.k]||'')}" oninput="onColFilter('${c.k}',this.value)" placeholder="lọc…"></th>`).join('')+(canTag()?'<th></th>':'')+'</tr>'; }
+function filteredRows(){
   let rows=filtered();
+  const keys=Object.keys(COLF).filter(k=>(COLF[k]||'').trim());
+  if(keys.length) rows=rows.filter(p=>keys.every(k=>{ const c=GCOLS.find(x=>x.k===k); return !c||!c.f?true:norm(String(c.f(p)||'')).includes(norm(COLF[k])); }));
   const val=SORT_VAL[SORT.col]||SORT_VAL.sku;
-  rows=rows.slice().sort((a,b)=> SORT.dir * String(val(a)||'').localeCompare(String(val(b)||''),'en',{numeric:true,sensitivity:'base'}));
-  const CAP=600, shown=rows.slice(0,CAP);
-  const v25=PRODUCTS.filter(isV25).length, old=PRODUCTS.length-v25;
-  $('count').innerHTML=`${rows.length}/${PRODUCTS.length} mã · <span style="color:#15803d">✓ ${v25} chuẩn v2.5</span> · <span style="color:#b45309">🗂 ${old} mã cũ</span>`;
+  return rows.slice().sort((a,b)=> SORT.dir * String(val(a)||'').localeCompare(String(val(b)||''),'en',{numeric:true,sensitivity:'base'}));
+}
+function updCount(rows){ const v25=PRODUCTS.filter(isV25).length, old=PRODUCTS.length-v25; $('count').innerHTML=`${rows.length}/${PRODUCTS.length} mã · <span style="color:#15803d">✓ ${v25} chuẩn v2.5</span> · <span style="color:#b45309">🗂 ${old} mã cũ</span>`; }
+function bodyHtml(rows){ const CAP=600, shown=rows.slice(0,CAP); const ncol=GCOLS.length+(canTag()?1:0);
+  return rows.length?shown.map(rowHtml).join(''):`<tr><td colspan="${ncol}" class="muted" style="padding:16px;text-align:center">Không khớp bộ lọc.</td></tr>`; }
+function renderGrid(){
   const grid=$('grid');
-  if(PRODUCTS.length===0){ grid.innerHTML=`<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm mã</b>.':''}</div>`; return; }
-  if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
+  if(PRODUCTS.length===0){ updCount([]); grid.innerHTML=`<div class="card muted">Chưa có sản phẩm. ${canEdit()?'Bấm <b>📥 Nhập CSV</b> hoặc <b>＋ Thêm mã</b>.':''}</div>`; return; }
+  const rows=filteredRows(); updCount(rows);
   grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
-    <table class="ptbl"><thead><tr>
-      ${th('sku','Mã SKU')}${th('vaitro','Vai trò')}${th('name','Tên sản phẩm')}${th('oldcode','Mã cũ')}${th('brand','Hãng')}${th('category','Nhóm')}${th('series','Series')}${th('size','Cỡ')}${th('updated','Ngày')}${canTag()?'<th></th>':''}
-    </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
-    ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
+    <table class="ptbl" style="table-layout:fixed;min-width:900px"><thead>
+      <tr class="hdr">${GCOLS.map(thSort).join('')}${canTag()?'<th style="width:40px"></th>':''}</tr>
+      ${colFilterRow()}
+    </thead><tbody id="gbody">${bodyHtml(rows)}</tbody></table></div>
+    ${rows.length>600?`<div class="muted small" style="text-align:center;margin:10px">Hiện 600/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
+  attachResizers();
+}
+// Chỉ vẽ lại TBODY (giữ ô filter + không mất con trỏ khi đang gõ)
+function renderGridBody(){ const tb=$('gbody'); if(!tb){ renderGrid(); return; } const rows=filteredRows(); updCount(rows); tb.innerHTML=bodyHtml(rows); }
+function onColFilter(k,v){ COLF[k]=v; renderGridBody(); }
+function attachResizers(){
+  document.querySelectorAll('#grid .ptbl thead tr.hdr th .rz').forEach(h=>{
+    const th=h.parentElement, k=h.dataset.col;
+    h.addEventListener('mousedown',e=>{ e.preventDefault(); e.stopPropagation(); const sx=e.pageX, sw=th.offsetWidth;
+      const mv=ev=>{ const w=Math.max(46, sw+(ev.pageX-sx)); th.style.width=w+'px'; COLW[k]=w; };
+      const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); try{ localStorage.setItem('dhp_coding_colw',JSON.stringify(COLW)); }catch(_){} };
+      document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+    });
+  });
 }
 /* ============================================================
    DASHBOARD MÃ — tổng quan: thống kê + mã tạo gần đây (theo ngày) + theo định dạng / hãng
@@ -912,19 +954,7 @@ async function applyMigration(){
 }
 function closeMig(){ $('migModal').classList.remove('show'); }
 function rowHtml(p){
-  const pf=prodPrefix(p);
-  return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
-    <td class="csku">${esc(p.sku||'')}${isV25(p)?'<span class="tag-v25">v2.5</span>':'<span class="tag-old">cũ</span>'}</td>
-    <td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>
-    <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
-    <td class="small" style="color:#b45309;font-family:'JetBrains Mono',monospace;font-size:11px;max-width:160px;word-break:break-word;white-space:normal">${esc(p.oldCode||'')}</td>
-    <td>${esc(p.brand||'')}</td>
-    <td>${esc(p.category||'')}</td>
-    <td>${esc(p.series||'')}</td>
-    <td>${esc(p.size||'')}</td>
-    <td class="small muted" style="white-space:nowrap">${fmtDate(p.updatedAt)}</td>
-    ${canTag()?`<td class="cact">${canEdit()?'✎':'🏷'}</td>`:''}
-  </tr>`;
+  return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>${GCOLS.map(c=>c.cell(p)).join('')}${canTag()?`<td class="cact">${canEdit()?'✎':'🏷'}</td>`:''}</tr>`;
 }
 
 /* ============================================================

@@ -764,7 +764,7 @@ function filtered(){
 function isV25(p){ return /^\d\./.test(p.sku||''); }
 function fmtDate(s){ if(!s) return ''; const d=new Date(s); return isNaN(d)?'':(String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()); }
 let SORT={col:'updated',dir:-1};   // mặc định: mã mới cập nhật nhất lên đầu → tạo xong thấy ngay
-const SORT_VAL={ sku:p=>p.sku, vaitro:p=>prodPrefix(p), name:p=>p.name, brand:p=>p.brand, category:p=>p.category, series:p=>p.series, size:p=>p.size, updated:p=>p.updatedAt||'' };
+const SORT_VAL={ sku:p=>p.sku, vaitro:p=>prodPrefix(p), name:p=>p.name, oldcode:p=>p.oldCode||'', brand:p=>p.brand, category:p=>p.category, series:p=>p.series, size:p=>p.size, updated:p=>p.updatedAt||'' };
 function sortBy(col){ if(SORT.col===col) SORT.dir*=-1; else { SORT.col=col; SORT.dir=1; } renderGrid(); }
 function sArrow(col){ return SORT.col===col?(SORT.dir>0?' ▲':' ▼'):''; }
 function th(col,label){ return `<th class="sortable" onclick="sortBy('${col}')">${label}${sArrow(col)}</th>`; }
@@ -780,7 +780,7 @@ function renderGrid(){
   if(rows.length===0){ grid.innerHTML='<div class="card muted">Không khớp tìm kiếm.</div>'; return; }
   grid.innerHTML=`<div class="card" style="padding:0;overflow:auto">
     <table class="ptbl"><thead><tr>
-      ${th('sku','Mã SKU')}${th('vaitro','Vai trò')}${th('name','Tên sản phẩm')}${th('brand','Hãng')}${th('category','Nhóm')}${th('series','Series')}${th('size','Cỡ')}${th('updated','Ngày')}${canTag()?'<th></th>':''}
+      ${th('sku','Mã SKU')}${th('vaitro','Vai trò')}${th('name','Tên sản phẩm')}${th('oldcode','Mã cũ')}${th('brand','Hãng')}${th('category','Nhóm')}${th('series','Series')}${th('size','Cỡ')}${th('updated','Ngày')}${canTag()?'<th></th>':''}
     </tr></thead><tbody>${shown.map(rowHtml).join('')}</tbody></table></div>
     ${rows.length>CAP?`<div class="muted small" style="text-align:center;margin:10px">Hiện ${CAP}/${rows.length} — gõ tìm / lọc để thu hẹp.</div>`:''}`;
 }
@@ -834,7 +834,9 @@ function dashFilterBrand(i){ const b=_dashBrands[i]; const s=$('fBrand'); if(s&&
 /* ============================================================
    MIGRATION — chuẩn hóa mã CŨ → v2.5 (giữ mã cũ để vẫn tra ra được)
    ============================================================ */
-const MIG_SERIES=['RADEX-N','RADEX-NC','N-EUPEX DS','N-EUPEX','POLY-NORM','ROFLEX','BOWEX','ROTEX','REVOLEX','TOOLFLEX','RUFLEX','GEAREX','MINEX','RUPEX','ARPEX','ZAPEX','BIPEX','TNM','TNS','TNR','TNT','TND','SURE-FLEX','DURA-FLEX','FENAFLEX','LOVEJOY','HRC','FLEX'];
+const MIG_SERIES=['RADEX-N','RADEX-NC','N-EUPEX DS','N-EUPEX','POLY-NORM','ROFLEX','BOWEX','ROTEX','REVOLEX','TOOLFLEX','RUFLEX','GEAREX','MINEX','RUPEX','ARPEX','ZAPEX','BIPEX','TNM','TNS','TNR','TNT','TND','SURE-FLEX','DURA-FLEX','FENAFLEX','LOVEJOY','HRC','KBE2','KBE','KEP','FLEX'];
+const MIG_BEARING_BRANDS=['SKF','FAG','NSK','NTN','NKE','TIMKEN','KOYO','INA','NACHI','IKO','ASAHI','THK'];
+function migBearingBrand(hay){ for(const b of MIG_BEARING_BRANDS){ if(hay.includes(b)) return b; } return ''; }
 // Nhận hãng qua TÊN đầy đủ (không chỉ mã) — để CAOSU_MARTIN_..., KBK... cũng ra hãng
 const MIG_BRAND_KW=[['MARTIN','MTN'],['RINGFEDER','RGF'],['RATHI','RTH'],['FLENDER','FLD'],['SIEMENS','FLD'],['WESTCAR','WST'],['HUCO','HUC'],['FENNER','FNR'],['RENOLD','RNL'],['REXNORD','RXN'],['MAGNALOY','MAG'],['LOVEJOY','TBW'],['KBK','KBK'],['KTR','KTR']];
 function migBrand(hay){
@@ -853,7 +855,17 @@ function migrateSuggest(p){
   const br=migBrand(hay), ser=migSeries(hay);
   let sz=''; { const m=old.replace(/[_\s]/g,' ').match(/(\d{2,4})/); if(m) sz=String(parseInt(m[1],10)); }   // bỏ 0 dẫn đầu (068→68)
   const isRubber=/CAO ?SU|GIAM CHAN|GIẢM CHẤN|SPIDER|ELEMENT|VÒNG ĐỆM|VONG DEM/.test(raw) || /^CAOSU/.test(old.toUpperCase());
-  if(isRubber && br && ser) return ['3.CSG', br, ser, sz].filter(Boolean).join('-');   // cao su giảm chấn = phụ tùng lẻ (prefix 3)
+  const isBearing=/VONG BI|VÒNG BI|BEARING/.test(raw) || /^(VONGBI|VB)[ _]/.test(old.toUpperCase());
+  const isOverload=/BAO VE QUA TAI|QUÁ TẢI|OVERLOAD|EPP/.test(raw);
+  const isCoupling=/KHOP NOI|KHỚP NỐI|COUPLING/.test(raw);
+  // 1) Cao su giảm chấn khớp nối → CSG (phụ tùng lẻ, prefix 3, giữ hãng)
+  if(isRubber && br && ser) return ['3.CSG', br, ser, sz].filter(Boolean).join('-');
+  // 2) Vòng bi → nhóm KHC (vật tư khác), marker BRG, prefix 0 (mua ngoài, giữ hãng vòng bi)
+  if(isBearing){ const bb=migBearingBrand(hay); const num=(old.replace(/[ _]/g,' ').match(/(\d{3,6})/)||[])[1]||''; if(bb&&num) return ['0.KHC-BRG', bb, num].filter(Boolean).join('-'); }
+  // 3) Khớp nối bảo vệ quá tải → KQT (prefix 0)
+  if(isOverload && br) return ['0.KQT', br, (ser||'EPP'), sz].filter(Boolean).join('-');
+  // 4) Khớp nối thường có hãng+series → KNL (prefix 0, mua nguyên)
+  if(isCoupling && br && ser) return ['0.KNL', br, ser, sz].filter(Boolean).join('-');
   return '';
 }
 let _migRows=[];
@@ -904,7 +916,8 @@ function rowHtml(p){
   return `<tr ${canTag()?`onclick="openProduct('${esc(p.id)}')" style="cursor:pointer"`:''}>
     <td class="csku">${esc(p.sku||'')}${isV25(p)?'<span class="tag-v25">v2.5</span>':'<span class="tag-old">cũ</span>'}</td>
     <td>${pf?`<span class="pfx-badge">${pf}</span> <span class="muted small">${esc(prefixLabel(pf))}</span>`:''}</td>
-    <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}${p.oldCode?`<div class="muted" style="font-size:11px">🗂 mã cũ: ${esc(p.oldCode)}</div>`:''}</td>
+    <td>${esc(p.name||'')}${p.material?`<div class="muted" style="font-size:11px">${esc(p.material)}</div>`:''}</td>
+    <td class="small" style="color:#b45309;font-family:'JetBrains Mono',monospace;font-size:11px;max-width:160px;word-break:break-word;white-space:normal">${esc(p.oldCode||'')}</td>
     <td>${esc(p.brand||'')}</td>
     <td>${esc(p.category||'')}</td>
     <td>${esc(p.series||'')}</td>

@@ -144,7 +144,7 @@
     <select id="fPrefix" style="width:auto" onchange="renderGrid()"><option value="">— Vai trò / prefix —</option></select>
     <select id="fBrand" style="width:auto" onchange="onBrandFilter()"><option value="">— Tất cả hãng —</option></select>
     <select id="fCat" style="width:auto" onchange="renderGrid()"><option value="">— Tất cả nhóm —</option></select>
-    <select id="fCode" style="width:auto" onchange="renderGrid()" title="Lọc theo loại mã đã dùng"><option value="">— Loại mã —</option><option value="v25">✅ Chuẩn v2.5</option><option value="old">🗂 Mã cũ CK368</option></select>
+    <select id="fCode" style="width:auto" onchange="renderGrid()" title="Lọc theo loại mã đã dùng"><option value="">— Loại mã (tất cả) —</option><option value="v25">✅ Chuẩn v2.5</option><option value="old">🗂 Mã cũ chưa chuẩn</option><option value="migrated">🔁 Đã chuẩn hóa (có mã cũ)</option></select>
     <span id="editBtns" style="display:none;gap:6px">
       <button class="sm" onclick="openProduct()">＋ Thêm mã</button>
       <button class="ghost sm" onclick="openMigrate()" style="border-color:#8b5cf6;color:#7c3aed">🔁 Chuẩn hóa mã cũ</button>
@@ -756,7 +756,7 @@ function filtered(){
     if(b&&p.brand!==b) return false;
     if(c&&p.category!==c) return false;
     if(pf&&prodPrefix(p)!==pf) return false;
-    if(cc){ const v25=/^\d\./.test(p.sku||''); if(cc==='v25'&&!v25) return false; if(cc==='old'&&v25) return false; }
+    if(cc){ const v25=/^\d\./.test(p.sku||''); if(cc==='v25'&&!v25) return false; if(cc==='old'&&v25) return false; if(cc==='migrated'&&!(p.oldCode||'').trim()) return false; }
     if(q){ const h=norm((p.sku||'')+' '+(p.name||'')+' '+(p.oldCode||'')+' '+(p.series||'')+' '+(p.brand||'')+' '+(p.category||'')+' '+(p.size||'')); if(!h.includes(q)) return false; }
     return true;
   });
@@ -834,9 +834,12 @@ function dashFilterBrand(i){ const b=_dashBrands[i]; const s=$('fBrand'); if(s&&
 /* ============================================================
    MIGRATION — chuẩn hóa mã CŨ → v2.5 (giữ mã cũ để vẫn tra ra được)
    ============================================================ */
-const MIG_SERIES=['RADEX-N','RADEX-NC','N-EUPEX DS','N-EUPEX','POLY-NORM','ROFLEX','BOWEX','ROTEX','REVOLEX','TOOLFLEX','RUFLEX','GEAREX','MINEX','RUPEX','ARPEX','ZAPEX','BIPEX','TNM','TNS','TNR','TNT','TND','SURE-FLEX','DURA-FLEX','FENAFLEX','LOVEJOY','HRC'];
+const MIG_SERIES=['RADEX-N','RADEX-NC','N-EUPEX DS','N-EUPEX','POLY-NORM','ROFLEX','BOWEX','ROTEX','REVOLEX','TOOLFLEX','RUFLEX','GEAREX','MINEX','RUPEX','ARPEX','ZAPEX','BIPEX','TNM','TNS','TNR','TNT','TND','SURE-FLEX','DURA-FLEX','FENAFLEX','LOVEJOY','HRC','FLEX'];
+// Nhận hãng qua TÊN đầy đủ (không chỉ mã) — để CAOSU_MARTIN_..., KBK... cũng ra hãng
+const MIG_BRAND_KW=[['MARTIN','MTN'],['RINGFEDER','RGF'],['RATHI','RTH'],['FLENDER','FLD'],['SIEMENS','FLD'],['WESTCAR','WST'],['HUCO','HUC'],['FENNER','FNR'],['RENOLD','RNL'],['REXNORD','RXN'],['MAGNALOY','MAG'],['LOVEJOY','TBW'],['KBK','KBK'],['KTR','KTR']];
 function migBrand(hay){
   for(const k of Object.keys(BRAND_ALIAS)){ if(hay.includes(k)) return BRAND_ALIAS[k]; }
+  for(const [kw,c] of MIG_BRAND_KW){ if(hay.includes(kw)) return c; }
   for(const b of BRANDS){ if(b.c && new RegExp('\\b'+b.c+'\\b').test(hay)) return b.c; }
   return '';
 }

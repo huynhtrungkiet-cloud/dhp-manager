@@ -216,6 +216,18 @@
     </div>
     <div id="simBox" class="small" style="margin:2px 0 10px"></div>
 
+    <!-- BOM: chi tiết con của cụm (chỉ hiện với prefix 8) -->
+    <div id="bomBox" style="display:none;border:1px solid #3b82f6;background:#eff6ff;border-radius:10px;padding:10px 12px;margin:2px 0 12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <b style="font-size:13px;color:#1d4ed8">🧩 Chi tiết con (BOM) — mã đồng bộ với cụm</b>
+        <span class="small" style="color:#64748b">chế tạo = 4 · mua = 0 · sửa bore/hãng cho từng con</span>
+        <button type="button" class="ghost sm" style="margin-left:auto;padding:3px 8px" onclick="bomAddRow()">＋ Thêm chi tiết</button>
+        <button type="button" class="ghost sm" style="padding:3px 8px;border-color:#2563EB;color:#2563EB" onclick="bomCopyAll()">📋 Copy tất cả</button>
+      </div>
+      <div id="bomRows"></div>
+      <div class="small" style="color:#64748b;margin-top:4px">Gốc cụm: <span id="bomStem" style="font-family:monospace;font-weight:700"></span> — các con dùng lại gốc này để cha–con luôn khớp.</div>
+    </div>
+
     <!-- COMMON -->
     <div class="field"><label>Tên / mô tả sản phẩm</label><input id="p_name" placeholder="Tên / mô tả" oninput="showSimilar()"></div>
     <div class="field"><label>🗂 Mã cũ / Tên gọi khác <span class="muted small">(mã CK368 cũ, tên khách hay gọi… — vẫn TRA RA được sau khi chuẩn hóa; ngăn cách bằng dấu phẩy)</span></label><input id="p_oldcode" placeholder="VD: DHP-RB-252, CK368-DF 38, OLC_CK368_4040" oninput="oldCodeAssist()">
@@ -904,6 +916,49 @@ function genSku(){
     if(!MS._skuTouched){ $('p_sku').value=full.length>2?full:''; }
   } else { $('cdMain').innerHTML='<span class="seg-dim">— Chọn prefix để bắt đầu —</span>'; $('cdDesc').textContent='Điền các trường để xem mã sinh tự động.'; }
   showSimilar();
+  renderBom();
+}
+
+/* ===== BOM — chi tiết con của CỤM (chỉ prefix 8): sinh mã con 4/0 đồng bộ theo mã cụm ===== */
+let bomState=[]; bomState._stem=null;
+function bomV(id){ const el=$(id); return el?el.value.trim():''; }
+// Hãng của PHẦN TỬ mua (đĩa/màng) suy từ series của cụm
+function bomElBrand(ser){ const S=(ser||'').toUpperCase();
+  if(S.includes('RADEX')) return 'KTR'; if(S.includes('ARPEX')) return 'FLD';
+  if(S.startsWith('TND')||S.startsWith('TNM')) return 'RGF'; if(S.includes('THOMAS')) return 'RXN'; return 'KTR'; }
+function bomDefaults(stem,cat,ser,sz){
+  const el='0.'+[cat,'MEM',bomElBrand(ser),ser,sz].filter(Boolean).join('-');   // phần tử mua = prefix 0, giữ hãng
+  return [
+    {qty:'2', name:'Hub (moay-ơ) — chế tạo', code:'4.'+stem+'-HUB'},
+    {qty:'1', name:'Ống nối / spacer — chế tạo', code:'4.'+stem+'-SPC'},
+    {qty:'2', name:'Đĩa / phần tử — MUA', code:el},
+  ];
+}
+function renderBom(){
+  const box=$('bomBox'); if(!box) return;
+  if(MS.prefix!=='8'){ box.style.display='none'; return; }
+  box.style.display='';
+  const cat=bomV('p_cat'), sub=bomV('p_subtype'), ser=bomV('p_series'), sz=bomV('p_size');
+  const catsub = cat&&sub?cat+'-'+sub:cat;
+  const stem=[catsub,'DHP',ser,sz].filter(Boolean).join('-');
+  $('bomStem').textContent = stem || '(điền nhóm / series / size của cụm)';
+  if(stem!==bomState._stem){ bomState=bomDefaults(stem,cat,ser,sz); bomState._stem=stem; }   // đổi cụm → dựng lại con
+  $('bomRows').innerHTML = bomState.map((r,i)=>`
+    <div style="display:flex;gap:5px;align-items:center;margin-bottom:4px">
+      <input style="width:38px;text-align:center" value="${esc(r.qty)}" title="Số lượng" oninput="bomState[${i}].qty=this.value">
+      <input style="width:170px" value="${esc(r.name)}" placeholder="Tên chi tiết" oninput="bomState[${i}].name=this.value">
+      <input style="flex:1;min-width:200px;font-family:monospace;font-weight:700" value="${esc(r.code)}" oninput="bomState[${i}].code=this.value">
+      <button type="button" class="ghost sm" style="padding:2px 7px" title="Copy mã này" onclick="bomCopy(${i})">📋</button>
+      <a onclick="bomState.splice(${i},1);renderBom()" style="color:#ef4444;cursor:pointer;font-weight:800;padding:0 4px" title="Xóa">✕</a>
+    </div>`).join('');
+}
+function bomAddRow(){ bomState.push({qty:'1',name:'',code:'4.'+(bomState._stem||'')+'-'}); renderBom(); }
+function bomCopy(i){ const t=(bomState[i]&&bomState[i].code)||''; if(navigator.clipboard) navigator.clipboard.writeText(t); }
+function bomCopyAll(){
+  if(!bomState.length){ alert('Chưa có chi tiết con.'); return; }
+  const t=bomState.map(r=>(r.qty?r.qty+'x ':'')+r.code+(r.name?'   ('+r.name+')':'')).join('\n');
+  if(navigator.clipboard) navigator.clipboard.writeText(t);
+  alert('✓ Đã copy '+bomState.length+' dòng BOM (mã cụm + con).');
 }
 
 /* ---- cảnh báo trùng + gợi ý dùng lại ---- */

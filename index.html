@@ -4736,8 +4736,12 @@ function kpiScores(){
     (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>sts.push(s)));
     let bn=sts.find(s=>stageState(s)!=='done');
     if(!bn){ const L=sts.filter(s=>s.doneDate&&daysBetween(ref,s.doneDate)>0).sort((a,b)=> a.doneDate<b.doneDate?1:-1); bn=L[0]; }
-    const bs = bn&&bn.assignee ? staff.find(x=>x.id===bn.assignee) : null;
-    const bnNm = bn?(bn.code||bn.name||'công đoạn'):'—';
+    let bs = bn&&bn.assignee ? staff.find(x=>x.id===bn.assignee) : null;
+    // Đơn giao OUTSOURCE mà công đoạn nút thắt CHƯA gán ai → quy trễ cho ĐỐI TÁC đó (không rơi vào "công ty")
+    if(!bs && (o.assignment==='outsource'||o.assignment==='mixed') && o.outsourcePartner){
+      bs = staff.find(x=>x.type==='outsource' && _kn(x.name)===_kn(o.outsourcePartner)) || bs;
+    }
+    const bnNm = bn?(bn.code||bn.name||'công đoạn'):(o.outsourcePartner?'giao '+o.outsourcePartner:'—');
     const ev={code:oCode(o),co:oCo(o),name:oNm(o),due:ref,stage:bnNm};
     if(bs&&bs.type==='outsource'){ cause.out++; m[bs.id].late++; m[bs.id].det.late.push({...ev,note:'nút thắt ở đối tác'}); causeDet.out.push({...ev,who:bs.name}); }
     else if(overloaded){ cause.overload++; causeDet.overload.push({...ev,note:'xưởng quá tải'}); }
@@ -4898,7 +4902,7 @@ function renderKpi(){
       ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ do CHÍNH người/đối tác này (nút thắt) — tính tới mốc Hoàn thành chờ giao">⚠ Trễ đơn</th><th title="Ngày-người nội bộ thiếu giờ (chưa đủ 8h T2-6 / 7h T7) — quy về điều phối">⏳ Thiếu giờ</th><th title="Khai giờ thường VƯỢT chuẩn quá 1h/ngày mà chưa sửa (nhập sai) — quy về điều phối">⏫ Vượt giờ</th><th title="Số kích thước đo KHÔNG đạt (sai dung sai)">📏 Sai KT</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>
         ${kpiRows.map(x=>{ const g=kpiGrade(x.score); return `<tr>
           <td><b>${esc(x.s.name)}</b>${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td>
-          <td class="small muted">${x.dispatcher?'Điều phối':'Thợ'}</td>
+          <td class="small muted">${x.s.type==='outsource'?'Đối tác ngoài':(x.dispatcher?'Điều phối':'Thợ')}</td>
           <td>${kpiCell(x.s.id,'onTime',x.onTime,'#15803D','+')}</td>
           <td>${kpiCell(x.s.id,'quality',x.quality,'#15803D','+')}</td>
           <td>${kpiCell(x.s.id,'late',x.late,'var(--st-late)')}</td>

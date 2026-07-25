@@ -643,6 +643,41 @@ function gateCheck(){
   </div>
 </div>
 
+<!-- ===== Modal: Nhật ký sự cố / Bất khả kháng ===== -->
+<div class="modal-bg" id="modalIncident">
+  <div class="modal">
+    <h3>🛑 Ghi sự cố / Bất khả kháng</h3>
+    <p class="small muted" style="margin:2px 0 10px">Ghi 1 lần → tự đánh dấu <b>bất khả kháng</b> cho các đơn bị ảnh hưởng (loại khỏi KPI trễ), và tính <b>giờ sửa máy</b> cho người tham gia (khỏi bị "thiếu giờ").</p>
+    <input type="hidden" id="inc_id">
+    <div class="row3">
+      <div class="field"><label>Ngày xảy ra</label><input id="inc_date" type="date"></div>
+      <div class="field"><label>⏱ Giờ gián đoạn (SX)</label><input id="inc_downtime" type="number" min="0" step="0.5" placeholder="vd 6"></div>
+      <div class="field"><label>🔧 Giờ sửa máy</label><input id="inc_repair" type="number" min="0" step="0.5" placeholder="vd 4"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Máy / công đoạn hỏng</label><input id="inc_machine" placeholder="vd: Máy tiện CNC (công đoạn A - Tiện)"></div>
+      <div class="field"><label>Loại</label>
+        <select id="inc_kind"><option value="machine">Sự cố máy móc</option><option value="power">Mất điện</option><option value="material">Chờ vật tư/phôi</option><option value="customer">Chờ khách xác nhận</option><option value="disaster">Thiên tai</option><option value="other">Khác</option></select>
+      </div>
+    </div>
+    <div class="field"><label>👷 Nhân viên tham gia SỬA <span class="muted small">(giờ sửa tính cho họ)</span></label>
+      <div id="inc_staff" style="display:flex;flex-wrap:wrap;gap:8px;border:1px solid var(--line);border-radius:8px;padding:8px;max-height:120px;overflow:auto"></div>
+    </div>
+    <div class="field"><label>📦 Đơn bị ảnh hưởng <span class="muted small">(tick = đánh dấu bất khả kháng, không tính KPI trễ)</span>
+      <a onclick="incPickStage()" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11px;margin-left:6px">⚡ Chọn nhanh đơn đang ở công đoạn Tiện</a></label>
+      <div id="inc_orders" style="display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:8px;padding:8px;max-height:180px;overflow:auto"></div>
+    </div>
+    <div class="field"><label>Ghi chú / diễn biến</label><textarea id="inc_reason" rows="2" placeholder="vd: Trục chính máy tiện kẹt, thay vòng bi..."></textarea></div>
+    <div class="toolbar" style="justify-content:space-between">
+      <button class="ghost sm" id="incDelBtn" style="display:none;color:var(--st-late);border-color:var(--st-late)" onclick="deleteIncident()">🗑 Xóa</button>
+      <div style="display:flex;gap:6px">
+        <button class="ghost" onclick="closeModal('modalIncident')">Hủy</button>
+        <button onclick="saveIncident()">💾 Lưu sự cố</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Modal: Customer form ===== -->
 <div class="modal-bg" id="modalCustomer">
   <div class="modal">
@@ -884,6 +919,7 @@ function defaultData(){
     staff: SEED_STAFF.map((s,i)=>({id:'NS-'+String(i+1).padStart(4,'0'), ...s})),
     assignments: [],
     products: [],   // Catalogue sản phẩm: {id, sku, name, brand, category, series, size, pn, material, price, imageUrl, note}
+    incidents: [],  // Nhật ký sự cố / bất khả kháng: {id,date,machine,downtimeHours,repairHours,repairStaff:[],reason,orderIds:[]}
   };
 }
 function load(){
@@ -1682,6 +1718,7 @@ function ordersSectionHtml(){
   return `
     <div class="toolbar">
       ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
+      ${canEdit()?`<button class="ghost sm" onclick="openIncident()" style="border-color:#0891b2;color:#0e7490" title="Ghi sự cố máy/bất khả kháng — tự đánh dấu đơn + tính giờ sửa">🛑 Ghi sự cố</button>`:''}
       <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
              oninput="onOrderSearchInput(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onOrderSearchInput('');}"
              value="${esc(orderFilter.q)}">
@@ -3541,6 +3578,79 @@ function deleteNcr(id){
 }
 
 /* ============================================================
+   NHẬT KÝ SỰ CỐ / BẤT KHẢ KHÁNG — ghi 1 lần, tự đánh dấu đơn + tính giờ sửa
+   ============================================================ */
+function incRenderStaff(sel){ sel=sel||[]; const box=document.getElementById('inc_staff'); if(!box) return;
+  const internal=(DATA.staff||[]).filter(s=>s&&s.active!==false&&s.type!=='outsource');
+  box.innerHTML=internal.map(s=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" class="incStaffCk" value="${s.id}" ${sel.includes(s.id)?'checked':''} style="width:auto"> ${esc(s.name)}</label>`).join('')||'<span class="muted small">Chưa có nhân sự nội bộ</span>';
+}
+function incRenderOrders(sel){ sel=sel||[]; const box=document.getElementById('inc_orders'); if(!box) return;
+  const open=(DATA.orders||[]).filter(o=>o.status!=='delivered');
+  box.innerHTML=open.map(o=>{ const g=orderProgressInfo(o); const cur=g.current?((g.current.code||'')+' '+(g.current.name||'')).trim():'';
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="incOrdCk" value="${o.id}" ${sel.includes(o.id)?'checked':''} style="width:auto"> <b>${esc(o.code||'')}</b> <span class="muted">${esc(truncate(o.name||'',34))}</span>${cur?` <span style="color:#0EA5E9;font-size:11px">📍${esc(truncate(cur,16))}</span>`:''}</label>`; }).join('')||'<span class="muted small">Không có đơn đang mở</span>';
+}
+function incPickStage(){ document.querySelectorAll('#inc_orders .incOrdCk').forEach(ck=>{ const o=(DATA.orders||[]).find(x=>x.id===ck.value); if(!o){ck.checked=false;return;} const g=orderProgressInfo(o); const cur=g.current; ck.checked=!!(cur && (/^A\d*$/i.test(cur.code||'') || /ti[eệ]n/i.test(cur.name||''))); }); }
+function openIncident(id){
+  if(!requireEdit()) return;
+  document.getElementById('inc_id').value=id||'';
+  const inc = id? (DATA.incidents||[]).find(x=>x.id===id) : null;
+  document.getElementById('inc_date').value = inc?inc.date:todayStr();
+  document.getElementById('inc_downtime').value = inc?(inc.downtimeHours||''):'';
+  document.getElementById('inc_repair').value = inc?(inc.repairHours||''):'';
+  document.getElementById('inc_machine').value = inc?(inc.machine||''):'';
+  document.getElementById('inc_kind').value = inc?(inc.kind||'machine'):'machine';
+  document.getElementById('inc_reason').value = inc?(inc.reason||''):'';
+  incRenderStaff(inc?inc.repairStaff:[]);
+  incRenderOrders(inc?inc.orderIds:[]);
+  document.getElementById('incDelBtn').style.display = id?'':'none';
+  openModal('modalIncident');
+}
+function saveIncident(){
+  if(!requireEdit()) return;
+  const id=document.getElementById('inc_id').value;
+  const staffSel=[...document.querySelectorAll('#inc_staff .incStaffCk:checked')].map(x=>x.value);
+  const ordSel=[...document.querySelectorAll('#inc_orders .incOrdCk:checked')].map(x=>x.value);
+  const machine=document.getElementById('inc_machine').value.trim();
+  const rec={ id:id||uid('INC','incident'), date:document.getElementById('inc_date').value||todayStr(),
+    machine, kind:document.getElementById('inc_kind').value,
+    downtimeHours:parseFloat(document.getElementById('inc_downtime').value)||0,
+    repairHours:parseFloat(document.getElementById('inc_repair').value)||0,
+    repairStaff:staffSel, orderIds:ordSel, reason:document.getElementById('inc_reason').value.trim(),
+    updatedAt:new Date().toISOString() };
+  DATA.incidents=DATA.incidents||[];
+  const old=DATA.incidents.find(x=>x.id===rec.id);
+  // gỡ cờ bất khả kháng ở đơn bị BỎ khỏi sự cố này
+  (old?(old.orderIds||[]):[]).filter(oid=>!ordSel.includes(oid)).forEach(oid=>{ const o=DATA.orders.find(x=>x.id===oid); if(o){ o.forceMajeure=false; o.fmReason=''; } });
+  // gắn cờ cho đơn được chọn
+  const sig=(machine||'Sự cố')+(rec.date?' '+fmtDate(rec.date):'');
+  ordSel.forEach(oid=>{ const o=DATA.orders.find(x=>x.id===oid); if(o){ o.forceMajeure=true; o.fmReason=sig; } });
+  const idx=DATA.incidents.findIndex(x=>x.id===rec.id);
+  if(idx>=0) DATA.incidents[idx]=rec; else DATA.incidents.push(rec);
+  closeModal('modalIncident'); save(); renderAll();
+  alert('✓ Đã lưu sự cố.\n• '+ordSel.length+' đơn được đánh dấu BẤT KHẢ KHÁNG (loại khỏi KPI trễ).\n• '+staffSel.length+' người được tính '+rec.repairHours+'h sửa máy (khỏi bị thiếu giờ).');
+}
+function deleteIncident(){
+  const id=document.getElementById('inc_id').value; if(!id) return;
+  if(!confirm('Xóa sự cố này? Sẽ gỡ cờ bất khả kháng khỏi các đơn liên quan.')) return;
+  const inc=(DATA.incidents||[]).find(x=>x.id===id);
+  (inc&&inc.orderIds||[]).forEach(oid=>{ const o=DATA.orders.find(x=>x.id===oid); if(o){ o.forceMajeure=false; o.fmReason=''; } });
+  DATA.incidents=(DATA.incidents||[]).filter(x=>x.id!==id);
+  closeModal('modalIncident'); save(); renderAll();
+}
+function incidentsListHtml(){
+  const list=(DATA.incidents||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const KIND={machine:'Sự cố máy',power:'Mất điện',material:'Chờ vật tư',customer:'Chờ khách',disaster:'Thiên tai',other:'Khác'};
+  const rows=list.length? list.map(inc=>`<div class="rrow" ${canEdit()?`onclick="openIncident('${inc.id}')" style="cursor:pointer"`:''}>
+      <span style="font-size:10.5px;font-weight:800;color:#0e7490;background:#ecfeff;border:1px solid #a5f3fc;border-radius:5px;padding:1px 6px">🛑 ${esc(KIND[inc.kind]||'Sự cố')}</span>
+      <span class="nm"><b>${fmtDate(inc.date)}</b> · ${esc(inc.machine||'—')}${inc.reason?' — '+esc(truncate(inc.reason,40)):''}</span>
+      <span class="muted small" style="white-space:nowrap">⏱${inc.downtimeHours||0}h gián đoạn · 🔧${inc.repairHours||0}h sửa · 👷${(inc.repairStaff||[]).length} · 📦${(inc.orderIds||[]).length} đơn</span>
+    </div>`).join('') : '<span class="muted small">Chưa có sự cố nào ghi nhận.</span>';
+  return `<div class="card" style="border-left:4px solid #0891b2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><b style="font-size:13px;color:#0e7490">🛑 Nhật ký sự cố / Bất khả kháng</b>${canEdit()?`<button class="ghost sm" style="margin-left:auto;border-color:#0891b2;color:#0e7490" onclick="openIncident()">＋ Ghi sự cố</button>`:''}</div>
+    ${rows}</div>`;
+}
+
+/* ============================================================
    DATA & SYNC
    ============================================================ */
 function renderData(){
@@ -4657,6 +4767,9 @@ function kpiScores(){
   const dh={}; (DATA.assignments||[]).forEach(a=>{ if(!a||!a.staffId||!a.date||a.date<S||a.date>=today) return;
     const h=(a.hours!=null?parseFloat(a.hours):(a.kind==='order'?(typeof HOURS_PER_DAY!=='undefined'?HOURS_PER_DAY:8):0))||0;
     (dh[a.staffId]=dh[a.staffId]||{}); dh[a.staffId][a.date]=(dh[a.staffId][a.date]||0)+h; });
+  // Giờ SỬA MÁY (nhật ký sự cố) = giờ làm cho người sửa → không bị tính "thiếu giờ"
+  (DATA.incidents||[]).forEach(inc=>{ if(!inc||!inc.date||inc.date<S||inc.date>=today) return; const rh=parseFloat(inc.repairHours)||0; if(rh<=0) return;
+    (inc.repairStaff||[]).forEach(sid=>{ (dh[sid]=dh[sid]||{}); dh[sid][inc.date]=(dh[sid][inc.date]||0)+rh; }); });
   let shortfall=0, overCount=0; const shortEv=[], overEv=[];
   for(let d=new Date(S+'T00:00:00'), endD=new Date(today+'T00:00:00'); d<endD; d.setDate(d.getDate()+1)){
     const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -4778,7 +4891,8 @@ function renderKpi(){
     ${(kHourShort||kHourOver)?`<div class="card" style="border-left:4px solid #D97706;background:#fffbeb;margin-top:12px"><b style="color:#b45309">⚠ Cảnh báo điều phối:</b> ${kHourShort?`<b>${kHourShort}</b> lượt ngày-người <b>thiếu giờ</b> (chưa đủ 8h T2–6 / 7h T7) — cần gán thêm việc (thiết kế/lập trình/phụ trợ kho/chờ việc). `:''}${kHourOver?`<b style="color:#b91c1c">${kHourOver}</b> lượt <b>khai giờ VƯỢT chuẩn quá 1h</b> (nhập sai chưa sửa) — sửa lại giờ trên lịch để hết trừ. `:''}<span class="muted small">Thiếu giờ −1, vượt giờ −2 mỗi lượt (cảnh báo, không chặn thao tác).</span></div>`:''}
     ${((KC.out||0)+(KC.ship||0))?`<div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-top:8px"><b style="color:#b45309">⚠ Trễ do bên khác — quy đúng trách nhiệm:</b> ${KC.out?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('out')">${KC.out}</b> đơn trễ do <b>OUTSOURCE</b> → tính vào KPI đối tác (xem hàng có nhãn OUT). `:''}${KC.ship?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('ship')">${KC.ship}</b> đơn xưởng xong ĐÚNG HẠN nhưng <b>giao trễ</b> → <b>Kho/Giao vận${KC.khoName?' ('+esc(KC.khoName)+')':' chịu trách nhiệm'}</b>. `:''}<span class="muted small">(bấm số để xem đơn)</span></div>`:''}
     ${((KC.overload||0)+(KC.stale||0)+(KC.lateUpd||0)+(KC.company||0))?`<div class="card" style="border-left:4px solid #64748B;background:#f8fafc;margin-top:8px"><b>🏢 Ngoài dự kiến — trách nhiệm CÔNG TY (KHÔNG trừ cá nhân):</b> ${KC.overload?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('overload')">${KC.overload}</b> đơn trễ do <b>xưởng QUÁ TẢI</b> (nhận việc ~${Math.round((KC.overloadRatio||0)*100)}% năng lực — cần tăng người/ca). `:''}${KC.stale?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('stale')">${KC.stale}</b> đơn admin <b>ra chậm/chưa xử lý</b>. `:''}${KC.lateUpd?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('lateUpd')">${KC.lateUpd}</b> công đoạn <b>trễ cập nhật</b> trạng thái. `:''}${KC.company?`<b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('company')">${KC.company}</b> đơn trễ chưa gán rõ người. `:''}<span class="muted small">(bấm số để xem đơn) · Xưởng hết trách nhiệm tại mốc "7. Hoàn thành — chờ giao".</span></div>`:''}
-    ${(KC.fm||0)?`<div class="card" style="border-left:4px solid #0891b2;background:#ecfeff;margin-top:8px"><b style="color:#0e7490">🛑 Bất khả kháng — ĐÃ LOẠI khỏi KPI (sự cố máy / thiên tai):</b> <b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('fm')">${KC.fm}</b> đơn trễ do bất khả kháng — <b>không trừ điểm ai</b>, chỉ ghi nhận cho BGĐ. <span class="muted small">(bấm số để xem đơn · đánh dấu ở nút Sửa đơn → ô "Bất khả kháng")</span></div>`:''}
+    ${(KC.fm||0)?`<div class="card" style="border-left:4px solid #0891b2;background:#ecfeff;margin-top:8px"><b style="color:#0e7490">🛑 Bất khả kháng — ĐÃ LOẠI khỏi KPI (sự cố máy / thiên tai):</b> <b style="cursor:pointer;border-bottom:1.5px dotted" onclick="kpiCauseDetail('fm')">${KC.fm}</b> đơn trễ do bất khả kháng — <b>không trừ điểm ai</b>, chỉ ghi nhận cho BGĐ. <span class="muted small">(bấm số để xem đơn)</span></div>`:''}
+    ${incidentsListHtml()}
     <h2 class="sec"><span class="bar"></span>🏆 Bảng điểm KPI tự động <span class="muted small" style="font-weight:400">(app tính — KHÔNG sửa tay)</span></h2>
     <div class="card" style="padding:0;overflow:auto">
       ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ do CHÍNH người/đối tác này (nút thắt) — tính tới mốc Hoàn thành chờ giao">⚠ Trễ đơn</th><th title="Ngày-người nội bộ thiếu giờ (chưa đủ 8h T2-6 / 7h T7) — quy về điều phối">⏳ Thiếu giờ</th><th title="Khai giờ thường VƯỢT chuẩn quá 1h/ngày mà chưa sửa (nhập sai) — quy về điều phối">⏫ Vượt giờ</th><th title="Số kích thước đo KHÔNG đạt (sai dung sai)">📏 Sai KT</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>

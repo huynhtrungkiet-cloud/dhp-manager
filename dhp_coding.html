@@ -213,7 +213,7 @@
       </div>
       <div class="row2" style="margin-top:8px">
         <div class="field" style="margin:0"><label>Hãng</label><select id="p_brand" onchange="onBrandChange()"></select><div id="brandWarn" class="small" style="color:var(--brand);margin-top:3px;font-weight:700"></div></div>
-        <div class="field" style="margin:0"><label>Series / dòng</label><input id="p_series" placeholder="ROTEX / N-EUPEX..." oninput="genSku()">
+        <div class="field" style="margin:0"><label>Series / dòng <span class="muted small">(chọn từ catalogue ▾)</span></label><input id="p_series" list="p_series_list" placeholder="Chọn / gõ series…" oninput="genSku()" onfocus="fillSeriesList()"><datalist id="p_series_list"></datalist>
           <div class="chips" id="serChips"></div></div>
       </div>
       <div class="row3" style="margin-top:8px">
@@ -611,6 +611,8 @@ const SERIES_HINTS = {
   'SVB':['BSAK','BSAB','BSAC','BSFA','BSFB','BSFG','BSFH','BSFI','BSFK','CB90','CB120']
 };
 const VARIANT_HINTS = ['STD','SP','FB','FF','HUB','KW8','KW10','KW12','NBR','HNBR','EPDM','SI','98SH','92SH','64SH','BAL','TAP'];
+// ĐẦY ĐỦ series theo hãng — trích từ catalogue_full.csv (mọi hãng đã đưa). Dùng cho dropdown chọn series.
+const CATALOG_SERIES={"CRM":["B200","B500","BS","CS","GF","GFA","HC","HC/SC","INVERTED","KE","L","LNC","LRC","SC","SPA","SPB","SPC","SPZ","TB"],"ETP":["ETP-CLASSIC","ETP-EXPRESS","ETP-HYLOC","ETP-MINI","ETP-OCTOPUS","ETP-POWER","ETP-TECHNO"],"FLD":["ARPEX","BVB/BVF","DS-ADS","DS-BDS","DS-HDS","ELPEX-B","FLUDEX","MCECM","MFEFM","MHM/MH","N-ARPEX","N-EUPEX","RADEX-N","RUPEX","RWN","RWS","SGG","SGG-A","SGS","SHH","SHH-W","SII","SKK","SNN","XN","XVV/XVF","XW","ZAPEX"],"FNR":["CLASSIC","CRE","FENAFLEX","FENNER","HRC","K","L","POWER","QUATTRO","XE"],"HEN":["AHHVV","FLANGE","HCP","HCP-RR","HDFB","HFB","HFB-R","HFB-RR","HFB-RRA","HFF-R","HFF-RR","HFF-RRA","HLE-R","HLE-RRA","HLF","HLF-R","HLF-RR","HYDRO","PULLEY"],"HUC":["HUCO","LOOP"],"ITG":["38-IG","587.10","587.15","587.20","587.30","587.35","587.42","587.48","587.50","587.55"],"JAC":["CA","CR","GD-GDL","GDBW/GSBW","GDS","GS-GSL","JAC","SAM","SEM-CEM","SSM/CCM","SSMB/SEMB"],"KBK":["BAA","BAI","BAK","BHH","BIA","BII","BIK","BKA","BKI","BKK","BKPA","BKPI","BKPK","CA","CI","CK","CP","EAA","EAI","EAK","EAP","EHH","EKA","EKI","EKK","EKP","EPA","EPI","EPK","EPP","KB1","KB1P","KB2","KB2H","KB2P","KB2VA","KB3","KB3P","KB4","KB4AL","KB4C","KB4F","KB4FA","KB4H","KB4HC","KB4K","KB4LV","KB4P","KB4VA","KB5","KB6","KB6P","KB7","KB8","KB8P","KBE1","KBE2","KBE2C","KBE2D","KBE2H","KBE2HC","KBE3","KBE3C","KBE4","KBFH","KBFK","KBK","KBST","KBST-G","KBST-G-VA","KBST-VA","LA","LI","LK","LLA","LLI","LLK","LLP","LP"],"KTR":["BOWEX","CLAMPEX","EVOLASTIC","G-GD","GA-HA","GEAREX","GR-HR","H-HD","POLY","POLY-NORM","RADEX","RADEX-N","RADEX-NC","REVOLEX","RIGIFLEX-N","ROFLEX","ROTEX","SYNTEX","X-XD"],"MAG":["MAGNALOY"],"MAV":["MAV"],"MTN":["BUSHINGS","FHP","GO-FLEX","HRC","HTS","MARTIN-FLEX","MBC","ML","MST","QD","SPA","SPB","SPC","SPZ","TB"],"PTI":["API610","DHP","DHP-PG32","DHP-PG52F","DHP-PSE/PCE","DHP-PSS/PCC","MARK","P4-00D","PF","PS4-00S","PTI","T10","T20","T31"],"RGF":["GWB","GWE","RFN","TKVO","TNB","TND","TNK","TNM","TNR","TNS","TNT","TNZ"],"RNL":["PM","RENOLD"],"RSP":["FAV","FB","FGR","FXM","FXN","IR"],"RTH":["H/HR","L","LBC","LFG","LHG","RB","RC","RCT","REM","REMH","RFC","RGD","RGR","RGS","RJB","RLM","RN","RNS","RR","RRJ","RRL","RRS","RSK","RST","SW","SWQ","SWS","T","TO"],"RXN":["WRAPFLEX"],"TBW":["SURE-FLEX","TB","WOODS"],"WST":["ANNULAR","AR","BELLHOUSING","CA","CA-K","CHAMBER","D","DCF","DELAY","DF","DOUBLE","DRUM","E/EP","G-GN","HN","HNS","K","K-S","KA","KDA","RE/FO","ROTODISC","ROTOFLEXI","ROTOFLUID","ROTOGEAR","ROTOGRID","ROTOMEC","ROTOPIN","SCF","SINGLE","TH"]};
 const DOC_TYPES = [
   {c:'DS', n:'Datasheet'},{c:'DWG', n:'Bản vẽ'},{c:'LAY', n:'Layout'},
   {c:'STD', n:'Study / tính toán'},{c:'PRC', n:'Quy trình (procedure)'},
@@ -1087,7 +1089,8 @@ function refreshSeriesChips(){
   const dataSer=PRODUCTS.filter(p=>(p.brandCode===code||brandCodeOf(p.brand)===code) && (!catNm||p.category===catNm) && (!sub||p.subtype===sub) && p.series).map(p=>p.series);
   const curated=(SERIES_CAT[code]||[]).filter(x=>(!cat||x.cat===cat) && (!sub||!x.sub||x.sub===sub)).map(x=>x.s);
   const good=[...new Set([...dataSer, ...curated])];
-  const rest=[...new Set(SERIES_HINTS[code]||[])].filter(s=>!good.includes(s));
+  fillSeriesList();   // đồng bộ dropdown series đầy đủ theo hãng
+  const rest=[...new Set([...(SERIES_HINTS[code]||[]), ...(CATALOG_SERIES[code]||[])])].filter(s=>!good.includes(s)).sort();
   let html='';
   if(good.length) html+='<span class="small" style="color:#15803d;font-weight:800;margin-right:3px">✔ hợp nhóm:</span>'+good.map(chip).join(' ');
   if(rest.length) html+=(good.length?'<span class="small muted" style="margin:0 5px">· khác của hãng:</span>':'')+rest.map(chip).join(' ');
@@ -1100,6 +1103,21 @@ function checkBrandCat(){
   if(cat && br && br!=='DHP' && allow && allow.length && !allow.includes(br))
     w.textContent='⚠ '+brandName(br)+' thường KHÔNG làm nhóm "'+catName(cat)+'" — kiểm tra lại loại/hãng.';
   else w.textContent='';
+}
+// Đầy đủ series của 1 hãng: catalogue nhúng + seed + dữ liệu thực đã nạp
+function seriesForBrand(bc){
+  if(!bc) return [];
+  const bn=brandName(bc), set=new Set();
+  (CATALOG_SERIES[bc]||[]).forEach(s=>set.add(s));
+  (SERIES_HINTS[bc]||[]).forEach(s=>set.add(s));
+  (SERIES_CAT[bc]||[]).forEach(e=>set.add(e.s));
+  PRODUCTS.forEach(p=>{ if(p.series && (p.brandCode===bc || p.brand===bn)) set.add(p.series); });
+  return [...set].sort();
+}
+function fillSeriesList(){
+  const dl=$('p_series_list'); if(!dl) return;
+  const bc=$('p_brand')?$('p_brand').value:'';
+  dl.innerHTML=seriesForBrand(bc).map(s=>`<option value="${esc(s)}"></option>`).join('');
 }
 function setSeries(v){ $('p_series').value=v; genSku(); }
 function addVariant(v){ const cur=$('p_variant').value.trim(); $('p_variant').value=cur?(cur.endsWith(v)?cur:cur+v):v; genSku(); }

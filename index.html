@@ -4737,9 +4737,13 @@ function kpiScores(){
     let bn=sts.find(s=>stageState(s)!=='done');
     if(!bn){ const L=sts.filter(s=>s.doneDate&&daysBetween(ref,s.doneDate)>0).sort((a,b)=> a.doneDate<b.doneDate?1:-1); bn=L[0]; }
     let bs = bn&&bn.assignee ? staff.find(x=>x.id===bn.assignee) : null;
-    // Đơn giao OUTSOURCE mà công đoạn nút thắt CHƯA gán ai → quy trễ cho ĐỐI TÁC đó (không rơi vào "công ty")
-    if(!bs && (o.assignment==='outsource'||o.assignment==='mixed') && o.outsourcePartner){
-      bs = staff.find(x=>x.type==='outsource' && _kn(x.name)===_kn(o.outsourcePartner)) || bs;
+    // Nếu nút thắt CHƯA rõ là đối tác, tìm ĐỐI TÁC OUTSOURCE từ: @location công đoạn → nơi làm công đoạn → đối tác của đơn.
+    if(!(bs && bs.type==='outsource')){
+      const cand=[ bn&&bn.location, bn&&bn.outsourcePartner, bn&&bn.vendor, o.outsourcePartner ]
+        .concat(sts.map(s=>s&&(s.location||s.outsourcePartner))).filter(Boolean);
+      const matchP=nm=>staff.find(x=>x.type==='outsource' && (_kn(x.name)===_kn(nm) || _kn(x.name).includes(_kn(nm)) || _kn(nm).includes(_kn(x.name))));
+      let partner=null; for(const nm of cand){ partner=matchP(nm); if(partner) break; }
+      if(partner) bs = partner;
     }
     const bnNm = bn?(bn.code||bn.name||'công đoạn'):(o.outsourcePartner?'giao '+o.outsourcePartner:'—');
     const ev={code:oCode(o),co:oCo(o),name:oNm(o),due:ref,stage:bnNm};

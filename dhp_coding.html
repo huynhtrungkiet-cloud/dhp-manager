@@ -1005,7 +1005,18 @@ function setPrefix(k){
   $('secDoc').style.display     = m==='doc'?'':'none';
   $('secCombo').style.display   = m==='combo'?'':'none';
   $('secSvc').style.display     = m==='svc'?'':'none';
+  // Prefix 8/4 = hàng DHP tự chế → mặc định hãng DHP (bỏ hãng gốc). Còn trống thì điền DHP.
+  if((k==='8'||k==='4')){ const bs=$('p_brand'); if(bs && !bs.value) bs.value='DHP'; }
   genSku();
+  assemblyBrandHint();
+}
+// Nhắc: prefix 8/4 phải để hãng DHP (đồ DHP tự chế) — hãng gốc ghi ở "Mã cũ"
+function assemblyBrandHint(){
+  const w=$('brandWarn'), bs=$('p_brand'); if(!w||!bs) return;
+  if((MS.prefix==='8'||MS.prefix==='4') && bs.value && bs.value!=='DHP'){
+    w.innerHTML='⚠ Prefix '+MS.prefix+' = hàng DHP tự chế → nên để hãng <b>DHP</b> (bỏ hãng gốc). Hãng gốc (vd Rathi) ghi ở ô "🗂 Mã cũ / tên gọi khác" để vẫn tra ra.';
+    w.style.color='#b45309';
+  }
 }
 function setFamily(k){
   MS.family=k;
@@ -1064,7 +1075,7 @@ function fillBrandForCat(){
   $('p_brand').innerHTML=html; $('p_brand').value=cur;
 }
 function onBrandChange(){
-  fillCatSelect(); checkBrandCat(); refreshSeriesChips(); genSku();
+  fillCatSelect(); checkBrandCat(); refreshSeriesChips(); genSku(); assemblyBrandHint();
 }
 function onSubtypeChange(){ MS.subtype=$('p_subtype').value; refreshSeriesChips(); genSku(); }
 // Series CHỈ hiện dòng khớp nhóm + sub-type: ưu tiên series từ SẢN PHẨM THẬT (tự học), rồi mới tới "khác của hãng"

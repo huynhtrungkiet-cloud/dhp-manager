@@ -130,7 +130,7 @@
     <button class="ghost sm" id="unlockBtn" onclick="unlockEdit()">🔓 Đổi cấp</button>
     <button class="ghost sm" id="adminBtn" style="display:none" onclick="openAdmin()">⚙ Mật khẩu</button>
     <button class="ghost sm" onclick="loadProducts()">🔄 Tải lại</button>
-    <a class="ghost sm" href="HUONG_DAN_DHP_CODING.html" target="_blank" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">❓ Hướng dẫn</a>
+    <button class="ghost sm" id="guideBtn" onclick="toggleGuide()" style="border-color:#fbbf24;color:#fde68a">📖 Quy định mã hóa</button>
     <a class="ghost sm" href="index.html" style="text-decoration:none;padding:6px 10px;border:1px solid #fff;border-radius:8px;color:#fff">↩ DHP Manager</a>
   </div>
 </div>
@@ -146,7 +146,7 @@
     <button class="sm" style="margin-top:8px" onclick="saveCfg()">💾 Lưu &amp; Kết nối</button>
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="mainToolbar">
     <input id="q" placeholder="🔎 Tìm mã / tên / series / hãng..." style="flex:1;min-width:240px;font-size:15px;padding:10px 12px" oninput="renderGrid()">
     <select id="fPrefix" style="width:auto" onchange="renderGrid()"><option value="">— Vai trò / prefix —</option></select>
     <select id="fBrand" style="width:auto" onchange="onBrandFilter()"><option value="">— Tất cả hãng —</option></select>
@@ -163,6 +163,7 @@
   <input type="file" id="csvIn" accept=".csv" style="display:none" onchange="importCsv(this.files[0]);this.value=''">
   <div id="dash"></div>
   <div id="grid"></div>
+  <div id="guideView" style="display:none"></div>
 </div>
 
 <!-- Modal: Chuẩn hóa mã cũ → v2.5 -->
@@ -1120,6 +1121,126 @@ function fillSeriesList(){
   dl.innerHTML=seriesForBrand(bc).map(s=>`<option value="${esc(s)}"></option>`).join('');
 }
 function setSeries(v){ $('p_series').value=v; genSku(); }
+
+/* ============================================================
+   TAB QUY ĐỊNH MÃ HÓA — hướng dẫn đầy đủ ngay trong app
+   ============================================================ */
+function toggleGuide(){
+  const g=$('guideView'); if(!g) return;
+  const on=(g.style.display==='none'||!g.style.display);
+  ['mainToolbar','dash','grid'].forEach(id=>{ const e=$(id); if(e) e.style.display=on?'none':''; });
+  g.style.display=on?'':'none';
+  const b=$('guideBtn'); if(b) b.textContent=on?'✕ Đóng quy định':'📖 Quy định mã hóa';
+  if(on){ g.innerHTML=codingGuideHtml(); try{window.scrollTo(0,0);}catch(_){} }
+}
+function codingGuideHtml(){
+  const h2=(n,t)=>`<h2 style="font-size:16px;color:#1e293b;border-bottom:2px solid var(--line);padding-bottom:6px;margin:20px 0 10px">${n} ${t}</h2>`;
+  const tbl=(head,rows)=>`<div class="card" style="padding:0;overflow:auto"><table class="ptbl"><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i===0?' style="font-weight:700;white-space:nowrap"':''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const seg=(c,t)=>`<span style="color:${c}">${t}</span>`;
+  return `
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:8px">
+    <button class="ghost sm" onclick="window.print()">🖨 In / lưu PDF</button>
+    <button class="ghost sm" onclick="toggleGuide()">✕ Về danh sách mã</button>
+  </div>
+  <div class="card" style="background:#0f172a;color:#e2e8f0;border:0">
+    <div style="font-size:19px;font-weight:800;margin-bottom:6px">📖 Quy định mã hóa DHP v2.5</div>
+    <div style="font-size:13px;color:#94a3b8;line-height:1.65">Mỗi sản phẩm có <b style="color:#fff">MỘT mã duy nhất, có cấu trúc</b> — nhìn mã là biết <b style="color:#fff">loại gì · hãng nào · cỡ bao nhiêu · DHP làm hay mua</b>. Thay cho cách đặt tên tự do mỗi người một kiểu.</div>
+  </div>
+
+  ${h2('①','Vì sao đổi sang mã mới?')}
+  ${tbl(['Tiêu chí','Mã CŨ (tự đặt)','Mã MỚI v2.5'],[
+    ['Đọc hiểu','<span style="color:#b45309;font-family:monospace">CAOSU_KTR_ROFLEX_068</span><br><span class="muted small">người mới đoán mò</span>','<span style="color:#15803d;font-family:monospace">3.CSG-KTR-ROFLEX-68</span><br><span class="muted small">đọc là hiểu ngay</span>'],
+    ['Nhất quán','Mỗi người 1 kiểu: <span style="font-family:monospace">BL+DAIOC_…, KN_…</span>','1 công thức chung cho mọi loại'],
+    ['Chống trùng','Dễ trùng, khó phát hiện','App <b>cảnh báo khi trùng</b> → dùng lại mã cũ'],
+    ['Tra cứu','Không lọc/nhóm được','Lọc theo prefix · hãng · nhóm tức thì'],
+    ['Bộ &amp; chi tiết','Rời rạc','Mã <b>cụm &amp; chi tiết cùng gốc</b>, khớp nhau'],
+  ])}
+
+  ${h2('②','Cấu trúc một mã')}
+  <div class="codebox">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;letter-spacing:.5px">${seg('#f87171','prefix')}.${seg('#fbbf24','CAT')}-${seg('#a78bfa','SUB')}-${seg('#34d399','BRAND')}-${seg('#38bdf8','SERIES')}-${seg('#f472b6','SIZE')}-D${seg('#f472b6','bore')}-${seg('#cbd5e1','VARIANT')}</div>
+    <div class="cd-desc" style="margin-top:6px">Ví dụ thật:</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-top:3px">${seg('#f87171','8')}.${seg('#fbbf24','KND')}-${seg('#a78bfa','DD')}-${seg('#34d399','DHP')}-${seg('#38bdf8','RADEX-N')}-${seg('#f472b6','115')}-D${seg('#f472b6','95x100')}-${seg('#cbd5e1','SP200')}</div>
+  </div>
+  ${tbl(['Đoạn','Nghĩa','Ví dụ'],[
+    [seg('#dc2626','<b>prefix</b>'),'Vai trò: mua / gia công / DHP chế tạo / cụm / dịch vụ','8 = cụm lắp ráp'],
+    [seg('#b45309','<b>CAT</b>'),'Nhóm sản phẩm (3 chữ)','KND = khớp nối đĩa đàn hồi'],
+    [seg('#7c3aed','<b>SUB</b>'),'Kiểu con (tùy loại)','DD = Double disc'],
+    [seg('#059669','<b>BRAND</b>'),'Hãng (0/1/3 giữ hãng · 4/8 = DHP)','DHP'],
+    [seg('#0284c7','<b>SERIES</b>'),'Dòng sản phẩm (theo catalogue)','RADEX-N'],
+    [seg('#db2777','<b>SIZE</b>'),'Cỡ catalogue','115'],
+    [seg('#db2777','<b>Dbore</b>'),'Lỗ trục (2 lỗ khác nhau = 95x100)','D95x100'],
+    ['<b>VARIANT</b>','Biến thể tùy chọn (spacer, cao su, then…)','SP200 = spacer 200mm'],
+  ])}
+
+  ${h2('③','Từ điển PREFIX — quan trọng nhất ("đúng prefix = đúng 80%")')}
+  ${tbl(['Prefix','Nghĩa','Giữ hãng?','Qua kho?'],[
+    ['<b style="color:#0ea5e9">0</b>','Catalogue OEM nguyên bản (mua)','✅ giữ','✅'],
+    ['<b style="color:#6366f1">1</b>','OEM + DHP gia công (móc lỗ/then)','✅ giữ','✅'],
+    ['<b style="color:#f59e0b">3</b>','Phụ tùng lẻ (cao su, spider, bạc…)','✅ giữ','✅'],
+    ['<b style="color:#16a34a">4</b>','DHP chế tạo mới (hub/hàn)','❌ → DHP','✅'],
+    ['<b style="color:#64748b">6</b>','Tài liệu (datasheet, bản vẽ)','—','❌'],
+    ['<b style="color:#8b5cf6">8</b>','Cụm lắp ráp (có BOM con)','❌ → DHP','✅'],
+    ['<b style="color:#ec4899">9</b>','Dịch vụ (cân chỉnh, sửa, lắp đặt)','—','❌'],
+  ])}
+  <div class="vbox warn">⚠ <b>Prefix 4 và 8 = hàng DHP tự chế → BỎ hãng gốc, để hãng DHP.</b> Hãng gốc (vd Rathi) ghi ở ô "🗂 Mã cũ / tên gọi khác".</div>
+
+  ${h2('④','Cách ĐỌC một mã (giải mã ngược)')}
+  <div class="card">
+    <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:#0EA5E9;margin-bottom:8px">8.KND-DD-DHP-RADEX-N-115-D95x100-SP200</div>
+    <div style="font-size:13px;line-height:1.9">
+      → <b>8</b> = Cụm lắp ráp (bộ, có chi tiết con)<br>
+      → <b>KND-DD</b> = Khớp nối đĩa đàn hồi, loại Double disc<br>
+      → <b>DHP</b> = do Đại Hồng Phát chế tạo<br>
+      → <b>RADEX-N</b> = theo chuẩn giao diện Radex-N (KTR)<br>
+      → <b>115</b> = cỡ 115<br>
+      → <b>D95x100</b> = 2 lỗ trục Ø95 và Ø100<br>
+      → <b>SP200</b> = ống nối (spacer) dài 200mm<br>
+      <span class="muted">= "Bộ khớp nối đĩa đàn hồi 115 do DHP chế tạo, 2 lỗ 95/100, spacer 200"</span>
+    </div>
+  </div>
+
+  ${h2('⑤','Cách TẠO mã trong app (6 bước)')}
+  <div class="card"><ol style="margin:0;padding-left:20px;font-size:13px;line-height:1.8">
+    <li>Bấm <b>＋ Thêm mã</b> (hoặc dán tên đơn vào ô <b>🪄 tự phân tích</b>).</li>
+    <li>Chọn <b>Prefix / vai trò</b> (0 mua · 4 DHP chế tạo · 8 cụm…).</li>
+    <li>Chọn <b>Họ → Nhóm</b> (vd A → KNB), rồi <b>Sub-type</b> nếu có.</li>
+    <li>Chọn <b>Hãng</b> (prefix 8/4 tự để DHP), <b>Series</b> (chọn từ dropdown ▾ catalogue).</li>
+    <li>Điền <b>Cỡ</b> + <b>lỗ trục d1/d2</b> + biến thể (nếu có).</li>
+    <li>App tự sinh mã ở khung đen + <b>cảnh báo nếu trùng</b>. Bấm <b>Lưu</b>.</li>
+  </ol></div>
+
+  ${h2('⑥','Cụm (8) &amp; chi tiết con (4/0) — mã cha–con đồng bộ')}
+  <div class="card" style="font-size:13px;line-height:1.7">
+    Khi tạo mã <b>cụm (prefix 8)</b>, app hiện panel <b>🧩 Chi tiết con (BOM)</b> tự sinh mã con cùng gốc:
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12.5px;margin-top:8px;line-height:1.9">
+      Cụm: <b style="color:#8b5cf6">8.KNB-FLG-DHP-RB-252</b><br>
+      ├─ <b style="color:#16a34a">4</b>.KNB-FLG-DHP-RB-252-BH-I / -BH-II <span class="muted">(mặt bích hàn — DHP chế tạo)</span><br>
+      ├─ <b style="color:#f59e0b">3</b>.CSG-DHP-RB-360 <span class="muted">(cao su — phụ tùng lẻ)</span><br>
+      └─ <b style="color:#0ea5e9">0</b>.KHC-BOLT-M14 <span class="muted">(bu lông — mua)</span>
+    </div>
+  </div>
+
+  ${h2('⑦','5 quy tắc VÀNG')}
+  <div class="card"><ol style="margin:0;padding-left:20px;font-size:13px;line-height:1.85">
+    <li><b>Đúng prefix = đúng 80%</b> — chọn vai trò (mua/chế tạo/cụm) trước tiên.</li>
+    <li><b>Prefix 8/4 = hàng DHP</b> → hãng để <b>DHP</b>, bỏ hãng gốc.</li>
+    <li><b>Giữ hãng</b> cho 0/1/3 (hàng mua/gia công OEM).</li>
+    <li><b>Chống trùng</b> — luôn tra trước, có mã cũ tương đương thì <b>dùng lại</b>.</li>
+    <li><b>Mã cũ giữ lại</b> ở ô "Mã cũ / tên gọi khác" → gõ mã cũ vẫn <b>tra ra</b>.</li>
+  </ol></div>
+
+  ${h2('⑧','Cách áp dụng thực tế')}
+  <div class="card"><ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8">
+    <li><b>Đặt tên sản phẩm/đơn hàng</b>: dùng mã v2.5 làm mã chính; tên mô tả để kèm.</li>
+    <li><b>Đặt tên file CAD</b>: prefix + model theo chuẩn (vd <span style="font-family:monospace">8.KNB-FLG-DHP-RB-252-001</span>). Đổi tên file .iam/.ipt <b>trong Inventor</b> (không đổi bằng Windows — đứt liên kết).</li>
+    <li><b>Tra cứu</b>: gõ mã / tên / series / hãng vào ô tìm, hoặc lọc từng cột.</li>
+    <li><b>Chuẩn hóa mã cũ</b>: nút <b>🔁 Chuẩn hóa mã cũ</b> → app tự đề xuất mã v2.5 hàng loạt.</li>
+    <li><b>Chung kho</b> với DHP Manager (đơn hàng dùng lại đúng mã này).</li>
+  </ul></div>
+
+  <div style="text-align:center;margin:16px 0;color:#94a3b8;font-size:12px">— DHP Coding v2.5 · tài liệu nội bộ Đại Hồng Phát —</div>`;
+}
 function addVariant(v){ const cur=$('p_variant').value.trim(); $('p_variant').value=cur?(cur.endsWith(v)?cur:cur+v):v; genSku(); }
 
 /* ---- sinh mã theo chuẩn v2.5 ---- */

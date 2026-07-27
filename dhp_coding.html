@@ -225,6 +225,22 @@
       <div id="boreWarn" class="small" style="margin-top:5px;font-weight:700"></div>
       <div class="field" style="margin-top:8px"><label>Biến thể (tùy chọn)</label><input id="p_variant" placeholder="GG / 98SH / KW8 / NBR..." oninput="genSku()">
         <div class="chips" id="varChips"></div></div>
+      <div style="margin-top:8px;border:1px dashed #93c5fd;border-radius:10px;padding:10px;background:#eff6ff">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:700;color:#1d4ed8;cursor:pointer;margin:0">
+          <input type="checkbox" id="p_combo" style="width:auto" onchange="document.getElementById('comboBox').style.display=this.checked?'block':'none';fillSeriesList2();genSku()">
+          🔗 Ghép nối thêm khớp/hãng thứ 2 <span class="muted small" style="font-weight:600">(vd Westcar Alfa 65 + Flender N-Eupex B 225)</span>
+        </label>
+        <div id="comboBox" style="display:none;margin-top:8px">
+          <div class="row2">
+            <div class="field" style="margin:0"><label>Hãng 2</label><select id="p_brand2" onchange="fillSeriesList2();genSku()"></select></div>
+            <div class="field" style="margin:0"><label>Series 2 <span class="muted small">(chọn ▾)</span></label><input id="p_series2" list="p_series_list2" placeholder="Chọn / gõ series…" oninput="genSku()" onfocus="fillSeriesList2()"><datalist id="p_series_list2"></datalist></div>
+          </div>
+          <div class="row2" style="margin-top:8px">
+            <div class="field" style="margin:0"><label>Cỡ 2</label><input id="p_size2" placeholder="225" oninput="genSku()"></div>
+            <div class="field" style="margin:0"><label>Biến thể 2</label><input id="p_variant2" placeholder="B / NBR..." oninput="genSku()"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 3. DOC (prefix 6) -->
@@ -1121,6 +1137,11 @@ function fillSeriesList(){
   dl.innerHTML=seriesForBrand(bc).map(s=>`<option value="${esc(s)}"></option>`).join('');
 }
 function setSeries(v){ $('p_series').value=v; genSku(); }
+// Ghép nối: đổ hãng 2 (lazy) + series 2 theo hãng 2
+function fillSeriesList2(){
+  const bs=$('p_brand2'); if(bs && (!bs.options || bs.options.length<2)){ bs.innerHTML='<option value="">— Hãng 2 —</option>'+BRANDS.map(b=>`<option value="${b.c}">${b.c} — ${esc(b.n)}</option>`).join(''); }
+  const dl=$('p_series_list2'); if(dl){ dl.innerHTML=seriesForBrand(bs?bs.value:'').map(s=>`<option value="${esc(s)}"></option>`).join(''); }
+}
 
 /* ============================================================
    TAB QUY ĐỊNH MÃ HÓA — hướng dẫn đầy đủ ngay trong app
@@ -1246,7 +1267,7 @@ function addVariant(v){ const cur=$('p_variant').value.trim(); $('p_variant').va
 /* ---- sinh mã theo chuẩn v2.5 ---- */
 function buildCode(){
   const k=MS.prefix; if(!k) return {full:'',desc:''};
-  const m=modeOf(); let body=[], desc=[];
+  const m=modeOf(); let body=[], desc=[], combo='';
   if(m==='product'){
     const cat=clean($('p_cat').value), sub=clean($('p_subtype').value), br=clean($('p_brand').value),
           ser=clean($('p_series').value), sz=clean($('p_size').value),
@@ -1255,6 +1276,12 @@ function buildCode(){
     body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+bore:'', va].filter(Boolean);
     if(cat) desc.push(catName($('p_cat').value)); if(br) desc.push(brandName($('p_brand').value));
     if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore.replace(/x/g,'×'));
+    // GHÉP NỐI: khớp/hãng thứ 2 (vd Westcar Alfa 65 + Flender N-Eupex B 225)
+    if($('p_combo') && $('p_combo').checked){
+      const b2=clean($('p_brand2').value), s2=clean($('p_series2').value), z2=clean($('p_size2').value), v2=clean($('p_variant2').value);
+      combo=[b2,s2,z2,v2].filter(Boolean).join('-');
+      if(combo){ desc.push('+ ghép '+([brandName($('p_brand2').value),$('p_series2').value,z2].filter(Boolean).join(' '))); }
+    }
   } else if(m==='doc'){
     const dt=clean($('p_docType').value), br=clean($('p_docBrand').value), ref=clean($('p_docRef').value);
     body=['DOC', dt, br, ref].filter(Boolean);
@@ -1268,7 +1295,7 @@ function buildCode(){
     body=['SVC', st, v].filter(Boolean);
     const s=SVC_TYPES.find(x=>x.c==$('p_svcType').value); desc.push('Dịch vụ', s?s.n:st); if(v) desc.push(v);
   }
-  return {full: k+'.'+body.join('-'), desc: desc.filter(Boolean).join(' · ')};
+  return {full: k+'.'+body.join('-')+(combo?'+'+combo:''), desc: desc.filter(Boolean).join(' · ')};
 }
 function genSku(){
   const {full,desc}=buildCode();
@@ -1363,7 +1390,8 @@ function openProduct(id){
   $('mTitle').textContent=p?('Sửa — '+(p.sku||'')):'Thêm mã';
   $('p_id').value=id||'';
   // reset fields
-  ['p_paste','p_series','p_size','p_d1','p_d2','p_variant','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
+  ['p_paste','p_series','p_size','p_d1','p_d2','p_variant','p_series2','p_size2','p_variant2','p_docRef','p_comboApp','p_comboSeq','p_svcVar','p_sku','p_name','p_material','p_pn','p_price','p_image','p_note','p_project','p_oldcode'].forEach(k=>{ if($(k))$(k).value=''; });
+  if($('p_combo')){ $('p_combo').checked=false; } if($('comboBox')) $('comboBox').style.display='none'; if($('p_brand2')) $('p_brand2').value='';
   const _ph=$('parseHint'); if(_ph) _ph.textContent='';
   $('serChips').innerHTML=''; document.querySelectorAll('#famTabs .fam-tab').forEach(b=>b.classList.remove('active'));
   // điền từ bản ghi
@@ -1379,6 +1407,7 @@ function openProduct(id){
       $('p_series').value=p.series||''; $('p_size').value=p.size||'';
       { const bp=String(p.bore||'').split(/[x×\-\/]/); $('p_d1').value=(p.bore1!=null?p.bore1:(bp[0]||'')); $('p_d2').value=(p.bore2!=null?p.bore2:(bp[1]||'')); }
       $('p_variant').value=p.variant||'';
+      if(p.combo){ $('p_combo').checked=true; $('comboBox').style.display='block'; fillSeriesList2(); $('p_brand2').value=p.brand2||''; fillSeriesList2(); $('p_series2').value=p.series2||''; $('p_size2').value=p.size2||''; $('p_variant2').value=p.variant2||''; }
     } else if(m==='doc'){ $('p_docType').value=p.docType||'DS'; $('p_docBrand').value=p.brandCode||brandCodeOf(p.brand)||''; $('p_docRef').value=p.docRef||''; }
     else if(m==='combo'){ $('p_comboInd').value=p.comboInd||'GEN'; $('p_comboApp').value=p.comboApp||''; $('p_comboSeq').value=p.comboSeq||''; }
     else if(m==='svc'){ $('p_svcType').value=p.svcType||'ALIGN'; $('p_svcVar').value=p.svcVar||''; }
@@ -1438,6 +1467,8 @@ async function saveProduct(){
     family:MS.family||'', cat, subtype:m==='product'?$('p_subtype').value:'',
     brandCode, brand:brandCode?brandName(brandCode):'', series:g('p_series'),
     size:g('p_size'), bore:(function(){const a=clean($('p_d1').value),b=clean($('p_d2').value);return a?(b&&b!==a?a+'x'+b:a):(b||'');})(), bore1:clean($('p_d1').value), bore2:clean($('p_d2').value), variant:g('p_variant'),
+    // ghép nối (khớp/hãng thứ 2)
+    combo:!!($('p_combo')&&$('p_combo').checked), brand2:g('p_brand2'), series2:g('p_series2'), size2:g('p_size2'), variant2:g('p_variant2'),
     // doc / combo / svc
     docType:m==='doc'?$('p_docType').value:'', docRef:m==='doc'?g('p_docRef'):'',
     comboInd:m==='combo'?$('p_comboInd').value:'', comboApp:m==='combo'?g('p_comboApp'):'', comboSeq:m==='combo'?g('p_comboSeq'):'',

@@ -4739,10 +4739,12 @@ function kpiScores(){
     let bs = bn&&bn.assignee ? staff.find(x=>x.id===bn.assignee) : null;
     // Nếu nút thắt CHƯA rõ là đối tác, tìm ĐỐI TÁC OUTSOURCE từ: @location công đoạn → nơi làm công đoạn → đối tác của đơn.
     if(!(bs && bs.type==='outsource')){
-      const cand=[ bn&&bn.location, bn&&bn.outsourcePartner, bn&&bn.vendor, o.outsourcePartner ]
-        .concat(sts.map(s=>s&&(s.location||s.outsourcePartner))).filter(Boolean);
-      const matchP=nm=>staff.find(x=>x.type==='outsource' && (_kn(x.name)===_kn(nm) || _kn(x.name).includes(_kn(nm)) || _kn(nm).includes(_kn(x.name))));
-      let partner=null; for(const nm of cand){ partner=matchP(nm); if(partner) break; }
+      // CHỈ quy cho đối tác của CHÍNH công đoạn nút thắt (@nơi làm của nó), hoặc đơn giao TRỌN 1 đối tác (Thực hiện=Outsource).
+      // KHÔNG quét công đoạn khác — tránh gán nhầm khi đơn "hỗn hợp" có 1 khâu ở đối tác nhưng nút thắt lại ở nơi khác.
+      const cand=[ bn&&bn.location, bn&&bn.outsourcePartner, bn&&bn.vendor ];
+      if(o.assignment==='outsource' && o.outsourcePartner) cand.push(o.outsourcePartner);
+      const matchP=nm=>nm&&staff.find(x=>x.type==='outsource' && (_kn(x.name)===_kn(nm) || _kn(x.name).includes(_kn(nm)) || _kn(nm).includes(_kn(x.name))));
+      let partner=null; for(const nm of cand.filter(Boolean)){ partner=matchP(nm); if(partner) break; }
       if(partner) bs = partner;
     }
     const bnNm = bn?(bn.code||bn.name||'công đoạn'):(o.outsourcePartner?'giao '+o.outsourcePartner:'—');

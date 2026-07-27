@@ -1265,6 +1265,14 @@ function codingGuideHtml(){
 function addVariant(v){ const cur=$('p_variant').value.trim(); $('p_variant').value=cur?(cur.endsWith(v)?cur:cur+v):v; genSku(); }
 
 /* ---- sinh mã theo chuẩn v2.5 ---- */
+// Viết tắt series DÀI cho mã gọn (giữ nguyên tên iconic ngắn: ROTEX, RADEX, TNM…). Mô tả vẫn hiện tên đầy đủ.
+const SERIES_ABBR={
+  'ROTOFLUID':'RF','ROTOFLEXI':'RFX','ROTOGEAR':'RGR','ROTOGRID':'RGD','ROTOPIN':'RPN','ROTODISC':'RDS','ROTOMEC':'RMC',
+  'N-EUPEX':'NEP','N-EUPEX DS':'NEPDS','N-ARPEX':'NAP','RADEX-N':'RDN','RADEX-NC':'RDNC','POLY-NORM':'PLN',
+  'TOOLFLEX':'TFX','REVOLEX':'RVL','RIGIFLEX-N':'RGX','SURE-FLEX':'SFX','FENAFLEX':'FFX','CONE-FLEX':'CFX',
+  'B-FLEX':'BFX','ELPEX-B':'ELB','FLUDEX':'FLX','MARTIN-FLEX':'MFX','GO-FLEX':'GFX'
+};
+function abbrSer(s){ return SERIES_ABBR[String(s||'').toUpperCase()] || s; }
 function buildCode(){
   const k=MS.prefix; if(!k) return {full:'',desc:''};
   const m=modeOf(); let body=[], desc=[], combo='';
@@ -1273,13 +1281,13 @@ function buildCode(){
           ser=clean($('p_series').value), sz=clean($('p_size').value),
           d1=clean($('p_d1').value), d2=clean($('p_d2').value), va=clean($('p_variant').value);
     const bore = d1 ? (d2 && d2!==d1 ? d1+'x'+d2 : d1) : (d2||'');   // 2 lỗ khác nhau → D24x38 · giống nhau/1 lỗ → D24
-    body=[cat&&sub?cat+'-'+sub:cat, br, ser, sz, bore?'D'+bore:'', va].filter(Boolean);
+    body=[cat&&sub?cat+'-'+sub:cat, br, abbrSer(ser), sz, bore?'D'+bore:'', va].filter(Boolean);
     if(cat) desc.push(catName($('p_cat').value)); if(br) desc.push(brandName($('p_brand').value));
     if(ser) desc.push(ser); if(sz) desc.push('size '+sz); if(bore) desc.push('Ø'+bore.replace(/x/g,'×'));
     // GHÉP NỐI: khớp/hãng thứ 2 (vd Westcar Alfa 65 + Flender N-Eupex B 225)
     if($('p_combo') && $('p_combo').checked){
       const b2=clean($('p_brand2').value), s2=clean($('p_series2').value), z2=clean($('p_size2').value), v2=clean($('p_variant2').value);
-      combo=[b2,s2,z2,v2].filter(Boolean).join('-');
+      combo=[b2,abbrSer(s2),z2,v2].filter(Boolean).join('-');
       if(combo){ desc.push('+ ghép '+([brandName($('p_brand2').value),$('p_series2').value,z2].filter(Boolean).join(' '))); }
     }
   } else if(m==='doc'){

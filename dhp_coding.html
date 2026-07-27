@@ -277,8 +277,12 @@
       <div class="cd-main" id="cdMain"><span class="seg-dim">— Chọn prefix để bắt đầu —</span></div>
       <div class="cd-desc" id="cdDesc">Điền các trường để xem mã sinh tự động.</div>
       <div class="field" style="margin:8px 0 0">
-        <label style="color:#94a3b8">Mã cuối (sửa được)</label>
-        <input id="p_sku" placeholder="0.KNL-JAW-KTR-ROTEX-28" style="font-weight:800;font-family:'JetBrains Mono',monospace" oninput="showSimilar()">
+        <label style="color:#94a3b8">Mã cuối (sửa được) <span style="color:#64748b;font-weight:400">— dán mã có sẵn rồi bấm ⇄ để điền lại tiêu chí</span></label>
+        <div style="display:flex;gap:6px">
+          <input id="p_sku" placeholder="Dán/gõ mã: 8.KTL-WST-RF-65-D75x50-K2S6+FLD-NEP-225" style="flex:1;font-weight:800;font-family:'JetBrains Mono',monospace" oninput="showSimilar()" onkeydown="if(event.key==='Enter'){event.preventDefault();decodeSku();}">
+          <button type="button" class="sm" onclick="decodeSku()" style="white-space:nowrap;background:#0EA5E9" title="Giải mã ngược: đọc mã → điền lại nhóm/hãng/series/cỡ vào form">⇄ Giải mã</button>
+        </div>
+        <div id="decodeHint" class="small" style="margin-top:4px;font-weight:700"></div>
       </div>
     </div>
     <div id="simBox" class="small" style="margin:2px 0 10px"></div>
@@ -1141,6 +1145,46 @@ function setSeries(v){ $('p_series').value=v; genSku(); }
 function fillSeriesList2(){
   const bs=$('p_brand2'); if(bs && (!bs.options || bs.options.length<2)){ bs.innerHTML='<option value="">— Hãng 2 —</option>'+BRANDS.map(b=>`<option value="${b.c}">${b.c} — ${esc(b.n)}</option>`).join(''); }
   const dl=$('p_series_list2'); if(dl){ dl.innerHTML=seriesForBrand(bs?bs.value:'').map(s=>`<option value="${esc(s)}"></option>`).join(''); }
+}
+/* ===== GIẢI MÃ NGƯỢC: dán 1 mã → điền lại tiêu chí vào form (đảo ngược buildCode) ===== */
+function _revAbbr(){ const r={}; Object.keys(SERIES_ABBR).forEach(k=>r[SERIES_ABBR[k]]=k); return r; }
+function _parseSeg(seg, hasCat){
+  const tk=String(seg||'').split('-').filter(Boolean); let i=0; const o={};
+  if(hasCat){ if(CATEGORIES.find(c=>c.c===tk[i])){ o.cat=tk[i]; i++; }
+    const subs=SUBTYPES[o.cat]||[]; if(subs.find(s=>s.c===tk[i])){ o.sub=tk[i]; i++; } }
+  if(BRANDS.find(b=>b.c===tk[i])){ o.brand=tk[i]; i++; }
+  // SIZE = token bắt đầu bằng SỐ (không phải Dbore) đầu tiên sau hãng; các token trước đó = SERIES
+  let sizeIdx=-1; for(let j=i;j<tk.length;j++){ if(/^\d/.test(tk[j]) && !/^D\d/i.test(tk[j])){ sizeIdx=j; break; } }
+  if(sizeIdx<0) sizeIdx=tk.length;
+  const rev=_revAbbr(); const serRaw=tk.slice(i,sizeIdx).join('-'); o.series=rev[serRaw]||serRaw;
+  if(sizeIdx<tk.length){ o.size=tk[sizeIdx]; i=sizeIdx+1; } else i=sizeIdx;
+  for(let j=i;j<tk.length;j++){ if(/^D\d/i.test(tk[j])) o.bore=tk[j].slice(1); else o.variant=(o.variant||'')+tk[j]; }
+  return o;
+}
+function decodeSku(){
+  const hint=$('decodeHint'); const set=(msg,c)=>{ if(hint){ hint.textContent=msg; hint.style.color=c; } };
+  const raw=($('p_sku').value||'').trim().toUpperCase();
+  const mPfx=raw.match(/^(\d)\./);
+  if(!mPfx){ set('⚠ Mã phải bắt đầu bằng "số." (vd 8.KTL-WST-RF-65…).','#b45309'); return; }
+  const prefix=mPfx[1]; const rest=raw.slice(mPfx[0].length); const seg=rest.split('+'); const P=_parseSeg(seg[0],true);
+  MS._skuTouched=false;
+  setPrefix(prefix);
+  if(modeOf()!=='product'){ set('ℹ Mã này là loại '+prefix+' (không phải sản phẩm) — đã chọn prefix, các mục khác điền tay.','#0369a1'); genSku(); return; }
+  if(P.cat){ const ct=CATEGORIES.find(c=>c.c===P.cat); if(ct) setFamily(ct.f); MS.cat=P.cat; if($('p_cat')){ $('p_cat').value=P.cat; onCatChange(); } }
+  if(P.sub && $('p_subtype')){ MS.subtype=P.sub; $('p_subtype').value=P.sub; }
+  if(P.brand && $('p_brand')){ $('p_brand').value=P.brand; onBrandChange(); }
+  $('p_series').value=P.series||''; $('p_size').value=P.size||'';
+  if(P.bore){ const b=P.bore.split(/X/i); $('p_d1').value=b[0]||''; $('p_d2').value=b[1]||''; } else { $('p_d1').value=''; $('p_d2').value=''; }
+  $('p_variant').value=P.variant||'';
+  const cb=$('p_combo');
+  if(seg[1]){ const C=_parseSeg(seg[1],false); if(cb) cb.checked=true; if($('comboBox')) $('comboBox').style.display='block'; fillSeriesList2();
+    if($('p_brand2')) $('p_brand2').value=C.brand||''; fillSeriesList2();
+    if($('p_series2')) $('p_series2').value=C.series||''; if($('p_size2')) $('p_size2').value=C.size||''; if($('p_variant2')) $('p_variant2').value=C.variant||''; }
+  else { if(cb) cb.checked=false; if($('comboBox')) $('comboBox').style.display='none'; }
+  genSku();
+  const gen=($('p_sku').value||'').toUpperCase();
+  if(gen===raw) set('✓ Đã điền lại tiêu chí — mã khớp đúng cấu trúc.','#15803d');
+  else set('✓ Đã điền lại. Bản chuẩn hóa: '+$('p_sku').value+'  (khác mã dán do viết tắt/thứ tự — nên dùng bản này). Soát lại nếu nhóm/series chưa đúng.','#0369a1');
 }
 
 /* ============================================================

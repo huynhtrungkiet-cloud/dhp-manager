@@ -1369,23 +1369,40 @@ function bomV(id){ const el=$(id); return el?el.value.trim():''; }
 function bomElBrand(ser){ const S=(ser||'').toUpperCase();
   if(S.includes('RADEX')) return 'KTR'; if(S.includes('ARPEX')) return 'FLD';
   if(S.startsWith('TND')||S.startsWith('TNM')) return 'RGF'; if(S.includes('THOMAS')) return 'RXN'; return 'KTR'; }
-function bomDefaults(stem,cat,ser,sz){
-  const el='0.'+[cat,'MEM',bomElBrand(ser),ser,sz].filter(Boolean).join('-');   // phần tử mua = prefix 0, giữ hãng
+function bomDefaults(o){
+  const {catsub,cat,br,ser,sz,va,stemDHP,stemId,combo}=o;
+  if(combo){
+    // CỤM GHÉP 2 khớp → con = 2 khớp thành phần (MUA, giữ hãng riêng) + bộ ghép/đế (DHP chế tạo)
+    const c1='0.'+[catsub,(br||'DHP'),ser,sz,va].filter(Boolean).join('-');
+    const c2='0.'+[combo.b2,combo.s2,combo.z2,combo.v2].filter(Boolean).join('-');
+    return [
+      {qty:'1', name:'Khớp 1 ('+(br||'DHP')+' '+ser+') — MUA', code:c1},
+      {qty:'1', name:'Khớp 2 ('+(combo.b2||'')+' '+(combo.s2||'')+') — MUA', code:c2},
+      {qty:'1', name:'Bộ ghép / đế nối — chế tạo', code:'4.'+stemDHP+'-ADAPTER'},
+    ];
+  }
+  // CỤM 1 khớp → hub + ống nối (DHP chế tạo) + phần tử/đĩa (MUA, giữ hãng của cụm)
+  const elBrand = br || bomElBrand(ser);
   return [
-    {qty:'2', name:'Hub (moay-ơ) — chế tạo', code:'4.'+stem+'-HUB'},
-    {qty:'1', name:'Ống nối / spacer — chế tạo', code:'4.'+stem+'-SPC'},
-    {qty:'2', name:'Đĩa / phần tử — MUA', code:el},
+    {qty:'2', name:'Hub (moay-ơ) — chế tạo', code:'4.'+stemDHP+'-HUB'},
+    {qty:'1', name:'Ống nối / spacer — chế tạo', code:'4.'+stemDHP+'-SPC'},
+    {qty:'2', name:'Phần tử / đĩa — MUA', code:'0.'+[cat,'MEM',elBrand,ser,sz].filter(Boolean).join('-')},
   ];
 }
 function renderBom(){
   const box=$('bomBox'); if(!box) return;
   if(MS.prefix!=='8'){ box.style.display='none'; return; }
   box.style.display='';
-  const cat=bomV('p_cat'), sub=bomV('p_subtype'), ser=bomV('p_series'), sz=bomV('p_size');
+  const cat=bomV('p_cat'), sub=bomV('p_subtype'), br=bomV('p_brand'), ser=abbrSer(bomV('p_series')), sz=bomV('p_size'), va=bomV('p_variant');
   const catsub = cat&&sub?cat+'-'+sub:cat;
-  const stem=[catsub,'DHP',ser,sz].filter(Boolean).join('-');
-  $('bomStem').textContent = stem || '(điền nhóm / series / size của cụm)';
-  if(stem!==bomState._stem){ bomState=bomDefaults(stem,cat,ser,sz); bomState._stem=stem; }   // đổi cụm → dựng lại con
+  const stemDHP=[catsub,'DHP',ser,sz].filter(Boolean).join('-');     // chi tiết DHP chế tạo
+  const stemId =[catsub,(br||'DHP'),ser,sz].filter(Boolean).join('-'); // định danh cụm (giữ hãng)
+  const isCombo = $('p_combo') && $('p_combo').checked;
+  const combo = isCombo ? {b2:bomV('p_brand2'), s2:abbrSer(bomV('p_series2')), z2:bomV('p_size2'), v2:bomV('p_variant2')} : null;
+  $('bomStem').textContent = (isCombo? (stemId+' + '+[combo.b2,combo.s2,combo.z2].filter(Boolean).join('-')) : stemId) || '(điền nhóm / series / size của cụm)';
+  const key = stemId+'|'+(isCombo?[combo.b2,combo.s2,combo.z2,combo.v2].join('-'):'');
+  if(key!==bomState._stem){ bomState=bomDefaults({catsub,cat,br,ser,sz,va,stemDHP,stemId,combo}); bomState._stem=key; }   // đổi cụm → dựng lại con
+  bomState._stemDHP=stemDHP;
   $('bomRows').innerHTML = bomState.map((r,i)=>`
     <div style="display:flex;gap:5px;align-items:center;margin-bottom:4px">
       <input style="width:38px;text-align:center" value="${esc(r.qty)}" title="Số lượng" oninput="bomState[${i}].qty=this.value">
@@ -1395,7 +1412,7 @@ function renderBom(){
       <a onclick="bomState.splice(${i},1);renderBom()" style="color:#ef4444;cursor:pointer;font-weight:800;padding:0 4px" title="Xóa">✕</a>
     </div>`).join('');
 }
-function bomAddRow(){ bomState.push({qty:'1',name:'',code:'4.'+(bomState._stem||'')+'-'}); renderBom(); }
+function bomAddRow(){ bomState.push({qty:'1',name:'',code:'4.'+(bomState._stemDHP||'')+'-'}); renderBom(); }
 function bomCopy(i){ const t=(bomState[i]&&bomState[i].code)||''; if(navigator.clipboard) navigator.clipboard.writeText(t); }
 function bomCopyAll(){
   if(!bomState.length){ alert('Chưa có chi tiết con.'); return; }

@@ -355,8 +355,12 @@ function gateCheck(){
           <option value="outsource">Đối tác outsource</option>
         </select>
       </div>
-      <div class="field"><label>Vai trò / Tổ / Ghi chú</label><input id="st_role" placeholder="VD: Tổ hàn / Tổ tiện / Quản lý lô hàng..."></div>
+      <div class="field"><label>🧩 Vai trò tổ chức <span class="muted small">(chia theo vai trò)</span></label>
+        <select id="st_orgrole" onchange="onOrgRolePick()"></select>
+        <div id="st_orgdesc" class="muted small" style="margin-top:3px"></div>
+      </div>
     </div>
+    <div class="field"><label>Ghi chú / tổ (tùy chọn)</label><input id="st_role" placeholder="VD: Tổ tiện · phụ trách máy CNC..."></div>
     <div class="field"><label><input type="checkbox" id="st_active" style="width:auto;display:inline-block;margin-right:6px" checked> Hiển thị trên lịch phân công</label></div>
     <div class="toolbar" style="justify-content:flex-end">
       <button class="ghost" onclick="closeModal('modalStaffEdit')">Hủy</button>
@@ -734,12 +738,27 @@ function stLabel(st){ return (typeof LANG!=='undefined' && LANG==='en' && st.en)
 const statusByKey = k => ORDER_STATUSES.find(s=>s.k===k) || ORDER_STATUSES[0];
 
 const SEED_PARTNERS = ['CK Tuyết Vinh', 'Cơ Khí Minh Hiển'];
+// ===== VAI TRÒ TỔ CHỨC (chia theo VAI TRÒ, không theo người — thêm người mới khỏi sửa logic) =====
+const ORG_ROLES=[
+  {k:'coordinator', n:'Điều phối (Coordinator)',              kw:'dieu phoi', desc:'Nhận đơn · nhập DHP Manager · in bản vẽ · phát việc · cập nhật tiến độ · giao nhận · cắt dây. KHÔNG quyết định kỹ thuật.'},
+  {k:'techlead',    n:'Tổ trưởng kỹ thuật (Technical Leader)', kw:'to truong ky thuat', desc:'Kiểm bản vẽ · chọn phương án gia công · chia nguyên công · xử lý sự cố · hướng dẫn thợ · nghiệm thu cuối. Quyết định kỹ thuật & phân công.'},
+  {k:'operator',    n:'Thợ chính (Operator)',                 kw:'tho', desc:'Tiện · phay · lắp ráp · hỗ trợ cắt. Có việc là làm.'},
+  {k:'qc',          n:'QC / Kiểm tra',                        kw:'qc', desc:'Kiểm tra chất lượng, nghiệm thu.'},
+  {k:'delivery',    n:'Giao nhận / Kho (Delivery)',           kw:'kho giao van', desc:'Giao hàng · nhận hàng · kho vận.'},
+  {k:'manager',     n:'Giám đốc KT & KD',                     kw:'giam doc', desc:'Báo giá · thiết kế · gặp khách · phát triển máy · mở rộng đối tác.'},
+  {k:'outsource',   n:'Đối tác ngoài (Outsource)',            kw:'doi tac outsource', desc:'Gia công ngoài theo bản vẽ.'},
+  {k:'other',       n:'Khác',                                 kw:'', desc:''},
+];
+function orgRoleName(k){ const r=ORG_ROLES.find(x=>x.k===k); return r?r.n:''; }
+function orgRoleShort(k){ return ({coordinator:'Điều phối',techlead:'Tổ trưởng KT',operator:'Thợ chính',qc:'QC',delivery:'Giao nhận',manager:'Giám đốc',outsource:'Đối tác ngoài'}[k])||''; }
 const SEED_STAFF = [
-  {badge:'', name:'Cao Thanh Tuấn Kiệt', type:'internal', role:'Điều phối gia công · Cắt dây', active:true},
-  {badge:'', name:'Nguyễn Tấn Sê',       type:'internal', role:'Tổ gia công', active:true},
-  {badge:'', name:'Lê Kim Quân',         type:'internal', role:'Tổ gia công', active:true},
-  {badge:'', name:'CK Tuyết Vinh',       type:'outsource',role:'Đối tác outsource · Gia công CNC', active:true},
-  {badge:'', name:'Cơ Khí Minh Hiển',    type:'outsource',role:'Đối tác outsource · Gia công theo bản vẽ', active:true},
+  {badge:'', name:'Cao Thanh Tuấn Kiệt', type:'internal', orgRole:'coordinator', role:'Điều phối · Cắt dây', active:true},
+  {badge:'', name:'Phan Tấn Đoan',       type:'internal', orgRole:'techlead',   role:'Tổ trưởng kỹ thuật', active:true},
+  {badge:'', name:'Nguyễn Minh Vương',   type:'internal', orgRole:'operator',   role:'Thợ chính', active:true},
+  {badge:'', name:'Nguyễn Tấn Sê',       type:'internal', orgRole:'operator',   role:'Tổ gia công', active:true},
+  {badge:'', name:'Lê Kim Quân',         type:'internal', orgRole:'operator',   role:'Tổ gia công', active:true},
+  {badge:'', name:'CK Tuyết Vinh',       type:'outsource',orgRole:'outsource',  role:'Đối tác outsource · Gia công CNC', active:true},
+  {badge:'', name:'Cơ Khí Minh Hiển',    type:'outsource',orgRole:'outsource',  role:'Đối tác outsource · Gia công theo bản vẽ', active:true},
 ];
 
 // Bảng màu cho mã đơn hàng — mỗi đơn được gán 1 màu cố định theo mã (hash),
@@ -1590,14 +1609,18 @@ function renderStaffList(){
     </tr>`).join('')}
   </tbody></table>`;
 }
+function onOrgRolePick(){ const k=document.getElementById('st_orgrole').value; const r=ORG_ROLES.find(x=>x.k===k); const d=document.getElementById('st_orgdesc'); if(d) d.textContent=r?r.desc:'';
+  if(k==='outsource') document.getElementById('st_type').value='outsource'; else if(k) { const tp=document.getElementById('st_type'); if(tp.value==='outsource') tp.value='internal'; } }
 function openStaffEdit(id){
   document.getElementById('st_id').value = id||'';
+  const sel=document.getElementById('st_orgrole'); sel.innerHTML='<option value="">— Chọn vai trò —</option>'+ORG_ROLES.map(r=>`<option value="${r.k}">${esc(r.n)}</option>`).join('');
   if(id){
     const s = DATA.staff.find(x=>x.id===id);
     document.getElementById('staffEditTitle').textContent = 'Sửa — '+s.name;
     document.getElementById('st_badge').value = s.badge||'';
     document.getElementById('st_name').value = s.name||'';
     document.getElementById('st_type').value = s.type||'internal';
+    document.getElementById('st_orgrole').value = s.orgRole || (s.type==='outsource'?'outsource':'');
     document.getElementById('st_role').value = s.role||'';
     document.getElementById('st_active').checked = s.active!==false;
   } else {
@@ -1605,9 +1628,11 @@ function openStaffEdit(id){
     document.getElementById('st_badge').value='';
     document.getElementById('st_name').value='';
     document.getElementById('st_type').value='internal';
+    document.getElementById('st_orgrole').value='';
     document.getElementById('st_role').value='';
     document.getElementById('st_active').checked = true;
   }
+  onOrgRolePick();
   openModal('modalStaffEdit');
 }
 function saveStaff(){
@@ -1620,7 +1645,8 @@ function saveStaff(){
     badge: document.getElementById('st_badge').value.trim(),
     name,
     type: document.getElementById('st_type').value,
-    role: document.getElementById('st_role').value.trim(),
+    orgRole: document.getElementById('st_orgrole').value,
+    role: document.getElementById('st_role').value.trim() || orgRoleName(document.getElementById('st_orgrole').value),
     active: document.getElementById('st_active').checked,
   };
   const idx = DATA.staff.findIndex(x=>x.id===rec.id);
@@ -4441,6 +4467,19 @@ function renderGuide(){
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:14px">${gate?`<span style="background:${cls};color:#fff;border-radius:5px;padding:1px 8px;font-size:11px;font-weight:800">${gate}</span> `:''}${title}</b><span style="font-size:11px;color:#fff;background:#475569;border-radius:5px;padding:1px 7px;font-weight:700">${who}</span></div>
     <ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55">${items.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
   el.innerHTML=subNav+`
+    <h2 class="sec"><span class="bar"></span>🧩 Cơ cấu VAI TRÒ (chia theo vai trò — thêm người khỏi sửa quy trình)</h2>
+    <div class="card" style="background:#eff6ff;border:1px solid #93c5fd">
+      <div style="font-size:13px;font-weight:800;color:#1d4ed8;text-align:center;margin-bottom:10px">
+        Khách hàng → <span style="background:#0891b2;color:#fff;border-radius:5px;padding:1px 7px">Điều phối</span> → <span style="background:#7c3aed;color:#fff;border-radius:5px;padding:1px 7px">Tổ trưởng KT</span> → <span style="background:#16a34a;color:#fff;border-radius:5px;padding:1px 7px">Thợ chính</span> → <span style="background:#D97706;color:#fff;border-radius:5px;padding:1px 7px">QC</span> → <span style="background:#0f766e;color:#fff;border-radius:5px;padding:1px 7px">Giao nhận</span>
+      </div>
+      <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#dbeafe"><th style="text-align:left;padding:6px 9px">Vai trò</th><th style="text-align:left;padding:6px 9px">Chịu trách nhiệm</th><th style="text-align:left;padding:6px 9px;white-space:nowrap">Gợi ý người</th></tr></thead><tbody>
+        ${[
+          ['coordinator','Cao Thanh Kiệt'],['techlead','Phan Tấn Đoan'],['operator','Vương / Sê / Quân'],['qc','Tổ trưởng KT kiêm'],['delivery','Điều phối kiêm'],['manager','Bạn (GĐ)']
+        ].map(([k,who])=>{ const r=ORG_ROLES.find(x=>x.k===k); return `<tr><td style="padding:6px 9px;font-weight:700;white-space:nowrap;vertical-align:top">${esc(r.n)}</td><td style="padding:6px 9px">${esc(r.desc)}</td><td style="padding:6px 9px;color:var(--muted);white-space:nowrap;vertical-align:top">${who}</td></tr>`; }).join('')}
+        </tbody></table></div>
+      <div class="small muted" style="margin-top:8px">⚠ <b>Kiệt là Điều phối logistics, KHÔNG quyết định kỹ thuật</b> — mọi vấn đề kỹ thuật hỏi Tổ trưởng KT (Đoan). Đặt vai trò cho từng người ở tab ⚙ Dữ liệu → Nhân sự.</div>
+    </div>
     <h2 class="sec"><span class="bar"></span>📋 Quy trình vận hành xưởng CK368 — BẮT BUỘC</h2>
     <div class="card" style="background:#fef2f2;border:1.5px solid var(--st-late)">
       <b style="color:var(--st-late)">⛔ NGUYÊN TẮC: App là nguồn dữ liệu duy nhất. Đơn chỉ ĐƯỢC XUẤT XƯỞNG khi qua đủ 3 cổng:</b>
@@ -4692,7 +4731,7 @@ const KPI_START_DATE='2026-07-06';  // KPI chỉ tính sự kiện TỪ ngày n�
 function kpiScores(){
   const S=KPI_START_DATE, today=todayStr();
   const staff=DATA.staff.filter(s=>s&&s.active!==false);
-  const dispatchers=staff.filter(s=>_kn(s.role).includes('dieu phoi'));
+  const dispatchers=staff.filter(s=>s.orgRole==='coordinator' || _kn(s.role).includes('dieu phoi'));
   const m={}; staff.forEach(s=>m[s.id]={s, dispatcher:dispatchers.some(d=>d.id===s.id), late:0, ncrUsable:0, ncrScrap:0, onTime:0, quality:0, dimFail:0, lateUpd:0, hourShort:0, hourOver:0, orderStale:0,
     det:{late:[],onTime:[],quality:[],dimFail:[],hourShort:[],hourOver:[],ncrUsable:[],ncrScrap:[]}});
   const causeDet={out:[],ship:[],overload:[],stale:[],lateUpd:[],company:[],fm:[]};   // chi tiết cho banner cấp Kho/Công ty (fm = bất khả kháng)
@@ -4708,7 +4747,7 @@ function kpiScores(){
   let orderH=0; (DATA.assignments||[]).forEach(a=>{ if(!a||a.date<S||a.date>=today||a.kind!=='order') return; const st=staff.find(x=>x.id===a.staffId); if(st&&st.type==='outsource') return; orderH += (a.hours!=null?parseFloat(a.hours):8)||0; });
   const overloadRatio = capacityH>0 ? Math.round(orderH/capacityH*100)/100 : 0;
   const overloaded = overloadRatio>1.1;                                     // nhận việc >110% năng lực = quá tải
-  const khoStaff = staff.find(s=>/\bkho\b|giao van|giao hang|van chuyen/.test(_kn(s.role)));
+  const khoStaff = staff.find(s=>s.orgRole==='delivery' || /\bkho\b|giao van|giao hang|van chuyen/.test(_kn(s.role)));
   const cause={out:0, ship:0, worker:0, overload:0, stale:0, lateUpd:0, company:0, fm:0};
   (DATA.orders||[]).forEach(o=>{
     const ref=o.requestedDate||o.dueDate; if(!ref||ref<S||o.status==='hold') return;
@@ -4908,7 +4947,7 @@ function renderKpi(){
       ${kpiRows.length? `<table><thead><tr><th>Nhân sự</th><th>Vai</th><th title="Công đoạn xong đúng hạn/sớm">⏱ Đúng hạn</th><th title="Công đoạn mọi kích thước đạt">✓ Chất lượng</th><th title="Đơn trễ do CHÍNH người/đối tác này (nút thắt) — tính tới mốc Hoàn thành chờ giao">⚠ Trễ đơn</th><th title="Ngày-người nội bộ thiếu giờ (chưa đủ 8h T2-6 / 7h T7) — quy về điều phối">⏳ Thiếu giờ</th><th title="Khai giờ thường VƯỢT chuẩn quá 1h/ngày mà chưa sửa (nhập sai) — quy về điều phối">⏫ Vượt giờ</th><th title="Số kích thước đo KHÔNG đạt (sai dung sai)">📏 Sai KT</th><th title="Hàng hư còn dùng được">🔧 Hư-sửa</th><th title="Hàng hư mất khả năng phục hồi (phế)">✕ Phế</th><th>Điểm</th><th>Hạng</th></tr></thead><tbody>
         ${kpiRows.map(x=>{ const g=kpiGrade(x.score); return `<tr>
           <td><b>${esc(x.s.name)}</b>${x.s.type==='outsource'?' <span class="badge-out">OUT</span>':''}</td>
-          <td class="small muted">${x.s.type==='outsource'?'Đối tác ngoài':(x.dispatcher?'Điều phối':'Thợ')}</td>
+          <td class="small muted">${orgRoleShort(x.s.orgRole) || (x.s.type==='outsource'?'Đối tác ngoài':(x.dispatcher?'Điều phối':'Thợ'))}</td>
           <td>${kpiCell(x.s.id,'onTime',x.onTime,'#15803D','+')}</td>
           <td>${kpiCell(x.s.id,'quality',x.quality,'#15803D','+')}</td>
           <td>${kpiCell(x.s.id,'late',x.late,'var(--st-late)')}</td>

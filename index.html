@@ -148,20 +148,81 @@
   <p style="color:rgba(255,255,255,.7);font-size:11px;margin-top:18px">Chỉ dành cho nội bộ Đại Hồng Phát</p>
 </div>
 <script>
-/* ===== Cổng mật khẩu (self-contained) =====
-   ĐỔI MẬT KHẨU: sửa giá trị APP_PASSCODE bên dưới rồi upload lại index.html.
-   Lưu ý: đây là lớp chặn cơ bản cho nội bộ — bảo vệ thật sự nằm ở URL Google Sheets (chìa khóa dữ liệu). */
-// ĐỔI MẬT KHẨU: sửa các giá trị này rồi upload lại index.html.
-// 3 cấp quyền (mật khẩu KHÔNG hiển thị trong app — cấp riêng từng người)
-window.VIEW_PASSCODE  = 'dhpxem195';       // XEM — kinh doanh + các phòng ban khác
-window.WORK_PASSCODE  = 'dhpdieuphoi308';  // Thợ dùng chung pass Điều phối
-window.EDIT_PASSCODE  = 'dhpdieuphoi308';  // ĐIỀU PHỐI CHUNG (admin+điều phối) — lên đơn, phân công, QC
-window.ADMIN_PASSCODE = 'dhpquanly714';    // QUẢN LÝ/GĐ — tất cả + cấu hình
+/* ===== Cổng mật khẩu (self-contained) — sửa 30-08-2026 =====
+   TRƯỚC ĐÂY mật khẩu nằm ở đây dạng chữ thường, mà repo này CÔNG KHAI trên GitHub
+   → ai vào github.com/huynhtrungkiet-cloud/dhp-manager đọc index.html là thấy hết.
+   NAY chỉ còn hash SHA-256 (có salt). Đọc hash không suy ngược ra mật khẩu.
+
+   ĐỔI MẬT KHẨU: mở file doi-mat-khau.html (kèm theo), gõ mật khẩu mới → nó in ra
+   4 dòng hash; dán đè vào DHP_PASS_HASHES bên dưới VÀ vào dhp_core.js, rồi upload lại.
+
+   LƯU Ý THẲNG: hash chỉ chặn người đọc mã nguồn, KHÔNG chặn người đã biết mật khẩu cũ
+   (mật khẩu cũ vẫn nằm trong lịch sử git). Muốn kín thật thì phải:
+     1) chuyển repo sang Private,  2) đổi mật khẩu,  3) siết RLS Supabase. */
+// SHA-256 gọn, chạy đồng bộ, không cần crypto.subtle (chạy được cả khi mở file:// )
+function dhpSha256(ascii){
+  function rr(v,a){ return (v>>>a)|(v<<(32-a)); }
+  var mm=Math.pow, mf=Math.floor, maxW=mm(2,32), lW=ascii.length*8, hash=[], k=[], primeC=2, i=0, j, w=[], H=[];
+  var b=[], res='';
+  // hằng số
+  outer: for(; i<64; primeC++){
+    for(j=2; j*j<=primeC; j++) if(primeC%j===0) continue outer;
+    if(i<8) H[i] = (mm(primeC,.5)%1*maxW)|0;
+    k[i] = (mm(primeC,1/3)%1*maxW)|0;
+    i++;
+  }
+  // padding theo byte UTF-8
+  var bytes=[];
+  for(i=0;i<ascii.length;i++){
+    var c=ascii.charCodeAt(i);
+    if(c<128) bytes.push(c);
+    else if(c<2048){ bytes.push(192|(c>>6),128|(c&63)); }
+    else if(c<55296||c>=57344){ bytes.push(224|(c>>12),128|((c>>6)&63),128|(c&63)); }
+    else { i++; var cp=65536+(((c&1023)<<10)|(ascii.charCodeAt(i)&1023));
+      bytes.push(240|(cp>>18),128|((cp>>12)&63),128|((cp>>6)&63),128|(cp&63)); }
+  }
+  lW = bytes.length*8;
+  bytes.push(0x80);
+  while(bytes.length%64!==56) bytes.push(0);
+  for(i=7;i>=0;i--) bytes.push((lW/mm(2,i*8))&255);
+  hash = H.slice(0);
+  for(var blk=0; blk<bytes.length; blk+=64){
+    for(i=0;i<16;i++) w[i]=(bytes[blk+i*4]<<24)|(bytes[blk+i*4+1]<<16)|(bytes[blk+i*4+2]<<8)|bytes[blk+i*4+3];
+    for(i=16;i<64;i++){
+      var s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3);
+      var s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10);
+      w[i]=(w[i-16]+s0+w[i-7]+s1)|0;
+    }
+    var a=hash[0],bb=hash[1],c2=hash[2],d=hash[3],e=hash[4],f=hash[5],g=hash[6],h=hash[7];
+    for(i=0;i<64;i++){
+      var S1=rr(e,6)^rr(e,11)^rr(e,25), ch=(e&f)^((~e)&g), t1=(h+S1+ch+k[i]+w[i])|0;
+      var S0=rr(a,2)^rr(a,13)^rr(a,22), mj=(a&bb)^(a&c2)^(bb&c2), t2=(S0+mj)|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c2; c2=bb; bb=a; a=(t1+t2)|0;
+    }
+    hash[0]=(hash[0]+a)|0; hash[1]=(hash[1]+bb)|0; hash[2]=(hash[2]+c2)|0; hash[3]=(hash[3]+d)|0;
+    hash[4]=(hash[4]+e)|0; hash[5]=(hash[5]+f)|0; hash[6]=(hash[6]+g)|0; hash[7]=(hash[7]+h)|0;
+  }
+  for(i=0;i<8;i++) res += ((hash[i]>>>0).toString(16)).padStart(8,'0');
+  return res;
+}
+window.dhpSha256 = dhpSha256;
+window.DHP_PASS_SALT = 'dhp-ck368-2026';
+// hash = SHA256( salt + ':' + mật khẩu )
+window.DHP_PASS_HASHES = {
+  viewer: '37be4d9020617879be5435f90fd31a974b2774bb25436340488dad028ecf961e', // XEM — kinh doanh + phòng ban khác
+  worker: '080acd5ea24498f27c4d6d777d3b4ee1a8c9fc78d49a0ce2deae5d6bf7b40f73', // THỢ (đang dùng chung pass Điều phối)
+  editor: '080acd5ea24498f27c4d6d777d3b4ee1a8c9fc78d49a0ce2deae5d6bf7b40f73', // ĐIỀU PHỐI — lên đơn, phân công, QC
+  admin:  'fd626bf170f5125cac038ca187f55c553a8184cbbeced8ce9d57745fe405a3f6', // QUẢN LÝ/GĐ — tất cả + cấu hình
+};
 window.roleFromPass = function(v){
-  if(v===window.ADMIN_PASSCODE) return 'admin';
-  if(v===window.EDIT_PASSCODE)  return 'editor';
-  if(v===window.WORK_PASSCODE)  return 'worker';
-  if(v===window.VIEW_PASSCODE)  return 'viewer';
+  v = String(v==null?'':v).trim();
+  if(!v) return null;
+  var h = dhpSha256(window.DHP_PASS_SALT + ':' + v);
+  var H = window.DHP_PASS_HASHES;
+  if(h===H.admin)  return 'admin';
+  if(h===H.editor) return 'editor';
+  if(h===H.worker) return 'worker';
+  if(h===H.viewer) return 'viewer';
   return null;
 };
 (function(){
@@ -968,14 +1029,83 @@ function load(){
   ensureCustomersFromOrders();
 }
 let _suppressAutoPush = false;
+// ===== LƯU (sửa 30-08-2026) =====
+// Trước đây: hết bộ nhớ chỉ alert rồi CHẠY TIẾP như đã lưu → người dùng sửa tiếp, tắt máy là mất sạch.
+// Nay: cứu ngay ra file JSON, báo rõ, và KHÔNG đẩy lên kho chung bản chưa lưu được.
+let _saveFailed = false;
 function save(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ alert('Không lưu được dữ liệu (bộ nhớ trình duyệt đầy hoặc bị chặn).'); }
+  let ok = true, payload = null;
+  try{ payload = JSON.stringify(DATA); }
+  catch(e){ ok=false; alert('⛔ Dữ liệu đang lỗi nên không tuần tự hoá được: '+e.message); }
+  if(payload!=null){
+    try{ localStorage.setItem(STORAGE_KEY, payload); _saveFailed=false; }
+    catch(e){
+      ok = false;
+      if(!_saveFailed){
+        _saveFailed = true;
+        try{ emergencyBackup(payload); }catch(e2){}
+        alert('⛔ KHÔNG LƯU ĐƯỢC vào bộ nhớ trình duyệt\n('+(e.name||'lỗi')+' — bộ nhớ đầy hoặc trình duyệt chặn).\n\nApp vừa tải một file cứu hộ "dhp-cuu-ho-....json" về máy anh — GIỮ FILE ĐÓ LẠI.\n\nĐỪNG nhập tiếp. Hãy: xoá bớt dữ liệu cũ / dùng trình duyệt khác, rồi vào tab Dữ liệu → Nhập từ file cứu hộ.');
+      }
+    }
+  }
   renderAll();
-  if(!_suppressAutoPush && typeof scheduleAutoPush==='function') scheduleAutoPush();
+  // Chưa lưu được xuống máy thì TUYỆT ĐỐI không đẩy lên kho chung — tránh đẩy bản thiếu rồi xoá bản đủ
+  if(ok && !_suppressAutoPush && typeof scheduleAutoPush==='function') scheduleAutoPush();
+}
+// Tải thẳng chuỗi JSON về máy (dùng cho cứu hộ + backup hằng ngày)
+function downloadJson(text, filename){
+  try{
+    const blob = new Blob([text], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1500);
+    return true;
+  }catch(e){ console.error('downloadJson', e); return false; }
+}
+function emergencyBackup(payload){
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  downloadJson(payload!=null?payload:JSON.stringify(DATA), 'dhp-cuu-ho-'+stamp+'.json');
+}
+// ===== MÃ NỘI BỘ KHÔNG TRÙNG GIỮA CÁC MÁY (sửa 30-08-2026) =====
+// Trước đây: id = tiền tố + bộ đếm lưu trong máy → 2 máy cùng tạo đơn ra CÙNG id
+// → Supabase upsert theo id → bản sau ĐÈ bản trước → mất đơn.
+// Nay: gắn thêm mã thiết bị (cố định theo máy) + thời điểm tạo. Id cũ giữ nguyên, không cần đổi.
+function deviceTag(){
+  let d = null;
+  try{ d = localStorage.getItem('dhp_device_tag'); }catch(e){}
+  if(!d || d.length<4){
+    d = Math.random().toString(36).slice(2,6) + Math.random().toString(36).slice(2,4);
+    try{ localStorage.setItem('dhp_device_tag', d); }catch(e){}
+  }
+  return d;
 }
 function uid(prefix, counterKey){
   DATA.counters[counterKey] = (DATA.counters[counterKey]||0) + 1;
-  return prefix + '-' + String(DATA.counters[counterKey]).padStart(4,'0');
+  const seq = String(DATA.counters[counterKey]).padStart(4,'0');
+  return prefix + '-' + seq + '-' + deviceTag() + Date.now().toString(36).slice(-4);
+}
+// Mã HIỂN THỊ (o.code) vẫn do người dùng/nextOrderCodeFor đặt — có thể trùng khi 2 máy lên đơn cùng lúc.
+// Hàm này dò trùng để báo cho điều phối biết mà đổi, KHÔNG tự sửa (mã đơn đã in ra giấy).
+function findDuplicateCodes(){
+  const by={};
+  (DATA.orders||[]).forEach(o=>{ const c=String((o&&o.code)||'').trim(); if(!c) return; (by[c]=by[c]||[]).push(o); });
+  return Object.entries(by).filter(([c,arr])=>arr.length>1).map(([code,arr])=>({code, orders:arr}));
+}
+// Dò TRÙNG ID thật sự (2 bản ghi khác nhau cùng id) — tách ra để không bản nào bị nuốt
+function repairDuplicateIds(){
+  let fixed=0;
+  SYNC_TABLES.concat(['customers']).forEach(t=>{
+    const arr=DATA[t]; if(!Array.isArray(arr)) return;
+    const seen={};
+    arr.forEach(r=>{
+      if(!r || r.id==null) return;
+      const k=String(r.id);
+      if(seen[k]){ r.id = k + '-dup' + deviceTag() + (fixed++); r._idRepaired = todayStr(); }
+      else seen[k]=1;
+    });
+  });
+  return fixed;
 }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 // Chuẩn hóa mọi kiểu ngày (yyyy-mm-dd, ISO có giờ "...T17:00:00.000Z", dd/mm/yyyy) về 'yyyy-mm-dd'
@@ -1179,6 +1309,22 @@ function lockApp(){
   location.reload();
 }
 function openModal(id){ document.getElementById(id).classList.add('show'); }
+// ===== HOÃN VẼ LẠI KHI ĐANG MỞ FORM (thêm 30-08-2026) =====
+// Trước đây: máy khác sửa đơn → realtime gọi renderAll() → form đang gõ dở bị vẽ lại, mất nội dung.
+function isFormOpen(){ return !!document.querySelector('.modal-bg.show'); }
+let _renderPending = false;
+function renderAllSafe(){
+  if(isFormOpen()){
+    _renderPending = true;
+    setSupaStatus('● có cập nhật từ máy khác — sẽ hiện sau khi đóng form');
+    return;
+  }
+  renderAll();
+}
+// Đóng form xong mới vẽ lại phần đang chờ
+document.addEventListener('click', function(){
+  if(_renderPending && !isFormOpen()){ _renderPending=false; setTimeout(renderAll, 60); }
+}, true);
 
 /* ============================================================
    LỊCH PHÂN CÔNG (GRID / TIMESHEET) — màn hình chính
@@ -1405,10 +1551,18 @@ function renderGrid(){
       orderHours[a.orderId] = (orderHours[a.orderId]||0) + (parseFloat(a.hours)||8);
     }
   });
-  const legendOrders = Object.keys(orderHours).map(oid=>{
+  const legendAll = Object.keys(orderHours).map(oid=>{
     const ord = DATA.orders.find(o=>o.id===oid);
     return ord ? {ord, hours: orderHours[oid]} : null;
-  }).filter(Boolean).sort((a,b)=> b.hours - a.hours);
+  }).filter(Boolean);
+  // CHỈ hiện đơn CÒN SỐNG (chưa giao, chưa đóng). Đơn đã giao gom lại 1 dòng, bấm mới xổ ra.
+  const legendClosed = legendAll.filter(x=> x.ord.status==='delivered');
+  const legendOrders = legendAll.filter(x=> x.ord.status!=='delivered')
+    .sort((a,b)=>{
+      const da=(expectedFinishDate(a.ord)||a.ord.dueDate||'9999-99-99');
+      const db=(expectedFinishDate(b.ord)||b.ord.dueDate||'9999-99-99');
+      return da<db?-1:(da>db?1:b.hours-a.hours);
+    });
   const kindCounts = {};
   monthAssigns.forEach(a=>{ if(a.kind!=='order') kindCounts[a.kind]=(kindCounts[a.kind]||0)+1; });
   // Tổng hợp theo công đoạn — để anh em xưởng nắm khối lượng từng khâu trong tháng
@@ -1447,12 +1601,19 @@ function renderGrid(){
 
     <h2 class="sec"><span class="bar"></span>Chú giải — đơn hàng &amp; loại công việc xuất hiện trong tháng</h2>
     <div class="card">
-      ${ legendOrders.length===0 && !Object.keys(kindCounts).length ? '<div class="empty">Chưa có phân công nào trong tháng này. Bấm vào một ô trống trên lịch để bắt đầu gán việc.</div>' : `
-      <div class="legend">
-        ${legendOrders.map(x=>`<span class="chip"><i style="background:${colorForOrder(x.ord)}"></i><b>${esc(x.ord.code)}</b> — ${esc(truncate(x.ord.name,34))} · ${pillFor(x.ord.status)} · <span class="muted">${x.hours}h trong tháng</span></span>`).join('')}
+      ${ legendAll.length===0 && !Object.keys(kindCounts).length ? '<div class="empty">Chưa có phân công nào trong tháng này. Bấm vào một ô trống trên lịch để bắt đầu gán việc.</div>' : `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <b style="font-size:12px">🔧 ${legendOrders.length} đơn đang chạy trong tháng</b>
+        <span class="muted small">— xếp theo ngày dự kiến giao gần nhất</span>
+        ${legendClosed.length?`<a onclick="legendShowDone=!legendShowDone;renderGrid()" style="cursor:pointer;color:var(--muted);font-size:11px;font-weight:700;margin-left:auto">${legendShowDone?'▼ Ẩn':'▶ Hiện'} ${legendClosed.length} đơn đã giao</a>`:''}
+      </div>
+      ${legendOrders.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px">${legendOrders.map(legendOrderCard).join('')}</div>`
+        :'<div class="small muted">Không còn đơn nào đang chạy trong tháng này — tất cả đã giao xong.</div>'}
+      ${legendShowDone&&legendClosed.length?`<div class="legend" style="margin-top:8px;opacity:.65">${legendClosed.map(x=>`<span class="chip"><i style="background:${colorForOrder(x.ord)}"></i><b>${esc(x.ord.code)}</b> — ${esc(truncate(x.ord.name,28))} · <span class="muted">${x.hours}h</span></span>`).join('')}</div>`:''}
+      <div class="legend" style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">
         ${Object.keys(kindCounts).map(k=>{ const kk=ASSIGN_KINDS[k]||ASSIGN_KINDS.other; return `<span class="chip"><i style="background:${kk.color}"></i>${esc(kk.code)} — ${esc(kk.label)} · <span class="muted">${kindCounts[k]} lượt</span></span>`; }).join('')}
       </div>
-      <p class="small muted" style="margin-top:8px">Mã hiển thị trên mỗi ô chính là <b>mã đơn hàng</b> (rút gọn) đã có trong tab “Đơn hàng &amp; Tiến độ” — không cần tra cứu chú giải riêng. Một ô có thể chứa <b>nhiều việc trong cùng 1 ngày</b> (xếp chồng) — bấm vào ô để xem/sửa từng việc. Khi cập nhật trạng thái đơn, màu/trạng thái trong chú giải tự đồng bộ theo.</p>`
+      <p class="small muted" style="margin-top:8px">Chú giải chỉ liệt kê <b>đơn còn đang chạy</b> — đơn đã giao được gom lại để khỏi rối. Mã hiển thị trên mỗi ô chính là <b>mã đơn hàng</b> (rút gọn) đã có trong tab “Đơn hàng &amp; Tiến độ” — không cần tra cứu chú giải riêng. Một ô có thể chứa <b>nhiều việc trong cùng 1 ngày</b> (xếp chồng) — bấm vào ô để xem/sửa từng việc. Khi cập nhật trạng thái đơn, màu/trạng thái trong chú giải tự đồng bộ theo.</p>`
       }
     </div>
 
@@ -1818,12 +1979,14 @@ function ordersTable(){
       <td><b>${esc(o.code)}</b>${o.assignment==='outsource'?'<span class="badge-out" title="Gia công ngoài">'+esc(o.outsourcePartner||'OUT')+'</span>':''}</td>
       <td style="min-width:220px;white-space:normal;word-break:break-word">${(o.orderType&&o.orderType!=='Gia công')?`<span style="display:inline-block;font-size:9px;font-weight:800;color:#fff;background:#6366F1;border-radius:4px;padding:1px 5px;margin-right:5px">${esc(o.orderType)}</span>`:''}${esc(o.name)}${(function(){
         let bits=[];
-        if(o.items&&o.items.length) bits.push(`<span style="font-size:10px;font-weight:700;color:#6366F1">▦ ${o.items.length} ${t('lb_detail')}</span>`);
+        if(o.items&&o.items.length) bits.push(`<a onclick="event.stopPropagation();toggleItemsRow('${o.id}',this)" data-lbl="${o.items.length} ${t('lb_detail')}" style="cursor:pointer;font-size:10px;font-weight:700;color:#6366F1" title="Thu gọn / xổ bảng chi tiết">▼ ${o.items.length} ${t('lb_detail')}</a>`);
         if(o.driveFolder) bits.push(`<a href="${esc(o.driveFolder)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;font-weight:700;color:#0EA5E9">📁 Drive</a>`);
         if(o.attachments&&o.attachments.length) bits.push(`<span style="font-size:10px;color:var(--muted)">🔗 ${o.attachments.length}</span>`);
         if(o.measures&&o.measures.length){ const fail=o.measures.filter(m=>m.pass==='fail').length; bits.push(`<span style="font-size:10px;font-weight:700;color:${fail?'var(--st-late)':'#16A34A'}" title="Nghiệm thu: ${o.measures.length} thông số${fail?', '+fail+' KHÔNG đạt':''}">📐 ${o.measures.length}${fail?' ⚠'+fail:''}</span>`); }
         if(o.target) bits.push(`<span style="font-size:10px;font-weight:700;color:#D97706" title="Mục tiêu">🎯 ${esc(truncate(o.target,40))}</span>`);
         if(o.status==='in_production' && !intakeComplete(o.intake)) bits.push(`<span style="font-size:10px;font-weight:700;color:#D97706" title="Cổng G0 chưa đủ thông tin đầu vào">⚠ G0 chưa đủ</span>`);
+        (function(){ const au=estimateAudit(o); if(!au.ok && o.status!=='delivered' && o.status!=='new') bits.push(`<span style="font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:0 5px" title="${esc(au.missing.join(' | '))}">⚠ thiếu estimate</span>`);
+          const gg=orderProgressInfo(o); if(o.status==='in_production' && gg.total && gg.done===0 && gg.doing===0) bits.push(`<span style="font-size:10px;font-weight:800;color:#B45309;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:0 5px" title="Trạng thái báo đang gia công nhưng chưa công đoạn nào được bấm Bắt đầu/Xong — % vì vậy đứng yên">⚠ chưa bấm CĐ nào</span>`); })();
         if(o.forceMajeure) bits.push(`<span style="font-size:10px;font-weight:800;color:#0e7490;background:#ecfeff;border:1px solid #a5f3fc;border-radius:5px;padding:0 5px" title="Bất khả kháng${o.fmReason?': '+esc(o.fmReason):''} — không tính KPI trễ">🛑 Bất khả kháng</span>`);
         if(o.qcResult==='pass') bits.push(`<span style="font-size:10px;font-weight:700;color:#15803D" title="QC Đạt">🛡 QC Đạt</span>`);
         else if(o.qcResult==='fail') bits.push(`<span style="font-size:10px;font-weight:700;color:var(--st-late)" title="QC Không đạt">🛡 QC ✕</span>`);
@@ -1832,10 +1995,13 @@ function ordersTable(){
       <td style="min-width:150px;white-space:normal;word-break:break-word">${esc(o.company)}</td>
       <td>${fmtDate(dueRef)}</td>
       <td class="small">${(function(){
-        const ef=expectedFinishDate(o); if(!ef) return '<span class="muted">—</span>';
+        const efi=expectedFinishInfo(o); if(!efi) return '<span class="muted" title="Chưa khai công đoạn nên app không tính được">—</span>';
+        const ef=efi.date;
         if(o.status==='delivered') return `<span style="color:var(--st-done);font-weight:700">${fmtDate(ef)}</span>`;
         const ref=o.requestedDate||o.dueDate; const late=ref&&ef>ref;
-        return `<span style="${late?'color:var(--st-late);font-weight:700':'font-weight:600'}" title="${late?'Trễ so với hạn KH':'Dự kiến làm xong công đoạn cuối'}">${fmtDate(ef)}${late?' ⚠':''}</span>`;
+        const src={plan:'theo ngày bắt đầu đã khai ở công đoạn',auto:'app TỰ DÀN theo số giờ còn lại (chưa khai ngày bắt đầu) — khai ngày để chính xác hơn',manual:'người nhập tay',est:'suy từ % và ngày nhận đơn'}[efi.kind]||'';
+        const mark={auto:'~',manual:' (tay)',est:'?'}[efi.kind]||'';
+        return `<span style="${late?'color:var(--st-late);font-weight:700':'font-weight:600'}" title="${esc(src)}${late?' — TRỄ so với hạn KH':''}">${fmtDate(ef)}${mark}${late?' ⚠':''}</span>`;
       })()}</td>
       <td>
         <select style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:${statusByKey(o.status).color};color:#fff;font-weight:700;cursor:pointer"
@@ -2077,9 +2243,11 @@ function localId(p){ return p+'-'+Date.now().toString(36)+Math.random().toString
 function itemStatusOptions(v){ return ORDER_STATUSES.map(s=>`<option value="${s.k}" ${v===s.k?'selected':''}>${esc(s.label.replace(/^\d+\.\s*/,''))}</option>`).join(''); }
 function renderItemsEditor(){
   const wrap=document.getElementById('ord_items_list');
-  if(!editingItems.length){ wrap.innerHTML='<div class="small muted">Chưa có chi tiết con. Đơn đơn giản thì để trống phần này.</div>'; return; }
+  const _locs = ['CK368', ...(DATA.partners||[]).map(p=>p.name)];
+  const _dl = `<datalist id="stageLocs">${_locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>`;
+  if(!editingItems.length){ wrap.innerHTML=_dl+'<div class="small muted">Chưa có chi tiết con. Đơn đơn giản thì để trống phần này.</div>'; return; }
   const summary = `<div id="ord_items_summary" class="small" style="margin-bottom:8px;padding:6px 10px;background:#eef2ff;border-radius:8px;font-weight:700;color:#3730a3">${itemsSummaryText()}</div>`;
-  wrap.innerHTML = summary + editingItems.map((it,i)=>`
+  wrap.innerHTML = _dl + summary + editingItems.map((it,i)=>`
     <div style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px;background:#fafcff">
       <div class="row2" style="gap:8px">
         <input value="${esc(it.name||'')}" placeholder="Tên chi tiết (vd: Van WCC-VGA-8006)" oninput="updItem(${i},'name',this.value)">
@@ -2119,6 +2287,7 @@ function itemStagesHtml(it,i){
       <input type="number" style="width:46px;font-size:11px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updItemStage(${i},${si},'otHours',this.value)" title="Giờ tăng ca (OT) — ngày đầu">
       <select style="width:80px;font-size:11px" onchange="updItemStage(${i},${si},'status',this.value)"><option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa</option><option value="doing" ${s.status==='doing'?'selected':''}>Đang</option><option value="done" ${s.status==='done'?'selected':''}>Xong</option></select>
       <select style="width:120px;font-size:11px" onchange="updItemStage(${i},${si},'assignee',this.value)" title="Người làm → tự lên lịch"><option value="">👤 ai làm?</option>${(DATA.staff||[]).filter(x=>x&&x.active!==false).map(x=>`<option value="${esc(x.id)}" ${s.assignee===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
+      <input style="width:120px;font-size:11px" list="stageLocs" value="${esc(s.location||'')}" placeholder="Ở đâu?" oninput="updItemStage(${i},${si},'location',this.value)" title="Nơi gia công — dùng để tính % giờ theo nơi làm">
       <span class="small muted">từ</span><input type="date" style="width:112px;font-size:11px" value="${esc(s.startDate||'')}" onchange="updItemStage(${i},${si},'startDate',this.value)" title="Ngày bắt đầu">
       <span class="small muted">tới</span><input type="date" style="width:112px;font-size:11px" value="${esc(s.endDate||'')}" onchange="updItemStage(${i},${si},'endDate',this.value)" title="Ngày kết thúc (để trống = tự tính theo giờ)">
       ${(s.startDate && stageWorkingDays(s).length>1)?`<span class="small" style="color:#16A34A;white-space:nowrap" title="${stageHours(s)}h, bỏ CN">→ ${fmtDate(stageEndDate(s))}</span>`:''}
@@ -2994,6 +3163,13 @@ function saveOrder(){
   if(newStatus==='in_production' && !intakeComplete(intake)){
     if(!confirm('⚠ Cổng G0 (kiểm tra đầu vào) CHƯA đủ:\n— '+G0_KEYS.filter(k=>!intake[k]).map(k=>({drawing:'Bản vẽ/catalogue',dims:'Kích thước',tol:'Dung sai',mat:'Vật liệu',qty:'Số lượng'}[k])).join(', ')+'\n\nVẫn cho xuống xưởng gia công?')) return;
   }
+  // CHẶN CỨNG cổng G1 (ESTIMATE): chỉ chặn khi ĐANG CHUYỂN sang "Đang gia công".
+  // Đơn vốn đã ở trạng thái gia công (dữ liệu cũ) vẫn lưu bình thường — chỉ hiện nhãn "⚠ thiếu estimate" ở bảng.
+  const _prevStatus = id ? ((DATA.orders.find(o=>o.id===id)||{}).status||null) : null;
+  if(newStatus==='in_production' && _prevStatus!=='in_production'){
+    const au = estimateAudit({stages:editingStages, items:editingItems});
+    if(!au.ok){ alert(estimateBlockMsg({code:(code||document.getElementById('ord_code').value||'')}, au)); return; }
+  }
   // CHẶN CỨNG: không lưu trạng thái "Đã giao" khi QC chưa ĐẠT
   if(newStatus==='delivered' && qcResult!=='pass'){
     alert('⛔ KHÔNG thể đặt "Đã giao" khi QC chưa = ĐẠT.\nChọn Cổng QC = "ĐẠT" trước (và in chứng nhận).');
@@ -3070,6 +3246,142 @@ function deleteOrder(id){
   DATA.assignments = (DATA.assignments||[]).filter(a => !(a && a.fromStage && a.orderId===id));
   save(); goTab('orders');
 }
+/* ===================================================================================
+   KHỐI KHỐI-LƯỢNG-CÔNG-VIỆC (ESTIMATE)  — thêm 30-08-2026
+   Mọi con số % và ngày dự kiến giao đều quy về GIỜ CÔNG đã khai ở công đoạn.
+   =================================================================================== */
+// Gom TẤT CẢ công đoạn của đơn: của đơn tổng + của từng chi tiết con
+function orderAllStages(o){
+  const all=[];
+  if(!o) return all;
+  (o.stages||[]).filter(Boolean).forEach(s=>all.push({s, it:''}));
+  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>all.push({s, it:it.name||''})));
+  return all;
+}
+// Giờ kế hoạch của 1 chi tiết con: ưu tiên tổng giờ công đoạn, sau đó tới ô "Giờ GC"
+function itemPlanHours(it){
+  if(!it) return 0;
+  const sh=(it.stages||[]).filter(Boolean).reduce((a,s)=>a+(stageHours(s)||0),0);
+  if(sh>0) return sh;
+  const e=parseFloat(it.estHours);
+  return (!isNaN(e)&&e>0)?e:HOURS_PER_DAY;
+}
+// Tổng giờ kế hoạch của cả đơn
+function orderPlanHours(o){
+  if(!o) return 0;
+  let h=(o.stages||[]).filter(Boolean).reduce((a,s)=>a+(stageHours(s)||0),0);
+  (o.items||[]).filter(Boolean).forEach(it=>{ h+=itemPlanHours(it); });
+  return h;
+}
+// Cơ cấu NƠI GIA CÔNG theo % GIỜ — dùng cho cột "Nơi gia công chính"
+function locationMix(src){
+  const list = Array.isArray(src) ? src.map(s=>({s})) : orderAllStages(src);
+  const by={}; let tot=0;
+  list.forEach(x=>{
+    const s=x.s; if(!s) return;
+    const h=stageHours(s)||0; if(h<=0) return;
+    const k=(s.location||'').trim() || 'Nội bộ (CK368)';
+    by[k]=(by[k]||0)+h; tot+=h;
+  });
+  return Object.entries(by).sort((a,b)=>b[1]-a[1])
+    .map(([name,h])=>({name, hours:h, pct: tot?Math.round(h/tot*100):0}));
+}
+// SOÁT ESTIMATE (cổng G1) — đủ điều kiện xuống xưởng gia công hay chưa
+function estimateAudit(o){
+  const all=orderAllStages(o);
+  const miss=[];
+  if(!all.length){
+    miss.push('Chưa khai CÔNG ĐOẠN nào — vào Sửa đơn → "Chuỗi công đoạn", hoặc thêm chi tiết con rồi khai công đoạn cho từng chi tiết.');
+    return {ok:false, hours:0, nStage:0, missing:miss};
+  }
+  let hours=0; const noH=[], noWho=[], noStart=[];
+  all.forEach(x=>{
+    const s=x.s;
+    const tag=(s.code||'?')+' '+(s.name||'')+(x.it?' ▦'+truncate(x.it,14):'');
+    const h=(s.hours!=null&&s.hours!=='')?(parseFloat(s.hours)||0):((parseFloat(s.plannedDays)||0)*HOURS_PER_DAY);
+    if(!(h>0)) noH.push(tag); else hours+=h;
+    if(!s.assignee && !(s.location||'').trim()) noWho.push(tag);
+    if(!s.startDate) noStart.push(tag);
+  });
+  if(noH.length)     miss.push('Thiếu SỐ GIỜ kế hoạch: '+noH.join(' · '));
+  if(noWho.length)   miss.push('Thiếu NGƯỜI LÀM hoặc NƠI LÀM: '+noWho.join(' · '));
+  if(noStart.length) miss.push('Thiếu NGÀY BẮT ĐẦU: '+noStart.join(' · '));
+  return {ok:miss.length===0, hours, nStage:all.length, missing:miss};
+}
+function estimateBlockMsg(o,au){
+  return '⛔ KHÔNG thể chuyển đơn '+(o.code||'')+' sang "5. Đang gia công".\n\n'
+    + 'Chưa khai đủ KHỐI LƯỢNG CÔNG VIỆC (estimate) — app không tính được % và ngày dự kiến giao:\n\n— '
+    + au.missing.join('\n— ')
+    + '\n\nMở "Sửa" đơn này → khai giờ / người làm / ngày bắt đầu cho từng công đoạn rồi lưu lại.';
+}
+// Ngày xong dự kiến khi CHƯA khai ngày bắt đầu: dàn phần giờ còn lại từ hôm nay, bỏ Chủ nhật
+function autoPlanFinish(o){
+  const all=orderAllStages(o);
+  if(!all.length) return null;
+  let rem=0;
+  all.forEach(x=>{ if(stageState(x.s)==='done') return; rem += (stageHours(x.s)||0)*(1-stageFraction(x.s)); });
+  if(rem<=0) return todayStr();
+  const days=Math.max(1, Math.ceil(rem/HOURS_PER_DAY));
+  const start=(o.receivedDate && o.receivedDate>todayStr())?o.receivedDate:todayStr();
+  const arr=workingDaysFrom(start, days);
+  return arr.length?arr[arr.length-1]:todayStr();
+}
+// % LẼ RA phải đạt tới hôm nay theo lịch đã khai (dùng để so với % thực tế)
+function stagePlannedFraction(s){
+  if(!s || !s.startDate) return 0;
+  if(stageState(s)==='done') return 1;
+  const days=stageWorkingDays(s); if(!days.length) return 0;
+  const today=todayStr();
+  return Math.min(1, days.filter(d=>d<=today).length/days.length);
+}
+function progressUnits(o){
+  const u=[];
+  (o.stages||[]).filter(Boolean).forEach(s=>u.push({w:Math.max(0.5, stageHours(s)||0), f:stageFraction(s), p:stagePlannedFraction(s)}));
+  (o.items||[]).filter(Boolean).forEach(it=>{
+    const sts=(it.stages||[]).filter(Boolean);
+    let pf=0;
+    if(sts.length){ let t=0,g=0; sts.forEach(s=>{const w=Math.max(0.5,stageHours(s)||0); t+=w; g+=w*stagePlannedFraction(s);}); pf=t?g/t:0; }
+    u.push({w:Math.max(0.5, itemPlanHours(it)), f:itemProgress(it)/100, p:pf});
+  });
+  return u;
+}
+// % theo KHỐI LƯỢNG GIỜ: thực tế (đã bấm) vs kế hoạch (lịch đã khai)
+function orderPlanVsActual(o){
+  const u=progressUnits(o);
+  if(!u.length) return {actual:null, plan:null, gap:0, hours:0};
+  let tot=0, got=0, pl=0;
+  u.forEach(x=>{ tot+=x.w; got+=x.w*x.f; pl+=x.w*x.p; });
+  const a=tot?Math.round(got/tot*100):0, p=tot?Math.round(pl/tot*100):0;
+  return {actual:a, plan:p, gap:a-p, hours:Math.round(tot)};
+}
+// Ngày DỰ KIẾN HOÀN THÀNH + cho biết con số đó từ đâu ra
+//   done   = đã giao thật     manual = người nhập tay
+//   plan   = từ ngày công đoạn đã khai     auto = app tự dàn theo giờ còn lại (chưa khai ngày)
+function expectedFinishInfo(o){
+  if(!o) return null;
+  if(o.status==='delivered') return o.deliveredDate?{date:o.deliveredDate, kind:'done'}:null;
+  if(o.forecastDate) return {date:o.forecastDate, kind:'manual'};
+  let last=null, unsched=0;
+  orderAllStages(o).forEach(x=>{
+    const s=x.s;
+    if(stageState(s)==='done') return;
+    if(s.startDate){ const f=stageEndDate(s); if(f&&(!last||f>last)) last=f; }
+    else unsched += (stageHours(s)||0);
+  });
+  if(last){
+    if(unsched>0){
+      const d=Math.ceil(unsched/HOURS_PER_DAY);
+      const base=(last>todayStr())?last:todayStr();
+      const arr=workingDaysFrom(base, d+1);
+      return {date: arr.length?arr[arr.length-1]:last, kind:'auto'};
+    }
+    return {date:last, kind:'plan'};
+  }
+  const auto=autoPlanFinish(o);
+  if(auto) return {date:auto, kind:'auto'};
+  const fc=computeForecast(o);
+  return fc?{date:fc.date, kind:'est'}:null;
+}
 // Dự báo ngày có thể giao: ưu tiên ngày nhập tay, sau đó suy ra từ % hoàn thành + ngày nhận đơn
 function computeForecast(o){
   if(o.status==='delivered') return o.deliveredDate ? {date:o.deliveredDate, kind:'done'} : null;
@@ -3089,17 +3401,7 @@ function computeForecast(o){
 }
 // Ngày DỰ KIẾN HOÀN THÀNH = ngày làm xong công đoạn cuối theo lịch (start + số ngày dàn theo giờ, bỏ CN).
 // Ưu tiên: đã giao → ngày giao; có nhập forecast tay → dùng tay; nếu không → công đoạn muộn nhất.
-function expectedFinishDate(o){
-  if(!o) return null;
-  if(o.status==='delivered') return o.deliveredDate||null;
-  if(o.forecastDate) return o.forecastDate;
-  let last=null;
-  const consider=(st)=>{ if(st&&st.startDate){ const f=stageEndDate(st); if(f&&(!last||f>last)) last=f; } };
-  (o.stages||[]).filter(Boolean).forEach(consider);
-  (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(consider));
-  if(last) return last;
-  const fc=computeForecast(o); return fc?fc.date:null;
-}
+function expectedFinishDate(o){ const i=expectedFinishInfo(o); return i?i.date:null; }
 // % hoàn thành theo công đoạn: số công đoạn ĐÃ XONG / tổng công đoạn
 function stageDonePct(stages){
   if(!Array.isArray(stages)) return null;
@@ -3142,7 +3444,8 @@ function itemProgress(it){
 // Trả về cả "đang ở giai đoạn nào" + "đang ở công đoạn nào" để hiển thị trong ô Xem đơn.
 function orderProgressInfo(o){
   const g = {pct:0, phaseIdx:0, phaseDone:false, mach:0, total:0, done:0, doing:0,
-             late:false, current:null, currentItem:'', next:null, nextItem:''};
+             late:false, current:null, currentItem:'', next:null, nextItem:'',
+             planPct:null, gap:0, planHours:0};
   if(!o) return g;
   // Gom công đoạn của đơn tổng + của mọi chi tiết con, giữ nguyên thứ tự khai báo
   const all = [];
@@ -3162,13 +3465,11 @@ function orderProgressInfo(o){
   const nxt = all.slice(curIdx>=0?curIdx+1:0).find(x=>stageState(x.s)!=='done');
   if(nxt){ g.next = nxt.s; g.nextItem = nxt.it; }
   // Phần gia công (0..100) — TỪ CÔNG ĐOẠN. null nếu đơn chưa khai công đoạn nào.
-  let machFromWork;
-  if(o.items && o.items.length){
-    const vals = o.items.filter(Boolean).map(itemProgress);
-    machFromWork = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
-  } else {
-    machFromWork = stageWeightedPct(o.stages);
-  }
+  // TRỌNG SỐ THEO GIỜ cho CẢ công đoạn đơn tổng LẪN chi tiết con — chi tiết 40h nặng gấp 5 lần chi tiết 8h.
+  // (Trước 30-08-2026: lấy TRUNG BÌNH CỘNG các chi tiết → chi tiết vặt kéo % lên/xuống sai lệch.)
+  const pv = orderPlanVsActual(o);
+  let machFromWork = pv.actual;
+  g.planHours = pv.hours;
   let pct;
   if(machFromWork!=null){
     // CÓ công đoạn → chấm theo cổng: G0 5% · gia công 75% · QC Đạt 10% · đã giao 10%
@@ -3177,15 +3478,19 @@ function orderProgressInfo(o){
     const qc = o.qcResult==='pass' ? 10 : 0;
     const dl = o.status==='delivered' ? 10 : 0;
     pct = Math.round(g0 + g.mach*0.75 + qc + dl);
+    // Mốc KẾ HOẠCH quy về CÙNG THANG với % thực tế (cùng công thức cổng) để so sánh cho đúng
+    g.planPct = Math.min(99, Math.round(g0 + Math.max(0,Math.min(100,pv.plan))*0.75 + qc + dl));
   } else {
     // CHƯA khai công đoạn → suy trực tiếp từ % nhập tay (nếu có) hoặc mốc trạng thái (đã là % đầy đủ)
     const manual = parseFloat(o.progress);
     pct = !isNaN(manual) ? manual : (STATUS_BASE_PCT[o.status]!=null ? STATUS_BASE_PCT[o.status] : 0);
     g.mach = Math.max(0, Math.min(100, Math.round(pct)));
+    g.planPct = null;
   }
   if(o.status==='delivered') pct = 100;
   else pct = Math.min(99, pct);                     // chưa giao thì không bao giờ báo 100%
   g.pct = Math.max(0, Math.round(pct));
+  g.gap = (g.planPct!=null) ? (g.pct - g.planPct) : 0;
   // Đang ở GIAI ĐOẠN nào (5 chặng lớn)
   let ph = intakeComplete(o.intake) ? 1 : 0;
   if(o.status==='wait_material' || o.status==='wait_sample') ph = 1;
@@ -3272,11 +3577,16 @@ function progressCellHtml(o){
   // Đang ở giai đoạn nào + công đoạn nào (hover để xem chi tiết)
   const curTxt = g.phaseDone ? 'Đã giao'
     : (g.current ? `${g.current.code||'?'} ${g.current.name||''}` : (g.total?'xong CĐ — chờ QC/giao':''));
+  const behind = g.planPct!=null && g.gap<=-10;
   return `<div style="display:flex;align-items:center;gap:6px">
-    <div class="bar-track" style="width:60px;margin:0"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
+    <div class="bar-track" style="width:60px;margin:0;position:relative">
+      <div class="bar-fill" style="width:${p}%;background:${color}"></div>
+      ${g.planPct!=null?`<i style="position:absolute;top:-2px;left:${Math.min(99,g.planPct)}%;width:2px;height:calc(100% + 4px);background:#0F172A;opacity:.55" title="Mốc kế hoạch hôm nay: ${g.planPct}%"></i>`:''}
+    </div>
     <span style="font-size:11px;font-weight:700;min-width:30px">${p}%</span>
     ${g.total?`<span style="font-size:9px;color:var(--muted)" title="Công đoạn đã xong / tổng (cả chi tiết con)">${g.done}/${g.total} CĐ</span>`:''}
   </div>
+  ${g.planPct!=null?`<div style="font-size:9px;margin-top:1px;${behind?'color:var(--st-late);font-weight:800':'color:var(--muted)'}" title="Theo giờ đã estimate, tới hôm nay đơn LẼ RA phải đạt ${g.planPct}%. Tổng khối lượng ${g.planHours}h.">${behind?'⛔ chậm '+Math.abs(g.gap)+'% so KH':'KH hôm nay '+g.planPct+'%'} · ${g.planHours}h</div>`:''}
   <div style="font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px" title="Giai đoạn: ${esc(ph.label)}${curTxt?' — đang ở công đoạn '+esc(curTxt):''}">${ph.ic} ${esc(ph.label)}${curTxt?' · <b>'+esc(truncate(curTxt,16))+'</b>':''}</div>`;
 }
 // Nhãn nơi thực hiện của chi tiết con: nội bộ / outsource / mua hàng
@@ -3285,30 +3595,96 @@ function itemAssignLabel(a){
   if(a==='purchase')  return {txt:t('lb_purchase'), bg:'#A855F7'};
   return {txt:t('lb_inhouse'), bg:'#6B7280'};
 }
-// Dòng phụ dưới mỗi đơn: liệt kê TẤT CẢ chi tiết con với trạng thái + nơi làm + % riêng
+// ===== BẢNG CHI TIẾT CON (thay dòng phụ cũ, 30-08-2026) =====
+// Mỗi đơn xổ ra 1 bảng con: Chi tiết · SL · Nơi làm · Chuỗi công đoạn · Nơi gia công chính (%giờ) · Giờ KH · %HT
+function toggleItemsRow(id, el){
+  const tr = document.getElementById('sub_'+id); if(!tr) return;
+  const show = tr.style.display==='none';
+  tr.style.display = show ? '' : 'none';
+  if(el) el.innerHTML = (show?'▼':'▶') + ' ' + (el.dataset.lbl||'');
+}
 function itemsSubRow(o, rowBg){
   if(!o.items || !o.items.length) return '';
-  const lines = o.items.filter(Boolean).map(it=>{
+  const items = o.items.filter(Boolean);
+  const totQty = items.reduce((a,it)=>a+(parseFloat(it.qty)||0),0);
+  const totHrs = items.reduce((a,it)=>a+itemPlanHours(it),0);
+  const mixAll = locationMix(o);
+  const rows = items.map(it=>{
     const st = statusByKey(it.status||'new');
     const al = itemAssignLabel(it.assignment);
-    const p = itemProgress(it);
-    const nStage = (it.stages||[]).length;
-    const nDone = (it.stages||[]).filter(s=>stageState(s)==='done').length;
-    const pColor = p>=100?'var(--st-done)':(p>=50?'var(--st-prod)':'var(--st-planned)');
-    return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px dashed #eef1f5">
-      <i style="width:9px;height:9px;border-radius:3px;background:${st.color};flex-shrink:0" title="${esc(stLabel(st))}"></i>
-      <span style="flex:1;min-width:140px;white-space:normal;word-break:break-word">${esc(it.name)}${it.process?` <span style="color:var(--muted)">· ${esc(it.process)}</span>`:''}</span>
-      <span style="color:var(--muted);white-space:nowrap">${it.qty!=null?it.qty:''} ${esc(it.unit||'')}</span>
-      <span style="font-size:9px;font-weight:800;color:#fff;background:${al.bg};border-radius:4px;padding:1px 6px;white-space:nowrap">${al.txt}</span>
-      <span class="pill" style="background:${st.color};font-size:9.5px;padding:2px 7px">${esc(stLabel(st).replace(/^\d+\.\s*/,''))}</span>
-      ${nStage?`<span style="font-size:9px;color:var(--muted);white-space:nowrap" title="Số công đoạn đã xong / tổng">${nDone}/${nStage} CĐ</span>`:''}
-      <div class="bar-track" style="width:46px;margin:0;height:7px"><div class="bar-fill" style="width:${p}%;background:${pColor}"></div></div>
-      <b style="font-size:10px;min-width:28px;text-align:right">${p}%</b>
-    </div>${(it.stages&&it.stages.length)?`<div style="padding:0 0 4px 19px;margin-top:-2px">${stageChainHtml({stages:it.stages})}</div>`:''}`;
+    const pc = itemProgress(it);
+    const sts = (it.stages||[]).filter(Boolean);
+    const nDone = sts.filter(x=>stageState(x)==='done').length;
+    const h  = itemPlanHours(it);
+    const mix = locationMix(sts);
+    const top = mix[0];
+    const pColor = pc>=100?'var(--st-done)':(pc>=50?'var(--st-prod)':'var(--st-planned)');
+    const cur = sts.find(x=>stageState(x)!=='done');
+    return `<tr style="border-bottom:1px dashed #e8edf4">
+      <td style="padding:4px 6px;white-space:normal;word-break:break-word;min-width:150px">
+        <i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${st.color};margin-right:5px" title="${esc(stLabel(st))}"></i>
+        <b>${esc(it.name)}</b>${it.process?`<div class="muted" style="font-size:10px;margin-left:13px">${esc(it.process)}</div>`:''}
+      </td>
+      <td style="padding:4px 6px;white-space:nowrap;text-align:right;font-weight:700">${it.qty!=null?it.qty:'—'} <span class="muted" style="font-weight:400">${esc(it.unit||'')}</span></td>
+      <td style="padding:4px 6px"><span style="font-size:9px;font-weight:800;color:#fff;background:${al.bg};border-radius:4px;padding:1px 6px;white-space:nowrap">${al.txt}</span></td>
+      <td style="padding:4px 6px;min-width:150px">${sts.length?stageChainHtml({stages:sts}):'<span class="muted" style="font-size:10px">⚠ chưa khai công đoạn</span>'}</td>
+      <td style="padding:4px 6px;white-space:nowrap;font-size:10.5px">${top?`<b>${esc(truncate(top.name,18))}</b> <span class="muted">${top.pct}% giờ</span>${mix.length>1?`<div class="muted" style="font-size:9.5px">+${mix.length-1} nơi khác</div>`:''}`:'<span class="muted">—</span>'}</td>
+      <td style="padding:4px 6px;white-space:nowrap;text-align:right;font-weight:700">${h?h+'h':'—'}${h?`<div class="muted" style="font-size:9.5px;font-weight:400">${(h/HOURS_PER_DAY).toFixed(1)} ngày công</div>`:''}</td>
+      <td style="padding:4px 6px;white-space:nowrap">
+        <div style="display:flex;align-items:center;gap:5px">
+          <div class="bar-track" style="width:44px;margin:0;height:7px"><div class="bar-fill" style="width:${pc}%;background:${pColor}"></div></div>
+          <b style="font-size:10px;min-width:26px;text-align:right">${pc}%</b>
+        </div>
+        ${sts.length?`<div class="muted" style="font-size:9.5px">${nDone}/${sts.length} CĐ${cur?' · '+esc(cur.code||''):''}</div>`:''}
+      </td>
+    </tr>`;
   }).join('');
-  return `<tr style="${rowBg}"><td></td><td colspan="7" style="padding:4px 10px 8px;font-size:11px;background:#fbfcfe">
-    <div style="border-left:3px solid #6366F1;padding-left:10px">${lines}</div>
+  const topAll = mixAll[0];
+  return `<tr id="sub_${o.id}" style="${rowBg}"><td></td><td colspan="9" style="padding:4px 10px 10px;background:#fbfcfe">
+    <div style="border-left:3px solid #6366F1;padding-left:10px">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin:0">
+        <thead><tr style="color:#6366F1;font-weight:800;font-size:10px;text-align:left;border-bottom:1px solid #dfe5ee">
+          <th style="padding:3px 6px">CHI TIẾT</th><th style="padding:3px 6px;text-align:right">SL</th><th style="padding:3px 6px">NƠI LÀM</th>
+          <th style="padding:3px 6px">CHUỖI CÔNG ĐOẠN</th><th style="padding:3px 6px">GIA CÔNG NHIỀU NHẤT Ở</th>
+          <th style="padding:3px 6px;text-align:right">GIỜ KH</th><th style="padding:3px 6px">% HT</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:5px;font-size:10.5px;padding:4px 8px;background:#eef2ff;border-radius:6px;color:#3730a3;font-weight:700;display:flex;gap:12px;flex-wrap:wrap">
+        <span>Σ ${items.length} chi tiết</span>
+        <span>Σ SL ${totQty||'—'}</span>
+        <span>Σ ${Math.round(totHrs)}h (≈ ${(totHrs/HOURS_PER_DAY).toFixed(1)} ngày công)</span>
+        ${topAll?`<span>📍 Gia công nhiều nhất: <b>${esc(topAll.name)}</b> — ${topAll.pct}% tổng giờ${mixAll.length>1?' · '+mixAll.slice(1,3).map(m=>esc(m.name)+' '+m.pct+'%').join(' · '):''}</span>`:''}
+      </div>
+    </div>
   </td></tr>`;
+}
+// ===== THẺ CHÚ GIẢI 1 ĐƠN: đang ở công đoạn nào + ngày dự kiến giao (thêm 30-08-2026) =====
+let legendShowDone = false;
+function legendOrderCard(x){
+  const o = x.ord;
+  const g = orderProgressInfo(o);
+  const ef = expectedFinishInfo(o);
+  const ref = o.requestedDate || o.dueDate;
+  const late = ef && ref && ef.date > ref;
+  const cur = g.current
+      ? `${g.current.code||'?'} ${g.current.name||''}${g.current.location?' @'+g.current.location:''}`
+      : (g.total ? 'xong hết công đoạn — chờ QC / giao' : 'chưa khai công đoạn');
+  const curState = g.current ? stageState(g.current) : null;
+  const curColor = curState==='late' ? 'var(--st-late)' : (curState==='doing' ? '#B45309' : (g.total?'#475569':'var(--st-late)'));
+  const curIcon  = curState==='late' ? '⏰' : (curState==='doing' ? '▶' : (g.total?'⏸':'⚠'));
+  const who = g.current && g.current.assignee ? ' · 👤 '+staffName(g.current.assignee) : '';
+  const kindTip = {plan:'theo ngày công đoạn đã khai', auto:'app tự dàn theo số giờ còn lại (chưa khai ngày bắt đầu)', manual:'người nhập tay', est:'suy từ % và ngày nhận đơn', done:'ngày giao thật'}[ef&&ef.kind]||'';
+  return `<div style="border:1px solid var(--line);border-left:4px solid ${colorForOrder(o)};border-radius:8px;padding:7px 10px;background:#fff">
+    <div style="font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${esc(o.code)}</b> — ${esc(truncate(o.name,42))}</div>
+    <div style="font-size:10.5px;margin-top:3px;color:${curColor};font-weight:800">${curIcon} ${esc(cur)}<span class="muted" style="font-weight:600">${esc(who)}</span></div>
+    <div style="font-size:10.5px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span title="${esc(kindTip)}" style="${late?'color:var(--st-late);font-weight:800':'color:#0F766E;font-weight:800'}">🚚 ${ef?fmtDate(ef.date):'—'}${ef&&ef.kind==='auto'?'~':''}${late?' ⚠ trễ hạn KH':''}</span>
+      <span class="muted">KH ${fmtDate(ref)}</span>
+      <span class="muted">${g.total?g.done+'/'+g.total+' CĐ · ':''}${g.pct}%</span>
+      <span class="muted" style="margin-left:auto">${x.hours}h/tháng</span>
+    </div>
+  </div>`;
 }
 /* ===== DASHBOARD NÚT THẮT — công đoạn đang treo lâu nhất & hiệu suất nơi làm ===== */
 function renderBottleneckHtml(){ try{
@@ -3368,6 +3744,11 @@ function quickStatusChange(id, newStatus){
   // CHẶN MỀM cổng G0: chuyển sang gia công khi chưa đủ kiểm đầu vào
   if(newStatus==='in_production' && !intakeComplete(o.intake)){
     if(!confirm('⚠ Đơn '+(o.code||'')+': Cổng G0 (kiểm tra đầu vào) CHƯA đủ.\nVẫn cho xuống xưởng gia công?\n(Mở Sửa đơn để tick checklist đầu vào.)')){ renderOrders(); return; }
+  }
+  // CHẶN CỨNG cổng G1 (ESTIMATE): chưa khai đủ khối lượng công việc thì KHÔNG cho xuống xưởng
+  if(newStatus==='in_production'){
+    const au = estimateAudit(o);
+    if(!au.ok){ alert(estimateBlockMsg(o,au)); renderOrders(); return; }
   }
   // CHẶN CỨNG cổng QC: KHÔNG cho "Đã giao" khi QC chưa ĐẠT (không cho vượt)
   if(newStatus==='delivered' && o.qcResult!=='pass'){
@@ -3801,6 +4182,18 @@ async function supaPush(changedOnly){
     }
     if(changedOnly){
       const delIds = Object.keys(prev).filter(id=>!(id in cur));
+      // ===== PHANH AN TOÀN (thêm 30-08-2026) =====
+      // Local rỗng hoặc mất quá nhiều bản ghi = dấu hiệu localStorage hỏng / pull lỗi,
+      // KHÔNG phải người dùng thật sự xoá. Trước đây trường hợp này xoá sạch bảng trên server.
+      const nPrev = Object.keys(prev).length, nCur = Object.keys(cur).length;
+      const wipeRisk = delIds.length && (nCur===0 || (delIds.length>3 && delIds.length > nPrev*0.2));
+      if(wipeRisk){
+        console.error('[dhp] CHẶN xoá hàng loạt trên '+SUPA_TABLES[appT]+': định xoá '+delIds.length+'/'+nPrev+' bản ghi (local còn '+nCur+')');
+        setAutoBadge('⛔ đã chặn xoá '+delIds.length+' bản ghi — bấm "Tải về từ kho chung"', true);
+        alert('⛔ ĐÃ CHẶN MỘT LỆNH XOÁ BẤT THƯỜNG\n\nBảng: '+SUPA_TABLES[appT]+'\nĐịnh xoá: '+delIds.length+'/'+nPrev+' bản ghi (máy này chỉ còn '+nCur+').\n\nDữ liệu trên kho chung VẪN NGUYÊN. Nhiều khả năng bộ nhớ máy này bị lỗi.\nHãy bấm "Tải về từ kho chung" để lấy lại bản đầy đủ trước khi sửa tiếp.');
+        _syncSnap[appT]=cur;   // nhận mốc mới để không hỏi lại vòng lặp sau
+        continue;              // BỎ QUA xoá, giữ nguyên server
+      }
       if(delIds.length){ const { error } = await _sb.from(SUPA_TABLES[appT]).delete().in('id', delIds); if(error){ console.warn(SUPA_TABLES[appT]+' xóa lỗi: '+error.message); continue; } }
     }
     _syncSnap[appT]=cur; // máy này giờ đã đồng bộ bảng này
@@ -3816,6 +4209,8 @@ async function supaPull(){
     DATA[appT] = (data||[]).map(row=>row.data).filter(Boolean);
   }
   rebuildPartners(); sanitizeOrderDates(); ensureCustomersFromOrders();
+  const _dupFixed = repairDuplicateIds();
+  if(_dupFixed) console.warn('[dhp] đã tách '+_dupFixed+' bản ghi trùng id sau khi tải về');
   resetSyncSnap(); // kho chung vừa tải về = mốc đồng bộ; từ giờ chỉ đẩy phần thay đổi
 }
 // Lắng nghe thay đổi real-time → cập nhật ngay không cần F5
@@ -3841,8 +4236,8 @@ function supaSubscribe(){
           if(appT==='products'){ try{ fillProdDatalist(); }catch(e){} }
           rebuildPartners();
           try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
-          renderAll();
-          setSupaStatus('✓ Nhận cập nhật real-time lúc '+new Date().toLocaleTimeString('vi-VN'));
+          renderAllSafe();
+          if(!isFormOpen()) setSupaStatus('✓ Nhận cập nhật real-time lúc '+new Date().toLocaleTimeString('vi-VN'));
         }catch(e){ console.error('realtime', e); }
       })
       .subscribe();
@@ -3946,6 +4341,21 @@ function scheduleAutoPush(){
     }catch(e){ setAutoBadge('⚠ lỗi đồng bộ: ' + e.message, true); }
   }, 2000);
 }
+// ===== CHỐNG MẤT DỮ LIỆU (thêm 30-08-2026) =====
+// Trước đây: tắt tab trong vòng 2 giây sau khi sửa → thay đổi chưa kịp đẩy lên kho chung là mất.
+function flushPendingPush(){
+  if(!_autoPushTimer) return false;
+  clearTimeout(_autoPushTimer); _autoPushTimer=null;
+  try{ if(supaConfigured()) supaPush(true); else pushToSheets(); }catch(e){}
+  return true;
+}
+window.addEventListener('pagehide', flushPendingPush);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') flushPendingPush(); });
+window.addEventListener('beforeunload', function(e){
+  const pending = !!_autoPushTimer;
+  flushPendingPush();
+  if(pending){ e.preventDefault(); e.returnValue='Còn thay đổi chưa đồng bộ lên kho chung.'; return e.returnValue; }
+});
 // Gọi khi mở app — tự kéo dữ liệu mới nhất về (an toàn: KHÔNG xóa local nếu Sheet trống)
 async function autoPullOnStart(){
   if(!autoSyncEnabled()) return;
@@ -5067,9 +5477,39 @@ function getDeadlineAlerts(){
     return null;
   }).filter(Boolean).sort((a,b)=>a.d-b.d);
 }
+// ===== BACKUP JSON (thêm 30-08-2026) =====
+// Kho chung Supabase hiện chưa có bản sao lưu nào. Một lệnh xoá nhầm là mất trắng.
+// Nhắc mỗi ngày 1 lần, bấm 1 nút là có file JSON đầy đủ trên máy.
+function lastBackupDate(){ try{ return localStorage.getItem('dhp_last_backup')||''; }catch(e){ return ''; } }
+function backupNow(silent){
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  const nOrd = (DATA.orders||[]).length;
+  const ok = downloadJson(JSON.stringify(DATA), 'dhp-backup-'+stamp+'.json');
+  if(ok){
+    try{ localStorage.setItem('dhp_last_backup', todayStr()); }catch(e){}
+    if(!silent) alert('✓ Đã tải bản backup về máy ('+nOrd+' đơn hàng).\n\nChép file này vào NAS / Drive. Muốn phục hồi: tab Dữ liệu → Nhập dữ liệu từ file JSON.');
+    renderAlertBar();
+  } else if(!silent){ alert('⛔ Trình duyệt chặn tải file. Cho phép tải xuống rồi thử lại.'); }
+  return ok;
+}
+function backupOverdueDays(){
+  const last = lastBackupDate();
+  if(!last) return 999;
+  const d = daysBetween(last, todayStr());
+  return (d==null||d<0) ? 0 : d;
+}
 function renderAlertBar(){
   const el = document.getElementById('alertBar'); if(!el) return;
   const alerts = getDeadlineAlerts();
+  // Nhắc backup — hiện trước cả cảnh báo trễ hạn vì mất dữ liệu là hỏng hết
+  const bkDays = backupOverdueDays();
+  const needBackup = canEdit() && (DATA.orders||[]).length>0 && bkDays>=1;
+  const backupBar = needBackup ? `<div style="max-width:1480px;margin:0 auto;padding:8px 20px;background:#ecfeff;border-bottom:1px solid #a5f3fc;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <b style="color:#0e7490;font-size:12.5px">💾 ${bkDays>900?'Chưa từng backup dữ liệu':'Bản backup gần nhất đã '+bkDays+' ngày ('+fmtDate(lastBackupDate())+')'}</b>
+      <span class="muted small">Kho chung không có bản sao lưu — một lệnh xoá nhầm là mất trắng ${(DATA.orders||[]).length} đơn.</span>
+      <button class="sm" style="margin-left:auto" onclick="backupNow()">Tải backup ngay</button>
+    </div>` : '';
+  if(backupBar && !alerts.length){ el.style.display='block'; el.innerHTML=backupBar; return; }
   // Badge số lượng trên tab Lịch phân công (đã gộp Đơn hàng vào đây)
   const tab = document.querySelector('.tab[data-tab="grid"]');
   if(tab){
@@ -5081,11 +5521,14 @@ function renderAlertBar(){
     }
   }
   if(!alerts.length){ el.style.display='none'; el.innerHTML=''; return; }
-  if(sessionStorage.getItem('dhp_alert_hidden')==='1'){ el.style.display='none'; return; }
+  if(sessionStorage.getItem('dhp_alert_hidden')==='1'){
+    if(backupBar){ el.style.display='block'; el.innerHTML=backupBar; } else el.style.display='none';
+    return;
+  }
   const lateN = alerts.filter(a=>a.type==='late').length;
   const soonN = alerts.filter(a=>a.type==='soon').length;
   el.style.display='block';
-  el.innerHTML = `<div style="max-width:1480px;margin:0 auto;padding:10px 20px;background:${lateN?'#fef2f2':'#fffbeb'};border-bottom:1px solid ${lateN?'#fecaca':'#fde68a'}">
+  el.innerHTML = backupBar + `<div style="max-width:1480px;margin:0 auto;padding:10px 20px;background:${lateN?'#fef2f2':'#fffbeb'};border-bottom:1px solid ${lateN?'#fecaca':'#fde68a'}">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <b style="color:${lateN?'var(--st-late)':'var(--st-prod)'};font-size:13px">🔔 ${lateN?lateN+' đơn QUÁ HẠN':''}${lateN&&soonN?' · ':''}${soonN?soonN+' đơn sắp tới hạn (≤3 ngày)':''} — chưa giao</b>
       <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">

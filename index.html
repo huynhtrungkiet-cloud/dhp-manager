@@ -432,7 +432,7 @@ function gateCheck(){
 
 <!-- ===== Modal: Order form ===== -->
 <div class="modal-bg" id="modalOrder">
-  <div class="modal">
+  <div class="modal wide">
     <h3 id="orderModalTitle">Thêm đơn hàng</h3>
     <input type="hidden" id="ord_id">
     <div class="row2">
@@ -529,8 +529,23 @@ function gateCheck(){
         <span id="g0OkBadge" class="small" style="font-weight:700"></span>
       </div>
     </div>
+    <div class="field" id="itemsField" style="border:1px solid #c7d2fe;border-radius:10px;padding:12px;background:#f5f7ff">
+      <label style="font-weight:800;color:#3730a3">▦ G1.5 — Chi tiết con / BOM của đơn <span class="muted small" style="font-weight:600">— khai TRƯỚC, rồi mới chia công đoạn cho từng chi tiết ở G2 bên dưới.</span></label>
+      <div class="small" style="color:#475569;line-height:1.65;margin:2px 0 8px">
+        <b>Đơn 1 món</b> (vd khoét lỗ 1 khớp nối mua sẵn) → <b>để trống</b> phần này, chỉ khai công đoạn ở G2.<br>
+        <b>Đơn nhiều món</b> (hub + spider + bulong, hay dự án nhiều van) → khai từng chi tiết ở đây.
+        Mỗi chi tiết có <b>chuỗi công đoạn riêng</b>, khai <b>số giờ</b> và <b>nơi làm</b> cho từng công đoạn.
+        App cộng giờ để ra <b>% theo trọng số</b> và cột <b>“Gia công nhiều nhất ở”</b> ngoài bảng đơn hàng.
+      </div>
+      <div id="ord_items_list"></div>
+      <div class="toolbar" style="margin-top:6px">
+        <button type="button" class="ghost sm" onclick="addOrderItem()" style="border-color:#6366F1;color:#4338ca;font-weight:700">＋ Thêm chi tiết con</button>
+        <button type="button" class="ghost sm" onclick="applyFamilyBom()" style="border-color:#16A34A;color:#15803d;font-weight:700" title="1 BỘ khớp nối gồm chi tiết con nào + quy trình riêng từng chi tiết — app tự nhận diện nhóm từ Tên hàng. ĐVT Cái (nguyên chiếc) thì không tách.">⚙ Tách BOM theo nhóm (bộ → chi tiết con)</button>
+      </div>
+    </div>
     <div class="field" id="routingField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff;position:relative">
       <label>🔧 G2 — Công đoạn (routing) <span class="muted small">— A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
+      <div class="small muted" style="margin:-2px 0 6px">Đây là công đoạn của <b>cả đơn</b>. Nếu đã khai chi tiết con ở G1.5 thì công đoạn của từng chi tiết khai <b>trong ô chi tiết đó</b>, không khai lại ở đây.</div>
       <div id="routingLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>G1: Kiểm tra đầu vào</b> (tick đủ 5 mục + chọn người kiểm + bấm <b>✅ Feedback OK</b>) mới mở chia công đoạn.</div>
       <div id="routingBody">
         <div id="ord_stages_list"></div>
@@ -551,12 +566,6 @@ function gateCheck(){
           <button type="button" class="ghost sm" onclick="printStageSheetsFromForm()" style="border-color:#0EA5E9;color:#0369a1" title="In phiếu đo đạc kích thước cho TỪNG công đoạn — BẮT BUỘC in trước khi qua QC">🖨 In phiếu gia công (BẮT BUỘC)</button>
         </div>
       </div>
-    </div>
-    <div class="field">
-      <label>Chi tiết con của đơn <span class="muted small">(tùy chọn — cho đơn nhiều chi tiết / dự án, vd VHG DATA: nhiều van mang gia công ngoài)</span></label>
-      <div id="ord_items_list"></div>
-      <button type="button" class="ghost sm" onclick="addOrderItem()" style="margin-top:6px">＋ Thêm chi tiết con</button>
-      <button type="button" class="ghost sm" onclick="applyFamilyBom()" style="margin-top:6px;border-color:#16A34A;color:#15803d;font-weight:700" title="1 BỘ khớp nối gồm chi tiết con nào + quy trình riêng từng chi tiết — app tự nhận diện nhóm từ Tên hàng. ĐVT Cái (nguyên chiếc) thì không tách.">⚙ Tách BOM theo nhóm (bộ → chi tiết con)</button>
     </div>
     <!-- % hoàn thành: app TỰ TÍNH theo công đoạn Xong/tổng. Ngày hoàn thành/giao: tự set khi đổi trạng thái. (ẩn) -->
     <input id="ord_progress" type="hidden"><input id="ord_completed" type="hidden"><input id="ord_delivered" type="hidden">
@@ -2246,7 +2255,7 @@ function renderItemsEditor(){
   const wrap=document.getElementById('ord_items_list');
   const _locs = ['CK368', ...(DATA.partners||[]).map(p=>p.name)];
   const _dl = `<datalist id="stageLocs">${_locs.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>`;
-  if(!editingItems.length){ wrap.innerHTML=_dl+'<div class="small muted">Chưa có chi tiết con. Đơn đơn giản thì để trống phần này.</div>'; return; }
+  if(!editingItems.length){ wrap.innerHTML=_dl+'<div class="small" style="color:#64748b;background:#fff;border:1px dashed #c7d2fe;border-radius:8px;padding:9px 11px">Chưa khai chi tiết con nào — bấm <b style="color:#4338ca">＋ Thêm chi tiết con</b> bên dưới, hoặc <b style="color:#15803d">⚙ Tách BOM theo nhóm</b> để app tự sinh từ tên hàng.<br><span class="muted">Đơn chỉ có 1 món thì cứ để trống, khai thẳng công đoạn ở G2.</span></div>'; return; }
   const summary = `<div id="ord_items_summary" class="small" style="margin-bottom:8px;padding:6px 10px;background:#eef2ff;border-radius:8px;font-weight:700;color:#3730a3">${itemsSummaryText()}</div>`;
   wrap.innerHTML = _dl + summary + editingItems.map((it,i)=>`
     <div style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px;background:#fafcff">
@@ -2281,7 +2290,7 @@ function itemStagesHtml(it,i){
   const stages = it.stages||[];
   const rows = stages.map((s,si)=>{
     const st = stageState(s);
-    return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;border-left:3px solid ${STAGE_COLORS[st]};padding-left:5px">
+    return `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:5px;border-left:3px solid ${STAGE_COLORS[st]};padding:4px 0 4px 5px;background:#fff;border-radius:0 6px 6px 0">
       <select style="width:120px;font-size:11px" onchange="pickItemStagePreset(${i},${si},this.value)" title="Loại công đoạn"><option value="">— loại —</option>${STAGE_PRESETS.map(p=>`<option value="${p.c}" ${String(s.code||'').replace(/\d+$/,'')===p.c?'selected':''}>${p.c} ${p.n}</option>`).join('')}</select>
       <input style="width:38px;font-weight:800;font-size:11px" value="${esc(s.code||'')}" oninput="updItemStage(${i},${si},'code',this.value)" placeholder="Mã" title="Mã">
       <input type="number" style="width:50px;font-size:11px" min="0" step="0.5" value="${s.hours!=null?s.hours:''}" placeholder="giờ" oninput="updItemStage(${i},${si},'hours',this.value)" title="Số GIỜ công thường (8h=1 ngày)">
@@ -2308,6 +2317,7 @@ function addItemStage(i){ if(!editingItems[i])return; editingItems[i].stages=edi
 function updItemStage(i,si,k,v){
   const s = editingItems[i] && editingItems[i].stages && editingItems[i].stages[si]; if(!s) return;
   s[k] = (k==='hours'||k==='plannedDays'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
+  if(k==='hours'||k==='plannedDays') updateItemsSummary();
   if(k==='status'){ if(v==='done'&&!s.doneDate)s.doneDate=todayStr(); if(v==='doing'&&!s.startDate)s.startDate=todayStr(); if(v==='pending')s.doneDate=''; renderItemsEditor(); }
 }
 function rmItemStage(i,si){ editingItems[i].stages.splice(si,1); renderItemsEditor(); }
@@ -2324,8 +2334,14 @@ function itemStageTemplate(i){
 }
 function itemsSummaryText(){
   const totalQty = editingItems.reduce((s,it)=>s+(parseFloat(it.qty)||0),0);
-  const totalHrs = editingItems.reduce((s,it)=>s+(parseFloat(it.estHours)||0),0);
-  return `📊 ${editingItems.length} chi tiết con · Tổng SL: ${totalQty} · Tổng giờ gia công dự kiến: ${totalHrs}h${totalHrs?` (≈ ${(totalHrs/8).toFixed(1)} ngày công)`:''}`;
+  // Giờ = tổng giờ CÔNG ĐOẠN đã khai của chi tiết đó; chưa khai công đoạn thì lấy ô "Giờ GC".
+  // (Trước 30-08-2026 chỉ cộng ô "Giờ GC" nên khai công đoạn xong vẫn báo 0h.)
+  const totalHrs = editingItems.reduce((s,it)=>{
+    const sh=(it.stages||[]).filter(Boolean).reduce((a,x)=>a+(stageHours(x)||0),0);
+    return s + (sh>0?sh:(parseFloat(it.estHours)||0));
+  },0);
+  const nStage = editingItems.reduce((s,it)=>s+((it.stages||[]).filter(Boolean).length),0);
+  return `📊 ${editingItems.length} chi tiết con · Tổng SL: ${totalQty} · ${nStage} công đoạn · Tổng giờ dự kiến: ${totalHrs}h${totalHrs?` (≈ ${(totalHrs/8).toFixed(1)} ngày công)`:''}`;
 }
 function updateItemsSummary(){ const el=document.getElementById('ord_items_summary'); if(el) el.innerHTML=itemsSummaryText(); }
 function addOrderItem(){ editingItems.push({id:localId('IT'), name:'', qty:null, unit:'', process:'', estHours:null, assignment:'inhouse', status:'new', progress:null, stages:[], note:''}); renderItemsEditor(); }

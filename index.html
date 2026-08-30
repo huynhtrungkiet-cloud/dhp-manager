@@ -1999,9 +1999,10 @@ function ordersTable(){
         const ef=efi.date;
         if(o.status==='delivered') return `<span style="color:var(--st-done);font-weight:700">${fmtDate(ef)}</span>`;
         const ref=o.requestedDate||o.dueDate; const late=ref&&ef>ref;
-        const src={plan:'theo ngày bắt đầu đã khai ở công đoạn',auto:'app TỰ DÀN theo số giờ còn lại (chưa khai ngày bắt đầu) — khai ngày để chính xác hơn',manual:'người nhập tay',est:'suy từ % và ngày nhận đơn'}[efi.kind]||'';
-        const mark={auto:'~',manual:' (tay)',est:'?'}[efi.kind]||'';
-        return `<span style="${late?'color:var(--st-late);font-weight:700':'font-weight:600'}" title="${esc(src)}${late?' — TRỄ so với hạn KH':''}">${fmtDate(ef)}${mark}${late?' ⚠':''}</span>`;
+        const src={plan:'theo ngày bắt đầu đã khai ở công đoạn',auto:'app TỰ DÀN theo số giờ còn lại (chưa khai ngày bắt đầu) — khai ngày để chính xác hơn',stale:'LỊCH ĐÃ LẠC HẬU: ngày trong công đoạn đã trôi qua mà đơn chưa xong — app dàn lại phần còn lại từ hôm nay. Vào Sửa đơn cập nhật lại ngày.',manual:'người nhập tay',est:'suy từ % và ngày nhận đơn'}[efi.kind]||'';
+        const mark={auto:'~',stale:'⟳',manual:' (tay)',est:'?'}[efi.kind]||'';
+        const past = ef < todayStr();   // ngày dự kiến đã trôi qua mà đơn chưa giao
+        return `<span style="${(late||past)?'color:var(--st-late);font-weight:700':'font-weight:600'}" title="${esc(src)}${late?' — TRỄ so với hạn KH':''}${past?' — ngày này ĐÃ QUA':''}">${fmtDate(ef)}${mark}${past?' ⏰':(late?' ⚠':'')}</span>`;
       })()}</td>
       <td>
         <select style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);background:${statusByKey(o.status).color};color:#fff;font-weight:700;cursor:pointer"
@@ -3375,6 +3376,15 @@ function expectedFinishInfo(o){
       const arr=workingDaysFrom(base, d+1);
       return {date: arr.length?arr[arr.length-1]:last, kind:'auto'};
     }
+    // LỊCH ĐÃ LẠC HẬU (sửa 30-08-2026, phát hiện từ dữ liệu thật):
+    // ngày xong theo lịch đã khai đã trôi qua mà đơn vẫn chưa giao → lịch đó vô nghĩa.
+    // Trước đây app cứ trả ngày quá khứ (vd đơn 69: "dự kiến giao 29/7" khi mới xong 32%),
+    // mà ngày quá khứ lại NHỎ HƠN hạn KH nên đơn trễ hiện ra như đúng hạn — nguy hiểm hơn cả để trống.
+    // Nay: dàn lại phần việc còn lại từ hôm nay.
+    if(last < todayStr()){
+      const auto = autoPlanFinish(o);
+      return {date: (auto && auto>todayStr()) ? auto : todayStr(), kind:'stale'};
+    }
     return {date:last, kind:'plan'};
   }
   const auto=autoPlanFinish(o);
@@ -3674,12 +3684,14 @@ function legendOrderCard(x){
   const curColor = curState==='late' ? 'var(--st-late)' : (curState==='doing' ? '#B45309' : (g.total?'#475569':'var(--st-late)'));
   const curIcon  = curState==='late' ? '⏰' : (curState==='doing' ? '▶' : (g.total?'⏸':'⚠'));
   const who = g.current && g.current.assignee ? ' · 👤 '+staffName(g.current.assignee) : '';
-  const kindTip = {plan:'theo ngày công đoạn đã khai', auto:'app tự dàn theo số giờ còn lại (chưa khai ngày bắt đầu)', manual:'người nhập tay', est:'suy từ % và ngày nhận đơn', done:'ngày giao thật'}[ef&&ef.kind]||'';
+  const kindTip = {plan:'theo ngày công đoạn đã khai', auto:'app tự dàn theo số giờ còn lại (chưa khai ngày bắt đầu)', stale:'lịch đã khai đã trôi qua mà đơn chưa xong — app dàn lại từ hôm nay', manual:'người nhập tay', est:'suy từ % và ngày nhận đơn', done:'ngày giao thật'}[ef&&ef.kind]||'';
+  const kindMark = {auto:'~', stale:'⟳'}[ef&&ef.kind]||'';
+  const efPast = ef && ef.date < todayStr();
   return `<div style="border:1px solid var(--line);border-left:4px solid ${colorForOrder(o)};border-radius:8px;padding:7px 10px;background:#fff">
     <div style="font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${esc(o.code)}</b> — ${esc(truncate(o.name,42))}</div>
     <div style="font-size:10.5px;margin-top:3px;color:${curColor};font-weight:800">${curIcon} ${esc(cur)}<span class="muted" style="font-weight:600">${esc(who)}</span></div>
     <div style="font-size:10.5px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <span title="${esc(kindTip)}" style="${late?'color:var(--st-late);font-weight:800':'color:#0F766E;font-weight:800'}">🚚 ${ef?fmtDate(ef.date):'—'}${ef&&ef.kind==='auto'?'~':''}${late?' ⚠ trễ hạn KH':''}</span>
+      <span title="${esc(kindTip)}" style="${(late||efPast)?'color:var(--st-late);font-weight:800':'color:#0F766E;font-weight:800'}">🚚 ${ef?fmtDate(ef.date):'—'}${kindMark}${efPast?' ⏰ đã qua':''}${late?' ⚠ trễ hạn KH':''}</span>
       <span class="muted">KH ${fmtDate(ref)}</span>
       <span class="muted">${g.total?g.done+'/'+g.total+' CĐ · ':''}${g.pct}%</span>
       <span class="muted" style="margin-left:auto">${x.hours}h/tháng</span>

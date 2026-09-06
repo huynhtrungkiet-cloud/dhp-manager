@@ -431,6 +431,14 @@ function gateCheck(){
 </div>
 
 <!-- ===== Modal: Order form ===== -->
+<div class="modal-bg" id="modalQuick">
+  <div class="modal wide" style="max-width:1000px">
+    <h3>⚡ Tạo đơn nhanh <span class="muted small" style="font-weight:400">— dán text / mã SKU / nạp file → app dựng sẵn chi tiết con, công đoạn và giờ định mức</span></h3>
+    <datalist id="custDatalist"></datalist>
+    <div id="qiBody"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modalOrder">
   <div class="modal wide">
     <h3 id="orderModalTitle">Thêm đơn hàng</h3>
@@ -1043,6 +1051,7 @@ let _suppressAutoPush = false;
 // Nay: cứu ngay ra file JSON, báo rõ, và KHÔNG đẩy lên kho chung bản chưa lưu được.
 let _saveFailed = false;
 function save(){
+  _stdHoursCache = null;   // có đơn mới đóng → tính lại định mức giờ đã học
   let ok = true, payload = null;
   try{ payload = JSON.stringify(DATA); }
   catch(e){ ok=false; alert('⛔ Dữ liệu đang lỗi nên không tuần tự hoá được: '+e.message); }
@@ -1478,6 +1487,7 @@ function renderDashboard(){
       ${launch('','onclick="goTab(\'ncr\')"','⚠','Ghi nhận NCR','Hàng hư / sai lệch')}
       ${launch('','onclick="goTab(\'data\')"','⚙','Dữ liệu &amp; Đồng bộ','Supabase · sao lưu · Excel')}
       ${canEdit()?launch('','onclick="openOrderModal()"','＋','Thêm đơn hàng','Tạo đơn mới (G0)'):''}
+      ${canEdit()?launch('','onclick="openQuickIntake()"','⚡','Tạo đơn nhanh','Dán text / mã SKU / file → tự dựng đơn'):''}
     </div>
 
     <div class="grid grid-2" style="margin-top:14px">
@@ -1914,6 +1924,7 @@ function ordersSectionHtml(){
   return `
     <div class="toolbar">
       ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
+      ${canEdit()?`<button onclick="openQuickIntake()" style="background:#4338ca" title="Dán đoạn text đơn hàng / gõ mã SKU / nạp file báo giá — app tự dựng đơn kèm chi tiết con, công đoạn và giờ định mức">⚡ Tạo đơn nhanh</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openIncident()" style="border-color:#0891b2;color:#0e7490" title="Ghi sự cố máy/bất khả kháng — tự đánh dấu đơn + tính giờ sửa">🛑 Ghi sự cố</button>`:''}
       <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
              oninput="onOrderSearchInput(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onOrderSearchInput('');}"
@@ -3714,6 +3725,465 @@ function legendOrderCard(x){
     </div>
   </div>`;
 }
+/* ==========================================================================================
+   ⚡ TẠO ĐƠN NHANH (quick intake) — thêm 06-09-2026
+   Một màn hình thay cho form dài: dán text / gõ mã SKU / nạp file  →  app tự dựng
+   đơn + chi tiết con + công đoạn kèm GIỜ ĐỊNH MỨC  →  soát lại  →  Tạo đơn.
+   Tạo xong là đơn đã đủ điều kiện qua cổng G1 (giờ + người làm + ngày bắt đầu).
+   ========================================================================================== */
+
+/* ---------- 1. ĐỊNH MỨC GIỜ ----------
+   App trước đây không có giờ chuẩn ở đâu cả — mọi mẫu routing đều để hours:null,
+   nên ai lên đơn cũng phải tự đoán, và phần lớn là bỏ trống.
+   Nay: ưu tiên HỌC từ đơn đã đóng của chính xưởng (trung vị, cần ≥2 mẫu),
+   chưa đủ dữ liệu thì rơi về bảng định mức khởi điểm dưới đây. */
+const STD_HOURS_SEED = {
+  L:4,  A:8,  B:8,  C:6,  D:4,  P:5,  Q:3,  O:4,  U:4,  S:3,
+  R:16, T:12, W:12, E:6,  F:4,  G:8,  V:6,  H:8,  I:4,  J:4,
+  K:2,  N:2,  X:4
+};
+function _codeBase(c){ return String(c||'').replace(/\d+$/,'').toUpperCase(); }
+let _stdHoursCache = null;
+function learnedStageHours(){
+  if(_stdHoursCache) return _stdHoursCache;
+  const by={};
+  (DATA.orders||[]).forEach(o=>{
+    if(!o || (o.status!=='delivered' && o.status!=='done_waiting')) return;
+    orderAllStages(o).forEach(x=>{
+      const s=x.s; if(!s) return;
+      const h=(s.hours!=null && s.hours!=='') ? parseFloat(s.hours) : NaN;
+      if(!(h>0)) return;
+      const k=_codeBase(s.code); if(!k) return;
+      (by[k]=by[k]||[]).push(h);
+    });
+  });
+  const out={};
+  Object.keys(by).forEach(k=>{ const a=by[k].sort(function(x,y){return x-y;}); if(a.length>=2) out[k]={h:a[Math.floor(a.length/2)], n:a.length}; });
+  _stdHoursCache=out; return out;
+}
+function stdStageHours(code){
+  const k=_codeBase(code);
+  const L=learnedStageHours()[k];
+  if(L) return {hours:L.h, src:'learn', n:L.n};
+  const s=STD_HOURS_SEED[k];
+  return {hours:(s!=null?s:HOURS_PER_DAY), src:'seed', n:0};
+}
+
+/* ---------- 2. ĐỌC NGÀY & SỐ ---------- */
+function qiDate(s){
+  s=String(s||'').trim(); if(!s) return null;
+  if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const p=s.split('-'); return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0'); }
+  let m=s.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2,4})/);
+  if(m){ let y=m[3]; if(y.length===2) y='20'+y; return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); }
+  m=s.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?!\d)/);
+  if(m){ const y=new Date().getFullYear(); return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); }
+  return null;
+}
+function qiNum(s){ const m=String(s||'').replace(/[.,](?=\d{3}\b)/g,'').match(/-?\d+(?:[.,]\d+)?/); return m?parseFloat(m[0].replace(',','.')):null; }
+const QI_LET='A-Za-z\u00C0-\u024F\u1E00-\u1EFF';
+const QI_UNITS=new RegExp('(?:^|[^'+QI_LET+'])(cái|cai|chiếc|chiec|bộ|bo|set|pcs|pc|con|cây|cay|thanh|kg|mét|met|tấm|tam|hộp|hop)(?![' +QI_LET+ '])','i');
+function qiIsSet(unit, name){ const u=String(unit||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/d/g,'d');
+  if(/^(bo|set)$/.test(u.trim())) return true;
+  const nm=String(name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return /^\s*(bo|set|complete set|full set)\s/.test(nm) || /\bcomplete\b/.test(nm); }
+
+/* ---------- 3. PHÂN TÍCH TEXT ĐƠN HÀNG ---------- */
+const QI_LABELS=[
+  {re:/^(kh|khach\s*hang|khách\s*hàng|customer|cty|c[oô]ng\s*ty)\s*[:\-]\s*(.+)$/i, f:'company'},
+  {re:/^(ten\s*hang|tên\s*hàng|san\s*pham|sản\s*phẩm|item|mo\s*ta|mô\s*tả)\s*[:\-]\s*(.+)$/i, f:'name'},
+  {re:/^(sl|so\s*luong|số\s*lượng|qty|quantity)\s*[:\-]\s*(.+)$/i, f:'qty'},
+  {re:/^(dvt|đvt|don\s*vi|đơn\s*vị|unit)\s*[:\-]\s*(.+)$/i, f:'unit'},
+  {re:/^(vat\s*lieu|vật\s*liệu|material)\s*[:\-]\s*(.+)$/i, f:'material'},
+  {re:/^(thuong\s*hieu|thương\s*hiệu|brand|h[aã]ng\s*sx|hãng)\s*[:\-]\s*(.+)$/i, f:'brand'},
+  {re:/^(han\s*giao|hạn\s*giao|ngay\s*giao|ngày\s*giao|giao\s*hang|giao\s*hàng|deadline|due)\s*[:\-]\s*(.+)$/i, f:'due'},
+  {re:/^(ngay\s*nhan|ngày\s*nhận|received)\s*[:\-]\s*(.+)$/i, f:'received'},
+  {re:/^(ma\s*don|mã\s*đơn|so\s*don|số\s*đơn|po|order)\s*[:\-]\s*(.+)$/i, f:'code'},
+  {re:/^(sku|ma\s*sp|mã\s*sp|ma\s*san\s*pham|mã\s*sản\s*phẩm)\s*[:\-]\s*(.+)$/i, f:'sku'},
+  {re:/^(ghi\s*chu|ghi\s*chú|note|luu\s*y|lưu\s*ý)\s*[:\-]\s*(.+)$/i, f:'note'}
+];
+const QI_COMPANY=/(c[oô]ng\s*ty|cty|ctcp|tnhh|co\.,?\s*ltd|corp|jsc|corporation|company)/i;
+function parseOrderText(txt){
+  const lines=String(txt||'').replace(/\r/g,'').split('\n').map(function(l){return l.trim();});
+  const o={company:'',name:'',qty:null,unit:'',material:'',brand:'',due:null,received:null,code:'',sku:'',note:'',items:[],warns:[]};
+  const nameLines=[], bullets=[];
+  lines.forEach(function(line){
+    if(!line) return;
+    const b=line.match(/^[-+•*·▪]\s*(.+)$/) || line.match(/^\d{1,2}[.)]\s+(.+)$/);
+    if(b){ bullets.push(b[1].trim()); return; }
+    for(var i=0;i<QI_LABELS.length;i++){
+      const m=line.match(QI_LABELS[i].re);
+      if(m){ const f=QI_LABELS[i].f, v=m[2].trim();
+        if(f==='qty'){ o.qty=qiNum(v); const u=v.match(QI_UNITS); if(u&&!o.unit) o.unit=u[1]; }
+        else if(f==='due')       o.due=qiDate(v);
+        else if(f==='received')  o.received=qiDate(v);
+        else if(!o[f])           o[f]=v;
+        return;
+      }
+    }
+    if(!o.company && QI_COMPANY.test(line) && line.length<160){ o.company=line; return; }
+    nameLines.push(line);
+  });
+  // Tên hàng = các dòng còn lại, giữ nguyên xuống dòng như anh em vẫn ghi
+  if(!o.name) o.name=nameLines.join('\n').trim();
+  else if(nameLines.length) o.name=(o.name+'\n'+nameLines.join('\n')).trim();
+  // Bổ sung vật liệu / thương hiệu vào tên hàng nếu chưa có trong đó
+  const nlow=o.name.toLowerCase();
+  if(o.material && nlow.indexOf(String(o.material).toLowerCase())<0) o.name+='\nVật liệu: '+o.material;
+  if(o.brand    && nlow.indexOf(String(o.brand).toLowerCase())<0)    o.name+='\nThương hiệu: '+o.brand;
+  // Số lượng / ĐVT / ngày nếu chưa có nhãn rõ ràng
+  const all=lines.join(' ');
+  if(o.qty==null){
+    var m=all.match(/(?:sl|s[oố]\s*l[uư][oơ]ng|qty)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i) || all.match(/\bx\s*(\d+)\b/i) || all.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(cái|cai|chiếc|chiec|bộ|bo|set|pcs|con)(?![' +QI_LET+ '])','i'));
+    if(m){ o.qty=qiNum(m[1]); if(m[2]&&!o.unit) o.unit=m[2]; }
+  }
+  if(!o.unit){ const u=all.match(QI_UNITS); if(u) o.unit=u[1]; }
+  if(!o.due){ const d=all.match(/(?:h[aạ]n|giao|deadline|due)[^0-9]{0,12}(\d{1,2}\s*[\/\-.]\s*\d{1,2}(?:\s*[\/\-.]\s*\d{2,4})?)/i); if(d) o.due=qiDate(d[1]); }
+  if(!o.qty) o.qty=1;
+  if(!o.unit) o.unit='Cái';
+  // Gạch đầu dòng → chi tiết con
+  bullets.forEach(function(b){
+    var q=null,u='';
+    var m=b.match(/(?:^|\s)(?:sl|s[oố]\s*l[uư][oơ]ng)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i) || b.match(/\bx\s*(\d+)\b/i) || b.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(cái|cai|chiếc|chiec|bộ|bo|set|pcs|con)(?![' +QI_LET+ '])','i'));
+    if(m){ q=qiNum(m[1]); if(m[2]) u=m[2]; }
+    var nm=b.replace(/(?:^|\s)(?:sl|s[oố]\s*l[uư][oơ]ng)\s*[:\-]?\s*\d+(?:[.,]\d+)?/ig,'')
+            .replace(/\bx\s*\d+\b/ig,'')
+            .replace(/[-–—,;:\s]+$/,'').trim();
+    if(nm) o.items.push({name:nm, qty:(q||1), unit:(u||'cái')});
+  });
+  if(!o.name && o.items.length) o.name=o.items.map(function(x){return x.name;}).join(' + ');
+  if(!o.name) o.warns.push('Chưa tách được TÊN HÀNG — gõ tay ở ô bên dưới.');
+  if(!o.company) o.warns.push('Chưa tách được KHÁCH HÀNG — chọn/gõ ở ô bên dưới.');
+  if(!o.due) o.warns.push('Chưa thấy HẠN GIAO trong đoạn text — điền tay.');
+  return o;
+}
+
+/* ---------- 4. DỰNG CHI TIẾT CON + CÔNG ĐOẠN KÈM GIỜ ---------- */
+function qiStagesFor(tpl){
+  return tpl.map(function(t){
+    const code=t[0], nm=t[1], sh=stdStageHours(code);
+    return {id:localId('IST'), code:code, name:nm, location:'', plannedDays:null, status:'pending',
+            startDate:'', endDate:'', doneDate:'', assignee:'', hours:sh.hours, otHours:null,
+            note:'', _src:sh.src, _n:sh.n};
+  });
+}
+function qiBuildItems(parsed){
+  const fam=detectFamily(parsed.name||'');
+  const isSet=qiIsSet(parsed.unit, parsed.name);
+  // a) text đã liệt kê sẵn chi tiết con
+  if(parsed.items && parsed.items.length){
+    return {fam:fam, how:'text', items: parsed.items.map(function(it){
+      const f=detectFamily(it.name)||fam||'general';
+      const tpl=(ROUTING_FAM[f]||ROUTING_FAM.general).tpl;
+      return {id:localId('IT'), name:it.name, qty:it.qty, unit:it.unit, process:'', estHours:null,
+              assignment:'inhouse', status:'new', progress:null, use:true, stages:qiStagesFor(tpl)};
+    })};
+  }
+  // b) hàng theo BỘ + nhận diện được nhóm → tách BOM chuẩn
+  if(isSet && fam && BOM_FAM[fam]){
+    const setQty=parsed.qty||1;
+    return {fam:fam, how:'bom', items: BOM_FAM[fam].map(function(b){
+      return {id:localId('IT'), name:b.name, qty:b.per*setQty, unit:'cái', process:'', estHours:null,
+              assignment:(b.make?'inhouse':'purchase'), status:'new', progress:null, use:true,
+              stages:qiStagesFor(b.tpl)};
+    })};
+  }
+  // c) hàng nguyên chiếc → 1 chi tiết duy nhất, routing theo nhóm
+  const f=fam||'general';
+  const tpl=(ROUTING_FAM[f]||ROUTING_FAM.general).tpl;
+  return {fam:fam, how:'single', items:[{id:localId('IT'), name:(truncate(String(parsed.name||'').split('\n')[0],60)||'Chi tiết chính'),
+          qty:parsed.qty||1, unit:parsed.unit||'Cái', process:'', estHours:null, assignment:'inhouse',
+          status:'new', progress:null, use:true, stages:qiStagesFor(tpl)}]};
+}
+
+/* ---------- 5. MÀN HÌNH ---------- */
+let QI = null;
+function openQuickIntake(){
+  if(!requireEdit()) return;
+  (function(){ const dl=document.getElementById('custDatalist');
+    if(dl) dl.innerHTML=(DATA.customers||[]).slice(0,2000).map(function(c){return '<option value="'+esc(c.name||'')+'">';}).join(''); })();
+  _stdHoursCache=null;
+  QI = {src:'text', raw:'', sku:'', parsed:null, fam:'', how:'', items:[],
+        assignee:'', startDate:todayStr(), g0:{drawing:false,dims:false,tol:false,mat:false,qty:false}, fileName:''};
+  renderQuickIntake();
+  openModal('modalQuick');
+}
+function qiSetSrc(s){ QI.src=s; renderQuickIntake(); }
+function qiSet(k,v){ QI[k]=v; }
+function qiSetItem(i,k,v){ const it=QI.items[i]; if(!it) return; it[k]=(k==='qty')?(v===''?null:parseFloat(v)):v; if(k==='use') it.use=!!v; renderQuickIntake(); }
+function qiSetStage(i,si,k,v){ const s=QI.items[i]&&QI.items[i].stages[si]; if(!s) return; s[k]=(k==='hours')?(v===''?null:parseFloat(v)):v; if(k!=='hours') renderQuickIntake(); else qiUpdTotals(); }
+function qiRmStage(i,si){ QI.items[i].stages.splice(si,1); renderQuickIntake(); }
+function qiRmItem(i){ QI.items.splice(i,1); renderQuickIntake(); }
+function qiAddItem(){
+  const tpl=(ROUTING_FAM[QI.fam||'general']||ROUTING_FAM.general).tpl;
+  QI.items.push({id:localId('IT'), name:'', qty:1, unit:'cái', process:'', estHours:null, assignment:'inhouse',
+                 status:'new', progress:null, use:true, stages:qiStagesFor(tpl)});
+  renderQuickIntake();
+}
+function qiTotals(){
+  let h=0,n=0,q=0;
+  QI.items.filter(function(it){return it.use;}).forEach(function(it){
+    q+=(parseFloat(it.qty)||0);
+    (it.stages||[]).forEach(function(s){ h+=(parseFloat(s.hours)||0); n++; });
+  });
+  return {hours:h, nStage:n, qty:q, nItem:QI.items.filter(function(it){return it.use;}).length};
+}
+function qiUpdTotals(){ const el=document.getElementById('qiTotals'); if(el) el.innerHTML=qiTotalsHtml(); }
+function qiTotalsHtml(){
+  const t=qiTotals();
+  const days=(t.hours/HOURS_PER_DAY);
+  const fin=workingDaysFrom(QI.startDate||todayStr(), Math.max(1,Math.ceil(days)));
+  const finDate=fin.length?fin[fin.length-1]:todayStr();
+  return '<b>Σ '+t.nItem+' chi tiết · '+t.nStage+' công đoạn · '+Math.round(t.hours)+'h (≈ '+days.toFixed(1)+' ngày công)</b>'
+       + ' <span class="muted">· nếu bắt đầu '+fmtDate(QI.startDate||todayStr())+' thì xong khoảng <b>'+fmtDate(finDate)+'</b></span>';
+}
+function qiParseNow(){
+  const ta=document.getElementById('qiRaw'); if(ta) QI.raw=ta.value;
+  if(!String(QI.raw||'').trim()){ alert('Chưa có nội dung để phân tích. Dán đoạn text đơn hàng vào ô trên.'); return; }
+  const p=parseOrderText(QI.raw);
+  const b=qiBuildItems(p);
+  QI.parsed=p; QI.fam=b.fam; QI.how=b.how; QI.items=b.items;
+  renderQuickIntake();
+}
+function qiFromSku(){
+  const inp=document.getElementById('qiSku'); const sku=inp?inp.value.trim():'';
+  if(!sku){ alert('Gõ hoặc chọn mã SKU trước.'); return; }
+  const p=productBySku(sku);
+  if(!p){ alert('Không tìm thấy mã "'+sku+'" trong catalogue.\nGõ đúng mã bên app DHP Coding, hoặc dùng cách dán text.'); return; }
+  const txt=[p.name||sku, p.brand?('Thương hiệu: '+p.brand):'', p.material?('Vật liệu: '+p.material):'',
+             p.size?('Kích thước: '+p.size):''].filter(Boolean).join('\n');
+  QI.raw=txt; QI.sku=sku;
+  const parsed=parseOrderText(txt);
+  const bb=qiBuildItems(parsed);
+  QI.parsed=parsed; QI.fam=bb.fam; QI.how=bb.how; QI.items=bb.items;
+  renderQuickIntake();
+}
+function loadScriptOnce(url){
+  return new Promise(function(res,rej){
+    if(document.querySelector('script[data-qi="'+url+'"]')) return res();
+    const s=document.createElement('script'); s.src=url; s.setAttribute('data-qi',url);
+    s.onload=function(){res();}; s.onerror=function(){rej(new Error('Không tải được thư viện (máy cần internet).'));};
+    document.head.appendChild(s);
+  });
+}
+function qiCsvToText(txt){
+  const rows=String(txt||'').replace(/\r/g,'').split('\n').filter(function(l){return l.trim();})
+    .map(function(l){ return l.split(/[,;\t]/).map(function(c){return c.replace(/^"|"$/g,'').trim();}); });
+  return qiRowsToText(rows);
+}
+function qiRowsToText(rows){
+  if(!rows.length) return '';
+  // Tìm dòng tiêu đề có chữ "tên"/"mô tả"/"item"
+  let hi=-1;
+  for(var i=0;i<Math.min(rows.length,10);i++){
+    const j=rows[i].join(' ').toLowerCase();
+    if(/t[eê]n|m[oô]\s*t[aả]|item|description|hàng|hang/.test(j)){ hi=i; break; }
+  }
+  if(hi<0){ return rows.map(function(r){return r.filter(Boolean).join(' ');}).join('\n'); }
+  const head=rows[hi].map(function(c){return String(c||'').toLowerCase();});
+  const col=function(re){ for(var i=0;i<head.length;i++){ if(re.test(head[i])) return i; } return -1; };
+  const cName=col(/t[eê]n|m[oô]\s*t[aả]|item|description|hàng|hang/), cQty=col(/s[oố]\s*l[uư][oơ]ng|\bsl\b|qty|quantity/),
+        cUnit=col(/[dđ]vt|[dđ][oơ]n\s*v[iị]|unit/), cMat=col(/v[aậ]t\s*li[eệ]u|material/);
+  const out=[];
+  for(var r=hi+1;r<rows.length;r++){
+    const row=rows[r]; if(!row || !row.join('').trim()) continue;
+    const nm=(cName>=0?row[cName]:row.filter(Boolean)[0])||''; if(!String(nm).trim()) continue;
+    let line='- '+String(nm).trim();
+    if(cQty>=0 && row[cQty]) line+=' x'+String(row[cQty]).trim();
+    if(cUnit>=0 && row[cUnit]) line+=' '+String(row[cUnit]).trim();
+    if(cMat>=0 && row[cMat]) line+=' — '+String(row[cMat]).trim();
+    out.push(line);
+  }
+  return out.join('\n');
+}
+async function qiFile(input){
+  const f=input && input.files && input.files[0]; if(!f) return;
+  const st=document.getElementById('qiFileStatus');
+  const say=function(m,err){ if(st){ st.textContent=m; st.style.color=err?'var(--st-late)':'#0F766E'; } };
+  QI.fileName=f.name;
+  try{
+    const ext=(f.name.split('.').pop()||'').toLowerCase();
+    let text='';
+    if(ext==='csv' || ext==='txt'){
+      say('Đang đọc '+f.name+'...');
+      text=qiCsvToText(await f.text());
+    } else if(ext==='xlsx' || ext==='xls' || ext==='xlsm'){
+      say('Đang tải thư viện đọc Excel...');
+      await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      say('Đang đọc '+f.name+'...');
+      const wb=XLSX.read(await f.arrayBuffer(), {type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      text=qiRowsToText(XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:''}));
+    } else if(ext==='pdf'){
+      say('Đang tải thư viện đọc PDF...');
+      await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      say('Đang rút chữ từ '+f.name+'...');
+      const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      const parts=[];
+      for(var p=1;p<=Math.min(doc.numPages,6);p++){
+        const page=await doc.getPage(p), tc=await page.getTextContent();
+        parts.push(tc.items.map(function(i){return i.str;}).join(' '));
+      }
+      text=parts.join('\n');
+      if(!text.trim()) throw new Error('PDF này là ảnh scan, không rút được chữ. Gõ tay hoặc dán text.');
+    } else { throw new Error('Chỉ nhận .csv .txt .xlsx .xls .pdf'); }
+    QI.raw=text; QI.src='text';
+    say('✓ Đọc xong '+f.name+' — kiểm lại nội dung rồi bấm Phân tích.');
+    renderQuickIntake();
+  }catch(e){ say('⛔ '+e.message, true); }
+}
+function renderQuickIntake(){
+  const el=document.getElementById('qiBody'); if(!el) return;
+  const tab=function(k,ic,lb){ return '<button type="button" class="ghost sm" onclick="qiSetSrc(\''+k+'\')" style="'+(QI.src===k?'background:var(--brand);color:#fff;border-color:var(--brand);font-weight:800':'')+'">'+ic+' '+lb+'</button>'; };
+  let srcHtml='';
+  if(QI.src==='text'){
+    srcHtml='<textarea id="qiRaw" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px" '
+      +'placeholder="Dán nguyên đoạn từ Zalo / mail / báo giá vào đây, ví dụ:&#10;&#10;CÔNG TY TNHH VINA ECO BOARD&#10;Ống nối cho khớp nối CK368 Rostex DKM 90&#10;Vật liệu: S45C&#10;SL: 1 cái&#10;Hạn giao: 17/09/2026&#10;&#10;Nhiều món thì mỗi món một dòng bắt đầu bằng dấu gạch -">'+esc(QI.raw||'')+'</textarea>'
+      +'<div class="toolbar" style="margin-top:6px"><button type="button" onclick="qiParseNow()">🔎 Phân tích</button>'
+      +'<span class="muted small">App tách khách hàng, tên hàng, SL, ĐVT, vật liệu, hạn giao — rồi tự dựng chi tiết con và công đoạn.</span></div>';
+  } else if(QI.src==='sku'){
+    srcHtml='<div class="toolbar"><input id="qiSku" list="prodDatalist" placeholder="Gõ mã SKU, vd KTR-ROTEX-28" style="min-width:280px" value="'+esc(QI.sku||'')+'">'
+      +'<button type="button" onclick="qiFromSku()">🔎 Lấy từ catalogue</button>'
+      +'<span class="muted small">'+((DATA.products||[]).length)+' mã trong catalogue. Chưa có mã thì tạo bên app DHP Coding.</span></div>';
+  } else {
+    srcHtml='<div class="toolbar"><input type="file" accept=".csv,.txt,.xlsx,.xls,.xlsm,.pdf" onchange="qiFile(this)">'
+      +'<span id="qiFileStatus" class="small" style="color:#0F766E">Nhận .xlsx .xls .csv .txt .pdf — app đọc ra text rồi tách như trên.</span></div>'
+      +'<div class="small muted" style="margin-top:4px">PDF scan (ảnh chụp) thì không rút được chữ — trường hợp đó dán tay.</div>';
+  }
+  let review='';
+  if(QI.parsed){
+    const p=QI.parsed;
+    const howTxt={text:'tách từ danh sách trong text', bom:'tách BOM chuẩn theo nhóm '+((ROUTING_FAM[QI.fam]||{}).label||QI.fam), single:'hàng nguyên chiếc — 1 chi tiết'}[QI.how]||'';
+    const staffOpts=(DATA.staff||[]).filter(function(x){return x&&x.active!==false;})
+      .map(function(x){return '<option value="'+esc(x.id)+'"'+(QI.assignee===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+    const locs=['CK368'].concat((DATA.partners||[]).map(function(p){return p.name;}));
+    const itemsHtml=QI.items.map(function(it,i){
+      const stages=(it.stages||[]).map(function(s,si){
+        const learn=s._src==='learn';
+        return '<span style="display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 5px;margin:2px 3px 2px 0;font-size:11px">'
+          +'<b style="color:#4338ca">'+esc(s.code)+'</b> '+esc(truncate(s.name,16))
+          +'<input type="number" min="0" step="0.5" value="'+(s.hours!=null?s.hours:'')+'" onchange="qiSetStage('+i+','+si+',\'hours\',this.value)" style="width:46px;font-size:11px;padding:1px 3px" title="'+(learn?'Học từ '+s._n+' đơn đã đóng':'Định mức khởi điểm')+'">h'
+          +'<span title="'+(learn?'học từ '+s._n+' đơn đã đóng của xưởng':'định mức khởi điểm — chưa đủ dữ liệu để học')+'" style="font-size:9px;color:'+(learn?'#15803d':'#94a3b8')+'">'+(learn?'📈':'≈')+'</span>'
+          +'<a onclick="qiRmStage('+i+','+si+')" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a></span>';
+      }).join('');
+      return '<tr style="border-bottom:1px dashed #e8edf4;'+(it.use?'':'opacity:.4')+'">'
+        +'<td style="padding:5px 4px;vertical-align:top"><input type="checkbox" '+(it.use?'checked':'')+' onchange="qiSetItem('+i+',\'use\',this.checked)" title="Bỏ tick nếu không cần chi tiết này"></td>'
+        +'<td style="padding:5px 4px;vertical-align:top;min-width:170px"><input value="'+esc(it.name)+'" oninput="QI.items['+i+'].name=this.value" style="width:100%;font-weight:600;font-size:12px"></td>'
+        +'<td style="padding:5px 4px;vertical-align:top;white-space:nowrap"><input type="number" min="0" value="'+(it.qty!=null?it.qty:'')+'" oninput="QI.items['+i+'].qty=parseFloat(this.value)||0" style="width:52px;font-size:12px"> '
+        +'<input value="'+esc(it.unit||'')+'" oninput="QI.items['+i+'].unit=this.value" style="width:48px;font-size:12px"></td>'
+        +'<td style="padding:5px 4px;vertical-align:top"><select onchange="qiSetItem('+i+',\'assignment\',this.value)" style="font-size:11.5px">'
+          +'<option value="inhouse"'+(it.assignment==='inhouse'?' selected':'')+'>Nội bộ</option>'
+          +'<option value="outsource"'+(it.assignment==='outsource'?' selected':'')+'>Outsource</option>'
+          +'<option value="purchase"'+(it.assignment==='purchase'?' selected':'')+'>Mua hàng</option></select></td>'
+        +'<td style="padding:5px 4px;vertical-align:top">'+stages+'</td>'
+        +'<td style="padding:5px 4px;vertical-align:top;text-align:right"><a onclick="qiRmItem('+i+')" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a></td>'
+        +'</tr>';
+    }).join('');
+    const g0boxes=[['drawing','Bản vẽ/catalogue'],['dims','Kích thước'],['tol','Dung sai'],['mat','Vật liệu'],['qty','Số lượng']]
+      .map(function(k){ return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;margin-right:12px"><input type="checkbox" '+(QI.g0[k[0]]?'checked':'')+' onchange="QI.g0[\''+k[0]+'\']=this.checked"> '+k[1]+'</label>'; }).join('');
+    review=''
+      +(p.warns.length?'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;font-size:12px;color:#92400e;margin-bottom:8px">⚠ '+p.warns.map(esc).join('<br>⚠ ')+'</div>':'')
+      +'<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;margin-bottom:8px">'
+      +'<div class="row2" style="gap:8px"><div class="field" style="margin:0"><label>Khách hàng</label><input id="qiCompany" list="custDatalist" value="'+esc(p.company||'')+'"></div>'
+      +'<div class="field" style="margin:0"><label>Hạn giao</label><input id="qiDue" type="date" value="'+esc(p.due||'')+'"></div></div>'
+      +'<div class="field" style="margin:8px 0 0"><label>Tên hàng / sản phẩm</label><textarea id="qiName" rows="3" style="width:100%">'+esc(p.name||'')+'</textarea></div>'
+      +'<div class="row3" style="gap:8px;margin-top:8px">'
+      +'<div class="field" style="margin:0"><label>Số lượng</label><input id="qiQty" type="number" min="0" value="'+(p.qty!=null?p.qty:1)+'"></div>'
+      +'<div class="field" style="margin:0"><label>ĐVT</label><input id="qiUnit" value="'+esc(p.unit||'Cái')+'"></div>'
+      +'<div class="field" style="margin:0"><label>Nhóm sản phẩm</label><select id="qiFam" onchange="QI.fam=this.value">'
+        +'<option value="">— chưa nhận diện —</option>'
+        +Object.keys(ROUTING_FAM).map(function(k){return '<option value="'+k+'"'+(QI.fam===k?' selected':'')+'>'+esc(ROUTING_FAM[k].label)+'</option>';}).join('')
+      +'</select></div></div></div>'
+      +'<div style="border:1px solid #c7d2fe;border-radius:10px;padding:10px 12px;background:#f5f7ff;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
+        +'<b style="color:#3730a3;font-size:12.5px">▦ Chi tiết con &amp; công đoạn</b>'
+        +'<span class="muted small">'+esc(howTxt)+'</span>'
+        +'<button type="button" class="ghost sm" style="margin-left:auto" onclick="qiAddItem()">＋ Thêm chi tiết</button></div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead>'
+      +'<tr style="color:#6366F1;font-weight:800;font-size:10px;text-align:left;border-bottom:1px solid #dfe5ee">'
+      +'<th style="padding:3px 4px"></th><th style="padding:3px 4px">CHI TIẾT</th><th style="padding:3px 4px">SL / ĐVT</th>'
+      +'<th style="padding:3px 4px">THỰC HIỆN</th><th style="padding:3px 4px">CÔNG ĐOẠN &amp; GIỜ (sửa được)</th><th></th></tr></thead>'
+      +'<tbody>'+itemsHtml+'</tbody></table></div>'
+      +'<div id="qiTotals" style="margin-top:6px;font-size:11.5px;padding:5px 9px;background:#eef2ff;border-radius:6px;color:#3730a3">'+qiTotalsHtml()+'</div></div>'
+      +'<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff">'
+      +'<div class="row3" style="gap:8px">'
+      +'<div class="field" style="margin:0"><label>Ai làm (gán cho mọi công đoạn)</label><select onchange="QI.assignee=this.value"><option value="">— chọn người —</option>'+staffOpts+'</select></div>'
+      +'<div class="field" style="margin:0"><label>Bắt đầu từ ngày</label><input type="date" value="'+esc(QI.startDate||todayStr())+'" onchange="QI.startDate=this.value;qiUpdTotals()"></div>'
+      +'<div class="field" style="margin:0"><label>Nơi làm mặc định</label><input id="qiLoc" list="qiLocs" value="CK368"><datalist id="qiLocs">'+locs.map(function(l){return '<option value="'+esc(l)+'">';}).join('')+'</datalist></div>'
+      +'</div>'
+      +'<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)"><div class="small" style="font-weight:800;color:#334155;margin-bottom:4px">✅ G1 — đã có đủ thông tin đầu vào chưa?</div>'+g0boxes
+      +'<div class="small muted" style="margin-top:4px">Tick đủ 5 mục thì đơn qua luôn cổng G1, khỏi phải mở lại đơn để tick.</div></div></div>';
+  }
+  el.innerHTML=''
+    +'<div class="toolbar" style="margin-bottom:8px">'+tab('text','📋','Dán text')+tab('sku','🏷','Mã SKU')+tab('file','📎','Nạp file')
+    +'<span class="muted small" style="margin-left:auto">Giờ công lấy từ định mức — 📈 = học từ đơn đã đóng, ≈ = định mức khởi điểm</span></div>'
+    +'<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fafcff;margin-bottom:10px">'+srcHtml+'</div>'
+    +review
+    +'<div class="toolbar" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">'
+    +(QI.parsed?'<button onclick="qiCreate(false)">✓ Tạo đơn</button><button class="ghost" onclick="qiCreate(true)">✓ Tạo đơn &amp; mở ra sửa tiếp</button>':'')
+    +'<button class="ghost" onclick="closeModal(\'modalQuick\')" style="margin-left:auto">Đóng</button></div>';
+}
+function qiCreate(openAfter){
+  if(!requireEdit()) return;
+  const g=function(id){ const e=document.getElementById(id); return e?e.value:''; };
+  const name=String(g('qiName')||'').trim();
+  if(!name){ alert('Chưa có TÊN HÀNG — điền vào ô "Tên hàng / sản phẩm".'); return; }
+  const company=String(g('qiCompany')||'').trim();
+  const due=g('qiDue')||null;
+  const loc=String(g('qiLoc')||'').trim()||'CK368';
+  const use=QI.items.filter(function(it){return it.use && String(it.name||'').trim();});
+  if(!use.length){ alert('Chưa có chi tiết con nào được chọn. Tick ít nhất 1 dòng, hoặc bấm ＋ Thêm chi tiết.'); return; }
+  const missH=[];
+  use.forEach(function(it){ (it.stages||[]).forEach(function(s){ if(!(parseFloat(s.hours)>0)) missH.push((s.code||'?')+' '+(s.name||'')+' ▦'+truncate(it.name,12)); }); });
+  if(missH.length && !confirm('Có '+missH.length+' công đoạn chưa có số giờ:\n— '+missH.slice(0,6).join('\n— ')+(missH.length>6?'\n...':'')+'\n\nVẫn tạo đơn? (đơn sẽ không qua được cổng G1 cho tới khi điền đủ)')) return;
+  // Dàn ngày bắt đầu tuần tự theo giờ, bỏ Chủ nhật
+  let cursor=QI.startDate||todayStr();
+  const items=use.map(function(it){
+    const stages=(it.stages||[]).map(function(s){
+      const h=parseFloat(s.hours)||0;
+      const span=Math.max(1,Math.ceil(h/HOURS_PER_DAY));
+      const days=workingDaysFrom(cursor, span);
+      const st={id:localId('IST'), code:s.code, name:s.name, location:(it.assignment==='purchase'?(loc||''):loc),
+                plannedDays:null, status:'pending', startDate:days[0]||cursor, endDate:'', doneDate:'',
+                assignee:(it.assignment==='inhouse'?(QI.assignee||''):''), hours:h, otHours:null, note:''};
+      if(!st.assignee && !st.location) st.location=loc;
+      cursor=days.length?days[days.length-1]:cursor;
+      const nx=workingDaysFrom(cursor,2); cursor=nx[1]||cursor;
+      return st;
+    });
+    return {id:localId('IT'), name:String(it.name).trim(), qty:it.qty, unit:it.unit, process:'',
+            estHours:null, assignment:it.assignment, status:'new', progress:null, stages:stages, note:''};
+  });
+  const intake={drawing:!!QI.g0.drawing, dims:!!QI.g0.dims, tol:!!QI.g0.tol, mat:!!QI.g0.mat, qty:!!QI.g0.qty,
+                checker:'', date:todayStr(), note:'Tạo bằng ⚡ Tạo đơn nhanh', ref:''};
+  if(intakeComplete(intake)){ intake.feedbackOk=true; intake.feedbackBy=(ROLE_INFO[getRole()]||{}).name||''; intake.feedbackAt=new Date().toISOString(); }
+  const rec={
+    id: uid('DH','order'),
+    code: nextOrderCodeFor('Gia công'),
+    company: company, name: name, orderType:'Gia công cơ khí', productSku: QI.sku||'',
+    target:'', qty: parseFloat(g('qiQty'))||1, unit: String(g('qiUnit')||'Cái').trim(), priority:'Trung bình',
+    receivedDate: todayStr(), requestedDate: due, dueDate: due,
+    status:'planned', assignment: (use.some(function(i){return i.assignment==='outsource';}) ? 'mixed':'inhouse'),
+    outsourcePartner:'', completedDate:null, deliveredDate:null, progress:null, forecastDate:null,
+    driveFolder:'', currentLocation:'', items: items, attachments:[], stages:[], measures:[], materials:[],
+    inspector:'', intake: intake, qcResult:'', qcNote:'', note: (QI.parsed && QI.parsed.note)||'',
+    statusHistory:[{status:'planned', date:todayStr(), note:'⚡ Tạo đơn nhanh'}],
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  };
+  DATA.orders.push(rec);
+  if(typeof ensureCustomersFromOrders==='function') ensureCustomersFromOrders();
+  if(typeof syncAssignmentsFromOrder==='function') syncAssignmentsFromOrder(rec);
+  _stdHoursCache=null;
+  save();
+  closeModal('modalQuick');
+  const au=estimateAudit(rec);
+  if(openAfter){ openOrderModal(rec.id); return; }
+  goTab('orders');
+  alert('✓ Đã tạo đơn '+rec.code+'\n'+items.length+' chi tiết con · '+qiTotals().nStage+' công đoạn · '+Math.round(qiTotals().hours)+'h\n\n'
+      + (au.ok ? 'Đơn đã khai đủ — chuyển sang "5. Đang gia công" được ngay.'
+               : 'Còn thiếu để xuống xưởng:\n— '+au.missing.join('\n— ')));
+}
+
 /* ===== DASHBOARD NÚT THẮT — công đoạn đang treo lâu nhất & hiệu suất nơi làm ===== */
 function renderBottleneckHtml(){ try{
   const today = todayStr();

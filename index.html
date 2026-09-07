@@ -431,6 +431,13 @@ function gateCheck(){
 </div>
 
 <!-- ===== Modal: Order form ===== -->
+<div class="modal-bg" id="modalBulk">
+  <div class="modal wide" style="max-width:1100px">
+    <h3>⚙ Dựng chi tiết con hàng loạt <span class="muted small" style="font-weight:400">— quét đơn cũ, đọc danh sách trong Tên hàng, dựng sẵn chi tiết con + công đoạn + giờ định mức</span></h3>
+    <div id="bkBody"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modalQuick">
   <div class="modal wide" style="max-width:1000px">
     <h3>⚡ Tạo đơn nhanh <span class="muted small" style="font-weight:400">— dán text / mã SKU / nạp file → app dựng sẵn chi tiết con, công đoạn và giờ định mức</span></h3>
@@ -1925,6 +1932,7 @@ function ordersSectionHtml(){
     <div class="toolbar">
       ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
       ${canEdit()?`<button onclick="openQuickIntake()" style="background:#4338ca" title="Dán đoạn text đơn hàng / gõ mã SKU / nạp file báo giá — app tự dựng đơn kèm chi tiết con, công đoạn và giờ định mức">⚡ Tạo đơn nhanh</button>`:''}
+      ${canEdit()?`<button class="ghost sm" onclick="openBulkItems()" style="border-color:#4338ca;color:#4338ca;font-weight:700" title="Dựng chi tiết con + công đoạn cho hàng loạt đơn cũ, đọc từ danh sách trong Tên hàng">⚙ Dựng hàng loạt</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openIncident()" style="border-color:#0891b2;color:#0e7490" title="Ghi sự cố máy/bất khả kháng — tự đánh dấu đơn + tính giờ sửa">🛑 Ghi sự cố</button>`:''}
       <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
              oninput="onOrderSearchInput(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onOrderSearchInput('');}"
@@ -3751,6 +3759,7 @@ function learnedStageHours(){
     if(!o || (o.status!=='delivered' && o.status!=='done_waiting')) return;
     orderAllStages(o).forEach(x=>{
       const s=x.s; if(!s) return;
+      if(s._auto) return;   // giờ do app ước lượng khi dựng hàng loạt — không dùng để học
       const h=(s.hours!=null && s.hours!=='') ? parseFloat(s.hours) : NaN;
       if(!(h>0)) return;
       const k=_codeBase(s.code); if(!k) return;
@@ -3840,15 +3849,23 @@ function parseOrderText(txt){
   if(!o.due){ const d=all.match(/(?:h[aạ]n|giao|deadline|due)[^0-9]{0,12}(\d{1,2}\s*[\/\-.]\s*\d{1,2}(?:\s*[\/\-.]\s*\d{2,4})?)/i); if(d) o.due=qiDate(d[1]); }
   if(!o.qty) o.qty=1;
   if(!o.unit) o.unit='Cái';
-  // Gạch đầu dòng → chi tiết con
-  bullets.forEach(function(b){
+  // Gạch đầu dòng → chi tiết con.
+  // Bỏ dòng THÔNG SỐ (Length & bore d1: 24H7..., Balance at 1500 RPM) và tách "A and B" thành 2 món.
+  const parts=[];
+  bullets.forEach(function(b){ if(qiIsSpecLine(b)) return; qiSplitAnd(b).forEach(function(x){ if(x && !qiIsSpecLine(x)) parts.push(x); }); });
+  parts.forEach(function(b){
     var q=null,u='';
-    var m=b.match(/(?:^|\s)(?:sl|s[oố]\s*l[uư][oơ]ng)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i) || b.match(/\bx\s*(\d+)\b/i) || b.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(cái|cai|chiếc|chiec|bộ|bo|set|pcs|con)(?![' +QI_LET+ '])','i'));
+    // Bắt cả 3 lối viết số lượng: "SL: 2" · "02 x hubs" (số ĐỨNG TRƯỚC x) · "hub x2" · "2 cái"
+    var m=b.match(/(?:^|\s)(?:sl|s[oố]\s*l[uư][oơ]ng)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i)
+        || b.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*x\s+/i)
+        || b.match(/\bx\s*(\d+)\b/i)
+        || b.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(cái|cai|chiếc|chiec|bộ|bo|set|pcs|con)(?![' +QI_LET+ '])','i'));
     if(m){ q=qiNum(m[1]); if(m[2]) u=m[2]; }
     var nm=b.replace(/(?:^|\s)(?:sl|s[oố]\s*l[uư][oơ]ng)\s*[:\-]?\s*\d+(?:[.,]\d+)?/ig,'')
+            .replace(/^\s*\d+(?:[.,]\d+)?\s*x\s+/i,'')
             .replace(/\bx\s*\d+\b/ig,'')
             .replace(/[-–—,;:\s]+$/,'').trim();
-    if(nm) o.items.push({name:nm, qty:(q||1), unit:(u||'cái')});
+    if(nm) o.items.push({name:nm, qty:(q||1), unit:(u||'cái'), assignment:qiAssignmentOf(b)});
   });
   if(!o.name && o.items.length) o.name=o.items.map(function(x){return x.name;}).join(' + ');
   if(!o.name) o.warns.push('Chưa tách được TÊN HÀNG — gõ tay ở ô bên dưới.');
@@ -3874,8 +3891,10 @@ function qiBuildItems(parsed){
     return {fam:fam, how:'text', items: parsed.items.map(function(it){
       const f=detectFamily(it.name)||fam||'general';
       const tpl=(ROUTING_FAM[f]||ROUTING_FAM.general).tpl;
+      const asg=it.assignment||'inhouse';
+      const useTpl=(asg==='purchase') ? [['L','Mua hàng / vật tư'],['K','Kiểm đầu vào']] : tpl;
       return {id:localId('IT'), name:it.name, qty:it.qty, unit:it.unit, process:'', estHours:null,
-              assignment:'inhouse', status:'new', progress:null, use:true, stages:qiStagesFor(tpl)};
+              assignment:asg, status:'new', progress:null, use:true, stages:qiStagesFor(useTpl)};
     })};
   }
   // b) hàng theo BỘ + nhận diện được nhóm → tách BOM chuẩn
@@ -4182,6 +4201,181 @@ function qiCreate(openAfter){
   alert('✓ Đã tạo đơn '+rec.code+'\n'+items.length+' chi tiết con · '+qiTotals().nStage+' công đoạn · '+Math.round(qiTotals().hours)+'h\n\n'
       + (au.ok ? 'Đơn đã khai đủ — chuyển sang "5. Đang gia công" được ngay.'
                : 'Còn thiếu để xuống xưởng:\n— '+au.missing.join('\n— ')));
+}
+
+/* ---------- 6. LỌC DÒNG THÔNG SỐ (thêm 06-09-2026) ----------
+   Tên hàng thật hay có gạch đầu dòng LẪN LỘN giữa chi tiết và thông số, vd đơn 122:
+     - 02 x hubs and 1 x spacer (Steel material) by DHP/VN   ← CHI TIẾT (2 món)
+     - 02 x disc pack and bolts by Ringfeder/Germany         ← CHI TIẾT (mua)
+     - Length & bore d1: 24H7/29.7mm with keyway             ← THÔNG SỐ, không phải chi tiết
+     - Balance at 1500 RPM                                   ← YÊU CẦU KỸ THUẬT
+   Nhận nhầm thông số thành chi tiết là làm hỏng cả BOM lẫn số giờ. */
+const QI_SPEC_HEAD=/^\s*(length|bore|d\s*\d|đường\s*kính|duong\s*kinh|kích\s*thước|kich\s*thuoc|dung\s*sai|tolerance|balance|cân\s*bằng|can\s*bang|material|vật\s*liệu|vat\s*lieu|surface|finish|coating|hardness|độ\s*cứng|do\s*cung|torque|moment|momen|speed|rpm|note|lưu\s*ý|luu\s*y|ghi\s*chú|ghi\s*chu|yêu\s*cầu|yeu\s*cau|tiêu\s*chuẩn|tieu\s*chuan|standard|including|gồm|gom|bao\s*gồm|bao\s*gom)\b/i;
+const QI_PART_WORDS=/(hub|moay|spacer|spider|element|disc|đĩa|dia|bolt|bu\s*l[oô]ng|nut|đai\s*ốc|dai\s*oc|washer|long\s*đen|sleeve|vỏ|vo\b|yoke|nạng|nang|flange|mặt\s*bích|mat\s*bich|bush|ống\s*lót|ong\s*lot|key|then|shaft|trục|truc|puly|pulley|gear|bánh\s*răng|banh\s*rang|bearing|vòng\s*bi|vong\s*bi|seal|phớt|phot|gasket|gioăng|gioang|drum|tang|pin|chốt|chot|ring|vòng|vong|plate|tấm|tam|body|thân|than)\b/i;
+const QI_QTYX=/(\d+)\s*x\s+/i;
+function qiIsSpecLine(s){
+  const t=String(s||'').trim();
+  if(!t) return true;
+  if(QI_SPEC_HEAD.test(t)) return true;
+  // Dòng chỉ toàn kích thước/dung sai kiểu 24H7/29.7mm, không có tên bộ phận nào
+  if(!QI_PART_WORDS.test(t) && !QI_QTYX.test(t) && /\d+\s*(mm|h7|h8|g6|k6|js9|°|rpm|nm|kw)/i.test(t)) return true;
+  return false;
+}
+// "02 x hubs and 1 x spacer (...)"  →  ["02 x hubs", "1 x spacer (...)"]
+function qiSplitAnd(s){
+  const t=String(s||'');
+  const re=/(\d+\s*x\s+.+?)\s+(?:and|và|va|\+|&)\s+(?=\d+\s*x\s+)/i;
+  if(re.test(t)){
+    const out=[]; let rest=t, guard=0;
+    while(guard++<6){
+      const m=rest.match(re);
+      if(!m) break;
+      out.push(m[1].trim());
+      rest=rest.slice(m.index+m[0].length);
+    }
+    if(rest.trim()) out.push(rest.trim());
+    if(out.length>1) return out;
+  }
+  return [t];
+}
+// "by Ringfeder/Germany" → hàng MUA ·  "by DHP/VN" hoặc không ghi → tự làm
+const QI_MAKER_OWN=/(dhp|ck368|cosmo|noi\s*bo|nội\s*bộ|tự\s*làm|tu\s*lam|in[-\s]?house)/i;
+function qiAssignmentOf(s){
+  const t=String(s||'');
+  const m=t.match(/\bby\s+([^,;()]{2,40})/i) || t.match(/\b(?:hãng|hang|nhà\s*cung\s*cấp|nha\s*cung\s*cap)\s*[:\-]?\s*([^,;()]{2,40})/i);
+  if(m && !QI_MAKER_OWN.test(m[1])) return 'purchase';
+  if(/\b(mua|purchase|bought|order\s*from|đặt\s*mua|dat\s*mua)\b/i.test(t)) return 'purchase';
+  return 'inhouse';
+}
+
+/* ---------- 7. DỰNG CHI TIẾT CON HÀNG LOẠT CHO ĐƠN CŨ ---------- */
+let BK=null;
+function bkCandidates(scope, onlyEmpty){
+  return (DATA.orders||[]).filter(function(o){
+    if(!o) return false;
+    if(scope==='open'   && (o.status==='delivered')) return false;
+    if(scope==='needest'){ if(o.status==='delivered') return false; if(estimateAudit(o).ok) return false; }
+    if(onlyEmpty && (o.items||[]).length) return false;
+    return true;
+  });
+}
+function bkPlanFor(o){
+  const parsed=parseOrderText([o.name||'', (o.company?('Khách hàng: '+o.company):''), (o.qty!=null?('SL: '+o.qty+' '+(o.unit||'')):'')].join('\n'));
+  parsed.qty = (o.qty!=null?o.qty:parsed.qty);
+  parsed.unit = o.unit||parsed.unit;
+  const b=qiBuildItems(parsed);
+  let hrs=0, nst=0;
+  b.items.forEach(function(it){ (it.stages||[]).forEach(function(s){ hrs+=(parseFloat(s.hours)||0); nst++; }); });
+  return {how:b.how, fam:b.fam, items:b.items, hours:hrs, nStage:nst};
+}
+function openBulkItems(){
+  if(!requireEdit()) return;
+  _stdHoursCache=null;
+  BK={scope:'open', onlyEmpty:true, assignee:'', startDate:todayStr(), loc:'CK368', backup:true, sel:{}, plans:{}};
+  bkScan();
+  openModal('modalBulk');
+}
+function bkScan(){
+  const list=bkCandidates(BK.scope, BK.onlyEmpty);
+  BK.plans={}; BK.list=list;
+  list.forEach(function(o){
+    try{ BK.plans[o.id]=bkPlanFor(o); }catch(e){ BK.plans[o.id]={how:'err', items:[], hours:0, nStage:0, err:e.message}; }
+    if(BK.sel[o.id]===undefined) BK.sel[o.id]=(BK.plans[o.id].items||[]).length>0;
+  });
+  renderBulkItems();
+}
+function bkSetScope(v){ BK.scope=v; bkScan(); }
+function bkToggleEmpty(v){ BK.onlyEmpty=v; bkScan(); }
+function bkSel(id,v){ BK.sel[id]=v; renderBulkItems(); }
+function bkSelAll(v){ (BK.list||[]).forEach(function(o){ if((BK.plans[o.id].items||[]).length) BK.sel[o.id]=v; }); renderBulkItems(); }
+function renderBulkItems(){
+  const el=document.getElementById('bkBody'); if(!el) return;
+  const list=BK.list||[];
+  const chosen=list.filter(function(o){return BK.sel[o.id];});
+  let totH=0, totI=0, totS=0;
+  chosen.forEach(function(o){ const p=BK.plans[o.id]; totH+=p.hours; totI+=(p.items||[]).length; totS+=p.nStage; });
+  const howLbl={text:'từ gạch đầu dòng', bom:'BOM theo nhóm', single:'1 chi tiết', err:'lỗi'};
+  const rows=list.map(function(o){
+    const p=BK.plans[o.id]||{};
+    const n=(p.items||[]).length;
+    const names=(p.items||[]).map(function(x){return esc(truncate(x.name,26))+' ×'+(x.qty||1);}).join(' · ');
+    const has=(o.items||[]).length;
+    return '<tr style="border-bottom:1px dashed #e8edf4;'+(n?'':'opacity:.45')+'">'
+      +'<td style="padding:4px"><input type="checkbox" '+(BK.sel[o.id]?'checked':'')+' '+(n?'':'disabled')+' onchange="bkSel(\''+o.id+'\',this.checked)"></td>'
+      +'<td style="padding:4px;white-space:nowrap"><b>'+esc(o.code||'')+'</b>'+(has?'<div style="font-size:9px;color:#B45309">đã có '+has+' CT</div>':'')+'</td>'
+      +'<td style="padding:4px;min-width:180px;white-space:normal">'+esc(truncate(String(o.name||'').replace(/\n/g,' · '),70))+'</td>'
+      +'<td style="padding:4px;white-space:nowrap;font-size:10.5px">'+esc(howLbl[p.how]||'—')+(p.fam?'<div class="muted" style="font-size:9.5px">'+esc((ROUTING_FAM[p.fam]||{}).label||p.fam)+'</div>':'')+'</td>'
+      +'<td style="padding:4px;min-width:200px;white-space:normal;font-size:10.5px">'+(n?names:'<span class="muted">không dựng được — mở đơn khai tay</span>')+'</td>'
+      +'<td style="padding:4px;white-space:nowrap;text-align:right;font-weight:700">'+(n?(n+' CT · '+p.nStage+' CĐ<div class="muted" style="font-weight:400;font-size:9.5px">'+Math.round(p.hours)+'h</div>'):'')+'</td>'
+      +'</tr>';
+  }).join('');
+  const staffOpts=(DATA.staff||[]).filter(function(x){return x&&x.active!==false;})
+    .map(function(x){return '<option value="'+esc(x.id)+'"'+(BK.assignee===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+  el.innerHTML=''
+    +'<div class="toolbar" style="margin-bottom:8px">'
+    +'<select onchange="bkSetScope(this.value)" style="font-size:12px">'
+      +'<option value="open"'+(BK.scope==='open'?' selected':'')+'>Đơn chưa giao</option>'
+      +'<option value="needest"'+(BK.scope==='needest'?' selected':'')+'>Chỉ đơn thiếu estimate</option>'
+      +'<option value="all"'+(BK.scope==='all'?' selected':'')+'>Tất cả đơn</option></select>'
+    +'<label class="small" style="display:inline-flex;align-items:center;gap:5px;font-weight:600"><input type="checkbox" '+(BK.onlyEmpty?'checked':'')+' onchange="bkToggleEmpty(this.checked)"> Bỏ qua đơn đã có chi tiết con</label>'
+    +'<a onclick="bkSelAll(true)" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11.5px">Chọn hết</a>'
+    +'<a onclick="bkSelAll(false)" style="cursor:pointer;color:var(--muted);font-weight:700;font-size:11.5px">Bỏ chọn</a>'
+    +'<span class="muted small" style="margin-left:auto">'+list.length+' đơn trong danh sách</span></div>'
+    +'<div style="max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:8px">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead>'
+    +'<tr style="position:sticky;top:0;background:#f8fafc;color:#6366F1;font-weight:800;font-size:10px;text-align:left;border-bottom:1px solid #dfe5ee">'
+    +'<th style="padding:5px 4px"></th><th style="padding:5px 4px">MÃ ĐƠN</th><th style="padding:5px 4px">TÊN HÀNG</th>'
+    +'<th style="padding:5px 4px">NGUỒN</th><th style="padding:5px 4px">SẼ DỰNG RA</th><th style="padding:5px 4px;text-align:right">KHỐI LƯỢNG</th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--muted)">Không có đơn nào khớp bộ lọc.</td></tr>')+'</tbody></table></div>'
+    +'<div style="margin-top:8px;padding:6px 10px;background:#eef2ff;border-radius:6px;color:#3730a3;font-size:12px;font-weight:700">'
+    +'Đã chọn '+chosen.length+' đơn → sẽ tạo '+totI+' chi tiết con · '+totS+' công đoạn · '+Math.round(totH)+'h</div>'
+    +'<div class="row3" style="gap:8px;margin-top:10px">'
+    +'<div class="field" style="margin:0"><label>Ai làm (gán cho mọi công đoạn)</label><select onchange="BK.assignee=this.value"><option value="">— chọn người —</option>'+staffOpts+'</select></div>'
+    +'<div class="field" style="margin:0"><label>Bắt đầu từ ngày</label><input type="date" value="'+esc(BK.startDate)+'" onchange="BK.startDate=this.value"></div>'
+    +'<div class="field" style="margin:0"><label>Nơi làm mặc định</label><input value="'+esc(BK.loc)+'" onchange="BK.loc=this.value" list="qiLocs"></div></div>'
+    +'<div style="margin-top:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 11px;font-size:12px;color:#92400e">'
+    +'<label style="display:inline-flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" '+(BK.backup?'checked':'')+' onchange="BK.backup=this.checked"> Tải backup JSON trước khi chạy</label>'
+    +'<div style="margin-top:4px">Công cụ này sửa nhiều đơn cùng lúc và <b>không có nút hoàn tác</b>. Nó chỉ ĐIỀN VÀO CHỖ TRỐNG — đơn đã có chi tiết con thì bỏ qua, công đoạn sẵn có giữ nguyên. Giờ công là <b>định mức ước lượng</b>, phải soát lại theo thực tế xưởng.</div></div>'
+    +'<div class="toolbar" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">'
+    +'<button onclick="bkApply()"'+(chosen.length?'':' disabled')+'>✓ Áp dụng cho '+chosen.length+' đơn</button>'
+    +'<button class="ghost" onclick="closeModal(\'modalBulk\')" style="margin-left:auto">Đóng</button></div>';
+}
+function bkApply(){
+  if(!requireEdit()) return;
+  const chosen=(BK.list||[]).filter(function(o){return BK.sel[o.id] && (BK.plans[o.id].items||[]).length;});
+  if(!chosen.length){ alert('Chưa chọn đơn nào.'); return; }
+  if(!confirm('Dựng chi tiết con + công đoạn cho '+chosen.length+' đơn?\n\nChỉ điền vào chỗ trống, không đè dữ liệu sẵn có.\nGiờ công là ĐỊNH MỨC ước lượng — soát lại sau theo thực tế.')) return;
+  if(BK.backup){ try{ backupNow(true); }catch(e){} }
+  let nOrd=0, nItem=0;
+  chosen.forEach(function(o){
+    const plan=BK.plans[o.id]; if(!plan) return;
+    if((o.items||[]).length) return;              // đã có chi tiết con → tuyệt đối không đè
+    let cursor=BK.startDate||todayStr();
+    o.items=(plan.items||[]).map(function(it){
+      const stages=(it.stages||[]).map(function(s){
+        const h=parseFloat(s.hours)||0;
+        const days=workingDaysFrom(cursor, Math.max(1,Math.ceil(h/HOURS_PER_DAY)));
+        const st={id:localId('IST'), code:s.code, name:s.name, location:BK.loc||'CK368', plannedDays:null,
+                  status:'pending', startDate:days[0]||cursor, endDate:'', doneDate:'',
+                  assignee:(it.assignment==='inhouse'?(BK.assignee||''):''), hours:h, otHours:null,
+                  note:'', _auto:true};   // _auto: giờ ước lượng — KHÔNG dùng để học định mức
+        cursor=days.length?days[days.length-1]:cursor;
+        const nx=workingDaysFrom(cursor,2); cursor=nx[1]||cursor;
+        return st;
+      });
+      nItem++;
+      return {id:localId('IT'), name:it.name, qty:it.qty, unit:it.unit, process:'', estHours:null,
+              assignment:it.assignment, status:'new', progress:null, stages:stages, note:''};
+    });
+    o.updatedAt=new Date().toISOString();
+    if(typeof syncAssignmentsFromOrder==='function'){ try{ syncAssignmentsFromOrder(o); }catch(e){} }
+    nOrd++;
+  });
+  _stdHoursCache=null;
+  save();
+  closeModal('modalBulk');
+  goTab('orders');
+  alert('✓ Đã dựng cho '+nOrd+' đơn · '+nItem+' chi tiết con.\n\nViệc cần làm tiếp: mở vài đơn quan trọng, soát lại SỐ GIỜ cho đúng thực tế xưởng — mỗi đơn sửa đúng là lần sau app tự điền sát hơn.');
 }
 
 /* ===== DASHBOARD NÚT THẮT — công đoạn đang treo lâu nhất & hiệu suất nơi làm ===== */

@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DHP Coding v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#f6f5f2; --surface:#ffffff; --sunk:#eeece7;
+  --ink:#191b1e; --ink-2:#4a5058; --ink-3:#767d86;
+  --rule:#d9d5ce; --rule-2:#ebe8e2;
+  --accent:#b3211c; --steel:#46586a; --ok:#1d7048; --ok-bg:#e6f2ea;
+  --warn:#8a5a08; --warn-bg:#faf0dc; --bad-bg:#fbe9e7;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --disp:"Archivo","IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#121316; --surface:#191b1f; --sunk:#202329;
+  --ink:#e9e7e3; --ink-2:#adb4bd; --ink-3:#7d858f;
+  --rule:#2f343b; --rule-2:#25292f;
+  --accent:#f0655a; --steel:#9fb6cb; --ok:#5fc08d; --ok-bg:#17281f;
+  --warn:#d9a441; --warn-bg:#2a2317; --bad-bg:#33201e;
+}}
+:root[data-theme="dark"]{
+  --paper:#121316; --surface:#191b1f; --sunk:#202329;
+  --ink:#e9e7e3; --ink-2:#adb4bd; --ink-3:#7d858f;
+  --rule:#2f343b; --rule-2:#25292f;
+  --accent:#f0655a; --steel:#9fb6cb; --ok:#5fc08d; --ok-bg:#17281f;
+  --warn:#d9a441; --warn-bg:#2a2317; --bad-bg:#33201e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.55}
+h1,h2,h3{font-family:var(--disp);margin:0}
+button,input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink)}
+.mono{font-family:var(--mono)}
+.top{background:var(--surface);border-bottom:2px solid var(--ink);padding:10px 20px;
+     display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+.brand{display:flex;flex-direction:column;gap:1px}
+.brand b{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.01em}
+.brand span{font-size:10.5px;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+.spacer{flex:1}
+.badge{font-family:var(--mono);font-size:11.5px;padding:4px 10px;border:1px solid var(--rule);background:var(--sunk)}
+.badge.dirty{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+.badge.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.btn{background:var(--surface);border:1px solid var(--rule);padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{padding:3px 8px;font-size:12.5px}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.lang{display:flex;border:1px solid var(--rule)}
+.lang button{border:0;background:none;padding:5px 10px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-3)}
+.lang button.on{background:var(--ink);color:var(--paper)}
+.tabs{background:var(--surface);border-bottom:1px solid var(--rule);padding:0 14px;display:flex;gap:2px;
+      overflow-x:auto;position:sticky;top:53px;z-index:19}
+.tab{padding:9px 14px;border:0;background:none;cursor:pointer;color:var(--ink-2);white-space:nowrap;
+     border-bottom:2px solid transparent;font-size:13.5px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.page{max-width:1180px;margin:0 auto;padding:22px 20px 80px}
+.view{display:none}.view.on{display:block}
+h2.h{font-size:18px;font-weight:600;margin-bottom:4px}
+p.sub{color:var(--ink-2);font-size:13.5px;max-width:72ch;margin:0 0 18px}
+.card{background:var(--surface);border:1px solid var(--rule);padding:18px 20px;margin-bottom:18px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spacing:.09em;
+        text-transform:uppercase;color:var(--ink-3);font-weight:500}
+label.f select,label.f input,label.f textarea{padding:7px 9px;border:1px solid var(--rule);background:var(--surface);
+        text-transform:none;letter-spacing:0;font-size:14px;width:100%}
+label.f textarea{min-height:60px;resize:vertical}
+.preview{background:var(--sunk);border:1px solid var(--rule);padding:20px;text-align:center;margin-bottom:16px}
+.preview .code{font-family:var(--mono);font-size:clamp(20px,4vw,34px);font-weight:600;letter-spacing:.02em;word-break:break-all}
+.preview .code .g{color:var(--ink-3)}
+.preview .exp{font-size:13.5px;color:var(--ink-2);margin-top:10px;min-height:20px}
+.preview .st{margin-top:10px;font-family:var(--mono);font-size:12px}
+.st.ok{color:var(--ok)}.st.bad{color:var(--accent)}
+.tbox{overflow:auto;border:1px solid var(--rule);background:var(--surface);max-height:60vh}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{position:sticky;top:0;background:var(--sunk);text-align:left;padding:8px 11px;font-size:10.5px;
+   letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:500;
+   border-bottom:1px solid var(--rule);white-space:nowrap;z-index:2}
+td{padding:6px 11px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+tr:hover td{background:var(--sunk)}
+td.c{font-family:var(--mono);white-space:nowrap;font-weight:600}
+td.mono{font-family:var(--mono);white-space:nowrap}
+td.num{text-align:right;font-family:var(--mono)}
+td input,td select{width:100%;padding:3px 5px;border:1px solid var(--rule-2);background:transparent}
+td input:focus,td select:focus{background:var(--surface);border-color:var(--rule)}
+.pill{display:inline-block;padding:1px 7px;font-size:11px;border:1px solid;border-radius:9px;font-family:var(--sans)}
+.p-cao{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.p-vua{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+.p-thap{background:var(--bad-bg);border-color:var(--accent);color:var(--accent)}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.toolbar input[type=text]{padding:6px 10px;border:1px solid var(--rule);background:var(--surface);min-width:200px}
+.toolbar select{padding:6px 9px;border:1px solid var(--rule);background:var(--surface)}
+.count{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.hint{font-size:12.5px;color:var(--ink-3);margin-top:8px}
+.note-box{border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;margin:16px 0;font-size:13.5px;color:var(--ink-2)}
+.empty{padding:26px;text-align:center;color:var(--ink-3);font-size:13.5px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--rule);
+     border:1px solid var(--rule);margin-bottom:18px}
+.kpi>div{background:var(--surface);padding:13px 15px}
+.kpi b{display:block;font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.2}
+.kpi span{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+@media(max-width:860px){.g3,.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}.tabs{top:76px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand"><b>DHP Coding v4</b><span data-i="tagline"></span></div>
+  <span class="spacer"></span>
+  <span class="badge" id="stat">—</span>
+  <div class="lang"><button id="lvi" onclick="setLang('vi')">VI</button><button id="len" onclick="setLang('en')">EN</button></div>
+  <button class="btn" onclick="doExport()" data-i="btnExport"></button>
+  <button class="btn" onclick="$('imp').click()" data-i="btnImport"></button>
+  <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(this)">
+  <button class="btn" onclick="toggleTheme()" title="Light / dark">◐</button>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div class="page">
+
+<!-- SINH MÃ -->
+<div class="view on" id="v-build">
+  <h2 class="h" data-i="buildH"></h2>
+  <p class="sub" data-i="buildS"></p>
+  <div class="preview">
+    <div class="code" id="pvCode">— — — —</div>
+    <div class="exp" id="pvExp"></div>
+    <div class="st" id="pvSt"></div>
+  </div>
+  <div class="card">
+    <div class="grid g3">
+      <label class="f"><span data-i="fRole"></span><select id="b_role" onchange="upd()"></select></label>
+      <label class="f"><span data-i="fCls"></span><select id="b_cls" onchange="famList();upd()"></select></label>
+      <label class="f"><span data-i="fFam"></span><select id="b_fam" onchange="upd()"></select></label>
+      <label class="f"><span data-i="fBrand"></span><select id="b_brand" onchange="serList();upd()"></select></label>
+      <label class="f"><span data-i="fSer"></span><select id="b_ser" onchange="upd()"></select></label>
+      <label class="f"><span data-i="fSize"></span><input id="b_size" placeholder="42" oninput="upd()"></label>
+    </div>
+    <div class="grid g4" style="margin-top:14px">
+      <label class="f"><span data-i="fChild"></span><select id="b_child" onchange="upd()"></select></label>
+      <label class="f"><span data-i="fVar"></span><input id="b_var" placeholder="048 · 92A" oninput="upd()"></label>
+      <label class="f"><span data-i="fRev"></span><input id="b_rev" placeholder="R1A" oninput="upd()"></label>
+      <label class="f"><span data-i="fStatus"></span><select id="b_status"></select></label>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <label class="f"><span data-i="fName"></span><input id="b_name"></label>
+      <label class="f"><span data-i="fAlias"></span><input id="b_alias" placeholder="0.KNL-JAW-KTR-ROTEX-042-D48"></label>
+    </div>
+    <div class="toolbar" style="margin:16px 0 0">
+      <button class="btn pri" onclick="addSku()" data-i="btnAdd"></button>
+      <button class="btn" onclick="clearBuild()" data-i="btnClear"></button>
+      <span class="hint" id="b_hint"></span>
+    </div>
+  </div>
+  <div class="note-box" id="varHint"></div>
+</div>
+
+<!-- THƯ VIỆN -->
+<div class="view" id="v-lib">
+  <h2 class="h" data-i="libH"></h2>
+  <p class="sub" data-i="libS"></p>
+  <div class="kpi" id="libKpi"></div>
+  <div class="toolbar">
+    <input type="text" id="q" oninput="renderLib()">
+    <select id="fCls" onchange="renderLib()"></select>
+    <select id="fBrand" onchange="renderLib()"></select>
+    <button class="btn" onclick="exportCsv()" data-i="btnCsv"></button>
+    <span class="count" id="libCount"></span>
+  </div>
+  <div class="tbox"><table><thead><tr id="libHead"></tr></thead><tbody id="libBody"></tbody></table></div>
+</div>
+
+<!-- GIẢI MÃ -->
+<div class="view" id="v-dec">
+  <h2 class="h" data-i="decH"></h2>
+  <p class="sub" data-i="decS"></p>
+  <div class="card">
+    <label class="f"><span data-i="fDec"></span><input id="decIn" placeholder="01JW-KTR-ROTX-0042-E/92A" oninput="decode()" style="font-family:var(--mono);font-size:17px"></label>
+    <div class="toolbar" style="margin-top:12px">
+      <button class="btn sm" onclick="decSample('01JW-KTR-ROTX-0042-E/92A')" data-i="exPart"></button>
+      <button class="btn sm" onclick="decSample('81UJ-DHP-EPEP-0001')" data-i="exAsm"></button>
+      <button class="btn sm" onclick="decSample('DP26014-ASB-01')" data-i="exDoc"></button>
+    </div>
+  </div>
+  <div id="decOut"></div>
+</div>
+
+<!-- CỤM LẮP -->
+<div class="view" id="v-asm">
+  <h2 class="h" data-i="asmH"></h2>
+  <p class="sub" data-i="asmS"></p>
+  <div class="card">
+    <div class="grid g4">
+      <label class="f"><span data-i="fKey"></span><input id="a_key" maxlength="4" placeholder="EPEP" oninput="this.value=this.value.toUpperCase();updAsm()"></label>
+      <label class="f"><span data-i="fSeq"></span><input id="a_seq" placeholder="0001" oninput="updAsm()"></label>
+      <label class="f"><span data-i="fAsmName"></span><input id="a_name"></label>
+      <label class="f"><span data-i="fProj"></span><input id="a_proj" placeholder="DP26014"></label>
+    </div>
+    <div style="margin-top:16px">
+      <div class="toolbar">
+        <select id="a_pick" style="min-width:320px"></select>
+        <input type="text" id="a_qty" value="1" style="width:70px;padding:6px 8px;border:1px solid var(--rule);background:var(--surface)">
+        <button class="btn" onclick="addBom()" data-i="btnBom"></button>
+      </div>
+      <div class="tbox" style="max-height:38vh"><table><thead><tr id="bomHead"></tr></thead><tbody id="bomBody"></tbody></table></div>
+    </div>
+    <div class="preview" style="margin-top:16px">
+      <div class="code" id="aCode">— — — —</div>
+      <div class="exp" id="aExp"></div>
+    </div>
+    <button class="btn pri" onclick="addAsm()" data-i="btnSaveAsm"></button>
+  </div>
+  <div class="tbox"><table><thead><tr id="asmHead"></tr></thead><tbody id="asmBody"></tbody></table></div>
+</div>
+
+<!-- DỰ ÁN -->
+<div class="view" id="v-proj">
+  <h2 class="h" data-i="projH"></h2>
+  <p class="sub" data-i="projS"></p>
+  <div class="card">
+    <div class="grid g4">
+      <label class="f"><span data-i="fEnt"></span><select id="p_ent"><option value="D">D — Đại Hồng Phát</option></select></label>
+      <label class="f"><span data-i="fJob"></span><select id="p_type" onchange="updProj()"></select></label>
+      <label class="f"><span data-i="fYear"></span><input id="p_year" value="26" maxlength="2" oninput="updProj()"></label>
+      <label class="f"><span data-i="fPSeq"></span><input id="p_seq" maxlength="3" oninput="updProj()"></label>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <label class="f"><span data-i="fPName"></span><input id="p_name" placeholder="An Viên — Narime"></label>
+      <label class="f"><span data-i="fClient"></span><input id="p_client" placeholder="Narime"></label>
+    </div>
+    <div class="preview" style="margin-top:16px"><div class="code" id="pCode">DP26001</div><div class="exp" id="pExp"></div></div>
+    <button class="btn pri" onclick="addProj()" data-i="btnAddProj"></button>
+  </div>
+  <div class="tbox"><table><thead><tr id="projHead"></tr></thead><tbody id="projBody"></tbody></table></div>
+  <div class="note-box" data-i="projNote"></div>
+</div>
+
+<!-- DANH MỤC -->
+<div class="view" id="v-cat">
+  <h2 class="h" data-i="catH"></h2>
+  <p class="sub" data-i="catS"></p>
+  <div class="kpi" id="catKpi"></div>
+  <div class="toolbar">
+    <input type="text" id="cq" oninput="renderSeries()">
+    <select id="cBrand" onchange="renderSeries()"></select>
+    <select id="cConf" onchange="renderSeries()"></select>
+    <span class="count" id="catCount"></span>
+  </div>
+  <div class="tbox"><table><thead><tr id="serHead"></tr></thead><tbody id="serBody"></tbody></table></div>
+  <div class="note-box" data-i="catNote"></div>
+</div>
+
+<!-- CHUYỂN MÃ CŨ -->
+<div class="view" id="v-mig">
+  <h2 class="h" data-i="migH"></h2>
+  <p class="sub" data-i="migS"></p>
+  <div class="card">
+    <label class="f"><span data-i="fOld"></span><textarea id="migIn" style="min-height:120px;font-family:var(--mono)">0.KNB-WST-7
+0.KNB-JAC-12
+4.KNL-DHP-320
+1.PLY-TPB-DHP-3535
+CK368-DSC-N90-Z
+RfN-7005-120x165</textarea></label>
+    <div class="toolbar" style="margin-top:12px">
+      <button class="btn pri" onclick="runMig()" data-i="btnMig"></button>
+      <span class="hint" data-i="migHint"></span>
+    </div>
+  </div>
+  <div id="migOut"></div>
+</div>
+
+</div>
+
+<script>
+const SEED = {"brands": {"KTR": "KTR Germany", "RGF": "Ringfeder Germany", "RTH": "Rathi-Ringfeder India", "WST": "Westcar Italy", "CRM": "Cross+Morse UK", "JAC": "JAC Korea", "MTN": "Martin USA", "FLD": "Flender Germany", "TBW": "TB Woods USA", "MGL": "Magnaloy USA", "FEN": "Fenner", "RNL": "Renold USA", "RXN": "Rexnord USA", "WOJ": "Woojin Korea", "PTI": "PTI Korea", "KBK": "KBK Germany", "ITG": "Italgiunti Italy", "WCH": "Wichmann Germany", "HFL": "Henfel-Ringfeder Brazil", "ETP": "ETP Sweden", "MAV": "MAV Italy", "HUC": "HUCO UK", "RSP": "Ringspann Germany", "TWF": "Twiflex Germany", "SVB": "Svenbord brakes Germany"}, "series": [{"b": "KTR", "s": "Rotex", "c": "ROTX", "cl": "1", "fa": "JW", "tc": "cao", "nh": "Cao su giảm chấn", "sku": "KTR-ROTEX"}, {"b": "KTR", "s": "Rotex GS", "c": "RTGS", "cl": "1", "fa": "BW", "tc": "cao", "nh": "Cao su giảm chấn", "sku": "KTR-ROTEXGS"}, {"b": "KTR", "s": "Bowex", "c": "BOWX", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Cao su giảm chấn", "sku": "KTR-BOWEX"}, {"b": "KTR", "s": "Roflex", "c": "RFLX", "cl": "1", "fa": "JW", "tc": "cao", "nh": "Cao su giảm chấn", "sku": "KTR-ROFLEX"}, {"b": "KTR", "s": "POLY", "c": "PNRM", "cl": "1", "fa": "JW", "tc": "cao", "nh": "Khớp nối linh hoạt", "sku": "KTR-POLY"}, {"b": "KTR", "s": "Poly-Norm", "c": "PNRM", "cl": "1", "fa": "JW", "tc": "cao", "nh": "Khớp nối linh hoạt", "sku": "KTR-POLYNORM"}, {"b": "KTR", "s": "Evolastic", "c": "EVLS", "cl": "1", "fa": "TY", "tc": "cao", "nh": "Khớp nối linh hoạt", "sku": "KTR-EVOLASTIC"}, {"b": "KTR", "s": "Revolex", "c": "RVLX", "cl": "1", "fa": "PB", "tc": "cao", "nh": "Khớp nối bulong đai ốc", "sku": "KTR-REVOLEX"}, {"b": "KTR", "s": "Radex", "c": "RADX", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa đàn hồi", "sku": "KTR-RADEX"}, {"b": "KTR", "s": "Rigiflex-N", "c": "RGFN", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa đàn hồi", "sku": "KTR-RIGIFLEXN"}, {"b": "KTR", "s": "Radex-NC", "c": "RDXC", "cl": "1", "fa": "BW", "tc": "cao", "nh": "Khớp nối servo", "sku": "KTR-RADEXNC"}, {"b": "KTR", "s": "Syntex", "c": "SYNT", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KTR-SYNTEX"}, {"b": "KTR", "s": "Gearex", "c": "GRX", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "KTR-GEAREX"}, {"b": "KTR", "s": "G-GD", "c": "GGD", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "KTR-GGD"}, {"b": "KTR", "s": "GA-HA", "c": "GAHA", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "KTR-GAHA"}, {"b": "KTR", "s": "GR-HR", "c": "GRHR", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "KTR-GRHR"}, {"b": "KTR", "s": "H-HD", "c": "HHD", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "KTR-HHD"}, {"b": "KTR", "s": "X-XD", "c": "XXD", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "KTR-XXD"}, {"b": "KTR", "s": "KTR Radex-N", "c": "KRN", "cl": "1", "fa": "DS", "tc": "vua", "nh": "Khớp nối điện gió", "sku": "KTR-KTRRADEXN"}, {"b": "KTR", "s": "Clampex", "c": "CLMP", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "KTR-CLAMPEX"}, {"b": "KTR", "s": "KTR Temperature control and temperature monitoring", "c": "KTCA", "cl": "5", "fa": "PA", "tc": "cao", "nh": "Phụ kiện bơm thủy lực", "sku": "KTR-KTRTEMPERATURECONT"}, {"b": "KTR", "s": "KTR Bellhousings, damping elements and accessories", "c": "KBDE", "cl": "5", "fa": "PA", "tc": "cao", "nh": "Phụ kiện bơm thủy lực", "sku": "KTR-KTRBELLHOUSINGSDAM"}, {"b": "KTR", "s": "KTR Tanks and accessories", "c": "KTAA", "cl": "5", "fa": "PA", "tc": "cao", "nh": "Phụ kiện bơm thủy lực", "sku": "KTR-KTRTANKSANDACCESSO"}, {"b": "KTR", "s": "Floating caliper brakes", "c": "FCBR", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-FLOATINGCALIPERBRA"}, {"b": "KTR", "s": "Fixed caliper brakes", "c": "FCBR", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-FIXEDCALIPERBRAKES"}, {"b": "KTR", "s": "YAW brakes", "c": "YBRA", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-YAWBRAKES"}, {"b": "KTR", "s": "Thruster brakes", "c": "TBRA", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-THRUSTERBRAKES"}, {"b": "KTR", "s": "STOP-BLOCK-TURN brakes", "c": "SBTB", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-STOPBLOCKTURNBRAKE"}, {"b": "KTR", "s": "Electronic control system", "c": "ECSY", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-ELECTRONICCONTROLS"}, {"b": "KTR", "s": "Rotor lock / locking pin", "c": "RLLP", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-ROTORLOCKLOCKINGPI"}, {"b": "KTR", "s": "Caliper brakes", "c": "CBRA", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-CALIPERBRAKES"}, {"b": "KTR", "s": "Brake Components", "c": "BCOM", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "KTR-BRAKECOMPONENTS"}, {"b": "KTR", "s": "Oil-air Cooler", "c": "OACO", "cl": "5", "fa": "OC", "tc": "cao", "nh": "Bộ làm mát dầu thuỷ lực", "sku": "KTR-OILAIRCOOLER"}, {"b": "KTR", "s": "Oil-water Cooler", "c": "OWCO", "cl": "5", "fa": "OC", "tc": "cao", "nh": "Bộ làm mát dầu thuỷ lực", "sku": "KTR-OILWATERCOOLER"}, {"b": "KTR", "s": "MMC combined cooler-mobile machinery cooler", "c": "MCCM", "cl": "5", "fa": "OC", "tc": "cao", "nh": "Bộ làm mát dầu thuỷ lực", "sku": "KTR-MMCCOMBINEDCOOLERM"}, {"b": "RGF", "s": "TNS", "c": "TNS", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Cao su giảm chấn", "sku": "RF-TNS"}, {"b": "RGF", "s": "TNM", "c": "TNM", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Cao su giảm chấn", "sku": "RF-TNM"}, {"b": "RGF", "s": "GWE", "c": "GWE", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "RF-GWE"}, {"b": "RGF", "s": "TNR", "c": "TNR", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "RF-TNR"}, {"b": "RGF", "s": "TNB", "c": "TNB", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "RF-TNB"}, {"b": "RGF", "s": "Elastomer Jaw Couplings TNM", "c": "EJCT", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RF-ELASTOMERJAWCOUPLI"}, {"b": "RGF", "s": "Elastomer Jaw Couplings TNS", "c": "EJCT", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RF-ELASTOMERJAWCOUPLI-11"}, {"b": "RGF", "s": "Elastomer Jaw Couplings TNB", "c": "EJCT", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RF-ELASTOMERJAWCOUPLI-19"}, {"b": "RGF", "s": "Elastomer Jaw Couplings ECE", "c": "EJCE", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RF-ELASTOMERJAWCOUPLI-25"}, {"b": "RGF", "s": "Torsional Highflex Couplings TNR", "c": "THCT", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RF-TORSIONALHIGHFLEXC"}, {"b": "RGF", "s": "Pin & Bush Couplings", "c": "PBCO", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "RF-PINBUSHCOUPLINGS"}, {"b": "RGF", "s": "Tyre Couplings", "c": "TCOU", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối bánh xe", "sku": "RF-TYRECOUPLINGS"}, {"b": "RGF", "s": "Safety Couplings TNT", "c": "SCTN", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "RF-SAFETYCOUPLINGSTNT"}, {"b": "RGF", "s": "Metal Bellows Couplings GWB", "c": "MBCG", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "RF-METALBELLOWSCOUPLI"}, {"b": "RGF", "s": "Gear Couplings TNZ", "c": "GCTN", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "RF-GEARCOUPLINGSTNZ"}, {"b": "RGF", "s": "Disc Couplings TND", "c": "DCTN", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "RF-DISCCOUPLINGSTND"}, {"b": "RGF", "s": "Backlash-free Servo Couplings GWE", "c": "BFSC", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "RF-BACKLASHFREESERVOC"}, {"b": "RGF", "s": "Barrel Couplings TNK TKVO", "c": "BCTT", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối tang cuốn cáp", "sku": "RF-BARRELCOUPLINGSTNK"}, {"b": "RGF", "s": "Locking Assemblies RfN", "c": "LARF", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "RF-LOCKINGASSEMBLIESR"}, {"b": "RGF", "s": "Shrink Discs RfN", "c": "SDRF", "cl": "2", "fa": "SD", "tc": "cao", "nh": "Thiết bị bóp trục", "sku": "RF-SHRINKDISCSRFN"}, {"b": "RGF", "s": "Shock Absorbing Elements DEFORM plus", "c": "SAED", "cl": "9", "fa": "MS", "tc": "thap", "nh": "Shock Absorbing Elements", "sku": "RF-SHOCKABSORBINGELEM"}, {"b": "RGF", "s": "Shock Absorbing Elements DEFORM plus R/RMP", "c": "SAED", "cl": "9", "fa": "MS", "tc": "thap", "nh": "Shock Absorbing Elements", "sku": "RF-SHOCKABSORBINGELEM-2"}, {"b": "RGF", "s": "Shock Absorbing Elements DEFORM plus R", "c": "SAED", "cl": "9", "fa": "MS", "tc": "thap", "nh": "Shock Absorbing Elements", "sku": "RF-SHOCKABSORBINGELEM-3"}, {"b": "RTH", "s": "L", "c": "L", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "RA-L"}, {"b": "RTH", "s": "RB", "c": "RB", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "RA-RB"}, {"b": "RTH", "s": "SW", "c": "SW", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-SW"}, {"b": "RTH", "s": "RRL", "c": "RRL", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-RRL"}, {"b": "RTH", "s": "RRS", "c": "RRS", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-RRS"}, {"b": "RTH", "s": "SWQ", "c": "SWQ", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-SWQ"}, {"b": "RTH", "s": "SWS", "c": "SWS", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-SWS"}, {"b": "RTH", "s": "H/HR", "c": "HHR", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-HHR"}, {"b": "RTH", "s": "RRJ", "c": "RRJ", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-RRJ"}, {"b": "RTH", "s": "RFC", "c": "RFC", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-RFC"}, {"b": "RTH", "s": "RN / RNS A / B / H", "c": "RRAB", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RA-RNRNSABH"}, {"b": "RTH", "s": "B-FLEX: RB", "c": "BFRB", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "RA-BFLEXRB"}, {"b": "RTH", "s": "B-FLEX: LBC", "c": "BFLB", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "RA-BFLEXLBC"}, {"b": "RTH", "s": "CONE-FLEX: RC / RCT", "c": "CFRR", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "RA-CONEFLEXRCRCT"}, {"b": "RTH", "s": "LFG", "c": "LFG", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "RA-LFG"}, {"b": "RTH", "s": "LHG", "c": "LHG", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "RA-LHG"}, {"b": "RTH", "s": "RGD", "c": "RGD", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "RA-RGD"}, {"b": "RTH", "s": "RGS", "c": "RGS", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "RA-RGS"}, {"b": "RTH", "s": "RSK", "c": "RSK", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "RA-RSK"}, {"b": "RTH", "s": "RLM", "c": "RLM", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "RA-RLM"}, {"b": "RTH", "s": "REMH", "c": "REMH", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "RA-REMH"}, {"b": "RTH", "s": "REM", "c": "REM", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "RA-REM"}, {"b": "RTH", "s": "RJB", "c": "RJB", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "RA-RJB"}, {"b": "RTH", "s": "RR", "c": "RR", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "RA-RR"}, {"b": "RTH", "s": "RGR", "c": "RGR", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "RA-RGR"}, {"b": "RTH", "s": "T / TO", "c": "TTO", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối bánh xe", "sku": "RA-TTO"}, {"b": "RTH", "s": "RST", "c": "RST", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối bánh xe", "sku": "RA-RST"}, {"b": "WST", "s": "ROTOFLEXI G-GN", "c": "RGGN", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WES-ROTOFLEXIGGN"}, {"b": "WST", "s": "ROTOFLEXI D", "c": "RD", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WES-ROTOFLEXID"}, {"b": "WST", "s": "ROTOFLEXI DF", "c": "RDF", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WES-ROTOFLEXIDF"}, {"b": "WST", "s": "ROTOPIN E/EP", "c": "REEP", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "WES-ROTOPINEEP"}, {"b": "WST", "s": "ROTODISC HN / HNS", "c": "RHHN", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "WES-ROTODISCHNHNS"}, {"b": "WST", "s": "ROTOGRID TH", "c": "RTH", "cl": "1", "fa": "GD", "tc": "cao", "nh": "Khớp nối lưới lò xo", "sku": "WES-ROTOGRIDTH"}, {"b": "WST", "s": "ROTOGEAR AR", "c": "RAR", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "WES-ROTOGEARAR"}, {"b": "WST", "s": "ROTOGEAR RE/FO", "c": "RRFO", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "WES-ROTOGEARREFO"}, {"b": "WST", "s": "ROTOFLUID CA-K", "c": "RCK", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOFLUIDCAK"}, {"b": "WST", "s": "ROTOMEC CA KA", "c": "RCKA", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKA"}, {"b": "WST", "s": "ROTOMEC CA K-S", "c": "RCKS", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKS"}, {"b": "WST", "s": "KDA", "c": "KDA", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-KDA"}, {"b": "WST", "s": "ROTOMEC", "c": "RTMC", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMEC"}, {"b": "WST", "s": "ROTOMEC SCF with Single Delay Chamber", "c": "RSWS", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECSCFWITHSING"}, {"b": "WST", "s": "ROTOMEC DCF with Double Delay Chamber", "c": "RDWD", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECDCFWITHDOUB"}, {"b": "WST", "s": "ROTOMEC CA with Annular Chamber", "c": "RCWA", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAWITHANNUL"}, {"b": "WST", "s": "ROTOMEC CA K with Gear Coupling", "c": "RCKW", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKWITHGEAR"}, {"b": "WST", "s": "ROTOMEC CA K with Brake Drum", "c": "RCKW", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKWITHBRAK"}, {"b": "WST", "s": "ROTOMEC CA K with Disc Coupling", "c": "RCKW", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKWITHDISC"}, {"b": "WST", "s": "ROTOMEC CA K with Brake Disc", "c": "RCKW", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKWITHBRAK-2"}, {"b": "WST", "s": "ROTOMEC CA K with Standard Pulleys", "c": "RCKW", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKWITHSTAN"}, {"b": "WST", "s": "ROTOMEC CA K with Bellhousing", "c": "RCKW", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "WES-ROTOMECCAKWITHBELL"}, {"b": "WST", "s": "Thruster brakes", "c": "TBRA", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "WES-THRUSTERBRAKES"}, {"b": "CRM", "s": "KE (HRC)", "c": "KHRC", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "WC-KEHRC"}, {"b": "CRM", "s": "GF", "c": "GF", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "WC-GF"}, {"b": "CRM", "s": "L (BUNA)", "c": "LBUN", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "WC-LBUNA"}, {"b": "CRM", "s": "L", "c": "L", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WC-L"}, {"b": "CRM", "s": "GFA", "c": "GFA", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "WC-GFA"}, {"b": "CRM", "s": "CS", "c": "CS", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-CS"}, {"b": "CRM", "s": "Standard Model", "c": "SMOD", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-STANDARDMODEL"}, {"b": "CRM", "s": "Model 200", "c": "200", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-MODEL200"}, {"b": "CRM", "s": "Model 250", "c": "250", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-MODEL250"}, {"b": "CRM", "s": "Model 350", "c": "350", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-MODEL350"}, {"b": "CRM", "s": "Model 500", "c": "500", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-MODEL500"}, {"b": "CRM", "s": "Model 700", "c": "700", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "WC-MODEL700"}, {"b": "CRM", "s": "LNC", "c": "LNC", "cl": "1", "fa": "CH", "tc": "cao", "nh": "Khớp nối xích", "sku": "WC-LNC"}, {"b": "CRM", "s": "LRC", "c": "LRC", "cl": "1", "fa": "CH", "tc": "cao", "nh": "Khớp nối xích", "sku": "WC-LRC"}, {"b": "CRM", "s": "Type B200 & B500", "c": "TBB5", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "WC-TYPEB200B500"}, {"b": "CRM", "s": "Wedge Belts Pulleys SPA", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "WC-WEDGEBELTSPULLEYSS"}, {"b": "CRM", "s": "Wedge Belts Pulleys SPB", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "WC-WEDGEBELTSPULLEYSS-2"}, {"b": "CRM", "s": "Wedge Belts Pulleys SPC", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "WC-WEDGEBELTSPULLEYSS-3"}, {"b": "CRM", "s": "Wedge Belts Pulleys SPZ", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "WC-WEDGEBELTSPULLEYSS-4"}, {"b": "CRM", "s": "Timing Pulleys", "c": "TPUL", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "WC-TIMINGPULLEYS"}, {"b": "CRM", "s": "Taper Bushes", "c": "TBUS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "WC-TAPERBUSHES"}, {"b": "CRM", "s": "Xích bước đôi Cross+Morse", "c": "XBDC", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-XICHBUOCDOICROSSMO"}, {"b": "CRM", "s": "Xích băng tải Cross+Morse", "c": "XBTC", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-XICHBANGTAICROSSMO"}, {"b": "CRM", "s": "Nhông Cross+Morse TB (không cùi)", "c": "NCMT", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-NHONGCROSSMORSETBK"}, {"b": "CRM", "s": "Nhông Cross+Morse TB (có cùi)", "c": "NCMT", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-NHONGCROSSMORSETBC"}, {"b": "CRM", "s": "Xích tiêu chuẩn Cross+Morse BS Standard", "c": "XTCC", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-XICHTIEUCHUANCROSS"}, {"b": "CRM", "s": "Xích truyền động Cross+Morse Inverted SC", "c": "XTDC", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-XICHTRUYENDONGCROS"}, {"b": "CRM", "s": "Nhông xích Cross+Morse HC/SC", "c": "NXCM", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-NHONGXICHCROSSMORS"}, {"b": "CRM", "s": "Xích truyền động Cross+Morse Inverted HC", "c": "XTDC", "cl": "3", "fa": "SP", "tc": "vua", "nh": "Xích - nhông công nghiệp", "sku": "WC-XICHTRUYENDONGCROS-2"}, {"b": "JAC", "s": "JAC CA", "c": "JCA", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "JAC-JACCA"}, {"b": "JAC", "s": "JAC CR", "c": "JCR", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "JAC-JACCR"}, {"b": "JAC", "s": "GDS", "c": "GDS", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-GDS"}, {"b": "JAC", "s": "SAM", "c": "SAM", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-SAM"}, {"b": "JAC", "s": "GS-GSL", "c": "GGSL", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-GSGSL"}, {"b": "JAC", "s": "GD-GDL", "c": "GGDL", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-GDGDL"}, {"b": "JAC", "s": "SSM/CCM", "c": "SCCM", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-SSMCCM"}, {"b": "JAC", "s": "SEM-CEM", "c": "SCEM", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-SEMCEM"}, {"b": "JAC", "s": "GDBW/GSBW", "c": "GGSB", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-GDBWGSBW"}, {"b": "JAC", "s": "SSMB/SEMB", "c": "SSEM", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "JAC-SSMBSEMB"}, {"b": "MTN", "s": "ML", "c": "ML", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "MAR-ML"}, {"b": "MTN", "s": "GO-FLEX (GF)", "c": "GFGF", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "MAR-GOFLEXGF"}, {"b": "MTN", "s": "HRC", "c": "HRC", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "MAR-HRC"}, {"b": "MTN", "s": "Martin-Flex (F)", "c": "MFF", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối bánh xe", "sku": "MAR-MARTINFLEXF"}, {"b": "MTN", "s": "FHP Sheaves", "c": "FSHE", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-FHPSHEAVES"}, {"b": "MTN", "s": "MST Sheaves", "c": "MSHE", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-MSTSHEAVES"}, {"b": "MTN", "s": "QD Sheaves", "c": "QSHE", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-QDSHEAVES"}, {"b": "MTN", "s": "Wedge Belts Pulleys SPA", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-WEDGEBELTSPULLEYSS"}, {"b": "MTN", "s": "Wedge Belts Pulleys SPB", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-WEDGEBELTSPULLEYSS-2"}, {"b": "MTN", "s": "Wedge Belts Pulleys SPC", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-WEDGEBELTSPULLEYSS-3"}, {"b": "MTN", "s": "Wedge Belts Pulleys SPZ", "c": "WBPS", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-WEDGEBELTSPULLEYSS-4"}, {"b": "MTN", "s": "Classical Timing Pulleys", "c": "CTPU", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-CLASSICALTIMINGPUL"}, {"b": "MTN", "s": "Synchronous Sprocket MBC", "c": "SSMB", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-SYNCHRONOUSSPROCKE"}, {"b": "MTN", "s": "High Torque Sprocket HTS", "c": "HTSH", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-HIGHTORQUESPROCKET"}, {"b": "MTN", "s": "Ống lót côn TB Bushings", "c": "OLCT", "cl": "3", "fa": "PU", "tc": "thap", "nh": "Puly - Ống lót côn", "sku": "MAR-ONGLOTCONTBBUSHING"}, {"b": "FLD", "s": "Cao su N-Eupex", "c": "CSNE", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "FL-CAOSUNEUPEX"}, {"b": "FLD", "s": "Cao su N-Eupex DS", "c": "CSNE", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "FL-CAOSUNEUPEXDS"}, {"b": "FLD", "s": "Cao su Rupex", "c": "CSRU", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "FL-CAOSURUPEX"}, {"b": "FLD", "s": "Đĩa thép Radex-N", "c": "DTRN", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "FL-DIATHEPRADEXN"}, {"b": "FLD", "s": "N-Eupex A", "c": "NEA", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXA"}, {"b": "FLD", "s": "N-Eupex B", "c": "NEB", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXB"}, {"b": "FLD", "s": "N-Eupex H", "c": "NEH", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXH"}, {"b": "FLD", "s": "N-Eupex E", "c": "NEE", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXE"}, {"b": "FLD", "s": "N-Eupex DS-ADS", "c": "NEDA", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXDSADS"}, {"b": "FLD", "s": "N-Eupex DS-BDS", "c": "NEDB", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXDSBDS"}, {"b": "FLD", "s": "N-Eupex DS-HDS", "c": "NEDH", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FL-NEUPEXDSHDS"}, {"b": "FLD", "s": "RUPEX RWS", "c": "RRWS", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "FL-RUPEXRWS"}, {"b": "FLD", "s": "RUPEX RWN", "c": "RRWN", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "FL-RUPEXRWN"}, {"b": "FLD", "s": "N-Arpex Type NEN", "c": "NATN", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-NARPEXTYPENEN"}, {"b": "FLD", "s": "N-Arpex Type MCECM", "c": "NATM", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-NARPEXTYPEMCECM"}, {"b": "FLD", "s": "N-Arpex Type MFEFM", "c": "NATM", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-NARPEXTYPEMFEFM"}, {"b": "FLD", "s": "Arpex Type XVV/XVF", "c": "ATXX", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-ARPEXTYPEXVVXVF"}, {"b": "FLD", "s": "Arpex Type BVB/BVF", "c": "ATBB", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-ARPEXTYPEBVBBVF"}, {"b": "FLD", "s": "Arpex Type MHM/MH", "c": "ATMM", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-ARPEXTYPEMHMMH"}, {"b": "FLD", "s": "Arpex Type H", "c": "ATH", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "FL-ARPEXTYPEH"}, {"b": "FLD", "s": "SNN", "c": "SNN", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SNN"}, {"b": "FLD", "s": "SGS", "c": "SGS", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SGS"}, {"b": "FLD", "s": "SGG Miniature Series", "c": "SMSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SGGMINIATURESERIES"}, {"b": "FLD", "s": "SGG Standard Series", "c": "SSSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SGGSTANDARDSERIES"}, {"b": "FLD", "s": "SGG-A Miniature Series", "c": "SAMS", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SGGAMINIATURESERIE"}, {"b": "FLD", "s": "SGG-A Standard Series", "c": "SASS", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SGGASTANDARDSERIES"}, {"b": "FLD", "s": "SHH Miniature Series", "c": "SMSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SHHMINIATURESERIES"}, {"b": "FLD", "s": "SHH Standard Series", "c": "SSSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SHHSTANDARDSERIES"}, {"b": "FLD", "s": "SKK Miniature Series", "c": "SMSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SKKMINIATURESERIES"}, {"b": "FLD", "s": "SKK Standard Series", "c": "SSSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SKKSTANDARDSERIES"}, {"b": "FLD", "s": "SII Standard Series", "c": "SSSE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SIISTANDARDSERIES"}, {"b": "FLD", "s": "SHH-W", "c": "SHHW", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "FL-SHHW"}, {"b": "FLD", "s": "Zapex XN", "c": "ZXN", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "FL-ZAPEXXN"}, {"b": "FLD", "s": "Zapex XW", "c": "ZXW", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "FL-ZAPEXXW"}, {"b": "FLD", "s": "ELPEX-B", "c": "EB", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối bánh xe", "sku": "FL-ELPEXB"}, {"b": "FLD", "s": "FLUDEX FA Series", "c": "FFSE", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "FL-FLUDEXFASERIES"}, {"b": "FLD", "s": "FLUDEX FG Series", "c": "FFSE", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "FL-FLUDEXFGSERIES"}, {"b": "FLD", "s": "FLUDEX FN Series", "c": "FFSE", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "FL-FLUDEXFNSERIES"}, {"b": "FLD", "s": "FLUDEX FV Series", "c": "FFSE", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "FL-FLUDEXFVSERIES"}, {"b": "FLD", "s": "Flender Hydraulic Couplings Spare Parts", "c": "FHCS", "cl": "5", "fa": "PA", "tc": "vua", "nh": "Phụ kiện khớp nối thuỷ lực", "sku": "FL-FLENDERHYDRAULICCO"}, {"b": "FLD", "s": "ARPEX ARV", "c": "AARV", "cl": "1", "fa": "DS", "tc": "vua", "nh": "Khớp nối điện gió", "sku": "FL-ARPEXARV"}, {"b": "FLD", "s": "ARPEX GIGA", "c": "AGIG", "cl": "1", "fa": "DS", "tc": "vua", "nh": "Khớp nối điện gió", "sku": "FL-ARPEXGIGA"}, {"b": "TBW", "s": "Sure-Flex", "c": "SFLE", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "TBW-SUREFLEX"}, {"b": "TBW", "s": "TB Woods Sure-Flex", "c": "TWSF", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "TBW-TBWOODSSUREFLEX"}, {"b": "MGL", "s": "Magnaloy", "c": "MGNL", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "MAG-MAGNALOY"}, {"b": "FEN", "s": "Cao su bánh xe Fenaflex (F)", "c": "CSBX", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "FEN-CAOSUBANHXEFENAFLE"}, {"b": "FEN", "s": "HRC", "c": "HRC", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FEN-HRC"}, {"b": "FEN", "s": "L", "c": "L", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "FEN-L"}, {"b": "FEN", "s": "Khớp nối cứng Fenner", "c": "KNCF", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "FEN-KHOPNOICUNGFENNER"}, {"b": "FEN", "s": "Fenaflex (F)", "c": "FF", "cl": "1", "fa": "RG", "tc": "thap", "nh": "Khớp nối bánh xe", "sku": "FEN-FENAFLEXF"}, {"b": "FEN", "s": "Dây Curoa Fenner Classic", "c": "DCFC", "cl": "3", "fa": "BT", "tc": "cao", "nh": "Dây curoa", "sku": "FEN-DAYCUROAFENNERCLAS"}, {"b": "FEN", "s": "Dây Curoa Fenner Quattro Plus CRE", "c": "DCFQ", "cl": "3", "fa": "BT", "tc": "cao", "nh": "Dây curoa", "sku": "FEN-DAYCUROAFENNERQUAT"}, {"b": "FEN", "s": "Dây Curoa Fenner Plus CRE", "c": "DCFP", "cl": "3", "fa": "BT", "tc": "cao", "nh": "Dây curoa", "sku": "FEN-DAYCUROAFENNERPLUS"}, {"b": "FEN", "s": "Dây Curoa Fenner Power Plus K", "c": "DCFP", "cl": "3", "fa": "BT", "tc": "cao", "nh": "Dây curoa", "sku": "FEN-DAYCUROAFENNERPOWE"}, {"b": "FEN", "s": "Dây Curoa Fenner Power Plus", "c": "DCFP", "cl": "3", "fa": "BT", "tc": "cao", "nh": "Dây curoa", "sku": "FEN-DAYCUROAFENNERPOWE-2"}, {"b": "RNL", "s": "Cao su PM", "c": "CSPM", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "REN-CAOSUPM"}, {"b": "RNL", "s": "Khớp nối PM", "c": "KNPM", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "REN-KHOPNOIPM"}, {"b": "RNL", "s": "Xích Tải Renold Cho Xử Lý Nước Thải", "c": "XTRC", "cl": "3", "fa": "CN", "tc": "cao", "nh": "Xích công nghiệp", "sku": "REN-XICHTAIRENOLDCHOXU"}, {"b": "RNL", "s": "Xích Tải Renold Tiêu Chuẩn", "c": "XTRT", "cl": "3", "fa": "CN", "tc": "cao", "nh": "Xích công nghiệp", "sku": "REN-XICHTAIRENOLDTIEUC"}, {"b": "RNL", "s": "Chuỗi Xích Kéo Hạng Nặng Renold", "c": "CXKH", "cl": "3", "fa": "CN", "tc": "cao", "nh": "Xích công nghiệp", "sku": "REN-CHUOIXICHKEOHANGNA"}, {"b": "RNL", "s": "Xích Băng Tải Thép Renold", "c": "XBTT", "cl": "3", "fa": "CN", "tc": "cao", "nh": "Xích công nghiệp", "sku": "REN-XICHBANGTAITHEPREN"}, {"b": "RXN", "s": "Cao su Wrapflex", "c": "CSWR", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Cao su giảm chấn", "sku": "RXN-CAOSUWRAPFLEX"}, {"b": "RXN", "s": "Khớp nối Wrapflex", "c": "KNWR", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "RXN-KHOPNOIWRAPFLEX"}, {"b": "WOJ", "s": "Max Dynamic Standard D/DS", "c": "MDSD", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WJ-MAXDYNAMICSTANDARD"}, {"b": "WOJ", "s": "Max Dynamic Spacer", "c": "MDSP", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WJ-MAXDYNAMICSPACER"}, {"b": "WOJ", "s": "Max Dynamic HS", "c": "MDHS", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WJ-MAXDYNAMICHS"}, {"b": "WOJ", "s": "Max Dynamic HT", "c": "MDHT", "cl": "1", "fa": "JW", "tc": "thap", "nh": "Khớp nối linh hoạt", "sku": "WJ-MAXDYNAMICHT"}, {"b": "PTI", "s": "PTI PF", "c": "PPF", "cl": "1", "fa": "RG", "tc": "vua", "nh": "Khớp nối bulong đai ốc", "sku": "PTI-PTIPF"}, {"b": "PTI", "s": "PS4-00S", "c": "P00S", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "PTI-PS400S"}, {"b": "PTI", "s": "P4-00D", "c": "P00D", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "PTI-P400D"}, {"b": "PTI", "s": "Mark API610", "c": "MAPI", "cl": "1", "fa": "DS", "tc": "cao", "nh": "Khớp nối đĩa", "sku": "PTI-MARKAPI610"}, {"b": "PTI", "s": "DHP-PG20/PGL20", "c": "DPPG", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "PTI-DHPPG20PGL20"}, {"b": "PTI", "s": "DHP-PG52/PGL52", "c": "DPPG", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "PTI-DHPPG52PGL52"}, {"b": "PTI", "s": "DHP-PG32", "c": "DPG3", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "PTI-DHPPG32"}, {"b": "PTI", "s": "DHP-PG52F", "c": "DPG5", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "PTI-DHPPG52F"}, {"b": "PTI", "s": "DHP-PSS/PCC (JIS)", "c": "DPPJ", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "PTI-DHPPSSPCCJIS"}, {"b": "PTI", "s": "DHP-PSE/PCE (JIS)", "c": "DPPJ", "cl": "1", "fa": "GR", "tc": "cao", "nh": "Khớp nối răng", "sku": "PTI-DHPPSEPCEJIS"}, {"b": "PTI", "s": "DHP T10", "c": "DT10", "cl": "1", "fa": "GD", "tc": "vua", "nh": "Khớp nối lò xo", "sku": "PTI-DHPT10"}, {"b": "PTI", "s": "DHP T20", "c": "DT20", "cl": "1", "fa": "GD", "tc": "vua", "nh": "Khớp nối lò xo", "sku": "PTI-DHPT20"}, {"b": "PTI", "s": "DHP T31", "c": "DT31", "cl": "1", "fa": "GD", "tc": "vua", "nh": "Khớp nối lò xo", "sku": "PTI-DHPT31"}, {"b": "KBK", "s": "KBK KB1", "c": "KKB1", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB1"}, {"b": "KBK", "s": "KBK KB1P", "c": "KKB1", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB1P"}, {"b": "KBK", "s": "KBK KB2", "c": "KKB2", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB2"}, {"b": "KBK", "s": "KBK KB2H", "c": "KKB2", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB2H"}, {"b": "KBK", "s": "KBK KB2P", "c": "KKB2", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB2P"}, {"b": "KBK", "s": "KBK KB2VA", "c": "KKB2", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB2VA"}, {"b": "KBK", "s": "KBK KB3", "c": "KKB3", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB3"}, {"b": "KBK", "s": "KBK KB3P", "c": "KKB3", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB3P"}, {"b": "KBK", "s": "KBK KB4", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4"}, {"b": "KBK", "s": "KBK KB4AL", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4AL"}, {"b": "KBK", "s": "KBK KB4C", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4C"}, {"b": "KBK", "s": "KBK KB4F", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4F"}, {"b": "KBK", "s": "KBK KB4FA", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4FA"}, {"b": "KBK", "s": "KBK KB4H", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4H"}, {"b": "KBK", "s": "KBK KB4HC", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4HC"}, {"b": "KBK", "s": "KBK KB4K", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4K"}, {"b": "KBK", "s": "KBK KB4LV", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4LV"}, {"b": "KBK", "s": "KBK KB4P", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4P"}, {"b": "KBK", "s": "KBK KB4VA", "c": "KKB4", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB4VA"}, {"b": "KBK", "s": "KBK KB5", "c": "KKB5", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB5"}, {"b": "KBK", "s": "KBK KB6", "c": "KKB6", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB6"}, {"b": "KBK", "s": "KBK KB6P", "c": "KKB6", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB6P"}, {"b": "KBK", "s": "KBK KB7", "c": "KKB7", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB7"}, {"b": "KBK", "s": "KBK KB8", "c": "KKB8", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB8"}, {"b": "KBK", "s": "KBK KB8P", "c": "KKB8", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKB8P"}, {"b": "KBK", "s": "KBK KBFH", "c": "KKBF", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKBFH"}, {"b": "KBK", "s": "KBK KBFK", "c": "KKBF", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "KBK-KBKKBFK"}, {"b": "KBK", "s": "KBK KBE1", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE1"}, {"b": "KBK", "s": "KBK KBE2", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE2"}, {"b": "KBK", "s": "KBK KBE2C", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE2C"}, {"b": "KBK", "s": "KBK KBE2D", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE2D"}, {"b": "KBK", "s": "KBK KBE2HC", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE2HC"}, {"b": "KBK", "s": "KBK KBE2H", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE2H"}, {"b": "KBK", "s": "KBK KBE3", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE3"}, {"b": "KBK", "s": "KBK KBE3C", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE3C"}, {"b": "KBK", "s": "KBK KBE4", "c": "KKBE", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối servo", "sku": "KBK-KBKKBE4"}, {"b": "KBK", "s": "KBST", "c": "KBST", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "KBK-KBST"}, {"b": "KBK", "s": "KBST-G", "c": "KG", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "KBK-KBSTG"}, {"b": "KBK", "s": "KBST-VA", "c": "KVA", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "KBK-KBSTVA"}, {"b": "KBK", "s": "KBST-G-VA", "c": "KGVA", "cl": "1", "fa": "RG", "tc": "cao", "nh": "Khớp nối cứng", "sku": "KBK-KBSTGVA"}, {"b": "KBK", "s": "KBK BAA", "c": "KBAA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBAA"}, {"b": "KBK", "s": "KBK BAI", "c": "KBAI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBAI"}, {"b": "KBK", "s": "KBK BAK", "c": "KBAK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBAK"}, {"b": "KBK", "s": "KBK BHH", "c": "KBHH", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBHH"}, {"b": "KBK", "s": "KBK BIA", "c": "KBIA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBIA"}, {"b": "KBK", "s": "KBK BII", "c": "KBII", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBII"}, {"b": "KBK", "s": "KBK BIK", "c": "KBIK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBIK"}, {"b": "KBK", "s": "KBK BKA", "c": "KBKA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBKA"}, {"b": "KBK", "s": "KBK BKI", "c": "KBKI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBKI"}, {"b": "KBK", "s": "KBK BKK", "c": "KBKK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBKK"}, {"b": "KBK", "s": "KBK BKPA", "c": "KBKP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBKPA"}, {"b": "KBK", "s": "KBK BKPI", "c": "KBKP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBKPI"}, {"b": "KBK", "s": "KBK BKPK", "c": "KBKP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKBKPK"}, {"b": "KBK", "s": "KBK CA", "c": "KCA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKCA"}, {"b": "KBK", "s": "KBK CI", "c": "KCI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKCI"}, {"b": "KBK", "s": "KBK CK", "c": "KCK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKCK"}, {"b": "KBK", "s": "KBK CP", "c": "KCP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKCP"}, {"b": "KBK", "s": "KBK EAA", "c": "KEAA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEAA"}, {"b": "KBK", "s": "KBK EAI", "c": "KEAI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEAI"}, {"b": "KBK", "s": "KBK EAK", "c": "KEAK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEAK"}, {"b": "KBK", "s": "KBK EAP", "c": "KEAP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEAP"}, {"b": "KBK", "s": "KBK EHH", "c": "KEHH", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEHH"}, {"b": "KBK", "s": "KBK EKA", "c": "KEKA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEKA"}, {"b": "KBK", "s": "KBK EKI", "c": "KEKI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEKI"}, {"b": "KBK", "s": "KBK EKK", "c": "KEKK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEKK"}, {"b": "KBK", "s": "KBK EKP", "c": "KEKP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEKP"}, {"b": "KBK", "s": "KBK EPA", "c": "KEPA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEPA"}, {"b": "KBK", "s": "KBK EPI", "c": "KEPI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEPI"}, {"b": "KBK", "s": "KBK EPK", "c": "KEPK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEPK"}, {"b": "KBK", "s": "KBK EPP", "c": "KEPP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKEPP"}, {"b": "KBK", "s": "KBK LA", "c": "KLA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLA"}, {"b": "KBK", "s": "KBK LI", "c": "KLI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLI"}, {"b": "KBK", "s": "KBK LK", "c": "KLK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLK"}, {"b": "KBK", "s": "KBK LLA", "c": "KLLA", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLLA"}, {"b": "KBK", "s": "KBK LLI", "c": "KLLI", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLLI"}, {"b": "KBK", "s": "KBK LLK", "c": "KLLK", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLLK"}, {"b": "KBK", "s": "KBK LLP", "c": "KLLP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLLP"}, {"b": "KBK", "s": "KBK LP", "c": "KLP", "cl": "1", "fa": "TL", "tc": "cao", "nh": "Khớp nối bảo vệ quá tải", "sku": "KBK-KBKLP"}, {"b": "ITG", "s": "Series 38-IG", "c": "S3IG", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES38IG"}, {"b": "ITG", "s": "Series 587.10", "c": "5871", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58710"}, {"b": "ITG", "s": "Series 587.15", "c": "5871", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58715"}, {"b": "ITG", "s": "Series 587.20", "c": "5872", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58720"}, {"b": "ITG", "s": "Series 587.30", "c": "5873", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58730"}, {"b": "ITG", "s": "Series 587.35", "c": "5873", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58735"}, {"b": "ITG", "s": "Series 587.42", "c": "5874", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58742"}, {"b": "ITG", "s": "Series 587.48", "c": "5874", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58748"}, {"b": "ITG", "s": "Series 587.50", "c": "5875", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58750"}, {"b": "ITG", "s": "Series 587.55", "c": "5875", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES58755"}, {"b": "ITG", "s": "Series 1140", "c": "1140", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES1140"}, {"b": "ITG", "s": "Series 1310", "c": "1310", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES1310"}, {"b": "ITG", "s": "Series 1410", "c": "1410", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES1410"}, {"b": "ITG", "s": "Series 2020", "c": "2020", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES2020"}, {"b": "ITG", "s": "Series 2030", "c": "2030", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES2030"}, {"b": "ITG", "s": "Series 2035", "c": "2035", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES2035"}, {"b": "ITG", "s": "Series 2040", "c": "2040", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES2040"}, {"b": "ITG", "s": "Series 2045", "c": "2045", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES2045"}, {"b": "ITG", "s": "Series 2060", "c": "2060", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "ITG-SERIES2060"}, {"b": "WCH", "s": "Type 100", "c": "100", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE100"}, {"b": "WCH", "s": "Type 105", "c": "105", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE105"}, {"b": "WCH", "s": "Type 110", "c": "110", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE110"}, {"b": "WCH", "s": "Type 130", "c": "130", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE130"}, {"b": "WCH", "s": "Type 135", "c": "135", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE135"}, {"b": "WCH", "s": "Type 160", "c": "160", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE160"}, {"b": "WCH", "s": "Type 220", "c": "220", "cl": "1", "fa": "UJ", "tc": "cao", "nh": "Khớp nối cardan", "sku": "WCH-TYPE220"}, {"b": "HFL", "s": "AHHVV Hydro", "c": "AHYD", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-AHHVVHYDRO"}, {"b": "HFL", "s": "HDFB", "c": "HDFB", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HDFB"}, {"b": "HFL", "s": "HLE-R", "c": "HLER", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HLER"}, {"b": "HFL", "s": "HLE-RRA", "c": "HRRA", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HLERRA"}, {"b": "HFL", "s": "HCP With Pulley", "c": "HWPU", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HCPWITHPULLEY"}, {"b": "HFL", "s": "HCP-RR", "c": "HRR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HCPRR"}, {"b": "HFL", "s": "HFF-R", "c": "HFFR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFFR"}, {"b": "HFL", "s": "HFF-RRA", "c": "HRRA", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFFRRA"}, {"b": "HFL", "s": "HFB With Flange", "c": "HWFL", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFBWITHFLANGE"}, {"b": "HFL", "s": "HFB-R", "c": "HFBR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFBR"}, {"b": "HFL", "s": "HFF-RR", "c": "HRR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFFRR"}, {"b": "HFL", "s": "HFB-RR", "c": "HRR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFBRR"}, {"b": "HFL", "s": "HFB-RRA", "c": "HRRA", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HFBRRA"}, {"b": "HFL", "s": "HLF-R", "c": "HLFR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HLFR"}, {"b": "HFL", "s": "HLF-RR", "c": "HRR", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HLFRR"}, {"b": "HFL", "s": "HLF Prepare For Brake", "c": "HPFB", "cl": "1", "fa": "FL", "tc": "cao", "nh": "Khớp nối thuỷ lực", "sku": "HEN-HLFPREPAREFORBRAKE"}, {"b": "HFL", "s": "Phanh Đĩa Điện Từ Henfel-Ringfeder FH-16E/FH-21E", "c": "PDDT", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "HEN-PHANHDIADIENTUHENF"}, {"b": "ETP", "s": "ETP-Octopus", "c": "EOCT", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPOCTOPUS"}, {"b": "ETP", "s": "ETP-Hyloc", "c": "EHYL", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPHYLOC"}, {"b": "ETP", "s": "ETP-Mini", "c": "EMIN", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPMINI"}, {"b": "ETP", "s": "ETP-Classic", "c": "ECLA", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPCLASSIC"}, {"b": "ETP", "s": "ETP-Power", "c": "EPOW", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPPOWER"}, {"b": "ETP", "s": "ETP-Techno", "c": "ETEC", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPTECHNO"}, {"b": "ETP", "s": "ETP-Express", "c": "EEXP", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "ETP-ETPEXPRESS"}, {"b": "MAV", "s": "MAV 1261", "c": "1261", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV1261"}, {"b": "MAV", "s": "MAV 1071", "c": "1071", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV1071"}, {"b": "MAV", "s": "MAV 4005", "c": "4005", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV4005"}, {"b": "MAV", "s": "MAV 3505", "c": "3505", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV3505"}, {"b": "MAV", "s": "MAV 1072", "c": "1072", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV1072"}, {"b": "MAV", "s": "MAV 5061", "c": "5061", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV5061"}, {"b": "MAV", "s": "MAV 2500", "c": "2500", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV2500"}, {"b": "MAV", "s": "MAV 1062", "c": "1062", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV1062"}, {"b": "MAV", "s": "MAV 2005", "c": "2005", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV2005"}, {"b": "MAV", "s": "MAV 1061", "c": "1061", "cl": "2", "fa": "LD", "tc": "cao", "nh": "Khớp khoá trục", "sku": "MAV-MAV1061"}, {"b": "MAV", "s": "MAV 3009", "c": "3009", "cl": "2", "fa": "SD", "tc": "cao", "nh": "Thiết bị bóp trục", "sku": "MAV-MAV3009"}, {"b": "MAV", "s": "MAV 3008", "c": "3008", "cl": "2", "fa": "SD", "tc": "cao", "nh": "Thiết bị bóp trục", "sku": "MAV-MAV3008"}, {"b": "MAV", "s": "MAV 2008", "c": "2008", "cl": "2", "fa": "SD", "tc": "cao", "nh": "Thiết bị bóp trục", "sku": "MAV-MAV2008"}, {"b": "HUC", "s": "Huco Loop", "c": "HLOO", "cl": "1", "fa": "BW", "tc": "vua", "nh": "Khớp nối encoder", "sku": "HUC-HUCOLOOP"}, {"b": "RSP", "s": "IR", "c": "IR", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-IR"}, {"b": "RSP", "s": "FB", "c": "FB", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-FB"}, {"b": "RSP", "s": "FXN", "c": "FXN", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-FXN"}, {"b": "RSP", "s": "FAV", "c": "FAV", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-FAV"}, {"b": "RSP", "s": "FXM", "c": "FXM", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-FXM"}, {"b": "RSP", "s": "FA", "c": "FA", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-FA"}, {"b": "RSP", "s": "FGR", "c": "FGR", "cl": "8", "fa": "BS", "tc": "cao", "nh": "Vòng bi chống quay ngược", "sku": "RSP-FGR"}, {"b": "TWF", "s": "Floating caliper brakes", "c": "FCBR", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "TWF-FLOATINGCALIPERBRA"}, {"b": "TWF", "s": "Fixed caliper brakes", "c": "FCBR", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "TWF-FIXEDCALIPERBRAKES"}, {"b": "TWF", "s": "Electronic control system", "c": "ECSY", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "TWF-ELECTRONICCONTROLS"}, {"b": "TWF", "s": "Brake Components", "c": "BCOM", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "TWF-BRAKECOMPONENTS"}, {"b": "SVB", "s": "Floating caliper brakes", "c": "FCBR", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "SVB-FLOATINGCALIPERBRA"}, {"b": "SVB", "s": "Fixed caliper brakes", "c": "FCBR", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "SVB-FIXEDCALIPERBRAKES"}, {"b": "SVB", "s": "YAW brakes", "c": "YBRA", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "SVB-YAWBRAKES"}, {"b": "SVB", "s": "Thruster brakes", "c": "TBRA", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "SVB-THRUSTERBRAKES"}, {"b": "SVB", "s": "Brake Components", "c": "BCOM", "cl": "4", "fa": "CA", "tc": "thap", "nh": "Phanh công nghiệp", "sku": "SVB-BRAKECOMPONENTS"}]};
+
+/* ---------- từ điển giao diện ---------- */
+const L={
+vi:{tagline:"Chuẩn mã hoá Đại Hồng Phát",btnExport:"⭳ Xuất JSON",btnImport:"⭱ Nhập JSON",
+ tabs:["Sinh mã","Thư viện","Giải mã","Cụm lắp","Dự án","Danh mục","Chuyển mã cũ"],
+ buildH:"Sinh mã vật tư",buildS:"Bốn khối đều là danh mục đóng — chọn, không gõ tự do. Mã hiện ngay khi đủ bốn khối.",
+ fRole:"Vai trò",fCls:"Lớp sản phẩm",fFam:"Họ (kết cấu)",fBrand:"Hãng",fSer:"Series",fSize:"Cỡ danh nghĩa",
+ fChild:"Chi tiết con",fVar:"Biến thể",fRev:"Phiên bản",fStatus:"Trạng thái",fName:"Tên gọi",fAlias:"Mã cũ / bí danh",
+ btnAdd:"+ Thêm vào thư viện",btnClear:"Xoá form",
+ pvEmpty:"Chọn vai trò, lớp, họ, hãng, series và cỡ",pvDup:"⚠ Mã này đã có trong thư viện",pvOk:"✓ Mã chưa tồn tại — dùng được",
+ varDefault:"Ô <b>biến thể</b> đổi nghĩa theo chi tiết con: moay-ơ là đường kính lỗ (<code>048</code>), đệm đàn hồi là độ cứng Shore (<code>92A</code>), vỏ là khoảng cách đầu trục DBSE.",
+ varWith:"Với chi tiết con <b>{c}</b>, ô <b>biến thể</b> nghĩa là <b>{m}</b>.",
+ needBlocks:"Chưa đủ bốn khối bắt buộc.",exists:"Mã đã tồn tại, không thêm nữa.",added:"Đã thêm ",
+ libH:"Thư viện vật tư",libS:"Một thứ có đúng một mã. Mã đã cấp thì không sửa và không dùng lại — muốn bỏ thì đánh dấu ngừng dùng.",
+ qPlace:"Tìm mã, tên, mã cũ…",btnCsv:"⭳ Xuất CSV",allCls:"— Tất cả lớp —",allBrand:"— Tất cả hãng —",
+ libCols:["Mã","Vai trò","Lớp · Họ","Hãng","Series","Cỡ","Tên gọi","Mã cũ",""],
+ libEmpty:"Chưa có mã nào. Sang tab <b>Sinh mã</b> để tạo, hoặc <b>Chuyển mã cũ</b> để nhận từ dữ liệu cũ.",
+ kTotal:"Tổng mã",kAsm:"Cụm lắp",kProj:"Dự án",kSerOk:"Series đã chốt",kSerTodo:"Series cần duyệt",
+ stop:"Ngừng",codes:" mã",
+ decH:"Giải mã",decS:"Dán một mã bất kỳ — vật tư, cụm lắp hay dự án — để đọc ra nghĩa từng khối.",
+ fDec:"Mã cần giải",exPart:"Ví dụ vật tư",exAsm:"Ví dụ cụm lắp",exDoc:"Ví dụ tài liệu dự án",
+ decCols:["Khối","Giá trị","Nghĩa"],decKnown:"Đã có trong thư viện: ",decUnknown:"Chưa có trong thư viện.",
+ decFail:"<b>Không đọc được.</b><div class='hint'>Mã vật tư có dạng <code>01JW-KTR-ROTX-0042</code>; mã dự án có dạng <code>DP26001</code>. Nếu đây là mã cũ, dùng tab <b>Chuyển mã cũ</b>.</div>",
+ dRole:"Vai trò",dCls:"Lớp",dFam:"Họ",dBrand:"Hãng",dSer:"Series",dSize:"Cỡ",dChild:"Chi tiết con",dVar:"Biến thể",dRev:"Phiên bản",
+ dNoSer:"chưa có trong danh mục",dSizeN:"cỡ danh nghĩa ",dEnt:"Chủ thể",dJob:"Loại job",dYear:"Năm",dSeqN:"Số chạy",
+ dDocT:"Loại tài liệu",dDocN:"Số bản",dProjN:"dự án thứ {n} của năm",dDocNv:"bản thứ {n}",dIssue:"năm phát hành",dDocOk:"tài liệu dự án",dDocBad:"loại chưa khai báo",
+ asmH:"Cụm lắp",asmS:"Hãng của cụm luôn là DHP. Họ lấy tự động theo thang ưu tiên từ các chi tiết trong BOM — không phải chọn tay.",
+ fKey:"Mã cụm (4 ký tự)",fSeq:"Số chạy",fAsmName:"Tên cụm",fProj:"Dự án",btnBom:"+ Thêm vào BOM",btnSaveAsm:"+ Lưu cụm vào thư viện",
+ bomCols:["Mã","Họ","Tên","SL",""],bomEmpty:"BOM trống",asmCols:["Mã cụm","Tên","Dự án","Số chi tiết",""],asmEmpty:"Chưa có cụm nào",
+ asmNeedBom:"Thêm chi tiết vào BOM để hệ thống chọn họ",asmNeedKey:"Điền mã cụm 4 ký tự và số chạy",
+ asmWhy:"Họ {f} — {n} · chọn tự động vì đứng hạng {r} trong thang ưu tiên, cao nhất trong {c} chi tiết",
+ asmDup:"Mã cụm này đã có.",noSku:"(thư viện chưa có chi tiết nào)",del:"Xoá",
+ projH:"Dự án & tài liệu",projS:"Theo hình dạng CE-N-01: chủ thể · loại job · năm · số chạy. Proposal, hợp đồng, spec, bản vẽ lắp đều treo vào mã dự án.",
+ fEnt:"Chủ thể",fJob:"Loại job",fYear:"Năm",fPSeq:"Số chạy",fPName:"Tên dự án",fClient:"Khách hàng",btnAddProj:"+ Thêm dự án",
+ projCols:["Mã","Tên","Khách","Tài liệu",""],projEmpty:"Chưa có dự án nào",projDup:"Mã dự án đã có.",projNeed:"Chưa đủ thông tin.",
+ projNote:"Mã tài liệu = <code>&lt;mã dự án&gt;-&lt;loại&gt;-&lt;số&gt;</code>, ví dụ <code>DP26014-ASB-03</code> là bản vẽ lắp số 3 của dự án An Viên.",
+ projExp:"{j} · năm 20{y} · số {s}",
+ catH:"Danh mục",catS:"Đây là chỗ làm việc nặng nhất: chốt mã 4 ký tự và gán lớp · họ cho từng series. Hàng nào còn mức thấp là hàng máy đoán, cần người xác nhận.",
+ cqPlace:"Tìm series, hãng…",allConf:"— Tất cả mức tin cậy —",cLow:"Chỉ mức thấp",cMid:"Chỉ mức vừa",cHigh:"Chỉ mức cao",
+ serCols:["Hãng","Series theo catalogue","Mã 4 ký tự","Lớp","Họ","Tin cậy","Nhóm cũ"],
+ catNote:"Sửa trực tiếp trong bảng. Đổi mã hoặc gán lại lớp/họ sẽ tự nâng mức tin cậy lên <b>đã duyệt</b> vì đã có người xác nhận.",
+ kSerAll:"Tổng series",kOk:"Đã chốt",kMid:"Cần xem",kLow:"Máy đoán",kBrands:"Hãng",
+ confOk:"đã duyệt",confMid:"cần xem",confLow:"máy đoán",noRow:"Không có dòng nào khớp",
+ migH:"Chuyển mã cũ sang v4",migS:"Dán mã cũ, mỗi dòng một mã. Máy tách được vai trò, hãng và cỡ; lớp và họ thì phải đoán vì dữ liệu cũ không có thông tin đó — nên mọi dòng đều cần người duyệt trước khi nhận.",
+ fOld:"Mã cũ",btnMig:"Phân tích",migHint:"Không có gì bị ghi vào thư viện cho tới khi anh bấm nhận từng dòng.",
+ migCols:["Mã cũ","Vai trò","Lớp","Họ","Hãng","Series","Cỡ","Mã v4 đề xuất","Tin cậy","Vì sao",""],
+ migK:["Tổng dòng","Đủ tự tin","Cần xác nhận","Phải làm tay"],
+ migMiss:"thiếu khối",migDup:"trùng",accept:"Nhận",migNeed:"Còn thiếu khối, điền nốt rồi bấm Nhận.",
+ migAdded:"Đã nhận ",migInLib:" đã có trong thư viện.",
+ saved:" · đã lưu",unsaved:"⚠ chưa lưu được — hãy Xuất JSON",
+ impBad:"File không đúng định dạng.",impOk:"Đã nhập {n} mã.",
+ wRole:"vai trò từ tiền tố",wCk:"CK368 → DHP chế tạo",wBrand:"hãng ",wSize:"cỡ lấy số cuối",wSer:"khớp series ",
+ wkDisc:"từ khoá đĩa",wkGear:"từ khoá răng",wkBolt:"từ khoá bu lông",wkPul:"từ khoá puly",wkBush:"từ khoá ống lót côn",wkLock:"từ khoá khoá trục",
+ stActive:"Đang dùng",stStopped:"Ngừng dùng"},
+en:{tagline:"Dai Hong Phat part numbering",btnExport:"⭳ Export JSON",btnImport:"⭱ Import JSON",
+ tabs:["New code","Library","Decode","Assembly","Project","Vocabulary","Legacy codes"],
+ buildH:"Create a part number",buildS:"All four blocks are closed lists — pick, never type freely. The code appears as soon as the four blocks are filled.",
+ fRole:"Role",fCls:"Product class",fFam:"Family (construction)",fBrand:"Brand",fSer:"Series",fSize:"Nominal size",
+ fChild:"Component",fVar:"Variant",fRev:"Revision",fStatus:"Status",fName:"Description",fAlias:"Legacy code / alias",
+ btnAdd:"+ Add to library",btnClear:"Clear form",
+ pvEmpty:"Pick role, class, family, brand, series and size",pvDup:"⚠ This code already exists",pvOk:"✓ Code is free — safe to use",
+ varDefault:"The <b>variant</b> field changes meaning with the component: hub is bore diameter (<code>048</code>), element is Shore hardness (<code>92A</code>), sleeve is shaft separation DBSE.",
+ varWith:"For component <b>{c}</b>, the <b>variant</b> field means <b>{m}</b>.",
+ needBlocks:"The four required blocks are not complete.",exists:"Code already exists — not added.",added:"Added ",
+ libH:"Part library",libS:"One thing, one code. An issued code is never edited or reused — retire it instead.",
+ qPlace:"Search code, description, legacy…",btnCsv:"⭳ Export CSV",allCls:"— All classes —",allBrand:"— All brands —",
+ libCols:["Code","Role","Class · Family","Brand","Series","Size","Description","Legacy",""],
+ libEmpty:"No codes yet. Go to <b>New code</b> to create one, or <b>Legacy codes</b> to convert existing data.",
+ kTotal:"Total codes",kAsm:"Assemblies",kProj:"Projects",kSerOk:"Series confirmed",kSerTodo:"Series to review",
+ stop:"Retire",codes:" codes",
+ decH:"Decode",decS:"Paste any code — part, assembly or project — to read each block.",
+ fDec:"Code to decode",exPart:"Part example",exAsm:"Assembly example",exDoc:"Project document example",
+ decCols:["Block","Value","Meaning"],decKnown:"In library: ",decUnknown:"Not in the library yet.",
+ decFail:"<b>Cannot read this code.</b><div class='hint'>A part code looks like <code>01JW-KTR-ROTX-0042</code>; a project code like <code>DP26001</code>. For an old code, use the <b>Legacy codes</b> tab.</div>",
+ dRole:"Role",dCls:"Class",dFam:"Family",dBrand:"Brand",dSer:"Series",dSize:"Size",dChild:"Component",dVar:"Variant",dRev:"Revision",
+ dNoSer:"not in the vocabulary yet",dSizeN:"nominal size ",dEnt:"Issuer",dJob:"Job type",dYear:"Year",dSeqN:"Sequence",
+ dDocT:"Document type",dDocN:"Sheet",dProjN:"project no. {n} of the year",dDocNv:"sheet {n}",dIssue:"year of issue",dDocOk:"project document",dDocBad:"type not declared",
+ asmH:"Assemblies",asmS:"The brand of an assembly is always DHP. The family is derived from the BOM through the priority ladder — never picked by hand.",
+ fKey:"Assembly key (4 chars)",fSeq:"Sequence",fAsmName:"Assembly name",fProj:"Project",btnBom:"+ Add to BOM",btnSaveAsm:"+ Save assembly",
+ bomCols:["Code","Family","Description","Qty",""],bomEmpty:"BOM is empty",asmCols:["Assembly code","Name","Project","Items",""],asmEmpty:"No assemblies yet",
+ asmNeedBom:"Add parts to the BOM so the family can be derived",asmNeedKey:"Enter the 4-character key and sequence",
+ asmWhy:"Family {f} — {n} · derived automatically: rank {r} on the priority ladder, highest among {c} parts",
+ asmDup:"That assembly code already exists.",noSku:"(no parts in the library yet)",del:"Delete",
+ projH:"Projects & documents",projS:"Same shape as CE-N-01: issuer · job type · year · sequence. Proposal, contract, spec and assembly drawings all hang off the project code.",
+ fEnt:"Issuer",fJob:"Job type",fYear:"Year",fPSeq:"Sequence",fPName:"Project name",fClient:"Client",btnAddProj:"+ Add project",
+ projCols:["Code","Name","Client","Documents",""],projEmpty:"No projects yet",projDup:"That project code already exists.",projNeed:"Not enough information.",
+ projNote:"Document code = <code>&lt;project&gt;-&lt;type&gt;-&lt;no.&gt;</code>, e.g. <code>DP26014-ASB-03</code> is assembly drawing 3 of the An Vien project.",
+ projExp:"{j} · year 20{y} · no. {s}",
+ catH:"Vocabulary",catS:"This is the heavy work: fix the 4-character code and assign class · family for every series. Rows still marked low were guessed by the machine and need a human.",
+ cqPlace:"Search series, brand…",allConf:"— All confidence levels —",cLow:"Low only",cMid:"Medium only",cHigh:"High only",
+ serCols:["Brand","Series in catalogue","4-char code","Class","Family","Confidence","Legacy group"],
+ catNote:"Edit directly in the table. Changing the code or reassigning class/family raises confidence to <b>confirmed</b>, because a person has now checked it.",
+ kSerAll:"Total series",kOk:"Confirmed",kMid:"To review",kLow:"Guessed",kBrands:"Brands",
+ confOk:"confirmed",confMid:"to review",confLow:"guessed",noRow:"No matching rows",
+ migH:"Convert legacy codes to v4",migS:"Paste old codes, one per line. Role, brand and size can be extracted; class and family have to be guessed because the old data never held them — so every row needs a human before it is accepted.",
+ fOld:"Legacy codes",btnMig:"Analyse",migHint:"Nothing enters the library until you accept a row.",
+ migCols:["Legacy code","Role","Class","Family","Brand","Series","Size","Proposed v4 code","Confidence","Why",""],
+ migK:["Rows","Confident","Needs check","Manual"],
+ migMiss:"blocks missing",migDup:"duplicate",accept:"Accept",migNeed:"Blocks still missing — fill them in, then Accept.",
+ migAdded:"Accepted ",migInLib:" already exists in the library.",
+ saved:" · saved",unsaved:"⚠ could not save — please Export JSON",
+ impBad:"File format not recognised.",impOk:"Imported {n} codes.",
+ wRole:"role from prefix",wCk:"CK368 → made by DHP",wBrand:"brand ",wSize:"size = last number",wSer:"series match ",
+ wkDisc:"keyword: disc",wkGear:"keyword: gear",wkBolt:"keyword: bolt",wkPul:"keyword: pulley",wkBush:"keyword: taper bush",wkLock:"keyword: locking device",
+ stActive:"Active",stStopped:"Retired"}};
+
+let LANG=(function(){try{return localStorage.getItem("dhp_lang")==="en"?"en":"vi"}catch(e){return "vi"}})();
+const t=(k)=>L[LANG][k];
+const fmt=(s,o)=>Object.keys(o).reduce((a,k)=>a.replace("{"+k+"}",o[k]),s);
+
+/* ---------- danh mục song ngữ ---------- */
+const ROLES=[["0","Mua catalogue (OEM)","Catalogue purchase (OEM)"],["1","Gia công lại từ hàng catalogue","Re-machined catalogue item"],
+ ["2","Vật tư & phôi","Raw material & blanks"],["3","Phụ tùng lẻ bán rời","Spare part, sold loose"],
+ ["4","DHP chế tạo / hàn","Made / welded by DHP"],["5","Chi tiết riêng cho dự án","Project-specific, bespoke"],
+ ["6","Tài liệu","Document"],["7","Dụng cụ & đồ gá","Tooling & fixtures"],
+ ["8","Cụm lắp & combo","Assembly & kit"],["9","Dịch vụ","Service"]];
+const CLASSES=[["1","Khớp nối trục","Shaft coupling"],["2","Khoá trục & liên kết ma sát","Shaft locking & friction fits"],
+ ["3","Truyền động đai & xích","Belt & chain drive"],["4","Phanh & ly hợp","Brake & clutch"],
+ ["5","Thuỷ lực & làm mát","Hydraulics & cooling"],["6","Băng tải & xử lý vật liệu","Conveyor & material handling"],
+ ["7","Hộp số & động cơ","Gearbox & motor"],["8","Vòng bi, phớt, chi tiết máy","Bearing, seal & machine parts"],
+ ["9","Vật tư phụ & khác","Hardware & misc"]];
+const FAMS={
+ "1":[["JW","Jaw / spider — vấu & đệm sao","Jaw / spider"],["PB","Pin & bush — chốt–đệm","Pin & bush"],
+      ["GR","Gear — răng","Gear / curved-tooth"],["DS","Disc / laminae — đĩa, lá thép","Disc / laminae"],
+      ["GD","Grid — lưới thép","Grid"],["TY","Tyre — lốp, cao su mềm","Tyre / highly flexible"],
+      ["CH","Chain — xích","Chain"],["UJ","Universal joint — các đăng","Universal joint / cardan"],
+      ["BW","Bellows / beam — không rơ","Bellows / beam, backlash-free"],["RG","Rigid / flange — cứng, bích","Rigid / flange"],
+      ["MG","Magnetic — từ","Magnetic"],["TL","Torque limiter — hạn moment","Torque limiter"],
+      ["FL","Fluid coupling — thuỷ lực","Fluid coupling"]],
+ "2":[["LD","Khoá trục","Locking device"],["TB","Ống lót côn","Taper bush"],["SD","Vòng ép","Shrink disc"],["CS","Bạc kẹp","Clamping set"]],
+ "3":[["PU","Puly đai","Pulley / sheave"],["SP","Nhông","Sprocket"],["CN","Xích","Chain"],["BT","Dây curoa","Belt"]],
+ "4":[["CA","Cùm phanh đĩa","Caliper"],["BD","Đĩa phanh","Brake disc"],["DR","Phanh tang trống","Drum brake"],
+      ["PD","Má, guốc phanh","Pad / shoe"],["TH","Bộ đẩy","Thruster"],["HP","Bộ nguồn thuỷ lực phanh","Hydraulic power unit"],
+      ["CL","Ly hợp","Clutch"],["AC","Phụ kiện phanh","Brake accessory"]],
+ "5":[["FC","Phụ kiện khớp thuỷ lực","Fluid coupling accessory"],["OC","Làm mát dầu","Oil cooler"],["PA","Phụ kiện bơm","Pump accessory"]],
+ "6":[["PU","Puly băng tải","Conveyor pulley"],["ID","Con lăn","Idler"],["RL","Trục lăn","Roller"],["AC","Phụ kiện băng tải","Conveyor accessory"]],
+ "7":[["GB","Hộp số","Gearbox"],["MT","Động cơ","Motor"]],
+ "8":[["BR","Vòng bi","Bearing"],["SL","Phớt","Seal"],["BS","Chống quay ngược","Backstop"],["OR","O-ring","O-ring"]],
+ "9":[["FS","Bu lông, ốc","Fastener"],["MT","Vật tư","Material"],["MS","Khác","Misc"]]};
+const CHILD=[["","— (sản phẩm nguyên bộ) —","— (complete product) —"],["A","Cụm hoàn chỉnh","Complete assembly"],
+ ["H","Moay-ơ / bán khớp","Hub / coupling half"],["S","Vỏ, ống trung gian","Sleeve / spacer tube"],
+ ["E","Đệm đàn hồi, cao su","Elastomer element"],["D","Bộ lá thép / màng","Disc pack / membrane"],
+ ["G","Vành răng","Gear rim"],["B","Bộ bu lông","Bolt kit"],["P","Tấm, spacer","Plate / spacer"],
+ ["C","Nắp, phớt","Cover / seal"],["K","Then","Key"]];
+const VARMEAN={H:["đường kính lỗ, mm","bore diameter, mm"],E:["độ cứng Shore","Shore hardness"],
+ D:["số lá + vật liệu","number of laminae + material"],S:["khoảng cách đầu trục DBSE","shaft separation DBSE"],
+ G:["số răng","number of teeth"],B:["cấp bền","property class"],P:["chiều dày, mm","thickness, mm"],K:["cỡ then","key size"]};
+const JOBTYPE=[["P","Dự án chế tạo","Manufacturing project"],["Q","Báo giá / chào thầu","Quotation / tender"],
+ ["S","Dịch vụ","Service"],["R","Sửa chữa","Repair"],["T","Thương mại","Trading"],["I","Nội bộ / đầu tư","Internal / capex"]];
+const DOCTYPE=["PRO","QUO","CTR","SPE","CAL","ASB","DTL","BOM","QCP","MAN","DEL"];
+const LADDER=["FL","UJ","TL","GR","DS","GD","PB","JW","TY","RG"];
+const li=()=>LANG==="vi"?1:2;
+
+/* ---------- lưu trữ ---------- */
+const KEY="dhp_code_v4";
+let DB=null, dirty=false;
+const $=id=>document.getElementById(id);
+function blank(){return{meta:{ver:4,updated:new Date().toISOString()},
+  brands:Object.entries(SEED.brands).map(([c,n])=>({code:c,name:n}))
+        .concat([{code:"DHP",name:"Đại Hồng Phát"},{code:"OEM",name:"Chưa rõ hãng / Unknown brand"}]),
+  series:SEED.series.map((x,i)=>({id:i+1,brand:x.b,name:x.s,code:x.c,cls:x.cl,fam:x.fa,conf:x.tc,old:x.nh})),
+  skus:[],asm:[],proj:[]};}
+function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);return}}catch(e){} DB=blank();}
+function save(){DB.meta.updated=new Date().toISOString();
+  try{localStorage.setItem(KEY,JSON.stringify(DB));dirty=false}catch(e){dirty=true} stat();}
+function stat(){const s=$("stat");
+  if(dirty){s.className="badge dirty";s.textContent=t("unsaved");}
+  else{s.className="badge ok";s.textContent=DB.skus.length+t("codes")+t("saved");}}
+addEventListener("pagehide",()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}});
+addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
+
+/* ---------- tiện ích ---------- */
+function opt(sel,arr,val,ph){sel.innerHTML=(ph?`<option value="">${ph}</option>`:"")+
+  arr.map(a=>`<option value="${a[0]}">${a[0]?a[0]+" — ":""}${a[1]}</option>`).join("");
+  if(val!==undefined)sel.value=val;}
+function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function pad(v,n){v=String(v||"").replace(/[^0-9]/g,"");return v?v.padStart(n,"0").slice(-n):""}
+function nm(list,code){const f=list.find(x=>x[0]===code);return f?(f[li()]||f[1]):code}
+function brandName(c){const b=DB.brands.find(x=>x.code===c);return b?b.name:c}
+function head(id,cols){$(id).innerHTML=cols.map(c=>`<th>${esc(c)}</th>`).join("")}
+function toggleTheme(){const r=document.documentElement;
+  const cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  r.setAttribute("data-theme",cur==="dark"?"light":"dark");}
+
+/* ---------- ngôn ngữ ---------- */
+function setLang(l){
+  LANG=l; try{localStorage.setItem("dhp_lang",l)}catch(e){}
+  document.documentElement.lang=l; applyLang();
+}
+function applyLang(){
+  $("lvi").classList.toggle("on",LANG==="vi"); $("len").classList.toggle("on",LANG==="en");
+  document.querySelectorAll("[data-i]").forEach(el=>{
+    const v=t(el.dataset.i); if(v!==undefined) el.innerHTML=v;});
+  $("tabs").innerHTML=TABS.map((id,i)=>
+    `<button class="tab" data-t="${id}">${t("tabs")[i]}</button>`).join("");
+  document.querySelector(`.tab[data-t="${CURTAB}"]`).classList.add("on");
+  $("q").placeholder=t("qPlace"); $("cq").placeholder=t("cqPlace");
+  $("b_name").placeholder=LANG==="vi"?"Khớp nối ROTEX 42, moay-ơ lỗ Ø48":"ROTEX 42 coupling, hub bore Ø48";
+  $("a_name").placeholder=LANG==="vi"?"Cụm cardan tích hợp khớp mềm":"Cardan assembly with flexible element";
+  opt($("b_status"),[["",t("stActive")],["",t("stStopped")]].map((x,i)=>[i===0?t("stActive"):t("stStopped"),""]));
+  $("b_status").innerHTML=`<option>${t("stActive")}</option><option>${t("stStopped")}</option>`;
+  opt($("cConf"),[["thap",t("cLow")],["vua",t("cMid")],["cao",t("cHigh")]],$("cConf").value,t("allConf"));
+  initSelects(true);
+  head("libHead",t("libCols")); head("bomHead",t("bomCols")); head("asmHead",t("asmCols"));
+  head("projHead",t("projCols")); head("serHead",t("serCols"));
+  upd(); updAsm(); updProj(); renderBom(); stat();
+  if(CURTAB==="lib")renderLib(); if(CURTAB==="cat")renderSeries();
+  if(CURTAB==="asm")renderAsm(); if(CURTAB==="proj")renderProj();
+  if(CURTAB==="dec")decode();
+}
+
+/* ---------- tabs ---------- */
+const TABS=["build","lib","dec","asm","proj","cat","mig"];
+let CURTAB="build";
+function initTabs(){$("tabs").onclick=e=>{const b=e.target.closest(".tab");if(b)go(b.dataset.t)}}
+function go(id){CURTAB=id;
+  document.querySelectorAll(".tab").forEach(t2=>t2.classList.toggle("on",t2.dataset.t===id));
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+id));
+  if(id==="lib")renderLib(); if(id==="cat")renderSeries(); if(id==="asm")renderAsm(); if(id==="proj")renderProj();
+  scrollTo(0,0);}
+
+/* ---------- sinh mã ---------- */
+function famList(){opt($("b_fam"),(FAMS[$("b_cls").value]||[]).map(f=>[f[0],f[li()]]),undefined,"—")}
+function serList(){const b=$("b_brand").value;
+  const list=DB.series.filter(s=>s.brand===b).sort((a,c)=>a.name.localeCompare(c.name));
+  opt($("b_ser"),list.map(s=>[s.code,s.name]),undefined,"—");}
+function curCode(){
+  const r=$("b_role").value,c=$("b_cls").value,f=$("b_fam").value,b=$("b_brand").value,
+        s=$("b_ser").value,z=pad($("b_size").value,4);
+  if(!(r&&c&&f&&b&&s&&z))return null;
+  let code=`${r}${c}${f}-${b}-${s}-${z}`;
+  const ch=$("b_child").value,v=($("b_var").value||"").toUpperCase().trim(),rev=($("b_rev").value||"").toUpperCase().trim();
+  if(ch)code+="-"+ch; if(ch&&v)code+="/"+v; if(rev)code+="."+rev;
+  return code;}
+function upd(){
+  const code=curCode(),ch=$("b_child").value;
+  $("varHint").innerHTML=ch&&VARMEAN[ch]?fmt(t("varWith"),{c:ch,m:VARMEAN[ch][li()-1]}):t("varDefault");
+  if(!code){$("pvCode").textContent="— — — —";$("pvExp").textContent=t("pvEmpty");$("pvSt").textContent="";return}
+  $("pvCode").innerHTML=esc(code).replace(/-/g,'<span class="g">-</span>');
+  $("pvExp").textContent=[nm(ROLES,$("b_role").value),nm(CLASSES,$("b_cls").value),
+    nm(FAMS[$("b_cls").value]||[],$("b_fam").value),brandName($("b_brand").value),
+    $("b_ser").selectedOptions[0].textContent.replace(/^.*— /,""),
+    t("dSize")+" "+pad($("b_size").value,4)].join(" · ");
+  const st=$("pvSt"),dup=DB.skus.some(s=>s.code===code);
+  st.className=dup?"st bad":"st ok"; st.textContent=dup?t("pvDup"):t("pvOk");}
+function addSku(){
+  const code=curCode();
+  if(!code){$("b_hint").textContent=t("needBlocks");return}
+  if(DB.skus.some(s=>s.code===code)){$("b_hint").textContent=t("exists");return}
+  DB.skus.push({code,role:$("b_role").value,cls:$("b_cls").value,fam:$("b_fam").value,brand:$("b_brand").value,
+    ser:$("b_ser").value,size:pad($("b_size").value,4),child:$("b_child").value,
+    vari:($("b_var").value||"").toUpperCase().trim(),rev:($("b_rev").value||"").toUpperCase().trim(),
+    name:$("b_name").value.trim(),alias:$("b_alias").value.trim(),status:$("b_status").value,
+    created:new Date().toISOString().slice(0,10)});
+  save();$("b_hint").textContent=t("added")+code;upd();fillAsmPick();}
+function clearBuild(){["b_size","b_var","b_rev","b_name","b_alias"].forEach(i=>$(i).value="");
+  $("b_child").value="";upd();$("b_hint").textContent="";}
+
+/* ---------- thư viện ---------- */
+function renderLib(){
+  const q=($("q").value||"").toLowerCase(),fc=$("fCls").value,fb=$("fBrand").value;
+  const rows=DB.skus.filter(s=>(!fc||s.cls===fc)&&(!fb||s.brand===fb)&&
+    (!q||[s.code,s.name,s.alias].join(" ").toLowerCase().includes(q)));
+  $("libCount").textContent=rows.length+" / "+DB.skus.length;
+  $("libBody").innerHTML=rows.length?rows.map(s=>`<tr>
+    <td class="c">${esc(s.code)}</td><td>${esc(nm(ROLES,s.role))}</td>
+    <td>${esc(nm(CLASSES,s.cls))} · ${esc(s.fam)}</td><td>${esc(s.brand)}</td>
+    <td class="mono">${esc(s.ser)}</td><td class="num">${esc(s.size)}</td>
+    <td>${esc(s.name)}</td><td class="mono" style="color:var(--ink-3)">${esc(s.alias)}</td>
+    <td><button class="btn sm" onclick="delSku('${esc(s.code)}')">${t("stop")}</button></td></tr>`).join("")
+    :`<tr><td colspan="9" class="empty">${t("libEmpty")}</td></tr>`;
+  $("libKpi").innerHTML=[[t("kTotal"),DB.skus.length],[t("kAsm"),DB.asm.length],[t("kProj"),DB.proj.length],
+    [t("kSerOk"),DB.series.filter(s=>s.conf==="cao").length],
+    [t("kSerTodo"),DB.series.filter(s=>s.conf!=="cao").length]]
+    .map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join("");}
+function delSku(code){const s=DB.skus.find(x=>x.code===code);if(s){s.status=t("stStopped");save();renderLib()}}
+function exportCsv(){
+  const h=t("libCols").slice(0,-1).concat(["Status"]);
+  const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';
+  const body=DB.skus.map(s=>[s.code,s.role,s.cls+s.fam,s.brand,s.ser,s.size,s.name,s.alias,s.status].map(q).join(","));
+  dl("﻿"+[h.map(q).join(",")].concat(body).join("\r\n"),"dhp-sku-v4.csv","text/csv");}
+
+/* ---------- giải mã ---------- */
+const RE_SKU=/^([0-9])([1-9])([A-Z]{2})-([A-Z0-9]{3})-([A-Z0-9]{2,4})-([0-9]{1,4})(?:-([A-Z]))?(?:\/([A-Z0-9]{2,3}))?(?:\.([A-Z0-9]{2,4}))?$/;
+const RE_PROJ=/^([A-Z])([A-Z])([0-9]{2})([0-9]{3})(?:-([A-Z]{3})-([0-9]{1,2}))?$/;
+function decSample(s){$("decIn").value=s;decode()}
+function tbl(v,rows,foot){return `<div class="card"><div style="font-family:var(--mono);font-size:22px;font-weight:600;margin-bottom:14px">${esc(v)}</div>
+  <div class="tbox" style="max-height:none"><table><thead><tr>${t("decCols").map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>
+  ${rows.map(x=>`<tr><td>${esc(x[0])}</td><td class="c">${esc(x[1])}</td><td>${esc(x[2])}</td></tr>`).join("")}
+  </tbody></table></div>${foot?`<div class="hint">${foot}</div>`:""}</div>`;}
+function decode(){
+  const v=($("decIn").value||"").trim().toUpperCase(),out=$("decOut");
+  if(!v){out.innerHTML="";return}
+  let m=v.match(RE_SKU);
+  if(m){const[,r,c,f,b,s,z,ch,va,rev]=m;
+    const rows=[[t("dRole"),r,nm(ROLES,r)],[t("dCls"),c,nm(CLASSES,c)],[t("dFam"),f,nm(FAMS[c]||[],f)],
+      [t("dBrand"),b,brandName(b)],[t("dSer"),s,(DB.series.find(x=>x.code===s&&x.brand===b)||{}).name||t("dNoSer")],
+      [t("dSize"),z,t("dSizeN")+parseInt(z,10)]];
+    if(ch)rows.push([t("dChild"),ch,nm(CHILD,ch)]);
+    if(va)rows.push([t("dVar"),va,(VARMEAN[ch]?VARMEAN[ch][li()-1]:t("dVar"))+" = "+va]);
+    if(rev)rows.push([t("dRev"),rev,"revision"]);
+    const k=DB.skus.find(x=>x.code===v);
+    out.innerHTML=tbl(v,rows,k?esc(t("decKnown")+(k.name||"—")):t("decUnknown"));return}
+  m=v.match(RE_PROJ);
+  if(m){const[,e,tp,y,q,dt,dn]=m;
+    const rows=[[t("dEnt"),e,e==="D"?"Đại Hồng Phát":"—"],[t("dJob"),tp,nm(JOBTYPE,tp)],
+      [t("dYear"),"20"+y,t("dIssue")],[t("dSeqN"),q,fmt(t("dProjN"),{n:parseInt(q,10)})]];
+    if(dt)rows.push([t("dDocT"),dt,DOCTYPE.includes(dt)?t("dDocOk"):t("dDocBad")]);
+    if(dn)rows.push([t("dDocN"),dn,fmt(t("dDocNv"),{n:parseInt(dn,10)})]);
+    out.innerHTML=tbl(v,rows,"");return}
+  out.innerHTML=`<div class="card">${t("decFail")}</div>`;}
+
+/* ---------- cụm lắp ---------- */
+let BOM=[];
+function fillAsmPick(){const list=DB.skus.filter(s=>s.role!=="8");
+  $("a_pick").innerHTML=list.length?list.map(s=>`<option value="${esc(s.code)}">${esc(s.code)} — ${esc(s.name||"")}</option>`).join("")
+    :`<option value="">${t("noSku")}</option>`;}
+function addBom(){const code=$("a_pick").value;if(!code)return;
+  const s=DB.skus.find(x=>x.code===code);if(!s)return;
+  BOM.push({code,fam:s.fam,name:s.name||"",qty:parseInt($("a_qty").value,10)||1});renderBom();updAsm();}
+function renderBom(){$("bomBody").innerHTML=BOM.length?BOM.map((b,i)=>`<tr><td class="c">${esc(b.code)}</td>
+  <td class="mono">${esc(b.fam)}</td><td>${esc(b.name)}</td><td class="num">${b.qty}</td>
+  <td><button class="btn sm" onclick="BOM.splice(${i},1);renderBom();updAsm()">${t("del")}</button></td></tr>`).join("")
+  :`<tr><td colspan="5" class="empty">${t("bomEmpty")}</td></tr>`;}
+function asmFam(){const fams=BOM.map(b=>b.fam);
+  for(const f of LADDER)if(fams.includes(f))return{fam:f,cls:"1"};
+  if(fams.length){const b=DB.skus.find(x=>x.code===BOM[0].code);return{fam:b.fam,cls:b.cls}}
+  return null;}
+function updAsm(){
+  const f=asmFam(),key=($("a_key").value||"").toUpperCase(),seq=pad($("a_seq").value,4);
+  if(!f||!key||!seq){$("aCode").textContent="— — — —";
+    $("aExp").textContent=BOM.length?t("asmNeedKey"):t("asmNeedBom");return}
+  const code=`8${f.cls}${f.fam}-DHP-${key}-${seq}`;
+  $("aCode").innerHTML=esc(code).replace(/-/g,'<span class="g">-</span>');
+  $("aExp").textContent=fmt(t("asmWhy"),{f:f.fam,n:nm(FAMS[f.cls]||[],f.fam),r:LADDER.indexOf(f.fam)+1,c:BOM.length});}
+function addAsm(){const f=asmFam(),key=($("a_key").value||"").toUpperCase(),seq=pad($("a_seq").value,4);
+  if(!f||!key||!seq)return;
+  const code=`8${f.cls}${f.fam}-DHP-${key}-${seq}`;
+  if(DB.asm.some(a=>a.code===code)){alert(t("asmDup"));return}
+  DB.asm.push({code,name:$("a_name").value.trim(),proj:$("a_proj").value.trim(),bom:BOM.slice()});
+  BOM=[];renderBom();updAsm();save();renderAsm();}
+function renderAsm(){fillAsmPick();
+  $("asmBody").innerHTML=DB.asm.length?DB.asm.map((a,i)=>`<tr><td class="c">${esc(a.code)}</td>
+    <td>${esc(a.name)}</td><td class="mono">${esc(a.proj)}</td><td class="num">${a.bom.length}</td>
+    <td><button class="btn sm" onclick="DB.asm.splice(${i},1);save();renderAsm()">${t("del")}</button></td></tr>`).join("")
+    :`<tr><td colspan="5" class="empty">${t("asmEmpty")}</td></tr>`;}
+
+/* ---------- dự án ---------- */
+function updProj(){const c=$("p_ent").value+$("p_type").value+pad($("p_year").value,2)+pad($("p_seq").value,3);
+  $("pCode").textContent=c;
+  $("pExp").textContent=fmt(t("projExp"),{j:nm(JOBTYPE,$("p_type").value),y:pad($("p_year").value,2),s:pad($("p_seq").value,3)});}
+function addProj(){const c=$("pCode").textContent;
+  if(c.length!==7){alert(t("projNeed"));return}
+  if(DB.proj.some(p=>p.code===c)){alert(t("projDup"));return}
+  DB.proj.push({code:c,name:$("p_name").value.trim(),client:$("p_client").value.trim(),docs:[]});save();renderProj();}
+function renderProj(){$("projBody").innerHTML=DB.proj.length?DB.proj.map((p,i)=>`<tr><td class="c">${esc(p.code)}</td>
+  <td>${esc(p.name)}</td><td>${esc(p.client)}</td>
+  <td class="mono" style="font-size:12px">${DOCTYPE.slice(0,5).map(d=>esc(p.code)+"-"+d).join(" · ")}…</td>
+  <td><button class="btn sm" onclick="DB.proj.splice(${i},1);save();renderProj()">${t("del")}</button></td></tr>`).join("")
+  :`<tr><td colspan="5" class="empty">${t("projEmpty")}</td></tr>`;}
+
+/* ---------- danh mục ---------- */
+function renderSeries(){
+  const q=($("cq").value||"").toLowerCase(),fb=$("cBrand").value,fc=$("cConf").value;
+  const rows=DB.series.filter(s=>(!fb||s.brand===fb)&&(!fc||s.conf===fc)&&
+    (!q||(s.name+" "+s.brand+" "+s.code).toLowerCase().includes(q)));
+  $("catCount").textContent=rows.length+" / "+DB.series.length;
+  const n=c=>DB.series.filter(s=>s.conf===c).length;
+  $("catKpi").innerHTML=[[t("kSerAll"),DB.series.length],[t("kOk"),n("cao")],[t("kMid"),n("vua")],
+    [t("kLow"),n("thap")],[t("kBrands"),DB.brands.length]]
+    .map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join("");
+  const lbl={cao:t("confOk"),vua:t("confMid"),thap:t("confLow")};
+  $("serBody").innerHTML=rows.map(s=>{const i=DB.series.indexOf(s);
+    return `<tr><td class="mono">${esc(s.brand)}</td><td>${esc(s.name)}</td>
+      <td><input value="${esc(s.code)}" maxlength="4" style="font-family:var(--mono);text-transform:uppercase" onchange="setSer(${i},'code',this.value)"></td>
+      <td><select onchange="setSer(${i},'cls',this.value)">${CLASSES.map(c=>`<option value="${c[0]}"${c[0]===s.cls?" selected":""}>${c[0]} ${c[li()]}</option>`).join("")}</select></td>
+      <td><select onchange="setSer(${i},'fam',this.value)">${(FAMS[s.cls]||[]).map(f=>`<option value="${f[0]}"${f[0]===s.fam?" selected":""}>${f[0]} — ${f[li()].split(" — ")[0]}</option>`).join("")}</select></td>
+      <td><span class="pill p-${s.conf}">${lbl[s.conf]}</span></td>
+      <td style="color:var(--ink-3);font-size:12.5px">${esc(s.old||"")}</td></tr>`}).join("")
+    ||`<tr><td colspan="7" class="empty">${t("noRow")}</td></tr>`;}
+function setSer(i,k,v){DB.series[i][k]=(k==="code")?v.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4):v;
+  DB.series[i].conf="cao";save();renderSeries();}
+
+/* ---------- chuyển mã cũ ---------- */
+const OLDROLE={"0":1,"1":1,"3":1,"4":1,"8":1};
+function guess(line){
+  const raw=line.trim();if(!raw)return null;
+  const r={old:raw,role:"",brand:"",size:"",ser:"",cls:"",fam:"",conf:0,why:[]};
+  let s=raw.toUpperCase();
+  const mp=s.match(/^([0-9])\./);
+  if(mp&&OLDROLE[mp[1]]){r.role=mp[1];r.conf+=25;r.why.push(t("wRole"));s=s.slice(2)}
+  else if(/^CK368/.test(s)){r.role="4";r.conf+=10;r.why.push(t("wCk"))}
+  const alias={WST:["WST","WESTCAR"],KTR:["KTR"],RGF:["RGF","RINGFEDER","RFN"],JAC:["JAC"],
+    FLD:["FLD","FLENDER"],DHP:["DHP","CK368"],MTN:["MTN","MARTIN"],CRM:["CRM","CROSS"],KBK:["KBK"]};
+  for(const b of DB.brands.map(x=>x.code).filter(c=>c!=="OEM")){
+    if((alias[b]||[b]).some(a=>s.includes(a))){r.brand=b;r.conf+=25;r.why.push(t("wBrand")+b);break}}
+  const nums=s.match(/\d{1,4}/g)||[];
+  if(nums.length){r.size=pad(nums[nums.length-1],4);r.conf+=15;r.why.push(t("wSize"))}
+  const hit=DB.series.find(x=>x.brand===r.brand&&s.includes(x.code));
+  if(hit){r.ser=hit.code;r.cls=hit.cls;r.fam=hit.fam;r.conf+=25;r.why.push(t("wSer")+hit.name)}
+  if(!r.cls){
+    if(/KNL|DIA|DISC/.test(s)){r.cls="1";r.fam="DS";r.conf+=8;r.why.push(t("wkDisc"))}
+    else if(/KNR|GEAR|RANG/.test(s)){r.cls="1";r.fam="GR";r.conf+=8;r.why.push(t("wkGear"))}
+    else if(/KNB|BULONG|BU_LONG/.test(s)){r.cls="9";r.fam="FS";r.conf+=8;r.why.push(t("wkBolt"))}
+    else if(/PLY|PULLEY|PULY/.test(s)){r.cls="3";r.fam="PU";r.conf+=8;r.why.push(t("wkPul"))}
+    else if(/TPB|BUSH|CON/.test(s)){r.cls="2";r.fam="TB";r.conf+=8;r.why.push(t("wkBush"))}
+    else if(/RFN|LOCK|KHOA/.test(s)){r.cls="2";r.fam="LD";r.conf+=8;r.why.push(t("wkLock"))}}
+  return r;}
+function runMig(){
+  const res=($("migIn").value||"").split("\n").filter(x=>x.trim()).map(guess).filter(Boolean);
+  const lvl=c=>c>=75?"cao":c>=45?"vua":"thap";
+  $("migOut").innerHTML=`<div class="kpi">${
+    [[t("migK")[0],res.length],[t("migK")[1],res.filter(r=>lvl(r.conf)==="cao").length],
+     [t("migK")[2],res.filter(r=>lvl(r.conf)==="vua").length],[t("migK")[3],res.filter(r=>lvl(r.conf)==="thap").length]]
+    .map(x=>`<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join("")}</div>
+    <div class="tbox" style="max-height:none"><table><thead><tr>${t("migCols").map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>
+    ${res.map((r,i)=>{
+      const full=(r.role&&r.cls&&r.fam&&r.brand&&r.ser&&r.size)?`${r.role}${r.cls}${r.fam}-${r.brand}-${r.ser}-${r.size}`:"";
+      const oi=` oninput="migLive(${i})"`;
+      return `<tr><td class="mono" style="color:var(--ink-3)">${esc(r.old)}</td>
+        <td><input id="m_role_${i}" value="${esc(r.role)}" maxlength="1" style="width:38px"${oi}></td>
+        <td><input id="m_cls_${i}" value="${esc(r.cls)}" maxlength="1" style="width:38px"${oi}></td>
+        <td><input id="m_fam_${i}" value="${esc(r.fam)}" maxlength="2" style="width:46px"${oi}></td>
+        <td><input id="m_brand_${i}" value="${esc(r.brand)}" maxlength="3" style="width:52px"${oi}></td>
+        <td><input id="m_ser_${i}" value="${esc(r.ser)}" maxlength="4" style="width:60px"${oi}></td>
+        <td><input id="m_size_${i}" value="${esc(r.size)}" maxlength="4" style="width:56px"${oi}></td>
+        <td class="c" id="m_out_${i}">${esc(full)||`<span style="color:var(--ink-3)">${t("migMiss")}</span>`}</td>
+        <td><span class="pill p-${lvl(r.conf)}">${r.conf}%</span></td>
+        <td style="font-size:12px;color:var(--ink-3)">${esc(r.why.join(" · "))}</td>
+        <td><button class="btn sm" onclick="acceptMig(${i},'${esc(r.old).replace(/'/g,"")}')">${t("accept")}</button></td></tr>`}).join("")}
+    </tbody></table></div>`;}
+function migLive(i){
+  const g=k=>($("m_"+k+"_"+i).value||"").toUpperCase().trim();
+  const role=g("role"),cls=g("cls"),fam=g("fam"),brand=g("brand"),ser=g("ser"),size=pad(g("size"),4);
+  const cell=$("m_out_"+i);if(!cell)return;
+  if(role&&cls&&fam&&brand&&ser&&size){const code=`${role}${cls}${fam}-${brand}-${ser}-${size}`;
+    cell.innerHTML=esc(code)+(DB.skus.some(s=>s.code===code)?` <span class="pill p-thap">${t("migDup")}</span>`:"");}
+  else cell.innerHTML=`<span style="color:var(--ink-3)">${t("migMiss")}</span>`;}
+function acceptMig(i,old){
+  const g=k=>($("m_"+k+"_"+i).value||"").toUpperCase().trim();
+  const role=g("role"),cls=g("cls"),fam=g("fam"),brand=g("brand"),ser=g("ser"),size=pad(g("size"),4);
+  if(!(role&&cls&&fam&&brand&&ser&&size)){alert(t("migNeed"));return}
+  const code=`${role}${cls}${fam}-${brand}-${ser}-${size}`;
+  if(DB.skus.some(s=>s.code===code)){alert(code+t("migInLib"));return}
+  DB.skus.push({code,role,cls,fam,brand,ser,size,child:"",vari:"",rev:"",name:"",alias:old,
+    status:t("stActive"),created:new Date().toISOString().slice(0,10)});
+  save();alert(t("migAdded")+code);}
+
+/* ---------- xuất / nhập ---------- */
+function dl(text,name,mime){const b=new Blob([text],{type:mime+";charset=utf-8"}),u=URL.createObjectURL(b),a=document.createElement("a");
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+function doExport(){dl(JSON.stringify(DB,null,1),"dhp-coding-v4-"+new Date().toISOString().slice(0,10)+".json","application/json")}
+function doImport(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.skus||!d.series)throw 0;
+    DB=d;save();applyLang();go("lib");alert(fmt(t("impOk"),{n:DB.skus.length}))}
+    catch(e){alert(t("impBad"))}};
+  r.readAsText(f);inp.value="";}
+
+/* ---------- khởi động ---------- */
+function initSelects(keep){
+  const k=keep?{r:$("b_role").value,c:$("b_cls").value,f:$("b_fam").value,b:$("b_brand").value,s:$("b_ser").value,
+                ch:$("b_child").value,pt:$("p_type").value,fc:$("fCls").value,fb:$("fBrand").value,cb:$("cBrand").value}:null;
+  opt($("b_role"),ROLES.map(r=>[r[0],r[li()]]),k?k.r:"0");
+  opt($("b_cls"),CLASSES.map(c=>[c[0],c[li()]]),k?k.c:"1"); famList(); if(k&&k.f)$("b_fam").value=k.f;
+  const bl=DB.brands.map(b=>[b.code,b.name]);
+  opt($("b_brand"),bl,k?k.b:"KTR"); serList(); if(k&&k.s)$("b_ser").value=k.s;
+  opt($("b_child"),CHILD.map(c=>[c[0],c[li()]]),k?k.ch:"");
+  opt($("fCls"),CLASSES.map(c=>[c[0],c[li()]]),k?k.fc:"",t("allCls"));
+  opt($("fBrand"),bl,k?k.fb:"",t("allBrand"));
+  opt($("cBrand"),bl,k?k.cb:"",t("allBrand"));
+  opt($("p_type"),JOBTYPE.map(j=>[j[0],j[li()]]),k?k.pt:"P");
+  if(!keep)$("p_seq").value="001";}
+load(); initTabs(); initSelects(false); applyLang();
+</script>
+</body>
+</html>

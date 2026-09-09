@@ -559,13 +559,15 @@ function gateCheck(){
       </div>
     </div>
     <div class="field" id="routingField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff;position:relative">
-      <label>🔧 G2 — Công đoạn (routing) <span class="muted small">— A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
+      <label>🔧 G2 — Công đoạn CHUNG của cả đơn <span class="muted small">— A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
       <div class="small muted" style="margin:-2px 0 6px">Đây là công đoạn của <b>cả đơn</b>. Nếu đã khai chi tiết con ở G1.5 thì công đoạn của từng chi tiết khai <b>trong ô chi tiết đó</b>, không khai lại ở đây.</div>
+      <div id="routingRole"></div>
       <div id="routingLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>G1: Kiểm tra đầu vào</b> (tick đủ 5 mục + chọn người kiểm + bấm <b>✅ Feedback OK</b>) mới mở chia công đoạn.</div>
       <div id="routingBody">
         <div id="ord_stages_list"></div>
         <div class="toolbar" style="margin-top:8px">
           <button type="button" class="ghost sm" onclick="addStage()">＋ Thêm công đoạn</button>
+          <button type="button" class="ghost sm" onclick="moveStagesToItem()" style="border-color:#6366F1;color:#4338ca;font-weight:700" title="Dời các công đoạn gia công đã lỡ khai ở đây xuống một chi tiết con, giữ lại công đoạn chung">⤵ Dời công đoạn gia công xuống chi tiết con</button>
           <button type="button" class="ghost sm" onclick="addStagesFromList()" style="border-color:#0EA5E9;color:#0369a1" title="Dán danh sách — mỗi dòng thành 1 hạng mục việc (hợp đơn nội bộ)">📋 Dán danh sách việc (mỗi dòng 1 hạng mục)</button>
           <select id="famRoutingSel" onchange="applyFamilyRouting(this.value)" style="border:1px solid #16A34A;color:#15803d;font-weight:700;border-radius:8px;padding:5px 8px;font-size:11.5px;max-width:290px" title="Nạp quy trình gia công + QC theo nhóm sản phẩm (số hóa catalogue)">
             <option value="">⚙ Nạp quy trình + QC theo NHÓM SP...</option>
@@ -2160,6 +2162,35 @@ function stageNeedsDim(s){ const base=String((s&&s.code)||'').replace(/\d+$/,'')
 // Đủ kích thước NẾU công đoạn cần đo; công đoạn hỗ trợ luôn coi là đủ.
 function stageDimOk(s){ return !stageNeedsDim(s) || stageHasFullDim(s); }
 function stagesMissingDim(){ return editingStages.filter(s=>stageNeedsDim(s) && !stageHasFullDim(s)); }
+/* ===== G1.5 ↔ G2: HAI CẤP, KHÔNG PHẢI HAI BẢN SAO (sửa 09-09-2026) =====
+   Công đoạn của CHI TIẾT (tiện hub, cắt dây...) nằm ở G1.5.
+   Công đoạn CHUNG của cả đơn (lắp ráp, cân bằng, QC tổng, đóng gói, xuất xưởng) nằm ở G2.
+   Trước đây mọi cổng chỉ đếm editingStages (G2) → đơn khai hết ở G1.5 bị KHOÁ QC vĩnh viễn
+   và không in được phiếu gia công. */
+const COMMON_STAGE_CODES=['J','V','K','N','X'];   // làm MỘT LẦN cho cả đơn, sau khi mọi chi tiết xong
+function isCommonStageCode(c){ return COMMON_STAGE_CODES.indexOf(_codeBase(c))>=0; }
+// Tất cả công đoạn đang soạn trong form: của đơn tổng + của mọi chi tiết con
+function formAllStages(){
+  const all=[];
+  (editingStages||[]).filter(Boolean).forEach(function(s){ all.push({s:s, it:''}); });
+  (editingItems||[]).filter(Boolean).forEach(function(it){
+    (it.stages||[]).filter(Boolean).forEach(function(s){ all.push({s:s, it:it.name||''}); });
+  });
+  return all;
+}
+// Mã công đoạn khai TRÙNG ở cả hai cấp → giờ bị cộng hai lần
+function duplicateStageCodes(){
+  const top={}, dup=[];
+  (editingStages||[]).filter(Boolean).forEach(function(s){ const k=_codeBase(s.code); if(k) top[k]=(s.name||''); });
+  const seen={};
+  (editingItems||[]).filter(Boolean).forEach(function(it){
+    (it.stages||[]).filter(Boolean).forEach(function(s){
+      const k=_codeBase(s.code);
+      if(k && top[k]!==undefined && !seen[k]){ seen[k]=1; dup.push({code:k, name:top[k]}); }
+    });
+  });
+  return dup;
+}
 function stageChecksHtml(s,i){
   const ck=s.checks||[];
   const rows = ck.map((c,ci)=>`<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px;flex-wrap:wrap">
@@ -2232,6 +2263,30 @@ function pickStagePreset(i, c){
   renderStagesEditor();
 }
 function g0LockGuard(){ if(!intakeApproved(collectG0())){ alert('🔒 BƯỚC G1 (Cổng kiểm tra đầu vào) CHƯA hoàn tất.\nTick đủ 5 mục + chọn người kiểm + bấm "✅ Feedback OK" trước khi chia công đoạn.'); return false; } return true; }
+// Dời công đoạn GIA CÔNG đã lỡ khai ở đơn tổng xuống một chi tiết con.
+// Giữ lại ở G2 các công đoạn CHUNG (lắp ráp, cân bằng, QC tổng, đóng gói, xuất xưởng).
+function moveStagesToItem(){
+  const items=(editingItems||[]).filter(function(it){return it && (it.name||'').trim();});
+  if(!items.length){ alert('Đơn chưa có chi tiết con.\nKhai ở G1.5 trước, rồi mới dời công đoạn xuống.'); return; }
+  const move=(editingStages||[]).filter(function(s){ return s && (s.code||s.name) && !isCommonStageCode(s.code); });
+  if(!move.length){ alert('Không có công đoạn gia công nào ở G2 để dời.\n(Các công đoạn chung như lắp ráp / QC tổng / đóng gói / xuất xưởng nên để lại ở đây.)'); return; }
+  let idx=0;
+  if(items.length>1){
+    const ans=prompt('Dời '+move.length+' công đoạn ('+move.map(function(s){return s.code||'?';}).join(', ')+') xuống chi tiết nào?\n\n'
+      + items.map(function(it,i){return (i+1)+'. '+it.name+' ('+((it.stages||[]).length)+' CĐ)';}).join('\n')
+      + '\n\nGõ số thứ tự:', '1');
+    if(ans===null) return;
+    idx=parseInt(ans,10)-1;
+    if(!(idx>=0 && idx<items.length)){ alert('Số không hợp lệ.'); return; }
+  } else {
+    if(!confirm('Dời '+move.length+' công đoạn ('+move.map(function(s){return s.code||'?';}).join(', ')+') từ G2 xuống chi tiết "'+items[0].name+'"?')) return;
+  }
+  const target=items[idx];
+  target.stages=(target.stages||[]).concat(move.map(function(s){ return Object.assign({}, s, {id:localId('IST')}); }));
+  editingStages=(editingStages||[]).filter(function(s){ return move.indexOf(s)<0; });
+  renderStagesEditor(); renderItemsEditor(); if(typeof updateFormGates==='function') updateFormGates();
+  alert('✓ Đã dời '+move.length+' công đoạn xuống "'+target.name+'".\nG2 giờ chỉ còn '+editingStages.length+' công đoạn chung.');
+}
 function addStage(){
   if(!g0LockGuard()) return;
   editingStages.push({id:localId('ST'), code:'', name:'', location:'', plannedDays:null, status:'pending', startDate:'', endDate:'', assignee:'', hours:null, otHours:null, checks:[], doneDate:'', note:''});
@@ -2512,8 +2567,16 @@ function applyFamilyRouting(fk){
   if(!fk) return;
   if(!isNonMfgOrder() && !g0LockGuard()){ const s=document.getElementById('famRoutingSel'); if(s)s.value=''; return; }
   const fam=ROUTING_FAM[fk]||ROUTING_FAM.general;
-  if(editingStages.length && !confirm('Thay chuỗi công đoạn bằng mẫu "'+fam.label+'" (kèm QC chuẩn)?')){ const s=document.getElementById('famRoutingSel'); if(s)s.value=''; return; }
-  editingStages = fam.tpl.map(([c,n])=>{ const s={id:localId('ST'),code:c,name:n,location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,checks:[],note:''};
+  // Đơn ĐÃ có chi tiết con → công đoạn gia công thuộc về từng chi tiết (G1.5).
+  // Ở đây chỉ nạp phần CHUNG, nếu không sẽ khai trùng và giờ bị cộng hai lần.
+  const hasItems=(editingItems||[]).filter(function(it){return it && (it.name||'').trim();}).length>0;
+  let tpl=fam.tpl;
+  if(hasItems){
+    tpl=fam.tpl.filter(function(t){ return isCommonStageCode(t[0]); });
+    if(!tpl.length) tpl=[['K','Nghiệm thu tổng'],['N','Đóng gói'],['X','Xuất xưởng']];
+    if(!confirm('Đơn này đã có chi tiết con ở G1.5.\n\nCông đoạn GIA CÔNG (tiện, phay, cắt dây...) thuộc về từng chi tiết — khai ở G1.5.\nỞ G2 chỉ nạp '+tpl.length+' công đoạn CHUNG: '+tpl.map(function(t){return t[0]+' '+t[1];}).join(' → ')+'\n\nĐồng ý?')){ const s=document.getElementById('famRoutingSel'); if(s)s.value=''; return; }
+  } else if(editingStages.length && !confirm('Thay chuỗi công đoạn bằng mẫu "'+fam.label+'" (kèm QC chuẩn)?')){ const s=document.getElementById('famRoutingSel'); if(s)s.value=''; return; }
+  editingStages = tpl.map(([c,n])=>{ const s={id:localId('ST'),code:c,name:n,location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,checks:[],note:''};
     if(c==='K') s.checks=QC_STD_CHECKLIST.map(x=>({param:x.param,spec:x.spec,tool:x.tool,actual1:'',actual2:'',pass:''}));
     return s; });
   renderStagesEditor();
@@ -2897,7 +2960,7 @@ function currentFormOrder(){
 }
 let _stageSheetPrinted=false;   // BẮT BUỘC in phiếu gia công mới cho qua QC
 function printStageSheetsFromForm(){
-  if(!editingStages.length){ alert('⛔ Chưa có công đoạn nào để in. Hãy thêm công đoạn ở G2.'); return; }
+  if(!formAllStages().length){ alert('⛔ Chưa có công đoạn nào để in.\nKhai ở G1.5 (công đoạn của từng chi tiết) hoặc ở G2 (công đoạn chung của cả đơn).'); return; }
   const noDim=stagesMissingDim();
   if(noDim.length){ alert('⛔ MỖI công đoạn phải có ÍT NHẤT 1 kích thước điền ĐỦ cả "Thông số" + "Yêu cầu/dung sai" (vd: Phay rãnh then = 12P9; Tiện Ø ngoài = Ø80→Ø50 ±0.05).\n\nThiếu ở: '+noDim.map(s=>(s.code||'')+' '+(s.name||'')).join(' · ')+'\n\nMở 📐 trong từng công đoạn để điền.'); return; }
   printAllStageSheets(currentFormOrder());
@@ -2983,8 +3046,10 @@ function updateFormGates(){
   rl.style.display = routingLocked?'block':'none';
   const rb=document.getElementById('routingBody'); if(rb){ rb.style.opacity=routingLocked?'.4':''; rb.style.pointerEvents=routingLocked?'none':'auto'; }
   // BƯỚC 3 (QC): mở khi ĐỦ 3 điều kiện — mọi công đoạn Xong + mọi công đoạn có kích thước + ĐÃ in phiếu gia công
-  const hasStages = editingStages.length>0;
-  const stagesDone = hasStages && editingStages.every(s=>String(s.status)==='done');
+  const _allSt = formAllStages();
+  const hasStages = _allSt.length>0;                                    // ĐẾM CẢ công đoạn của chi tiết con
+  const stagesDone = hasStages && _allSt.every(x=>String(x.s.status)==='done');
+  // Ô kích thước chỉ có ở công đoạn cấp đơn (chi tiết con chưa có giao diện nhập) → chỉ soát cấp đó
   const everyHasDim = hasStages && editingStages.every(stageDimOk);
   const printed = !!_stageSheetPrinted;
   const qcReady = stagesDone && everyHasDim && printed;
@@ -2995,11 +3060,33 @@ function updateFormGates(){
       (everyHasDim?'✅':'⬜')+' Mọi công đoạn có <b>kích thước đủ Thông số + dung sai</b> &nbsp;&nbsp; '+
       (printed?'✅':'⬜')+' Đã bấm <b>🖨 In phiếu gia công</b>'; }
   const qb=document.getElementById('qcBody'); if(qb){ qb.style.opacity=qcReady?'':'.4'; qb.style.pointerEvents=qcReady?'auto':'none'; }
+  renderRoutingRole();
   // Dự đoán ngày giao: TỰ TÍNH = ngày CUỐI của các công đoạn (sau khi điền xong công đoạn)
   const fc=document.getElementById('ord_forecast');
-  let last=''; (editingStages||[]).forEach(s=>{ if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last||e>last)) last=e; } });
+  let last=''; formAllStages().forEach(x=>{ const s=x.s; if(s&&s.startDate){ const e=stageEndDate(s); if(e&&(!last||e>last)) last=e; } });
   if(fc) fc.value=last||'';
   const fi=document.getElementById('ord_forecastInfo'); if(fi) fi.textContent = last?('📅 Dự kiến giao: '+fmtDate(last)):'📅 Dự kiến giao: (điền công đoạn)';
+}
+// Nói rõ G2 đang đóng vai trò gì, và cảnh báo khi khai TRÙNG với chi tiết con (giờ bị cộng 2 lần)
+function renderRoutingRole(){
+  const el=document.getElementById('routingRole'); if(!el) return;
+  const items=(editingItems||[]).filter(function(it){return it && (it.name||'').trim();});
+  if(!items.length){ el.innerHTML=''; return; }
+  let ih=0, ic=0;
+  items.forEach(function(it){ (it.stages||[]).filter(Boolean).forEach(function(s){ ih+=(stageHours(s)||0); ic++; }); });
+  const dup=duplicateStageCodes();
+  const th=(editingStages||[]).filter(Boolean).reduce(function(a,s){return a+(stageHours(s)||0);},0);
+  el.innerHTML=
+    '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#3730a3;margin-bottom:7px">'
+    +'▦ <b>'+items.length+' chi tiết con ở G1.5 đang giữ '+ic+' công đoạn · '+Math.round(ih)+'h</b>. '
+    +'Ở G2 chỉ khai <b>công đoạn CHUNG làm một lần cho cả đơn</b> — lắp ráp, cân bằng, nghiệm thu tổng, đóng gói, xuất xưởng. '
+    +'Hiện G2 có '+(editingStages||[]).length+' công đoạn · '+Math.round(th)+'h. <b>Tổng đơn: '+Math.round(ih+th)+'h.</b></div>'
+    +(dup.length
+      ? '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#991b1b;margin-bottom:7px">'
+        +'⚠ <b>Khai trùng '+dup.length+' công đoạn</b>: '+dup.map(function(d){return esc(d.code+' '+d.name);}).join(' · ')
+        +' — mã này có ở CẢ G2 lẫn chi tiết con, nên <b>giờ đang bị cộng hai lần</b>, kéo theo % và ngày dự kiến sai. '
+        +'Bấm <b>⤵ Dời công đoạn gia công xuống chi tiết con</b> hoặc xoá bớt một bên.</div>'
+      : '');
 }
 function updateG0Days(){
   const el=document.getElementById('ord_daysInfo'); if(!el) return;

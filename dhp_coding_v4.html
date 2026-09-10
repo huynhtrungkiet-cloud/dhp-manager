@@ -120,6 +120,7 @@ td input:focus,td select:focus{background:var(--surface);border-color:var(--rule
   <span class="spacer"></span>
   <span class="badge" id="stat">—</span>
   <div class="lang"><button id="lvi" onclick="setLang('vi')">VI</button><button id="len" onclick="setLang('en')">EN</button></div>
+  <button class="btn pri" onclick="saveNow()" data-i="btnSave"></button>
   <button class="btn" onclick="doExport()" data-i="btnExport"></button>
   <button class="btn" onclick="$('imp').click()" data-i="btnImport"></button>
   <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(this)">
@@ -255,6 +256,7 @@ td input:focus,td select:focus{background:var(--surface);border-color:var(--rule
     <input type="text" id="cq" oninput="renderSeries()">
     <select id="cBrand" onchange="renderSeries()"></select>
     <select id="cConf" onchange="renderSeries()"></select>
+    <button class="btn" onclick="normaliseNames()" data-i="btnToEN"></button>
     <span class="count" id="catCount"></span>
   </div>
   <div class="tbox"><table><thead><tr id="serHead"></tr></thead><tbody id="serBody"></tbody></table></div>
@@ -294,7 +296,7 @@ const SEED = {"brands": {"KTR": "KTR Germany", "RGF": "Ringfeder Germany", "RTH"
 
 /* ---------- từ điển giao diện ---------- */
 const L={
-vi:{tagline:"Chuẩn mã hoá Đại Hồng Phát",btnExport:"⭳ Xuất JSON",btnImport:"⭱ Nhập JSON",
+vi:{tagline:"Chuẩn mã hoá Đại Hồng Phát",btnSave:"💾 Lưu",btnToEN:"EN hoá tên series",savedAt:" · đã lưu {h}",saveOk:"Đã lưu vào máy này. Nhớ bấm Xuất JSON để có bản sao lưu ngoài trình duyệt.",catSkip:"bỏ qua {e} dòng không có Series",enDone:"Đã chuyển {n} tên series sang tiếng Anh.",colName:"Tên series (sửa được)",btnExport:"⭳ Xuất JSON",btnImport:"⭱ Nhập JSON",
  tabs:["Sinh mã","Thư viện","Giải mã","Cụm lắp","Dự án","Danh mục","Chuyển mã cũ"],
  buildH:"Sinh mã vật tư",buildS:"Bốn khối đều là danh mục đóng — chọn, không gõ tự do. Mã hiện ngay khi đủ bốn khối.",
  fRole:"Vai trò",fCls:"Lớp sản phẩm",fFam:"Họ (kết cấu)",fBrand:"Hãng",fSer:"Series",fSize:"Cỡ danh nghĩa",
@@ -330,14 +332,14 @@ vi:{tagline:"Chuẩn mã hoá Đại Hồng Phát",btnExport:"⭳ Xuất JSON",b
  projExp:"{j} · năm 20{y} · số {s}",
  catH:"Danh mục",catS:"Đây là chỗ làm việc nặng nhất: chốt mã 4 ký tự và gán lớp · họ cho từng series. Hàng nào còn mức thấp là hàng máy đoán, cần người xác nhận.",
  cqPlace:"Tìm series, hãng…",allConf:"— Tất cả mức tin cậy —",cLow:"Chỉ mức thấp",cMid:"Chỉ mức vừa",cHigh:"Chỉ mức cao",
- serCols:["Hãng","Series theo catalogue","Mã 4 ký tự","Lớp","Họ","Tin cậy","Biến thể","Mã cũ"],
+ serCols:["Hãng","Tên series (sửa được)","Mã 4 ký tự","Lớp","Họ","Tin cậy","Biến thể","Mã cũ"],
  catNote:"Sửa trực tiếp trong bảng. Đổi mã hoặc gán lại lớp/họ sẽ tự nâng mức tin cậy lên <b>đã duyệt</b> vì đã có người xác nhận.",
  kSerAll:"Tổng series",kOk:"Đã chốt",kMid:"Cần xem",kLow:"Máy đoán",kBrands:"Hãng",
  confOk:"đã duyệt",confMid:"cần xem",confLow:"máy đoán",noRow:"Không có dòng nào khớp",
  migH:"Chuyển mã cũ sang v4",migS:"Dán mã cũ, mỗi dòng một mã. Máy tách được vai trò, hãng và cỡ; lớp và họ thì phải đoán vì dữ liệu cũ không có thông tin đó — nên mọi dòng đều cần người duyệt trước khi nhận.",
  fOld:"Dán mã cũ",btnMig:"Phân tích",migHint:"Không có gì bị ghi vào thư viện cho tới khi anh bấm nhận.",
  btnCsvIn:"⭱ Nạp catalogue CSV của app cũ vào Danh mục",
- csvHint:"File CSV của v2.5 là <b>catalogue</b> chứ không phải danh sách part number — không có cột cỡ nên không dựng được mã v4 từ nó. Nạp vào đây để làm giàu <b>Danh mục series</b>: bổ sung series thiếu, ghi mã cũ làm bí danh và gom các biến thể theo tên.",catDone:"Đã nạp: {a} series mới, {b} series được bổ sung, {c} biến thể, {d} bí danh. Bỏ qua {e} dòng không phải sản phẩm.",
+ csvHint:"File CSV của v2.5 là <b>catalogue</b> chứ không phải danh sách part number — không có cột cỡ nên không dựng được mã v4 từ nó. Nạp vào đây để làm giàu <b>Danh mục series</b>: bổ sung series thiếu, ghi mã cũ làm bí danh và gom các biến thể theo tên.",catDone:"Đã nạp: {a} series mới, {b} series được bổ sung, {c} biến thể, {d} bí danh — {e}.",
  btnAcceptAll:"✓ Nhận tất cả dòng đủ khối",csvRead:"Đọc được {n} dòng từ CSV.",csvBad:"Không đọc được file CSV này.",
  bulkDone:"Đã nhận {n} mã. Bỏ qua {k} dòng chưa đủ khối hoặc trùng.",bulkNone:"Không có dòng nào đủ khối để nhận tự động.",
  wPrefix:"vai trò từ cột Prefix",wHangCol:"hãng từ cột Hãng",wSerCol:"series khớp danh mục",
@@ -351,7 +353,7 @@ vi:{tagline:"Chuẩn mã hoá Đại Hồng Phát",btnExport:"⭳ Xuất JSON",b
  wRole:"vai trò từ tiền tố",wCk:"CK368 → DHP chế tạo",wBrand:"hãng ",wSize:"cỡ lấy số cuối",wSer:"khớp series ",
  wkDisc:"từ khoá đĩa",wkGear:"từ khoá răng",wkBolt:"từ khoá bu lông",wkPul:"từ khoá puly",wkBush:"từ khoá ống lót côn",wkLock:"từ khoá khoá trục",
  stActive:"Đang dùng",stStopped:"Ngừng dùng"},
-en:{tagline:"Dai Hong Phat part numbering",btnExport:"⭳ Export JSON",btnImport:"⭱ Import JSON",
+en:{tagline:"Dai Hong Phat part numbering",btnSave:"💾 Save",btnToEN:"Normalise names to English",savedAt:" · saved {h}",saveOk:"Saved in this browser. Use Export JSON for a backup outside it.",catSkip:"skipped {e} rows with no Series",enDone:"Normalised {n} series names to English.",colName:"Series name (editable)",btnExport:"⭳ Export JSON",btnImport:"⭱ Import JSON",
  tabs:["New code","Library","Decode","Assembly","Project","Vocabulary","Legacy codes"],
  buildH:"Create a part number",buildS:"All four blocks are closed lists — pick, never type freely. The code appears as soon as the four blocks are filled.",
  fRole:"Role",fCls:"Product class",fFam:"Family (construction)",fBrand:"Brand",fSer:"Series",fSize:"Nominal size",
@@ -387,14 +389,14 @@ en:{tagline:"Dai Hong Phat part numbering",btnExport:"⭳ Export JSON",btnImport
  projExp:"{j} · year 20{y} · no. {s}",
  catH:"Vocabulary",catS:"This is the heavy work: fix the 4-character code and assign class · family for every series. Rows still marked low were guessed by the machine and need a human.",
  cqPlace:"Search series, brand…",allConf:"— All confidence levels —",cLow:"Low only",cMid:"Medium only",cHigh:"High only",
- serCols:["Brand","Series in catalogue","4-char code","Class","Family","Confidence","Executions","Legacy code"],
+ serCols:["Brand","Series name (editable)","4-char code","Class","Family","Confidence","Executions","Legacy code"],
  catNote:"Edit directly in the table. Changing the code or reassigning class/family raises confidence to <b>confirmed</b>, because a person has now checked it.",
  kSerAll:"Total series",kOk:"Confirmed",kMid:"To review",kLow:"Guessed",kBrands:"Brands",
  confOk:"confirmed",confMid:"to review",confLow:"guessed",noRow:"No matching rows",
  migH:"Convert legacy codes to v4",migS:"Paste old codes, one per line. Role, brand and size can be extracted; class and family have to be guessed because the old data never held them — so every row needs a human before it is accepted.",
  fOld:"Paste legacy codes",btnMig:"Analyse",migHint:"Nothing enters the library until you accept.",
  btnCsvIn:"⭱ Load the old catalogue CSV into the vocabulary",
- csvHint:"The v2.5 CSV is a <b>catalogue</b>, not a part-number list — it has no size column, so v4 codes cannot be built from it. Load it here to enrich the <b>series vocabulary</b> instead: add missing series, keep old codes as aliases and collect executions by name.",catDone:"Loaded: {a} new series, {b} series enriched, {c} executions, {d} aliases. Skipped {e} rows that are not products.",
+ csvHint:"The v2.5 CSV is a <b>catalogue</b>, not a part-number list — it has no size column, so v4 codes cannot be built from it. Load it here to enrich the <b>series vocabulary</b> instead: add missing series, keep old codes as aliases and collect executions by name.",catDone:"Loaded: {a} new series, {b} series enriched, {c} executions, {d} aliases — {e}.",
  btnAcceptAll:"✓ Accept every complete row",csvRead:"Read {n} rows from the CSV.",csvBad:"Could not read this CSV file.",
  bulkDone:"Accepted {n} codes. Skipped {k} rows with missing blocks or duplicates.",bulkNone:"No row has all four blocks yet.",
  wPrefix:"role from Prefix column",wHangCol:"brand from Hãng column",wSerCol:"series matched in vocabulary",
@@ -470,7 +472,8 @@ function save(){DB.meta.updated=new Date().toISOString();
   try{localStorage.setItem(KEY,JSON.stringify(DB));dirty=false}catch(e){dirty=true} stat();}
 function stat(){const s=$("stat");
   if(dirty){s.className="badge dirty";s.textContent=t("unsaved");}
-  else{s.className="badge ok";s.textContent=DB.skus.length+t("codes")+t("saved");}}
+  else{s.className="badge ok";
+    s.textContent=DB.skus.length+t("codes")+fmt(t("savedAt"),{h:new Date().toLocaleTimeString(LANG==="vi"?"vi-VN":"en-GB",{hour:"2-digit",minute:"2-digit"})});}}
 addEventListener("pagehide",()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}});
 addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
 
@@ -514,6 +517,29 @@ function applyLang(){
   if(CURTAB==="dec")decode();
 }
 
+/* ---------- chuan hoa ten sang tieng Anh ---------- */
+const VI2EN=[["cao su giam chan","Rubber damping element"],["cao su bao ve khop noi","Coupling guard rubber"],
+ ["bu long va dai oc","Bolt & nut set"],["bu long","Bolt"],["dai oc","Nut"],["long den venh","Spring washer"],
+ ["vong dem","Washer"],["khop noi rang","Gear coupling"],["khop noi dia","Disc coupling"],
+ ["khop noi thuy luc","Fluid coupling"],["khop noi mem","Flexible coupling"],["khop noi","Coupling"],
+ ["khoa truc","Locking device"],["ong lot con","Taper bush"],["dia giam chan","Damping disc"],
+ ["dia phanh","Brake disc"],["ma phanh","Brake pad"],["phanh","Brake"],["thang thuy luc","Hydraulic brake"],
+ ["ly hop","Clutch"],["hop so giam toc","Gear reducer"],["hop so","Gearbox"],["vong bi","Bearing"],
+ ["phot chan dau","Oil seal"],["phot","Seal"],["day curoa","Belt"],["nhong","Sprocket"],["xich","Chain"],
+ ["puly","Pulley"],["truc","Shaft"],["dia","Disc"],["thep","Steel"],["bo","Set"],["dung cho","for"]];
+function toEN(str){
+  let out=String(str||"").trim();
+  if(!/[ăâđêôơưàáảãạầấẩẫậằắẳẵặèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụỳýỷỹỵ]/i.test(out))return out;
+  const flat=noAcc(out);
+  for(const [vi,en] of VI2EN){ if(flat.indexOf(noAcc(vi))>=0){
+    const rest=out.replace(new RegExp(vi.split(" ").join("[\\s]*"),"iu"),"").trim();
+    out=(en+" "+rest).replace(/\s{2,}/g," ").trim(); break; } }
+  return out;}
+function normaliseNames(){
+  let n=0; DB.series.forEach(x=>{const v=toEN(x.name); if(v!==x.name){x.name=v;n++}});
+  save(); renderSeries(); alert(fmt(t("enDone"),{n:n}));}
+function saveNow(){ save(); alert(t("saveOk")); }
+
 /* ---------- tabs ---------- */
 const TABS=["build","lib","dec","asm","proj","cat","mig"];
 let CURTAB="build";
@@ -538,7 +564,7 @@ function curCode(){
   if(ch)code+="-"+ch; if(ch&&v)code+="/"+v; if(rev)code+="."+rev;
   return code;}
 function upd(){
-  const code=curCode(),ch=$("b_child").value;
+  const code=curCode(),ch=$("b_child").value; $("b_hint").textContent="";
   $("varHint").innerHTML=ch&&VARMEAN[ch]?fmt(t("varWith"),{c:ch,m:VARMEAN[ch][li()-1]}):t("varDefault");
   if(!code){$("pvCode").textContent="— — — —";$("pvExp").textContent=t("pvEmpty");$("pvSt").textContent="";return}
   $("pvCode").innerHTML=esc(code).replace(/-/g,'<span class="g">-</span>');
@@ -678,8 +704,8 @@ function renderSeries(){
   $("serBody").innerHTML=rows.map(s=>{const i=DB.series.indexOf(s);
     return `<tr><td class="mono">${esc(s.brand)}</td><td>${esc(s.name)}</td>
       <td><input value="${esc(s.code)}" maxlength="4" style="font-family:var(--mono);text-transform:uppercase" onchange="setSer(${i},'code',this.value)"></td>
-      <td><select onchange="setSer(${i},'cls',this.value)">${CLASSES.map(c=>`<option value="${c[0]}"${c[0]===s.cls?" selected":""}>${c[0]} ${c[li()]}</option>`).join("")}</select></td>
-      <td><select onchange="setSer(${i},'fam',this.value)">${(FAMS[s.cls]||[]).map(f=>`<option value="${f[0]}"${f[0]===s.fam?" selected":""}>${f[0]} — ${f[li()].split(" — ")[0]}</option>`).join("")}</select></td>
+      <td><select title="${esc(nm(CLASSES,s.cls))}" style="width:52px" onchange="setSer(${i},'cls',this.value)">${CLASSES.map(c=>`<option value="${c[0]}" title="${esc(c[li()])}"${c[0]===s.cls?" selected":""}>${c[0]}</option>`).join("")}</select></td>
+      <td><select title="${esc(nm(FAMS[s.cls]||[],s.fam))}" style="width:66px" onchange="setSer(${i},'fam',this.value)">${(FAMS[s.cls]||[]).map(f=>`<option value="${f[0]}" title="${esc(f[li()])}"${f[0]===s.fam?" selected":""}>${f[0]}</option>`).join("")}</select></td>
       <td><span class="pill p-${s.conf}">${lbl[s.conf]}</span></td>
       <td class="num" title="${esc((s.exec||[]).slice(0,25).join(" · "))}">${(s.exec||[]).length||""}</td>
       <td class="mono" style="color:var(--ink-3);font-size:11.5px">${esc((s.alias||[])[0]||"")}</td></tr>`}).join("")
@@ -775,24 +801,26 @@ function importCatalogue(list){
   let a=0,b=0,c=0,d=0,e=0;
   const bByName={}; DB.brands.forEach(x=>bByName[noAcc(x.name)]=x.code);
   list.forEach(o=>{
-    const serName=String(o.series||"").trim(), ten=String(o.ten||"").trim(), sku=String(o.sku||"").trim();
-    const bc=bByName[noAcc(o.hang)]||"";
-    // dong khong phai san pham: khong co series va ten trung ten hang
-    if(!serName && (!bc || noAcc(ten)===noAcc(o.hang))){e++;return}
-    const key=serName||ten; if(!key){e++;return}
-    let row=DB.series.find(x=>noAcc(x.name)===noAcc(key)&&(!bc||x.brand===bc));
+    const serRaw=String(o.series||"").trim();
+    const ten=String(o.ten||"").trim(), sku=String(o.sku||"").trim();
+    if(!serRaw){e++;return}                       // khong co Series -> khong tao series
+    const bc=bByName[noAcc(o.hang)]||"OEM";
+    const serName=toEN(serRaw).slice(0,48);
+    let row=DB.series.find(x=>noAcc(x.name)===noAcc(serName)&&x.brand===bc)
+          ||DB.series.find(x=>noAcc(x.name)===noAcc(serRaw)&&x.brand===bc);
     if(!row){
       const g=NHOMMAP[noAcc(o.nhom)]||["9","MS"];
-      row={id:DB.series.length+1,brand:bc||"OEM",name:key,code:autoCode(key),cls:g[0],fam:g[1],
+      row={id:DB.series.length+1,brand:bc,name:serName,code:autoCode(serName),cls:g[0],fam:g[1],
            conf:"thap",old:String(o.nhom||""),exec:[],alias:[]};
       DB.series.push(row); a++;
-    } else { if(!row.exec||!row.alias)b++; }
+    } else { b++; row.name=toEN(row.name).slice(0,48); }
     row.exec=row.exec||[]; row.alias=row.alias||[];
-    if(ten&&noAcc(ten)!==noAcc(key)&&row.exec.indexOf(ten)<0){row.exec.push(ten);c++}
+    const ex=ten.slice(0,110);
+    if(ex&&noAcc(ex)!==noAcc(serName)&&row.exec.indexOf(ex)<0){row.exec.push(ex);c++}
     if(sku&&row.alias.indexOf(sku)<0){row.alias.push(sku);d++}
   });
   save(); go("cat"); renderSeries();
-  alert(fmt(t("catDone"),{a:a,b:b,c:c,d:d,e:e}));}
+  alert(fmt(t("catDone"),{a:a,b:b,c:c,d:d,e:fmt(t("catSkip"),{e:e})}));}
 function autoCode(nameStr){
   const w=noAcc(nameStr).toUpperCase().replace(/[^A-Z0-9]/g,"");
   if(w.length<=4)return w||"XXXX";

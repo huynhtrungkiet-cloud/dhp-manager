@@ -265,6 +265,13 @@ td input:focus,td select:focus{background:var(--surface);border-color:var(--rule
 <div class="view" id="v-mig">
   <h2 class="h" data-i="migH"></h2>
   <p class="sub" data-i="migS"></p>
+  <div class="card" style="padding-bottom:14px">
+    <div class="toolbar" style="margin-bottom:6px">
+      <button class="btn pri" onclick="$('csvIn').click()" data-i="btnCsvIn"></button>
+      <input type="file" id="csvIn" accept=".csv,text/csv" style="display:none" onchange="runMigCsv(this)">
+      <span class="hint" data-i="csvHint" style="margin:0"></span>
+    </div>
+  </div>
   <div class="card">
     <label class="f"><span data-i="fOld"></span><textarea id="migIn" style="min-height:120px;font-family:var(--mono)">0.KNB-WST-7
 0.KNB-JAC-12
@@ -323,12 +330,18 @@ vi:{tagline:"Chuẩn mã hoá Đại Hồng Phát",btnExport:"⭳ Xuất JSON",b
  projExp:"{j} · năm 20{y} · số {s}",
  catH:"Danh mục",catS:"Đây là chỗ làm việc nặng nhất: chốt mã 4 ký tự và gán lớp · họ cho từng series. Hàng nào còn mức thấp là hàng máy đoán, cần người xác nhận.",
  cqPlace:"Tìm series, hãng…",allConf:"— Tất cả mức tin cậy —",cLow:"Chỉ mức thấp",cMid:"Chỉ mức vừa",cHigh:"Chỉ mức cao",
- serCols:["Hãng","Series theo catalogue","Mã 4 ký tự","Lớp","Họ","Tin cậy","Nhóm cũ"],
+ serCols:["Hãng","Series theo catalogue","Mã 4 ký tự","Lớp","Họ","Tin cậy","Biến thể","Mã cũ"],
  catNote:"Sửa trực tiếp trong bảng. Đổi mã hoặc gán lại lớp/họ sẽ tự nâng mức tin cậy lên <b>đã duyệt</b> vì đã có người xác nhận.",
  kSerAll:"Tổng series",kOk:"Đã chốt",kMid:"Cần xem",kLow:"Máy đoán",kBrands:"Hãng",
  confOk:"đã duyệt",confMid:"cần xem",confLow:"máy đoán",noRow:"Không có dòng nào khớp",
  migH:"Chuyển mã cũ sang v4",migS:"Dán mã cũ, mỗi dòng một mã. Máy tách được vai trò, hãng và cỡ; lớp và họ thì phải đoán vì dữ liệu cũ không có thông tin đó — nên mọi dòng đều cần người duyệt trước khi nhận.",
- fOld:"Mã cũ",btnMig:"Phân tích",migHint:"Không có gì bị ghi vào thư viện cho tới khi anh bấm nhận từng dòng.",
+ fOld:"Dán mã cũ",btnMig:"Phân tích",migHint:"Không có gì bị ghi vào thư viện cho tới khi anh bấm nhận.",
+ btnCsvIn:"⭱ Nạp catalogue CSV của app cũ vào Danh mục",
+ csvHint:"File CSV của v2.5 là <b>catalogue</b> chứ không phải danh sách part number — không có cột cỡ nên không dựng được mã v4 từ nó. Nạp vào đây để làm giàu <b>Danh mục series</b>: bổ sung series thiếu, ghi mã cũ làm bí danh và gom các biến thể theo tên.",catDone:"Đã nạp: {a} series mới, {b} series được bổ sung, {c} biến thể, {d} bí danh. Bỏ qua {e} dòng không phải sản phẩm.",
+ btnAcceptAll:"✓ Nhận tất cả dòng đủ khối",csvRead:"Đọc được {n} dòng từ CSV.",csvBad:"Không đọc được file CSV này.",
+ bulkDone:"Đã nhận {n} mã. Bỏ qua {k} dòng chưa đủ khối hoặc trùng.",bulkNone:"Không có dòng nào đủ khối để nhận tự động.",
+ wPrefix:"vai trò từ cột Prefix",wHangCol:"hãng từ cột Hãng",wSerCol:"series khớp danh mục",
+ wNhom:"lớp/họ đoán từ Nhóm cũ",wSizeCol:"cỡ từ cột KíchThước",wBore:"lỗ từ cột Bore",
  migCols:["Mã cũ","Vai trò","Lớp","Họ","Hãng","Series","Cỡ","Mã v4 đề xuất","Tin cậy","Vì sao",""],
  migK:["Tổng dòng","Đủ tự tin","Cần xác nhận","Phải làm tay"],
  migMiss:"thiếu khối",migDup:"trùng",accept:"Nhận",migNeed:"Còn thiếu khối, điền nốt rồi bấm Nhận.",
@@ -374,12 +387,18 @@ en:{tagline:"Dai Hong Phat part numbering",btnExport:"⭳ Export JSON",btnImport
  projExp:"{j} · year 20{y} · no. {s}",
  catH:"Vocabulary",catS:"This is the heavy work: fix the 4-character code and assign class · family for every series. Rows still marked low were guessed by the machine and need a human.",
  cqPlace:"Search series, brand…",allConf:"— All confidence levels —",cLow:"Low only",cMid:"Medium only",cHigh:"High only",
- serCols:["Brand","Series in catalogue","4-char code","Class","Family","Confidence","Legacy group"],
+ serCols:["Brand","Series in catalogue","4-char code","Class","Family","Confidence","Executions","Legacy code"],
  catNote:"Edit directly in the table. Changing the code or reassigning class/family raises confidence to <b>confirmed</b>, because a person has now checked it.",
  kSerAll:"Total series",kOk:"Confirmed",kMid:"To review",kLow:"Guessed",kBrands:"Brands",
  confOk:"confirmed",confMid:"to review",confLow:"guessed",noRow:"No matching rows",
  migH:"Convert legacy codes to v4",migS:"Paste old codes, one per line. Role, brand and size can be extracted; class and family have to be guessed because the old data never held them — so every row needs a human before it is accepted.",
- fOld:"Legacy codes",btnMig:"Analyse",migHint:"Nothing enters the library until you accept a row.",
+ fOld:"Paste legacy codes",btnMig:"Analyse",migHint:"Nothing enters the library until you accept.",
+ btnCsvIn:"⭱ Load the old catalogue CSV into the vocabulary",
+ csvHint:"The v2.5 CSV is a <b>catalogue</b>, not a part-number list — it has no size column, so v4 codes cannot be built from it. Load it here to enrich the <b>series vocabulary</b> instead: add missing series, keep old codes as aliases and collect executions by name.",catDone:"Loaded: {a} new series, {b} series enriched, {c} executions, {d} aliases. Skipped {e} rows that are not products.",
+ btnAcceptAll:"✓ Accept every complete row",csvRead:"Read {n} rows from the CSV.",csvBad:"Could not read this CSV file.",
+ bulkDone:"Accepted {n} codes. Skipped {k} rows with missing blocks or duplicates.",bulkNone:"No row has all four blocks yet.",
+ wPrefix:"role from Prefix column",wHangCol:"brand from Hãng column",wSerCol:"series matched in vocabulary",
+ wNhom:"class/family guessed from legacy group",wSizeCol:"size from KíchThước column",wBore:"bore from Bore column",
  migCols:["Legacy code","Role","Class","Family","Brand","Series","Size","Proposed v4 code","Confidence","Why",""],
  migK:["Rows","Confident","Needs check","Manual"],
  migMiss:"blocks missing",migDup:"duplicate",accept:"Accept",migNeed:"Blocks still missing — fill them in, then Accept.",
@@ -662,8 +681,9 @@ function renderSeries(){
       <td><select onchange="setSer(${i},'cls',this.value)">${CLASSES.map(c=>`<option value="${c[0]}"${c[0]===s.cls?" selected":""}>${c[0]} ${c[li()]}</option>`).join("")}</select></td>
       <td><select onchange="setSer(${i},'fam',this.value)">${(FAMS[s.cls]||[]).map(f=>`<option value="${f[0]}"${f[0]===s.fam?" selected":""}>${f[0]} — ${f[li()].split(" — ")[0]}</option>`).join("")}</select></td>
       <td><span class="pill p-${s.conf}">${lbl[s.conf]}</span></td>
-      <td style="color:var(--ink-3);font-size:12.5px">${esc(s.old||"")}</td></tr>`}).join("")
-    ||`<tr><td colspan="7" class="empty">${t("noRow")}</td></tr>`;}
+      <td class="num" title="${esc((s.exec||[]).slice(0,25).join(" · "))}">${(s.exec||[]).length||""}</td>
+      <td class="mono" style="color:var(--ink-3);font-size:11.5px">${esc((s.alias||[])[0]||"")}</td></tr>`}).join("")
+    ||`<tr><td colspan="8" class="empty">${t("noRow")}</td></tr>`;}
 function setSer(i,k,v){DB.series[i][k]=(k==="code")?v.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4):v;
   DB.series[i].conf="cao";save();renderSeries();}
 
@@ -680,7 +700,7 @@ function guess(line){
     FLD:["FLD","FLENDER"],DHP:["DHP","CK368"],MTN:["MTN","MARTIN"],CRM:["CRM","CROSS"],KBK:["KBK"]};
   for(const b of DB.brands.map(x=>x.code).filter(c=>c!=="OEM")){
     if((alias[b]||[b]).some(a=>s.includes(a))){r.brand=b;r.conf+=25;r.why.push(t("wBrand")+b);break}}
-  const nums=s.match(/\d{1,4}/g)||[];
+  const nums=s.match(/[1-9]\d{0,3}/g)||[];
   if(nums.length){r.size=pad(nums[nums.length-1],4);r.conf+=15;r.why.push(t("wSize"))}
   const hit=DB.series.find(x=>x.brand===r.brand&&s.includes(x.code));
   if(hit){r.ser=hit.code;r.cls=hit.cls;r.fam=hit.fam;r.conf+=25;r.why.push(t("wSer")+hit.name)}
@@ -692,8 +712,108 @@ function guess(line){
     else if(/TPB|BUSH|CON/.test(s)){r.cls="2";r.fam="TB";r.conf+=8;r.why.push(t("wkBush"))}
     else if(/RFN|LOCK|KHOA/.test(s)){r.cls="2";r.fam="LD";r.conf+=8;r.why.push(t("wkLock"))}}
   return r;}
+/* --- doc CSV app cu: SKU,MãCũ,Prefix,Tên,Hãng,Nhóm,Series,KíchThước,Bore,BiếnThể,... --- */
+function noAcc(x){return String(x||"").replace(/đ/g,"d").replace(/Đ/g,"D")
+  .normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function parseCsv(txt){
+  txt=String(txt).replace(/^﻿/,"");
+  const rows=[];let row=[],cell="",q=false;
+  for(let i=0;i<txt.length;i++){const c=txt[i];
+    if(q){ if(c==='"'){ if(txt[i+1]==='"'){cell+='"';i++} else q=false } else cell+=c }
+    else if(c==='"')q=true;
+    else if(c===","){row.push(cell);cell=""}
+    else if(c==="\n"){row.push(cell);cell="";rows.push(row);row=[]}
+    else if(c!=="\r")cell+=c;}
+  if(cell!==""||row.length){row.push(cell);rows.push(row)}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==""));}
+const NHOMMAP={khopnoirang:["1","GR"],khopnoidia:["1","DS"],khopnoidiadanhoi:["1","DS"],
+ khopnoicardan:["1","UJ"],khopnoithuyluc:["1","FL"],khopnoicung:["1","RG"],khopnoixich:["1","CH"],
+ khopnoibaovequatai:["1","TL"],khopnoilinhhoat:["1","JW"],caosugiamchan:["1","JW"],
+ khopnoiservo:["1","BW"],khopnoiencoder:["1","BW"],khopnoidiengio:["1","DS"],
+ khopnoiloxo:["1","GD"],khopnoiluoiloxo:["1","GD"],khopnoiluoithep:["1","GD"],
+ khopnoibulongdaioc:["1","RG"],khopnoibanhxe:["1","RG"],khopkhoatruc:["2","LD"],
+ thietbibooptruc:["2","SD"],pulyonglotcon:["3","PU"],xichnhongcongnghiep:["3","SP"],
+ xichcongnghiep:["3","CN"],daycuroa:["3","BT"],phanhcongnghiep:["4","CA"],
+ bolamatdauthuyluc:["5","OC"],phukienbomthuyluc:["5","PA"],vongbichongquaynguoc:["8","BS"]};
+function guessRow(o){
+  const r={old:String(o.sku||o.macu||"").trim()||"—",role:"",brand:"",size:"",ser:"",cls:"",fam:"",
+           name:String(o.ten||"").trim(),conf:0,why:[]};
+  const pfx=String(o.prefix||"").trim().charAt(0);
+  if(/^[0-9]$/.test(pfx)){r.role=pfx;r.conf+=20;r.why.push(t("wPrefix"))}
+  else{const m=String(o.sku||"").match(/^([0-9])\./); if(m){r.role=m[1];r.conf+=15;r.why.push(t("wRole"))}}
+  const hb=noAcc(o.hang);
+  if(hb){const b=DB.brands.find(x=>noAcc(x.name)===hb)
+        ||DB.brands.find(x=>x.code!=="OEM"&&(hb.startsWith(noAcc(x.name))||noAcc(x.name).startsWith(hb)));
+    if(b&&b.code!=="OEM"){r.brand=b.code;r.conf+=25;r.why.push(t("wHangCol")+" → "+b.code)}}
+  if(!r.brand&&/ck368|dhp/.test(noAcc(o.sku)+noAcc(o.ten))){r.brand="DHP";r.conf+=10;r.why.push(t("wCk"))}
+  const sn=noAcc(o.series);
+  if(sn){const hit=DB.series.find(x=>noAcc(x.name)===sn&&(!r.brand||x.brand===r.brand))
+              ||DB.series.find(x=>noAcc(x.name)===sn);
+    if(hit){r.ser=hit.code;r.cls=hit.cls;r.fam=hit.fam;r.conf+=30;r.why.push(t("wSerCol")+" → "+hit.code)}}
+  if(!r.cls){const g=NHOMMAP[noAcc(o.nhom)];
+    if(g){r.cls=g[0];r.fam=g[1];r.conf+=10;r.why.push(t("wNhom"))}}
+  const sz=String(o.kichthuoc||"").match(/[1-9]\d{0,3}/);
+  if(sz){r.size=pad(sz[0],4);r.conf+=15;r.why.push(t("wSizeCol"))}
+  else{const n=String(o.sku||"").match(/[1-9]\d{0,3}/g); if(n){r.size=pad(n[n.length-1],4);r.conf+=8;r.why.push(t("wSize"))}}
+  const bo=String(o.bore||"").match(/\d{1,3}/);
+  if(bo){r.why.push(t("wBore")+" "+bo[0])}
+  return r;}
+function runMigCsv(inp){
+  const f=inp.files[0]; if(!f)return; const fr=new FileReader();
+  fr.onload=()=>{try{
+    const rows=parseCsv(fr.result); if(rows.length<2)throw 0;
+    const H=rows[0].map(noAcc), idx={};
+    const want={sku:["sku","masku","ma"],macu:["macu","oldcode"],prefix:["prefix","vaitro"],
+      ten:["ten","tensanpham","name"],hang:["hang","brand"],nhom:["nhom","category","group"],
+      series:["series"]};
+    Object.keys(want).forEach(k=>{const i=H.findIndex(h=>want[k].indexOf(h)>=0); if(i>=0)idx[k]=i});
+    if(idx.hang===undefined&&idx.series===undefined)throw 0;
+    importCatalogue(rows.slice(1).map(rw=>{const o={};Object.keys(idx).forEach(k=>o[k]=rw[idx[k]]);return o}));
+  }catch(e){alert(t("csvBad"))} };
+  fr.readAsText(f,"UTF-8"); inp.value="";}
+function importCatalogue(list){
+  let a=0,b=0,c=0,d=0,e=0;
+  const bByName={}; DB.brands.forEach(x=>bByName[noAcc(x.name)]=x.code);
+  list.forEach(o=>{
+    const serName=String(o.series||"").trim(), ten=String(o.ten||"").trim(), sku=String(o.sku||"").trim();
+    const bc=bByName[noAcc(o.hang)]||"";
+    // dong khong phai san pham: khong co series va ten trung ten hang
+    if(!serName && (!bc || noAcc(ten)===noAcc(o.hang))){e++;return}
+    const key=serName||ten; if(!key){e++;return}
+    let row=DB.series.find(x=>noAcc(x.name)===noAcc(key)&&(!bc||x.brand===bc));
+    if(!row){
+      const g=NHOMMAP[noAcc(o.nhom)]||["9","MS"];
+      row={id:DB.series.length+1,brand:bc||"OEM",name:key,code:autoCode(key),cls:g[0],fam:g[1],
+           conf:"thap",old:String(o.nhom||""),exec:[],alias:[]};
+      DB.series.push(row); a++;
+    } else { if(!row.exec||!row.alias)b++; }
+    row.exec=row.exec||[]; row.alias=row.alias||[];
+    if(ten&&noAcc(ten)!==noAcc(key)&&row.exec.indexOf(ten)<0){row.exec.push(ten);c++}
+    if(sku&&row.alias.indexOf(sku)<0){row.alias.push(sku);d++}
+  });
+  save(); go("cat"); renderSeries();
+  alert(fmt(t("catDone"),{a:a,b:b,c:c,d:d,e:e}));}
+function autoCode(nameStr){
+  const w=noAcc(nameStr).toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(w.length<=4)return w||"XXXX";
+  const cons=w[0]+w.slice(1).replace(/[AEIOU]/g,"");
+  return (cons.length>=4?cons:w).slice(0,4);}
+function acceptAll(){
+  let n=0,k=0;
+  document.querySelectorAll("#migOut tbody tr").forEach((tr,i)=>{
+    const g=x=>{const el=$("m_"+x+"_"+i);return el?(el.value||"").toUpperCase().trim():""};
+    const role=g("role"),cls=g("cls"),fam=g("fam"),brand=g("brand"),ser=g("ser"),size=pad(g("size"),4);
+    if(!(role&&cls&&fam&&brand&&ser&&size)){k++;return}
+    const code=`${role}${cls}${fam}-${brand}-${ser}-${size}`;
+    if(DB.skus.some(s=>s.code===code)){k++;return}
+    const nEl=$("m_name_"+i), aEl=$("m_alias_"+i);
+    DB.skus.push({code,role,cls,fam,brand,ser,size,child:"",vari:"",rev:"",
+      name:nEl?nEl.value:"",alias:aEl?aEl.value:"",status:t("stActive"),
+      created:new Date().toISOString().slice(0,10)});n++});
+  save(); alert(n?fmt(t("bulkDone"),{n:n,k:k}):t("bulkNone"));}
 function runMig(){
-  const res=($("migIn").value||"").split("\n").filter(x=>x.trim()).map(guess).filter(Boolean);
+  renderMig(($("migIn").value||"").split("\n").filter(x=>x.trim()).map(guess).filter(Boolean));}
+function renderMig(res){
   const lvl=c=>c>=75?"cao":c>=45?"vua":"thap";
   $("migOut").innerHTML=`<div class="kpi">${
     [[t("migK")[0],res.length],[t("migK")[1],res.filter(r=>lvl(r.conf)==="cao").length],
@@ -713,8 +833,10 @@ function runMig(){
         <td class="c" id="m_out_${i}">${esc(full)||`<span style="color:var(--ink-3)">${t("migMiss")}</span>`}</td>
         <td><span class="pill p-${lvl(r.conf)}">${r.conf}%</span></td>
         <td style="font-size:12px;color:var(--ink-3)">${esc(r.why.join(" · "))}</td>
-        <td><button class="btn sm" onclick="acceptMig(${i},'${esc(r.old).replace(/'/g,"")}')">${t("accept")}</button></td></tr>`}).join("")}
-    </tbody></table></div>`;}
+        <td><input type="hidden" id="m_name_${i}" value="${esc(r.name||"")}"><input type="hidden" id="m_alias_${i}" value="${esc(r.old)}">
+        <button class="btn sm" onclick="acceptMig(${i},'${esc(r.old).replace(/'/g,"")}')">${t("accept")}</button></td></tr>`}).join("")}
+    </tbody></table></div>
+    <div class="toolbar" style="margin:14px 0 0"><button class="btn pri" onclick="acceptAll()">${t("btnAcceptAll")}</button></div>`;}
 function migLive(i){
   const g=k=>($("m_"+k+"_"+i).value||"").toUpperCase().trim();
   const role=g("role"),cls=g("cls"),fam=g("fam"),brand=g("brand"),ser=g("ser"),size=pad(g("size"),4);
@@ -728,7 +850,8 @@ function acceptMig(i,old){
   if(!(role&&cls&&fam&&brand&&ser&&size)){alert(t("migNeed"));return}
   const code=`${role}${cls}${fam}-${brand}-${ser}-${size}`;
   if(DB.skus.some(s=>s.code===code)){alert(code+t("migInLib"));return}
-  DB.skus.push({code,role,cls,fam,brand,ser,size,child:"",vari:"",rev:"",name:"",alias:old,
+  const nEl=$("m_name_"+i);
+  DB.skus.push({code,role,cls,fam,brand,ser,size,child:"",vari:"",rev:"",name:nEl?nEl.value:"",alias:old,
     status:t("stActive"),created:new Date().toISOString().slice(0,10)});
   save();alert(t("migAdded")+code);}
 

@@ -553,12 +553,11 @@ function gateCheck(){
       </div>
     </div>
     <div class="field" id="itemsField" style="border:1px solid #c7d2fe;border-radius:10px;padding:12px;background:#f5f7ff">
-      <label style="font-weight:800;color:#3730a3">▦ G1.5 — Chi tiết con / BOM của đơn <span class="muted small" style="font-weight:600">— khai TRƯỚC, rồi mới chia công đoạn cho từng chi tiết ở G2 bên dưới.</span></label>
+      <label style="font-weight:800;color:#3730a3">▦ G1.5 — Chi tiết con / BOM của đơn <span class="muted small" style="font-weight:600">— khai TÊN, SỐ LƯỢNG, VẬT LIỆU. Công đoạn khai chung ở G2 bên dưới.</span></label>
       <div class="small" style="color:#475569;line-height:1.65;margin:2px 0 8px">
-        <b>Đơn 1 món</b> (vd khoét lỗ 1 khớp nối mua sẵn) → <b>để trống</b> phần này, chỉ khai công đoạn ở G2.<br>
-        <b>Đơn nhiều món</b> (hub + spider + bulong, hay dự án nhiều van) → khai từng chi tiết ở đây.
-        Mỗi chi tiết có <b>chuỗi công đoạn riêng</b>, khai <b>số giờ</b> và <b>nơi làm</b> cho từng công đoạn.
-        App cộng giờ để ra <b>% theo trọng số</b> và cột <b>“Gia công nhiều nhất ở”</b> ngoài bảng đơn hàng.
+        <b>Đơn 1 món</b> (vd khoét lỗ 1 khớp nối mua sẵn) → <b>để trống</b> phần này, khai thẳng công đoạn ở G2.<br>
+        <b>Đơn nhiều món</b> (hub + spider + bulong) → khai từng món ở đây để có <b>BOM</b> và <b>phiếu kiểm tra IS</b> riêng cho COC.
+        Công đoạn thì vẫn khai ở <b>G2</b>, chỉ chọn thêm cột <b>chi tiết</b> cho biết làm cho món nào.
       </div>
       <div id="ord_items_list"></div>
       <div class="toolbar" style="margin-top:6px">
@@ -567,8 +566,8 @@ function gateCheck(){
       </div>
     </div>
     <div class="field" id="routingField" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafcff;position:relative">
-      <label>🔧 G2 — Công đoạn CHUNG của cả đơn <span class="muted small">— A=Tiện, B=Phay, C=Cắt dây... Lặp lại thì A2, A3. Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
-      <div class="small muted" style="margin:-2px 0 6px">Đây là công đoạn của <b>cả đơn</b>. Nếu đã khai chi tiết con ở G1.5 thì công đoạn của từng chi tiết khai <b>trong ô chi tiết đó</b>, không khai lại ở đây.</div>
+      <label>🔧 G2 — Công đoạn <span class="muted small">— A=Tiện, B=Phay, C=Cắt dây... Ghi rõ làm Ở ĐÂU để soi nút thắt.</span></label>
+      <div class="small muted" style="margin:-2px 0 6px">Tất cả công đoạn của đơn nằm ở đây. Cột <b>chi tiết</b> cho biết công đoạn làm cho món nào — để trống là <b>việc chung cả đơn</b> (lắp ráp, nghiệm thu tổng, đóng gói). Dùng <b>↑↓</b> để đổi thứ tự, <b>⟳</b> để chèn công đoạn làm lại.</div>
       <div id="routingRole"></div>
       <div id="routingLock" style="display:none;background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:10px;text-align:center;color:#92400e;font-weight:700;margin:6px 0">🔒 Khóa — phải hoàn tất <b>G1: Kiểm tra đầu vào</b> (tick đủ 5 mục + chọn người kiểm + bấm <b>✅ Feedback OK</b>) mới mở chia công đoạn.</div>
       <div id="routingBody">
@@ -2080,10 +2079,10 @@ function renderStagesEditor(){
   if(!wrap) return;
   if(!editingStages.length){
     // Đơn đã khai công đoạn ở từng chi tiết con thì G2 TRỐNG LÀ ĐÚNG — đừng nhắc như đang thiếu.
-    const _nIt=(editingItems||[]).filter(function(it){return it && (it.stages||[]).length;}).length;
-    wrap.innerHTML = stageTplBarHtml() + (_nIt
-      ? '<div class="small" style="color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 10px">✓ '+_nIt+' chi tiết con đã khai công đoạn riêng ở G1.5 — <b>để trống ở đây là đúng</b>.<br><span style="color:#475569">Chỉ thêm vào G2 nếu có công đoạn <b>chung cho cả đơn</b>: lắp ráp bộ, cân bằng động cả cụm, nghiệm thu tổng, đóng gói, xuất xưởng.</span></div>'
-      : '<div class="small muted">Chưa có công đoạn. Chọn mẫu ở trên, hoặc bấm “Thêm công đoạn”.</div>');
+    const _nIt=editingItemsNamed().length;
+    wrap.innerHTML = stageTplBarHtml() + '<div class="small muted">Chưa có công đoạn nào. Chọn mẫu ở trên, hoặc bấm “Thêm công đoạn”.'
+      + (_nIt? ' Đơn này có '+_nIt+' chi tiết con — mỗi công đoạn thêm vào nhớ chọn cột <b>chi tiết</b> để biết nó làm cho món nào.' : '')
+      + '</div>';
     return;
   }
   const locs = ['CK368', ...DATA.partners.map(p=>p.name)];
@@ -2123,7 +2122,12 @@ function renderStagesEditor(){
           ${STAGE_PRESETS.map(p=>`<option value="${p.c}" ${String(s.code||'').replace(/\d+$/,'')===p.c?'selected':''}>${p.c} — ${p.n}</option>`).join('')}
         </select>
         <input style="width:52px;font-weight:800" value="${esc(s.code||'')}" placeholder="Mã" oninput="updStage(${i},'code',this.value)" title="Mã (A, A2, B...)">
-        <input style="flex:1;min-width:130px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)">
+        ${editingItemsNamed().length?`<select style="width:158px;${s._itId?'border-color:#6366F1;color:#4338ca;font-weight:700':''}" onchange="updStage(${i},'_itId',this.value);renderStagesEditor()" title="Công đoạn này làm cho chi tiết nào? Để trống = việc chung của cả đơn (lắp ráp, nghiệm thu tổng, đóng gói...)">
+          <option value="">— chung cả đơn —</option>
+          ${editingItemsNamed().map(it=>`<option value="${esc(it.id)}" ${s._itId===it.id?'selected':''}>▦ ${esc(truncate(it.name,20))}</option>`).join('')}
+        </select>`:''}
+        ${s.rework?`<span style="font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:1px 6px" title="Công đoạn làm lại — giờ của nó là hao phí">⟳ làm lại</span>`:''}
+        <input style="flex:1;min-width:120px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)">
         <select style="width:108px" onchange="updStage(${i},'status',this.value);renderStagesEditor()">
           <option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa làm</option>
           <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
@@ -2135,8 +2139,9 @@ function renderStagesEditor(){
           <input type="date" style="width:118px" value="${esc(s.endDate||'')}" min="${esc(s.startDate||'')}" onchange="updStage(${i},'endDate',this.value);renderStagesEditor()" title="Ngày kết thúc dự kiến (để trống = tự tính theo giờ)">
         </span>
         <span style="display:flex;gap:4px">
-          <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Lên">↑</a>
-          <a onclick="moveStage(${i},1)" style="cursor:pointer;font-weight:800" title="Xuống">↓</a>
+          <a onclick="moveStage(${i},-1)" style="cursor:pointer;font-weight:800" title="Đưa lên trên">↑</a>
+          <a onclick="moveStage(${i},1)" style="cursor:pointer;font-weight:800" title="Đưa xuống dưới">↓</a>
+          <a onclick="insertReworkStage(${i})" style="cursor:pointer;font-weight:800;color:#B91C1C" title="Công đoạn này làm hỏng — chèn ngay dưới một công đoạn LÀM LẠI (A2, A3...). Giờ của nó ghi riêng là hao phí.">⟳</a>
           <a onclick="rmStage(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa">✕</a>
         </span>
       </div>
@@ -2345,6 +2350,56 @@ function updStage(i,k,v){
   }
 }
 function rmStage(i){ editingStages.splice(i,1); renderStagesEditor(); }
+/* ===== GỘP G1.5 VÀO G2 (11-09-2026) =====
+   Người dùng chỉ còn thấy MỘT danh sách công đoạn; mỗi dòng chọn thuộc chi tiết nào
+   (để trống = chung cả đơn). Cách LƯU không đổi — khi lưu, app tự chia về đúng chỗ cũ,
+   nên 90 đơn đang có không phải chuyển đổi gì, không có rủi ro mất dữ liệu.
+   Thứ tự người dùng kéo được giữ bằng trường seq. */
+function flattenEditingStages(){
+  const all=[];
+  (editingStages||[]).filter(Boolean).forEach(function(st){ all.push(Object.assign({},st,{_itId:''})); });
+  (editingItems||[]).filter(Boolean).forEach(function(it){
+    (it.stages||[]).filter(Boolean).forEach(function(st){ all.push(Object.assign({},st,{_itId:it.id||''})); });
+    it.stages=[];                      // ruột đã dọn sang danh sách phẳng, lưu xong sẽ trả lại
+  });
+  all.sort(function(a,b){ const x=(a.seq==null?9999:a.seq), y=(b.seq==null?9999:b.seq); return x-y; });
+  editingStages=all;
+}
+function splitEditingStages(){
+  const top=[], byItem={};
+  (editingStages||[]).forEach(function(st,idx){
+    if(!String(st.code||'').trim() && !String(st.name||'').trim()) return;
+    const rec=Object.assign({},st,{seq:idx});
+    const id=rec._itId||''; delete rec._itId;
+    rec.checks=(rec.checks||[]).filter(function(c){ return (c.param||'').trim()||(c.actual1||'').trim()||(c.spec||'').trim(); });
+    if(id) (byItem[id]=byItem[id]||[]).push(rec); else top.push(rec);
+  });
+  return {top:top, byItem:byItem};
+}
+function editingItemsNamed(){ return (editingItems||[]).filter(function(it){ return it && String(it.name||'').trim(); }); }
+function stageItemName(st){
+  if(!st||!st._itId) return '';
+  const it=(editingItems||[]).find(function(x){ return x && x.id===st._itId; });
+  return it?(it.name||''):'';
+}
+function stagesOfItemId(id){ return (editingStages||[]).filter(function(st){ return st && st._itId===id; }); }
+// Chèn công đoạn LÀM LẠI ngay dưới công đoạn hỏng — giờ của nó là hao phí, ghi riêng.
+function insertReworkStage(i){
+  const st=editingStages[i]; if(!st) return;
+  const base=_codeBase(st.code)||'X';
+  let k=2, code=base+k;
+  while(editingStages.some(function(x){ return String(x.code||'').toUpperCase()===code; })){ k++; code=base+k; }
+  const cp=Object.assign({}, st, {id:localId('ST'), code:code, status:'pending', startDate:'', endDate:'', doneDate:'',
+    hours:null, otHours:null, rework:true, seq:null,
+    note:('Làm lại '+(st.code||'')+(st.note?' — '+st.note:'')),
+    checks:(st.checks||[]).map(function(c){ return Object.assign({},c,{actual1:'',actual2:'',pass:''}); })});
+  editingStages.splice(i+1,0,cp);
+  renderStagesEditor();
+  if(typeof updateFormGates==='function') updateFormGates();
+}
+function reworkHours(){
+  return (editingStages||[]).filter(function(st){return st&&st.rework;}).reduce(function(a,st){return a+(stageHours(st)||0);},0);
+}
 function moveStage(i,d){
   const j = i + d;
   if(j<0 || j>=editingStages.length) return;
@@ -2385,7 +2440,15 @@ function renderItemsEditor(){
           <a onclick="rmItem(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa chi tiết">✕</a>
         </div>
       </div>
-      ${itemStagesHtml(it,i)}
+      ${(function(){
+        const own=stagesOfItemId(it.id);
+        const h=own.reduce((a,st)=>a+(stageHours(st)||0),0);
+        return `<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:5px;font-size:11px;color:#475569">`
+          + (own.length
+            ? `🔧 <b>${own.length} công đoạn · ${Math.round(h)}h</b> — khai ở danh sách <b>G2</b> bên dưới, chọn cột chi tiết = <b>▦ ${esc(truncate(it.name,18))}</b>`
+            : `<span class="muted">Chưa có công đoạn nào cho chi tiết này — thêm ở <b>G2</b> bên dưới rồi chọn cột chi tiết.</span>`)
+          + `</div>`;
+      })()}
     </div>`).join('');
 }
 // Trình soạn công đoạn RIÊNG cho từng chi tiết con (giống routing của đơn tổng, gọn hơn)
@@ -2447,19 +2510,25 @@ function itemsSummaryText(){
 }
 function _itemsSummaryCore(){
   const totalQty = editingItems.reduce((s,it)=>s+(parseFloat(it.qty)||0),0);
-  // Giờ = tổng giờ CÔNG ĐOẠN đã khai của chi tiết đó; chưa khai công đoạn thì lấy ô "Giờ GC".
-  // (Trước 30-08-2026 chỉ cộng ô "Giờ GC" nên khai công đoạn xong vẫn báo 0h.)
   const totalHrs = editingItems.reduce((s,it)=>{
-    const sh=(it.stages||[]).filter(Boolean).reduce((a,x)=>a+(stageHours(x)||0),0);
+    const sh=stagesOfItemId(it.id).reduce((a,x)=>a+(stageHours(x)||0),0);
     return s + (sh>0?sh:(parseFloat(it.estHours)||0));
   },0);
-  const nStage = editingItems.reduce((s,it)=>s+((it.stages||[]).filter(Boolean).length),0);
+  const nStage = editingItems.reduce((s,it)=>s+stagesOfItemId(it.id).length,0);
   return `📊 ${editingItems.length} chi tiết con · Tổng SL: ${totalQty} · ${nStage} công đoạn · Tổng giờ dự kiến: ${totalHrs}h${totalHrs?` (≈ ${(totalHrs/8).toFixed(1)} ngày công)`:''}`;
 }
 function updateItemsSummary(){ const el=document.getElementById('ord_items_summary'); if(el) el.innerHTML=itemsSummaryText(); }
 function addOrderItem(){ editingItems.push({id:localId('IT'), name:'', qty:null, unit:'', process:'', estHours:null, assignment:'inhouse', status:'new', progress:null, stages:[], note:''}); renderItemsEditor(); }
 function updItem(i,k,v){ if(!editingItems[i])return; editingItems[i][k]=(k==='qty'||k==='progress'||k==='estHours')?(v===''?null:parseFloat(v)):v; if(k==='qty'||k==='estHours') updateItemsSummary(); }
-function rmItem(i){ editingItems.splice(i,1); renderItemsEditor(); }
+function rmItem(i){
+  const it=editingItems[i];
+  if(it && it.id){
+    const own=stagesOfItemId(it.id);
+    if(own.length && !confirm('Chi tiết "'+(it.name||'')+'" đang có '+own.length+' công đoạn.\nXoá chi tiết thì các công đoạn đó chuyển thành CÔNG ĐOẠN CHUNG của đơn (không mất).\n\nTiếp tục?')) return;
+    own.forEach(function(st){ st._itId=''; });
+  }
+  editingItems.splice(i,1); renderItemsEditor(); renderStagesEditor();
+}
 function renderAttEditor(){
   const wrap=document.getElementById('ord_att_list');
   if(!editingAtts.length){ wrap.innerHTML='<div class="small muted">Chưa có link nào.</div>'; return; }
@@ -3110,29 +3179,23 @@ function updateFormGates(){
 // Nói rõ G2 đang đóng vai trò gì, và cảnh báo khi khai TRÙNG với chi tiết con (giờ bị cộng 2 lần)
 function renderRoutingRole(){
   const el=document.getElementById('routingRole'); if(!el) return;
-  const items=(editingItems||[]).filter(function(it){return it && (it.name||'').trim();});
-  // Nút "Dời" chỉ hiện khi THỰC SỰ có công đoạn gia công nằm nhầm ở G2
-  const btn=document.getElementById('btnMoveStages');
-  if(btn){
-    const movable=items.length && (editingStages||[]).some(function(st){ return st && (st.code||st.name) && !isCommonStageCode(st.code); });
-    btn.style.display=movable?'':'none';
-  }
-  if(!items.length){ el.innerHTML=''; return; }
-  let ih=0, ic=0;
-  items.forEach(function(it){ (it.stages||[]).filter(Boolean).forEach(function(s){ ih+=(stageHours(s)||0); ic++; }); });
-  const dup=duplicateStageCodes();
-  const th=(editingStages||[]).filter(Boolean).reduce(function(a,s){return a+(stageHours(s)||0);},0);
+  const btn=document.getElementById('btnMoveStages'); if(btn) btn.style.display='none';   // đã gộp, không cần dời nữa
+  const items=editingItemsNamed();
+  const all=(editingStages||[]).filter(Boolean);
+  if(!all.length){ el.innerHTML=''; return; }
+  const hOf=function(list){ return list.reduce(function(a,x){return a+(stageHours(x)||0);},0); };
+  const tot=hOf(all), rw=reworkHours();
+  const chung=all.filter(function(x){return !x._itId;});
+  const parts=items.map(function(it){
+    const own=stagesOfItemId(it.id);
+    return own.length ? ('▦ '+esc(truncate(it.name,18))+' <b>'+own.length+' CĐ · '+Math.round(hOf(own))+'h</b>') : '';
+  }).filter(Boolean);
   el.innerHTML=
     '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#3730a3;margin-bottom:7px">'
-    +'▦ <b>'+items.length+' chi tiết con ở G1.5 đang giữ '+ic+' công đoạn · '+Math.round(ih)+'h</b>. '
-    +'Ở G2 chỉ khai <b>công đoạn CHUNG làm một lần cho cả đơn</b> — lắp ráp, cân bằng, nghiệm thu tổng, đóng gói, xuất xưởng. '
-    +'Hiện G2 có '+(editingStages||[]).length+' công đoạn · '+Math.round(th)+'h. <b>Tổng đơn: '+Math.round(ih+th)+'h.</b></div>'
-    +(dup.length
-      ? '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#991b1b;margin-bottom:7px">'
-        +'⚠ <b>Khai trùng '+dup.length+' công đoạn</b>: '+dup.map(function(d){return esc(d.code+' '+d.name);}).join(' · ')
-        +' — mã này có ở CẢ G2 lẫn chi tiết con, nên <b>giờ đang bị cộng hai lần</b>, kéo theo % và ngày dự kiến sai. '
-        +'Bấm <b>⤵ Dời công đoạn gia công xuống chi tiết con</b> hoặc xoá bớt một bên.</div>'
-      : '');
+    +'<b>'+all.length+' công đoạn · '+Math.round(tot)+'h</b> — chung cả đơn <b>'+chung.length+' CĐ · '+Math.round(hOf(chung))+'h</b>'
+    +(parts.length?' · '+parts.join(' · '):'')
+    +(rw?' <span style="color:#B91C1C;font-weight:800">· ⟳ làm lại '+Math.round(rw)+'h ('+Math.round(rw/tot*100)+'% hao phí)</span>':'')
+    +'</div>';
 }
 function updateG0Days(){
   const el=document.getElementById('ord_daysInfo'); if(!el) return;
@@ -3265,6 +3328,7 @@ function openOrderModal(id){
     editingItems = (o.items||[]).map(x=>({...x}));
     editingAtts = (o.attachments||[]).map(x=>({...x}));
     editingStages = (o.stages||[]).map(x=>({...x}));
+    flattenEditingStages();          // gộp công đoạn của chi tiết con vào cùng một danh sách
     editingMeasures = (o.measures||[]).map(x=>({...x}));
     editingMaterials = (o.materials||[]).map(x=>({...x}));
     document.getElementById('ord_inspector').value = o.inspector||'';
@@ -3344,6 +3408,7 @@ function saveOrder(){
     alert('⛔ KHÔNG thể đặt "Đã giao" khi QC chưa = ĐẠT.\nChọn Cổng QC = "ĐẠT" trước (và in chứng nhận).');
     return;
   }
+  const _sp = splitEditingStages();   // chia danh sách phẳng về: công đoạn chung + công đoạn của từng chi tiết
   const rec = {
     id: id || uid('DH', 'order'),
     code: code || nextOrderCodeFor(document.getElementById('ord_type').value),
@@ -3367,9 +3432,9 @@ function saveOrder(){
     forecastDate: document.getElementById('ord_forecast').value || null,
     driveFolder: document.getElementById('ord_drive').value.trim(),
     currentLocation: '',
-    items: editingItems.filter(it=>(it.name||'').trim()),
+    items: editingItems.filter(it=>(it.name||'').trim()).map(it=>({...it, stages:(_sp.byItem[it.id]||[])})),
     attachments: editingAtts.filter(a=>(a.url||'').trim()||(a.label||'').trim()),
-    stages: editingStages.filter(s=>(s.code||'').trim()||(s.name||'').trim()).map(s=>({...s, checks:(s.checks||[]).filter(c=>(c.param||'').trim()||(c.actual1||'').trim()||(c.spec||'').trim())})),
+    stages: _sp.top,
     measures: editingMeasures.filter(m=>(m.param||'').trim()||(m.actual||'').trim()),
     materials: editingMaterials.filter(m=>(m.material||'').trim()||(m.spec||'').trim()),
     inspector: document.getElementById('ord_inspector').value.trim(),
@@ -4580,14 +4645,12 @@ function itemStageDimHtml(it,i,si){
 // Đếm mềm: bao nhiêu công đoạn chi tiết con chưa có kích thước / chưa có số đo
 function itemDimStats(){
   let noDim=0, noAct=0, tot=0;
-  (editingItems||[]).filter(Boolean).forEach(function(it){
-    (it.stages||[]).filter(Boolean).forEach(function(s){
-      if(!stageNeedsDim(s)) return;
-      tot++;
-      const ck=(s.checks||[]).filter(function(c){return String(c.param||'').trim();});
-      if(!ck.length){ noDim++; return; }
-      if(!ck.some(function(c){return String(c.actual1||'').trim();})) noAct++;
-    });
+  (editingStages||[]).filter(Boolean).forEach(function(s){
+    if(!stageNeedsDim(s)) return;
+    tot++;
+    const ck=(s.checks||[]).filter(function(c){return String(c.param||'').trim();});
+    if(!ck.length){ noDim++; return; }
+    if(!ck.some(function(c){return String(c.actual1||'').trim();})) noAct++;
   });
   return {tot:tot, noDim:noDim, noAct:noAct};
 }

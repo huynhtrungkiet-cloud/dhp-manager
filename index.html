@@ -17,7 +17,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
 <!-- Supabase client (đồng bộ real-time) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.min.js"></script>
+<script>/* SUA 03-10-2026: nap thu vien tu CHINH MAY CHU truoc. Truoc day chi nap tu CDN ngoai
+   internet -> xuong mat mang hoac CDN bi chan la initSupabase() tra ve false, app chay ca ngay
+   KHONG he dong bo, khong bao gi. Nay: co ban trong repo, CDN chi la du phong. */
+if(typeof supabase==="undefined"){document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/scr'+'ipt>');}</script>
 <style>
   :root{
     /* Chrome trung tính (xám slate) — màu đỏ chỉ dành cho CẢNH BÁO (xem --st-late) */
@@ -1306,12 +1310,12 @@ function applyRole(){
   const rb = document.getElementById('roleBadge'); if(rb) rb.textContent = info.badge;
   const ub = document.getElementById('unlockBtn'); if(ub){ ub.style.display=''; ub.textContent='🔓 Đổi quyền'; }
   const kb = document.getElementById('lockEditBtn'); if(kb) kb.style.display = (roleLevel()>0) ? '' : 'none';
-  const sb = document.getElementById('syncNowBtn'); if(sb) sb.style.display = (canEdit() && supaConfigured()) ? '' : 'none';
+  const sb = document.getElementById('syncNowBtn'); if(sb) sb.style.display = (canWork() && supaConfigured()) ? '' : 'none';
   renderAll();
 }
 // Lưu & đồng bộ NGAY (không chờ 2s) — đẩy phần thay đổi lên kho chung
 async function syncNow(){
-  if(!requireEdit()) return;
+  if(!requireWork()) return;
   const btn = document.getElementById('syncNowBtn'); const old = btn ? btn.innerHTML : '';
   save(); // ghi localStorage
   if(!supaConfigured()){ alert('Chưa kết nối Supabase. Vào tab Dữ liệu để kết nối.'); return; }
@@ -1335,7 +1339,16 @@ function unlockEdit(){
   else alert('Sai mật khẩu.');
 }
 function lockEdit(){ // hạ về chỉ xem (không đăng xuất)
-  localStorage.setItem('dhp_role','viewer'); sessionStorage.setItem('dhp_role','viewer'); applyRole();
+  // SỬA 03-10-2026: nút này nằm ngay cạnh "Lưu & Đồng bộ". Bấm nhầm là từ đó mọi thay đổi
+  // không còn được đẩy lên kho chung nữa. Nay: hỏi lại + đẩy nốt phần đang chờ rồi mới hạ quyền.
+  const n = (typeof countPendingLocal==='function') ? countPendingLocal() : 0;
+  if(!confirm('Chuyển về CHỈ XEM?\n\n'
+    + (n ? ('Còn '+n+' thay đổi chưa lên kho chung — app sẽ đẩy nốt trước.\n\n') : '')
+    + 'Muốn sửa tiếp phải nhập lại mật khẩu.')) return;
+  try{ flushPendingPush(); }catch(e){}
+  setTimeout(function(){
+    localStorage.setItem('dhp_role','viewer'); sessionStorage.setItem('dhp_role','viewer'); applyRole();
+  }, 700);
 }
 function lockApp(){
   if(!confirm('Đăng xuất hoàn toàn? (Sẽ hỏi lại mật khẩu khi vào)')) return;
@@ -5360,15 +5373,68 @@ let _sb = null;            // client Supabase
 let _sbChannels = [];      // các kênh real-time đang lắng nghe
 let _syncSnap = {};        // table -> { id: JSON } trạng thái ĐÃ đồng bộ gần nhất (để chỉ đẩy phần THAY ĐỔI)
 let _syncReady = false;    // chỉ cho phép tự-đẩy SAU khi đã tải kho chung về lần đầu (tránh đè bản cũ lúc khởi động)
-function _snapOf(appT){ const m={}; (DATA[appT]||[]).forEach(r=>{ if(r&&r.id!=null) m[String(r.id)]=JSON.stringify(r); }); return m; }
-function resetSyncSnap(){ Object.keys(SUPA_TABLES).forEach(t=>{ _syncSnap[t]=_snapOf(t); }); _syncReady=true; }
+let _syncErrMsg = '';      // lỗi đồng bộ gần nhất — RỖNG nghĩa là kho chung đã nhận đủ (SỬA 03-10-2026)
+let _pendSince  = 0;       // thời điểm bắt đầu có thay đổi chưa đẩy được
+let _lastPullKept = 0;     // số bản ghi được giữ lại khi tải về (xem supaPull)
+// Lỗi "bảng chưa tạo" thì bỏ qua được; mọi lỗi khác là MẤT DỮ LIỆU, phải báo.
+function _isMissingTable(err){
+  const m = (((err&&(err.message||err.hint))||'') + ' ' + ((err&&err.code)||'')).toLowerCase();
+  return m.indexOf('does not exist')>=0 || m.indexOf('schema cache')>=0
+      || m.indexOf('42p01')>=0 || m.indexOf('pgrst205')>=0 || m.indexOf('find the table')>=0;
+}
+// Những bản ghi máy này đã sửa mà kho chung CHƯA nhận (mạng rớt / sai quyền / Supabase lỗi).
+function pendingLocalChanges(){
+  const out = {};
+  if(!_syncReady && !_snapFromDisk) return out;   // chưa có mốc nào để so → không đoán bừa
+  Object.keys(SUPA_TABLES).forEach(function(appT){
+    if(appT==='products') return;
+    const cur=_snapOf(appT), prev=_syncSnap[appT]||{};
+    const ids=Object.keys(cur).filter(function(id){ return cur[id]!==prev[id]; });
+    if(ids.length) out[appT]=ids;
+  });
+  return out;
+}
+function countPendingLocal(){
+  const p=pendingLocalChanges();
+  return Object.keys(p).reduce(function(n,t){ return n+p[t].length; }, 0);
+}
+// ===== MỐC ĐỒNG BỘ PHẢI SỐNG QUA F5 (sửa 03-10-2026) =====
+// Trước đây mốc này chỉ nằm trong RAM. Mở lại trang là mất → app không còn biết bản ghi nào
+// chưa kịp đẩy lên, nên tải về là ghi đè sạch. Nay lưu xuống máy dưới dạng BĂM (ngắn, vài KB)
+// để không chiếm thêm chỗ mà vẫn so sánh được chính xác.
+const SNAP_KEY = 'dhp_sync_snap_v1';
+let _snapFromDisk = false;
+function _hashStr(str){
+  let h1 = 0x811c9dc5, h2 = 0x1000193;
+  for(let i=0;i<str.length;i++){
+    const c = str.charCodeAt(i);
+    h1 = ((h1 ^ c) * 16777619) >>> 0;
+    h2 = (((h2 + c) * 31) + (h2 >>> 7)) >>> 0;
+  }
+  return str.length.toString(36)+'.'+h1.toString(36)+'.'+h2.toString(36);
+}
+function _snapOf(appT){ const m={}; (DATA[appT]||[]).forEach(r=>{ if(r&&r.id!=null) m[String(r.id)]=_hashStr(JSON.stringify(r)); }); return m; }
+function persistSyncSnap(){ try{ localStorage.setItem(SNAP_KEY, JSON.stringify(_syncSnap)); }catch(e){} }
+function loadSyncSnap(){
+  try{
+    const raw = localStorage.getItem(SNAP_KEY); if(!raw) return false;
+    const o = JSON.parse(raw); if(!o || typeof o!=='object') return false;
+    _syncSnap = o; _snapFromDisk = true; return true;
+  }catch(e){ return false; }
+}
+function resetSyncSnap(){ Object.keys(SUPA_TABLES).forEach(t=>{ _syncSnap[t]=_snapOf(t); }); _syncReady=true; persistSyncSnap(); }
 function supaConfigured(){ return !!(DATA.meta && DATA.meta.supaUrl && DATA.meta.supaKey); }
 function setSupaStatus(msg, err){ const el=document.getElementById('supaStatus'); if(el){ el.textContent=msg; el.style.color=err?'var(--st-late)':'#16A34A'; } }
 // Cắt phần dư người dùng hay dán nhầm: /rest/v1, dấu / cuối...
 function cleanSupaUrl(u){ return String(u||'').trim().replace(/\/rest\/v1\/?$/i,'').replace(/\/+$/,''); }
 function initSupabase(){
   if(!supaConfigured()) return false;
-  if(typeof supabase==='undefined'){ setSupaStatus('Chưa tải được thư viện Supabase (cần internet).', true); return false; }
+  if(typeof supabase==='undefined'){
+    setSupaStatus('Chưa tải được thư viện Supabase (cần internet).', true);
+    _syncErrMsg = 'chưa tải được thư viện Supabase (mất mạng?)';
+    try{ renderSyncGuard(); }catch(e){}
+    return false;
+  }
   try{ _sb = supabase.createClient(cleanSupaUrl(DATA.meta.supaUrl), DATA.meta.supaKey.trim()); return true; }
   catch(e){ setSupaStatus('Lỗi khởi tạo: '+e.message, true); return false; }
 }
@@ -5377,6 +5443,10 @@ function initSupabase(){
 //  changedOnly=false → đẩy TOÀN BỘ (nút "Đẩy toàn bộ" — coi máy này là nguồn chuẩn)
 async function supaPush(changedOnly){
   if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
+  // SỬA 03-10-2026: trước đây mọi lỗi đẩy đều bị nuốt vào console.warn rồi chạy tiếp, nên
+  // scheduleAutoPush() vẫn hiện "✓ đã đồng bộ" dù kho chung KHÔNG nhận được gì. Người dùng
+  // tin là đã lưu, F5 một cái là mất. Nay: gom lỗi lại và ném ra để báo thật.
+  const _pushFails = [];
   for(const appT of Object.keys(SUPA_TABLES)){
     if(appT==='products') continue;   // Coding sở hữu catalogue — Manager CHỈ ĐỌC, tuyệt đối không đẩy/xóa products
     const cur = _snapOf(appT), prev = _syncSnap[appT]||{};
@@ -5386,7 +5456,12 @@ async function supaPush(changedOnly){
     if(ids.length){
       const rows = ids.map(id=>{ const rec=(DATA[appT]||[]).find(r=>r&&String(r.id)===id); return rec?{id, data:rec, updated_at:new Date().toISOString()}:null; }).filter(Boolean);
       const { error } = await _sb.from(SUPA_TABLES[appT]).upsert(rows);
-      if(error){ console.warn('Bỏ qua đẩy bảng '+SUPA_TABLES[appT]+' (chưa tạo?): '+error.message); continue; } // bảng mới chưa tạo → bỏ qua
+      if(error){
+        if(_isMissingTable(error)){ console.warn('Bỏ qua bảng chưa tạo: '+SUPA_TABLES[appT]); continue; }
+        // KHÔNG cập nhật _syncSnap[appT] → lần đẩy sau sẽ thử lại đúng những bản ghi này
+        _pushFails.push(SUPA_TABLES[appT]+': '+(error.message||'lỗi không rõ'));
+        continue;
+      }
     }
     if(changedOnly){
       const delIds = Object.keys(prev).filter(id=>!(id in cur));
@@ -5402,15 +5477,35 @@ async function supaPush(changedOnly){
         _syncSnap[appT]=cur;   // nhận mốc mới để không hỏi lại vòng lặp sau
         continue;              // BỎ QUA xoá, giữ nguyên server
       }
-      if(delIds.length){ const { error } = await _sb.from(SUPA_TABLES[appT]).delete().in('id', delIds); if(error){ console.warn(SUPA_TABLES[appT]+' xóa lỗi: '+error.message); continue; } }
+      if(delIds.length){
+        const { error } = await _sb.from(SUPA_TABLES[appT]).delete().in('id', delIds);
+        if(error){
+          if(!_isMissingTable(error)) _pushFails.push(SUPA_TABLES[appT]+' (xoá): '+(error.message||'lỗi không rõ'));
+          continue;
+        }
+      }
     }
     _syncSnap[appT]=cur; // máy này giờ đã đồng bộ bảng này
+    persistSyncSnap();   // ghi mốc xuống máy NGAY — để F5 vẫn biết cái gì đã lên, cái gì chưa
   }
   _syncReady=true;
+  if(_pushFails.length) throw new Error(_pushFails.join(' · '));
 }
 // Tải toàn bộ từ Supabase về (thay thế local)
 async function supaPull(){
   if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
+  // ===== SỬA 03-10-2026 — LƯỚI AN TOÀN CUỐI CÙNG =====
+  // Trước đây tải về là THAY THẾ SẠCH dữ liệu trong máy. Nên chỉ cần buổi sáng đẩy lên hỏng
+  // (mất mạng, sai quyền, Supabase lỗi) là F5 một cái mất hết. Nay: giữ lại đúng những bản ghi
+  // máy này đã sửa mà kho chung chưa nhận, dán lại sau khi tải về, rồi đẩy chúng lên ngay.
+  const _pend = pendingLocalChanges(), _keep = {};
+  Object.keys(_pend).forEach(function(appT){
+    _keep[appT] = _pend[appT]
+      .map(function(id){ return (DATA[appT]||[]).find(function(r){ return r && String(r.id)===id; }); })
+      .filter(Boolean)
+      .map(function(r){ try{ return JSON.parse(JSON.stringify(r)); }catch(e){ return null; } })
+      .filter(Boolean);
+  });
   for(const appT of Object.keys(SUPA_TABLES)){
     const { data, error } = await _sb.from(SUPA_TABLES[appT]).select('id,data');
     if(error){ console.warn('Bỏ qua bảng '+SUPA_TABLES[appT]+' (chưa tạo?): '+error.message); continue; } // bảng mới (vd products) chưa tạo → bỏ qua, không sập
@@ -5420,6 +5515,23 @@ async function supaPull(){
   const _dupFixed = repairDuplicateIds();
   if(_dupFixed) console.warn('[dhp] đã tách '+_dupFixed+' bản ghi trùng id sau khi tải về');
   resetSyncSnap(); // kho chung vừa tải về = mốc đồng bộ; từ giờ chỉ đẩy phần thay đổi
+  // Dán lại phần chưa đẩy — ĐẶT SAU resetSyncSnap() để chúng được tính là "đã thay đổi" và đẩy lên.
+  let _back = 0;
+  Object.keys(_keep).forEach(function(appT){
+    const arr = (DATA[appT] = DATA[appT]||[]);
+    _keep[appT].forEach(function(rec){
+      const i = arr.findIndex(function(r){ return r && String(r.id)===String(rec.id); });
+      if(i>=0) arr[i]=rec; else arr.push(rec);
+      _back++;
+    });
+  });
+  _lastPullKept = _back;
+  if(_back){
+    console.warn('[dhp] đã giữ lại '+_back+' bản ghi sửa trên máy này mà kho chung chưa có');
+    rebuildPartners(); sanitizeOrderDates();
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+    setTimeout(function(){ try{ scheduleAutoPush(); }catch(e){} }, 300);
+  }
 }
 // Lắng nghe thay đổi real-time → cập nhật ngay không cần F5
 function supaSubscribe(){
@@ -5435,10 +5547,11 @@ function supaSubscribe(){
           if(payload.eventType==='DELETE'){
             const id = payload.old && payload.old.id; const i=arr.findIndex(r=>r&&String(r.id)===String(id)); if(i>=0) arr.splice(i,1);
             if(id!=null) delete snap[String(id)];
+            persistSyncSnap();
           } else if(payload.new && payload.new.data){
             const rec = payload.new.data; const i=arr.findIndex(r=>r&&String(r.id)===String(rec.id));
             if(i>=0) arr[i]=rec; else arr.push(rec);
-            if(rec&&rec.id!=null) snap[String(rec.id)]=JSON.stringify(rec); // đã đồng bộ → không đẩy ngược
+            if(rec&&rec.id!=null) snap[String(rec.id)]=_hashStr(JSON.stringify(rec)); // đã đồng bộ → không đẩy ngược
           }
           if(appT==='orders'){ sanitizeOrderDates(); }
           if(appT==='products'){ try{ fillProdDatalist(); }catch(e){} }
@@ -5535,8 +5648,13 @@ function setAutoBadge(txt, err){
 // Gọi sau mỗi save() — gom nhiều thay đổi rồi đẩy 1 lần (chống spam mạng). Ưu tiên Supabase.
 function scheduleAutoPush(){
   if(!autoSyncEnabled()) return;
-  // Chỉ máy có quyền SỬA mới được ghi lên kho chung (máy Xem chỉ tải về) → tránh đè bản cũ
-  if(typeof canEdit==='function' && !canEdit()) return;
+  // ===== SỬA 03-10-2026 — ĐÂY LÀ NGUYÊN NHÂN MẤT DỮ LIỆU =====
+  // Trước đây đòi canEdit() (Điều phối trở lên). Nhưng THỢ ĐƯỢC PHÉP tick công đoạn và nhập đo
+  // (workerSetStage → requireWork). Nghĩa là: thợ tick cả buổi sáng, save() ghi vào máy, nhưng
+  // dòng này chặn — KHÔNG MỘT THAY ĐỔI NÀO được đẩy lên kho chung, mà app vẫn im lặng.
+  // Bấm F5 → autoPullOnStart → supaPull → ghi đè sạch → mất trắng công cả buổi.
+  // Nay: THỢ trở lên đều đẩy được. Chỉ "Chỉ xem" mới không đẩy (vì cũng không sửa được gì).
+  if(typeof canWork==='function' && !canWork()) return;
   // Với Supabase: chưa tải kho chung về lần đầu thì KHÔNG đẩy (tránh đè dữ liệu cũ của máy này)
   if(supaConfigured() && !_syncReady) return;
   clearTimeout(_autoPushTimer);
@@ -5545,8 +5663,14 @@ function scheduleAutoPush(){
     try{
       setAutoBadge('● đang đẩy lên...');
       if(supaConfigured()) await supaPush(true); else await pushToSheets(); // true = chỉ đẩy phần thay đổi
+      _syncErrMsg=''; _pendSince=0;
       setAutoBadge('✓ đã đồng bộ ' + new Date().toLocaleTimeString('vi-VN'));
-    }catch(e){ setAutoBadge('⚠ lỗi đồng bộ: ' + e.message, true); }
+    }catch(e){
+      _syncErrMsg = e.message || 'lỗi không rõ';
+      if(!_pendSince) _pendSince = Date.now();
+      setAutoBadge('⚠ lỗi đồng bộ: ' + _syncErrMsg, true);
+    }
+    try{ renderSyncGuard(); }catch(e){}
   }, 2000);
 }
 // ===== CHỐNG MẤT DỮ LIỆU (thêm 30-08-2026) =====
@@ -5554,7 +5678,16 @@ function scheduleAutoPush(){
 function flushPendingPush(){
   if(!_autoPushTimer) return false;
   clearTimeout(_autoPushTimer); _autoPushTimer=null;
-  try{ if(supaConfigured()) supaPush(true); else pushToSheets(); }catch(e){}
+  // SỬA 03-10-2026: supaPush giờ ném lỗi thật → phải bắt cả lỗi bất đồng bộ, nếu không
+  // trình duyệt báo "unhandled rejection" và cờ lỗi không được dựng lên.
+  try{
+    const p = supaConfigured() ? supaPush(true) : pushToSheets();
+    if(p && p.catch) p.catch(function(e){
+      _syncErrMsg = e.message || 'lỗi không rõ';
+      if(!_pendSince) _pendSince = Date.now();
+      try{ renderSyncGuard(); }catch(e2){}
+    });
+  }catch(e){ _syncErrMsg = e.message || 'lỗi không rõ'; }
   return true;
 }
 window.addEventListener('pagehide', flushPendingPush);
@@ -5564,6 +5697,40 @@ window.addEventListener('beforeunload', function(e){
   flushPendingPush();
   if(pending){ e.preventDefault(); e.returnValue='Còn thay đổi chưa đồng bộ lên kho chung.'; return e.returnValue; }
 });
+/* ===== THANH CẢNH BÁO "CHƯA LÊN KHO CHUNG" (thêm 03-10-2026) =====
+   Badge nhỏ trong tab Dữ liệu không ai nhìn. Thanh này nằm dưới đáy mọi màn hình,
+   đỏ khi đẩy lỗi, vàng khi chờ quá lâu, và tự biến mất khi kho chung đã nhận đủ. */
+function renderSyncGuard(){
+  let el = document.getElementById('syncGuard');
+  if(!el){
+    el = document.createElement('div'); el.id='syncGuard';
+    el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;padding:9px 16px;'
+      + 'font-size:13px;font-weight:700;display:none;align-items:center;gap:10px;flex-wrap:wrap;'
+      + 'box-shadow:0 -2px 12px rgba(0,0,0,.22);color:#fff';
+    document.body.appendChild(el);
+  }
+  if(!supaConfigured()){ el.style.display='none'; return; }
+  const n = countPendingLocal();
+  if(n>0 && !_pendSince) _pendSince = Date.now();
+  if(n===0) _pendSince = 0;
+  const waited = _pendSince ? (Date.now()-_pendSince)/1000 : 0;
+  if(_syncErrMsg){
+    el.style.background = '#b91c1c'; el.style.display = 'flex';
+    el.innerHTML = '<span>⛔ <b>CHƯA LƯU ĐƯỢC LÊN KHO CHUNG</b> — ' + esc(_syncErrMsg)
+      + (n ? (' · <b>'+n+' thay đổi</b> mới chỉ nằm trong máy này.') : '')
+      + ' Đừng tắt tab, đừng F5.</span>'
+      + '<button class="sm" style="margin-left:auto" onclick="syncNow()">Thử lưu lại</button>'
+      + '<button class="sm" onclick="backupNow()">Tải file cứu hộ</button>';
+    return;
+  }
+  if(n>0 && waited>25){
+    el.style.background = '#b45309'; el.style.display = 'flex';
+    el.innerHTML = '<span>⏳ <b>'+n+' thay đổi</b> chưa lên kho chung ('+Math.round(waited)+'s).</span>'
+      + '<button class="sm" style="margin-left:auto" onclick="syncNow()">Lưu ngay</button>';
+    return;
+  }
+  el.style.display = 'none';
+}
 // Gọi khi mở app — tự kéo dữ liệu mới nhất về (an toàn: KHÔNG xóa local nếu Sheet trống)
 async function autoPullOnStart(){
   if(!autoSyncEnabled()) return;
@@ -5576,7 +5743,13 @@ async function autoPullOnStart(){
       if((count||0)===0 && (DATA.orders||[]).length>0){ await supaPush(); setAutoBadge('✓ đã khởi tạo kho Supabase từ máy này'); }
       else { await supaPull(); _suppressAutoPush=true; save(); _suppressAutoPush=false; renderAll(); setAutoBadge('✓ đã tải dữ liệu chung (Supabase) '+new Date().toLocaleTimeString('vi-VN')); }
       supaSubscribe();
-    }catch(e){ setAutoBadge('⚠ Supabase: '+e.message, true); }
+      _syncErrMsg=''; _pendSince=0;
+      if(_lastPullKept) alert('ℹ Máy này có '+_lastPullKept+' thay đổi mà kho chung chưa nhận.\nApp đã GIỮ LẠI và đang đẩy lên — không mất.');
+    }catch(e){
+      setAutoBadge('⚠ Supabase: '+e.message, true);
+      _syncErrMsg = 'không kết nối được kho chung ('+(e.message||'')+')';
+    }
+    try{ renderSyncGuard(); }catch(e){}
     return;
   }
   setAutoBadge('● đang kết nối kho chung...');
@@ -6790,7 +6963,19 @@ load();
 renderAll();
 applyLang();
 applyRole();
+loadSyncSnap();    // đọc mốc đồng bộ của lần trước — để biết thay đổi nào chưa kịp lên kho chung
 autoPullOnStart(); // nếu đã cấu hình URL + bật tự đồng bộ → tự kéo dữ liệu chung về khi mở app
+// ===== GIÁM SÁT ĐỒNG BỘ + BACKUP TỰ ĐỘNG (thêm 03-10-2026) =====
+setInterval(function(){ try{ renderSyncGuard(); }catch(e){} }, 5000);
+setTimeout(function(){ try{ renderSyncGuard(); }catch(e){} }, 1500);
+// Kho chung không có bản sao lưu. Máy QUẢN LÝ tự tải 1 file JSON mỗi ngày, không cần nhớ bấm.
+setTimeout(function(){
+  try{
+    if(typeof canAdmin==='function' && canAdmin() && (DATA.orders||[]).length>0 && backupOverdueDays()>=1){
+      if(backupNow(true)) console.log('[dhp] đã tự tải backup JSON hằng ngày');
+    }
+  }catch(e){}
+}, 12000);
 
 /* ===== PWA: service worker network-only — luôn lấy bản mới, tự cập nhật ===== */
 if('serviceWorker' in navigator){

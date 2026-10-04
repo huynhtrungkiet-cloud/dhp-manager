@@ -450,6 +450,13 @@ function gateCheck(){
   </div>
 </div>
 
+<div class="modal-bg" id="modalPlanAll">
+  <div class="modal wide" style="max-width:1150px">
+    <h3>⚡ Gán người &amp; ngày hàng loạt <span class="muted small" style="font-weight:400">— công đoạn thiếu người hoặc thiếu ngày thì thợ không thấy và không tick được; đây là chỗ gỡ một lượt</span></h3>
+    <div id="paBody"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modalQuick">
   <div class="modal wide" style="max-width:1000px">
     <h3>⚡ Tạo đơn nhanh <span class="muted small" style="font-weight:400">— dán text / mã SKU / nạp file → app dựng sẵn chi tiết con, công đoạn và giờ định mức</span></h3>
@@ -1955,6 +1962,7 @@ function ordersSectionHtml(){
       ${canEdit()?`<button onclick="openOrderModal()">${t('btn_addOrder')}</button>`:''}
       ${canEdit()?`<button onclick="openQuickIntake()" style="background:#4338ca" title="Dán đoạn text đơn hàng / gõ mã SKU / nạp file báo giá — app tự dựng đơn kèm chi tiết con, công đoạn và giờ định mức">⚡ Tạo đơn nhanh</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openBulkItems()" style="border-color:#4338ca;color:#4338ca;font-weight:700" title="Dựng chi tiết con + công đoạn cho hàng loạt đơn cũ, đọc từ danh sách trong Tên hàng">⚙ Dựng hàng loạt</button>`:''}
+      ${canEdit()?`<button class="ghost sm" onclick="paOpen()" style="border-color:#b45309;color:#b45309;font-weight:700" title="Rải người + ngày cho các công đoạn đang thiếu — thợ phải có đủ hai thứ này mới thấy việc">⚡ Gán người &amp; ngày${(function(){try{const n=(DATA.orders||[]).filter(o=>o&&o.status!=='delivered'&&((o.stages||[]).concat(...(o.items||[]).map(i=>i.stages||[]))).some(st=>st&&st.status!=='done'&&st.status!=='doing'&&!st.doneDate&&(!st.assignee||!st.startDate))).length;return n?` <span style="background:#b45309;color:#fff;border-radius:99px;padding:0 5px;font-size:10px">${n}</span>`:'';}catch(e){return '';}})()}</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openIncident()" style="border-color:#0891b2;color:#0e7490" title="Ghi sự cố máy/bất khả kháng — tự đánh dấu đơn + tính giờ sửa">🛑 Ghi sự cố</button>`:''}
       <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
              oninput="onOrderSearchInput(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onOrderSearchInput('');}"
@@ -4590,6 +4598,344 @@ function bkApply(){
 }
 
 /* ==========================================================================================
+   ⚡ GÁN NGƯỜI & NGÀY HÀNG LOẠT   thêm 04-10-2026
+   VÌ SAO CÓ: một công đoạn chỉ hiện ra cho thợ khi đã có ĐỦ người + ngày bắt đầu
+   (xem điều kiện đầu hàm syncAssignmentsFromOrder). Thiếu một trong hai thì không ai
+   tick được, công đoạn nằm "chưa làm" vĩnh viễn và tiến độ đơn không bao giờ nhúc nhích.
+   Điền tay từng dòng cho hơn một nghìn công đoạn là không làm nổi — nên công cụ này rải sẵn
+   theo định mức giờ đã học và sức chứa 8h/ngày/người, cho XEM TRƯỚC rồi mới áp.
+   Nguyên tắc: CHỈ ĐIỀN VÀO CHỖ TRỐNG. Không đụng công đoạn đã có người, đã có ngày,
+   đang làm hoặc đã xong.
+   ========================================================================================== */
+let PA = null;
+let _paOwnerCache = null;
+
+function paCodeKey(c){ return String(c||'').toUpperCase().trim().replace(/[0-9]+$/,''); }
+function paAddDay(d){ const x=new Date(d+'T00:00:00'); if(isNaN(x)) return d; x.setDate(x.getDate()+1); return ymdLocal(x); }
+function paNextWork(d){ return workingDaysFrom(d,1)[0] || d; }
+
+// Mọi công đoạn của đơn (cấp đơn + cấp chi tiết con), theo đúng thứ tự seq
+function paStagesOf(o){
+  const out=[];
+  (o.stages||[]).filter(Boolean).forEach(function(st){ out.push({st:st, itemName:''}); });
+  (o.items||[]).filter(Boolean).forEach(function(it){
+    (it.stages||[]).filter(Boolean).forEach(function(st){ out.push({st:st, itemName:it.name||''}); });
+  });
+  out.sort(function(a,b){ const x=(a.st.seq==null?9999:a.st.seq), y=(b.st.seq==null?9999:b.st.seq); return x-y; });
+  return out;
+}
+// Công đoạn nào đang KẸT: chưa xong, chưa làm, mà thiếu người hoặc thiếu ngày
+function paNeeds(st){
+  if(!st) return false;
+  if(st.status==='done' || st.doneDate) return false;
+  if(st.status==='doing') return false;          // đang làm dở — không đụng
+  return !st.assignee || !st.startDate;
+}
+function paCandidates(){
+  const today = todayStr();
+  return (DATA.orders||[]).filter(function(o){
+    if(!o) return false;
+    if(PA.scope!=='all' && o.status==='delivered') return false;
+    if(PA.scope==='late'){ const d=normDate(o.dueDate); if(!d || d>=today) return false; }
+    return paStagesOf(o).some(function(x){ return paNeeds(x.st); });
+  });
+}
+// AI HAY LÀM MÃ CÔNG ĐOẠN NÀY? — học từ chính các đơn cũ, không bịa
+function paOwnerOf(code){
+  if(!_paOwnerCache){
+    const tally={};
+    (DATA.orders||[]).forEach(function(o){
+      paStagesOf(o).forEach(function(x){
+        const c=paCodeKey(x.st.code), who=x.st.assignee;
+        if(!c || !who) return;
+        (tally[c]=tally[c]||{})[who]=(tally[c][who]||0)+1;
+      });
+    });
+    _paOwnerCache=tally;
+  }
+  const t=_paOwnerCache[paCodeKey(code)]||{};
+  let best='', n=0;
+  Object.keys(t).forEach(function(k){ if(t[k]>n){ n=t[k]; best=k; } });
+  return {id:best, n:n};
+}
+function paStaff(id){ return (DATA.staff||[]).find(function(s){ return s && s.id===id; }) || null; }
+function paIsOutsource(st, who){
+  // SỨC CHỨA ĐI THEO NGƯỜI, KHÔNG THEO NƠI GIA CÔNG.
+  // Lần trước tính theo st.location nên công đoạn ghi "Outsource" mà giao cho thợ trong xưởng
+  // bị coi là không giới hạn giờ → dồn 365h vào một ngày cho một người. Xưởng ngoài chạy
+  // song song được nhiều việc; một thợ tiện thì không.
+  const s=paStaff(who);
+  return !!(s && s.type==='outsource');
+}
+// Tải hiện có của từng người theo ngày — lấy từ chính bảng phân công đang chạy
+function paLoadMap(){
+  const m={};
+  (DATA.assignments||[]).forEach(function(a){
+    if(!a || !a.staffId || !a.date) return;
+    (m[a.staffId]=m[a.staffId]||{})[a.date]=(m[a.staffId][a.date]||0)+(parseFloat(a.hours)||0);
+  });
+  return m;
+}
+// Rải một đơn: đi tuần tự theo công đoạn, mỗi công đoạn tìm ngày còn chỗ trống của người đó
+function paPlanOrder(o, load, floorDate){
+  const rows=[]; let cursor = floorDate;
+  paStagesOf(o).forEach(function(x){
+    const st=x.st;
+    if(!paNeeds(st)){
+      const e = normDate(st.endDate) || normDate(st.startDate);
+      if(e && e >= cursor) cursor = paNextWork(paAddDay(e));
+      return;
+    }
+    let h = parseFloat(st.hours);
+    if(!(h>0)) h = stdStageHours(st.code) || HOURS_PER_DAY;
+    const key = paCodeKey(st.code);
+    const who = st.assignee || (PA.byCode[key]!==undefined ? PA.byCode[key] : paOwnerOf(st.code).id) || '';
+    if(!who){ rows.push({st:st, who:'', start:'', end:'', hours:h, itemName:x.itemName, skip:true}); return; }
+    const cap = paIsOutsource(st, who) ? 1e9 : (parseFloat(PA.capacity)||HOURS_PER_DAY);
+    const sd  = normDate(st.startDate), ed = normDate(st.endDate);
+    // Đặt chỗ phải khớp CHÍNH XÁC cách syncAssignmentsFromOrder sẽ chia giờ sau này:
+    // nó chia ĐỀU tổng giờ cho số ngày làm việc trong khoảng từ→tới. Nếu ở đây đặt lệch
+    // (vd 2h thứ Hai + 6h thứ Ba) thì lúc sinh phân công nó rải lại 4h/4h và chồng lên
+    // công đoạn khác → vỡ trần 8h. Nên tính sẵn theo ngày đều rồi mới giữ chỗ.
+    const nDays = Math.max(1, Math.ceil(h/cap - 0.001));
+    const evenH = Math.round((h/nDays)*10)/10;
+    let first='', last='';
+    if(sd){
+      // Ngày đã được đặt tay từ trước → tôn trọng, chỉ gán người
+      const days = ed ? workingDaysInRange(sd, ed) : workingDaysFrom(sd, nDays);
+      const per  = days.length ? Math.round((h/days.length)*10)/10 : h;
+      days.forEach(function(d){ (load[who]=load[who]||{})[d]=((load[who]&&load[who][d])||0)+per; });
+      first=days[0]||sd; last=days[days.length-1]||sd;
+    } else {
+      let day = paNextWork(cursor), guard=0;
+      while(guard<260){
+        const days = workingDaysFrom(day, nDays);
+        const fits = days.every(function(d){ return (cap - ((load[who]&&load[who][d])||0)) >= evenH-0.01; });
+        if(fits){
+          days.forEach(function(d){ (load[who]=load[who]||{})[d]=((load[who]&&load[who][d])||0)+evenH; });
+          first=days[0]; last=days[days.length-1]; break;
+        }
+        day = paNextWork(paAddDay(day)); guard++;
+      }
+      if(!first){
+        // Người này đã kín lịch suốt khoảng tìm kiếm — KHÔNG được dồn đống lên một ngày
+        // (lần trước lỗi này tạo ra ngày 624h). Xếp tiếp ngay sau ngày bận cuối cùng của họ.
+        const busy=Object.keys(load[who]||{}).sort();
+        let d0=paNextWork(paAddDay(busy.length?busy[busy.length-1]:cursor));
+        const days=workingDaysFrom(d0, nDays);
+        days.forEach(function(d){ (load[who]=load[who]||{})[d]=((load[who]&&load[who][d])||0)+evenH; });
+        first=days[0]; last=days[days.length-1];
+      }
+    }
+    rows.push({st:st, who:who, start:first, end:last, hours:h, itemName:x.itemName, skip:false});
+    cursor = paNextWork(paAddDay(last));
+  });
+  const fill=rows.filter(function(r){ return !r.skip; });
+  return { rows:rows, nFill:fill.length, nSkip:rows.length-fill.length,
+           hours:fill.reduce(function(s,r){ return s+r.hours; },0),
+           from:fill.reduce(function(a,r){ return (!a||r.start<a)?r.start:a; },''),
+           to:  fill.reduce(function(a,r){ return (r.end>a)?r.end:a; },'') };
+}
+function paScan(){
+  _paOwnerCache=null; _stdHoursCache=null;
+  const list=paCandidates();
+  PA.list=list;
+  // mã công đoạn nào đang cần gán → dựng bảng chọn người, mặc định lấy người hay làm mã đó
+  const codes={};
+  list.forEach(function(o){ paStagesOf(o).forEach(function(x){
+    if(!paNeeds(x.st)) return;
+    const k=paCodeKey(x.st.code)||'?';
+    codes[k]=codes[k]||{n:0, name:x.st.name||'', locs:{}};
+    codes[k].n++; if(x.st.location) codes[k].locs[x.st.location]=1;
+  }); });
+  PA.codes=codes;
+  Object.keys(codes).forEach(function(k){ if(PA.byCode[k]===undefined) PA.byCode[k]=paOwnerOf(k).id||''; });
+  paReplan();
+}
+function paReplan(){
+  const load=paLoadMap();
+  PA.plans={};
+  (PA.list||[]).forEach(function(o){
+    try{ PA.plans[o.id]=paPlanOrder(o, load, PA.startDate||todayStr()); }
+    catch(e){ PA.plans[o.id]={rows:[], nFill:0, nSkip:0, hours:0, from:'', to:'', err:e.message}; }
+    if(PA.sel[o.id]===undefined) PA.sel[o.id]=true;
+  });
+  PA.load=load;
+  renderAssign();
+}
+function paOpen(){
+  if(!requireEdit()) return;
+  PA={ scope:'open', startDate:todayStr(), capacity:HOURS_PER_DAY, backup:true,
+       byCode:{}, sel:{}, plans:{}, list:[], codes:{}, load:{} };
+  paScan();
+  openModal('modalPlanAll');
+}
+function paSetScope(v){ PA.scope=v; PA.sel={}; paScan(); }
+function paSetStart(v){ PA.startDate=v||todayStr(); paReplan(); }
+function paSetCap(v){ PA.capacity=Math.max(1, parseFloat(v)||HOURS_PER_DAY); paReplan(); }
+function paSetCode(k,v){ PA.byCode[k]=v; paReplan(); }
+function paSel(id,v){ PA.sel[id]=v; renderAssign(); }
+function paSelAll(v){ (PA.list||[]).forEach(function(o){ if((PA.plans[o.id]||{}).nFill) PA.sel[o.id]=v; }); renderAssign(); }
+
+// Tải của từng người sau khi rải — để điều phối thấy ai đang ôm quá nhiều TRƯỚC khi bấm áp dụng
+function paPerPerson(chosen){
+  const by={};
+  chosen.forEach(function(o){ (PA.plans[o.id].rows||[]).forEach(function(r){
+    if(r.skip || !r.who) return;
+    const b=(by[r.who]=by[r.who]||{n:0,h:0,to:''});
+    b.n++; b.h+=r.hours; if(r.end>b.to) b.to=r.end;
+  }); });
+  return Object.keys(by).map(function(w){
+    const s=paStaff(w);
+    return { id:w, name:(s&&s.name)||w, outsource:!!(s&&s.type==='outsource'),
+             n:by[w].n, h:by[w].h, to:by[w].to,
+             days: by[w].to ? Math.round((new Date(by[w].to+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000) : 0 };
+  }).sort(function(a,b){ return b.h-a.h; });
+}
+function renderAssign(){
+  const el=document.getElementById('paBody'); if(!el) return;
+  const list=PA.list||[];
+  const chosen=list.filter(function(o){ return PA.sel[o.id] && (PA.plans[o.id]||{}).nFill; });
+  let totSt=0, totH=0, from='', to='';
+  chosen.forEach(function(o){ const p=PA.plans[o.id];
+    totSt+=p.nFill; totH+=p.hours;
+    if(p.from && (!from || p.from<from)) from=p.from;
+    if(p.to && p.to>to) to=p.to; });
+  const nSkip=chosen.reduce(function(s,o){ return s+(PA.plans[o.id].nSkip||0); },0);
+
+  const staffOpts=function(cur){
+    const inh=(DATA.staff||[]).filter(function(s){ return s&&s.active!==false&&s.type!=='outsource'; });
+    const out=(DATA.staff||[]).filter(function(s){ return s&&s.active!==false&&s.type==='outsource'; });
+    const mk=function(s){ return '<option value="'+esc(s.id)+'"'+(cur===s.id?' selected':'')+'>'+esc(s.name)+'</option>'; };
+    return '<option value=""'+(cur?'':' selected')+'>— bỏ qua —</option>'
+      + (inh.length?'<optgroup label="Nhân sự xưởng">'+inh.map(mk).join('')+'</optgroup>':'')
+      + (out.length?'<optgroup label="Đối tác outsource">'+out.map(mk).join('')+'</optgroup>':'');
+  };
+  // bảng chọn người theo mã công đoạn
+  const codeKeys=Object.keys(PA.codes||{}).sort();
+  const codeRows=codeKeys.map(function(k){
+    const c=PA.codes[k], learned=paOwnerOf(k);
+    const st=paStaff(learned.id);
+    return '<div style="display:flex;align-items:center;gap:7px;padding:3px 0">'
+      +'<b style="min-width:26px;font-size:13px">'+esc(k)+'</b>'
+      +'<span class="muted" style="min-width:110px;font-size:11px">'+esc(truncate(c.name,18))+'</span>'
+      +'<select onchange="paSetCode(\''+esc(k)+'\',this.value)" style="font-size:11.5px;flex:1;min-width:130px">'+staffOpts(PA.byCode[k])+'</select>'
+      +'<span class="muted" style="font-size:10px;min-width:70px;text-align:right">'+c.n+' CĐ'
+      +(st?'<br>📈 '+esc(truncate(st.name,12)):'')+'</span></div>';
+  }).join('');
+
+  // tải từng người sau khi rải — cảnh báo ngày quá sức
+  const over={};
+  Object.keys(PA.load||{}).forEach(function(w){
+    const s=paStaff(w); if(s && s.type==='outsource') return;
+    Object.keys(PA.load[w]).forEach(function(d){
+      if(PA.load[w][d] > (parseFloat(PA.capacity)||HOURS_PER_DAY)+0.01) (over[w]=over[w]||[]).push(d);
+    });
+  });
+  const overTxt=Object.keys(over).map(function(w){
+    const s=paStaff(w); return esc((s&&s.name)||w)+' ('+over[w].length+' ngày)';
+  }).join(' · ');
+  const per=paPerPerson(chosen);
+  const FAR=90;   // quá 3 tháng nghĩa là người đó ôm không nổi, phải chia bớt
+  const perTxt=per.map(function(p){
+    const far=!p.outsource && p.days>FAR;
+    return '<div style="display:flex;gap:6px;align-items:baseline;'+(far?'color:#b91c1c;font-weight:700':'')+'">'
+      +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.outsource?'🔁 ':'')+esc(p.name)+'</span>'
+      +'<span style="white-space:nowrap">'+p.n+' CĐ · '+Math.round(p.h)+'h</span>'
+      +'<span style="white-space:nowrap;min-width:78px;text-align:right">'+(p.to?('đến '+fmtDate(p.to)):'—')+(far?' ⚠':'')+'</span></div>';
+  }).join('');
+  const nFar=per.filter(function(p){ return !p.outsource && p.days>FAR; }).length;
+
+  const rows=list.map(function(o){
+    const p=PA.plans[o.id]||{};
+    const n=p.nFill||0;
+    const who={}; (p.rows||[]).forEach(function(r){ if(r.who){ const s=paStaff(r.who); who[(s&&s.name)||r.who]=1; } });
+    const whoTxt=Object.keys(who).map(function(x){ return esc(truncate(x,14)); }).join(', ');
+    const due=normDate(o.dueDate);
+    const lateFlag = (due && p.to && p.to>due) ? '<div style="color:var(--st-late);font-size:9.5px;font-weight:700">⚠ trễ hạn giao '+fmtDate(due)+'</div>' : '';
+    return '<tr style="border-bottom:1px dashed #e8edf4;'+(n?'':'opacity:.45')+'">'
+      +'<td style="padding:4px"><input type="checkbox" '+(PA.sel[o.id]?'checked':'')+' '+(n?'':'disabled')+' onchange="paSel(\''+o.id+'\',this.checked)"></td>'
+      +'<td style="padding:4px;white-space:nowrap"><b>'+esc(o.code||'')+'</b></td>'
+      +'<td style="padding:4px;min-width:150px;white-space:normal">'+esc(truncate(String(o.name||o.product||'').replace(/\n/g,' · '),52))+'</td>'
+      +'<td style="padding:4px;white-space:nowrap;text-align:right;font-weight:700">'+(n?n+' CĐ':'—')
+        +(p.nSkip?'<div style="color:#B45309;font-weight:400;font-size:9.5px">'+p.nSkip+' chưa có người</div>':'')+'</td>'
+      +'<td style="padding:4px;min-width:120px;white-space:normal;font-size:10.5px">'+(whoTxt||'<span class="muted">—</span>')+'</td>'
+      +'<td style="padding:4px;white-space:nowrap;font-size:10.5px">'+(p.from?fmtDate(p.from)+' → '+fmtDate(p.to):'—')+lateFlag+'</td>'
+      +'<td style="padding:4px;white-space:nowrap;text-align:right;font-size:10.5px">'+(n?Math.round(p.hours)+'h':'')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  el.innerHTML=''
+    +'<div class="toolbar" style="margin-bottom:8px">'
+      +'<select onchange="paSetScope(this.value)" style="font-size:12px">'
+        +'<option value="open"'+(PA.scope==='open'?' selected':'')+'>Đơn chưa giao</option>'
+        +'<option value="late"'+(PA.scope==='late'?' selected':'')+'>Chỉ đơn đã quá hạn</option>'
+        +'<option value="all"'+(PA.scope==='all'?' selected':'')+'>Tất cả đơn</option></select>'
+      +'<a onclick="paSelAll(true)" style="cursor:pointer;color:var(--brand);font-weight:700;font-size:11.5px">Chọn hết</a>'
+      +'<a onclick="paSelAll(false)" style="cursor:pointer;color:var(--muted);font-weight:700;font-size:11.5px">Bỏ chọn</a>'
+      +'<span class="muted small" style="margin-left:auto">'+list.length+' đơn đang kẹt vì thiếu người hoặc ngày</span></div>'
+    +'<div class="row2" style="gap:10px;align-items:start">'
+      +'<div>'
+        +'<div class="small muted" style="font-weight:700;margin-bottom:3px">AI LÀM CÔNG ĐOẠN NÀO <span style="font-weight:400">— 📈 là người hay làm mã đó trong các đơn cũ</span></div>'
+        +'<div style="max-height:30vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px 9px">'
+        +(codeRows||'<span class="muted small">Không có công đoạn nào cần gán.</span>')+'</div></div>'
+      +'<div>'
+        +'<div class="row2" style="gap:8px">'
+          +'<div class="field" style="margin:0"><label>Bắt đầu rải từ ngày</label><input type="date" value="'+esc(PA.startDate)+'" onchange="paSetStart(this.value)"></div>'
+          +'<div class="field" style="margin:0"><label>Giờ tối đa / người / ngày</label><input type="number" min="1" max="16" step="0.5" value="'+esc(String(PA.capacity))+'" onchange="paSetCap(this.value)"></div></div>'
+        +'<div style="margin-top:6px;padding:7px 10px;background:#eef2ff;border-radius:6px;color:#3730a3;font-size:12px;font-weight:700;line-height:1.5">'
+          +'Đã chọn '+chosen.length+' đơn → gán '+totSt+' công đoạn · '+Math.round(totH)+'h'
+          +(from?'<br>Lịch chạy từ '+fmtDate(from)+' đến '+fmtDate(to):'')
+          +(nSkip?'<br><span style="color:#B45309">'+nSkip+' công đoạn chưa chọn người — sẽ bỏ qua</span>':'')+'</div>'
+        +(overTxt?'<div style="margin-top:6px;padding:7px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#b91c1c;font-size:11.5px;font-weight:700">⚠ Quá '+PA.capacity+'h/ngày: '+overTxt+'</div>':'')
+        +(perTxt?'<div style="margin-top:6px;border:1px solid var(--line);border-radius:6px;padding:6px 9px;max-height:16vh;overflow:auto;font-size:11px">'
+          +'<div class="muted" style="font-weight:700;font-size:10px;margin-bottom:3px">AI ÔM BAO NHIÊU</div>'+perTxt+'</div>':'')
+        +(nFar?'<div style="margin-top:6px;padding:7px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#b91c1c;font-size:11.5px;font-weight:700">⚠ '+nFar+' người có lịch kéo quá 3 tháng — đổi bớt mã công đoạn sang người khác, hoặc chuyển sang đối tác outsource.</div>':'')
+      +'</div></div>'
+    +'<div style="max-height:34vh;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:8px">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead>'
+      +'<tr style="position:sticky;top:0;background:#f8fafc;color:#6366F1;font-weight:800;font-size:10px;text-align:left;border-bottom:1px solid #dfe5ee">'
+      +'<th style="padding:5px 4px"></th><th style="padding:5px 4px">MÃ ĐƠN</th><th style="padding:5px 4px">TÊN HÀNG</th>'
+      +'<th style="padding:5px 4px;text-align:right">SẼ GÁN</th><th style="padding:5px 4px">AI LÀM</th>'
+      +'<th style="padding:5px 4px">LỊCH DỰ KIẾN</th><th style="padding:5px 4px;text-align:right">GIỜ</th></tr></thead>'
+      +'<tbody>'+(rows||'<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--muted)">Không có đơn nào đang kẹt — mọi công đoạn đều đã có người và ngày.</td></tr>')+'</tbody></table></div>'
+    +'<div style="margin-top:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 11px;font-size:12px;color:#92400e">'
+      +'<label style="display:inline-flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" '+(PA.backup?'checked':'')+' onchange="PA.backup=this.checked"> Tải backup JSON trước khi chạy</label>'
+      +'<div style="margin-top:4px">Công cụ sửa nhiều đơn cùng lúc và <b>không có nút hoàn tác</b>. Nó <b>chỉ điền vào chỗ trống</b> — công đoạn đã có người, đã có ngày, đang làm hoặc đã xong đều giữ nguyên. Lịch này là <b>dự kiến theo định mức</b>; sau khi áp, vào tab Lịch phân công soát lại.</div></div>'
+    +'<div class="toolbar" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">'
+      +'<button onclick="paApply()"'+(chosen.length&&totSt?'':' disabled')+'>✓ Gán '+totSt+' công đoạn cho '+chosen.length+' đơn</button>'
+      +'<button class="ghost" onclick="closeModal(\'modalPlanAll\')" style="margin-left:auto">Đóng</button></div>';
+}
+function paApply(){
+  if(!requireEdit()) return;
+  const chosen=(PA.list||[]).filter(function(o){ return PA.sel[o.id] && (PA.plans[o.id]||{}).nFill; });
+  if(!chosen.length){ alert('Chưa chọn đơn nào, hoặc các công đoạn chưa chọn người.'); return; }
+  const nSt=chosen.reduce(function(s,o){ return s+PA.plans[o.id].nFill; },0);
+  if(!confirm('Gán người + ngày cho '+nSt+' công đoạn của '+chosen.length+' đơn?\n\nChỉ điền vào chỗ trống — công đoạn đã có người/ngày, đang làm hoặc đã xong đều giữ nguyên.\nKhông có nút hoàn tác.')) return;
+  if(PA.backup){ try{ backupNow(true); }catch(e){} }
+  let done=0;
+  chosen.forEach(function(o){
+    (PA.plans[o.id].rows||[]).forEach(function(r){
+      if(r.skip || !r.who || !r.start) return;
+      if(!paNeeds(r.st)) return;                       // soát lại lần cuối trước khi ghi
+      r.st.assignee  = r.who;
+      r.st.startDate = r.start;
+      if(!normDate(r.st.endDate)) r.st.endDate = r.end || r.start;
+      if(!(parseFloat(r.st.hours)>0)){ r.st.hours = Math.round(r.hours*10)/10; r.st._auto = true; }
+      if(!r.st.id) r.st.id = localId('ST');
+      done++;
+    });
+    o.updatedAt=new Date().toISOString();
+    try{ syncAssignmentsFromOrder(o); }catch(e){ console.error('syncAssignments', e); }
+  });
+  _stdHoursCache=null; _paOwnerCache=null;
+  save();
+  closeModal('modalAssign');
+  goTab('grid');
+  alert('✓ Đã gán '+done+' công đoạn cho '+chosen.length+' đơn.\n\nTừ giờ thợ mở "Việc hôm nay" là thấy việc của mình và tick được.\nVào tab Lịch phân công soát lại lịch — đổi ngày hay đổi người ngay trên lưới.');
+}
+
+/* ==========================================================================================
    📜 CHỨNG NHẬN XUẤT XƯỞNG (COC) — xuất file Word từ mẫu thật của DHP   thêm 10-09-2026
    Mẫu COC_TEMPLATE.docx nằm cùng thư mục với app. App tải mẫu về, thay chuỗi trong
    word/document.xml rồi nén lại — giữ nguyên 100% layout, bảng và ảnh của mẫu.
@@ -6014,10 +6360,16 @@ function renderToday(){
   const el = document.getElementById('view-today');
   if(!todayDate) todayDate = todayStr();
   if(!todayWho) todayWho = (DATA.meta&&DATA.meta.workerId) || ((DATA.staff[0]||{}).id) || '';
-  const staffOpts = (DATA.staff||[]).filter(s=>s&&s.active!==false)
+  // MÁY DÙNG CHUNG Ở XƯỞNG (thêm 04-10-2026): thêm mục "tất cả mọi người" để người đứng máy
+  // thấy hết việc trong ngày mà không phải đổi tên liên tục.
+  const ALLWHO = (todayWho==='__all__');
+  const staffOpts = `<option value="__all__" ${ALLWHO?'selected':''}>— tất cả mọi người —</option>`
+    + (DATA.staff||[]).filter(s=>s&&s.active!==false)
     .map(s=>`<option value="${esc(s.id)}" ${s.id===todayWho?'selected':''}>${esc(s.name)}</option>`).join('');
-  const jobs = (DATA.assignments||[]).filter(a=>a && a.staffId===todayWho && a.date===todayDate && a.kind==='order')
-    .sort((a,b)=>(a.stageCode||'').localeCompare(b.stageCode||''));
+  const _nameOf = id => { const s=(DATA.staff||[]).find(x=>x&&x.id===id); return (s&&s.name)||''; };
+  const jobs = (DATA.assignments||[]).filter(a=>a && (ALLWHO || a.staffId===todayWho) && a.date===todayDate && a.kind==='order')
+    .sort((a,b)=> ALLWHO ? (_nameOf(a.staffId)+'|'+(a.stageCode||'')).localeCompare(_nameOf(b.staffId)+'|'+(b.stageCode||''))
+                         : (a.stageCode||'').localeCompare(b.stageCode||''));
   const totalH = jobs.reduce((s,a)=>s+(parseFloat(a.hours)||8),0);
   const cards = jobs.map(a=>{
     const f = findStageForAssign(a);
@@ -6038,7 +6390,7 @@ function renderToday(){
     return `<div class="card" style="border-left:6px solid ${sColor};display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px">
       <div style="flex:1;min-width:200px">
         <div style="font-size:16px;font-weight:800">${o?esc(o.code):'?'} · ${esc((st&&(st.code+' '+(st.name||'')))||a.stage||'')}</div>
-        <div class="muted" style="font-size:13px;margin-top:2px">${o?esc(truncate(o.name,60)):''}</div>
+        <div class="muted" style="font-size:13px;margin-top:2px">${ALLWHO?`<b style="color:var(--brand)">👤 ${esc(_nameOf(a.staffId)||'?')}</b> · `:''}${o?esc(truncate(o.name,60)):''}</div>
         <div style="margin-top:4px"><span class="pill" style="background:${sColor};font-size:11px">${sLabel}</span> <span class="muted small">· ${a.hours||8}h${st&&st.location?' · @'+esc(st.location):''}</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">${btns}${o?`<button class="ghost sm" onclick="openOrderModal('${o.id}')" title="Mở/sửa đơn — thêm yêu cầu, ghi chú">✏ Đơn</button>`:''}</div>
@@ -6048,7 +6400,7 @@ function renderToday(){
     <div class="card" style="background:#fff;border-left:4px solid var(--brand)">
       <div class="toolbar" style="margin:0;align-items:center">
         <b style="font-size:15px">👷 Tôi là:</b>
-        <select onchange="todayWho=this.value;DATA.meta.workerId=this.value;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA))}catch(e){};renderToday()" style="font-size:15px;font-weight:700;min-width:200px">${staffOpts}</select>
+        <select onchange="todayWho=this.value;if(this.value!=='__all__'){DATA.meta.workerId=this.value;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA))}catch(e){}};renderToday()" style="font-size:15px;font-weight:700;min-width:200px">${staffOpts}</select>
         <input type="date" value="${esc(todayDate)}" onchange="todayDate=this.value;renderToday()" style="font-size:14px">
         <button class="ghost sm" onclick="todayDate=todayStr();renderToday()">Hôm nay</button>
         <span class="muted small" style="margin-left:auto">${jobs.length} việc · tổng ${totalH}h${totalH>8?' <b style="color:var(--st-late)">⚠ quá 8h</b>':''}</span>

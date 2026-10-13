@@ -638,6 +638,12 @@ function gateCheck(){
           <textarea id="ord_qc_note" rows="3" style="width:100%;margin-top:3px" placeholder="VD: Ø lỗ 42.01 trong dung sai H7; độ đảo mặt bích 0.03; bề mặt đạt..."></textarea>
         </div>
       </div>
+      <div style="margin-top:10px;border-top:1px dashed #bbf7d0;padding-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b class="small" style="color:#4338ca">📄 Hồ sơ xuất xưởng (Word):</b>
+        <button type="button" class="ghost sm" onclick="cocFromForm('is')" style="border-color:#0369a1;color:#0369a1" title="Lưu đơn rồi mở hộp xuất phiếu đo">💾 Lưu &amp; xuất 📐 Phiếu đo</button>
+        <button type="button" class="ghost sm" onclick="cocFromForm('coc')" style="border-color:#4338ca;color:#4338ca;font-weight:700" title="Lưu đơn rồi mở hộp xuất giấy chứng nhận xuất xưởng">💾 Lưu &amp; xuất 📜 Giấy chứng nhận</button>
+        <span class="small muted">App kiểm đủ số đo + QC Đạt mới cho xuất.</span>
+      </div>
     </div>
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff7ed">
       <label>📦 Vật tư cần mua / phôi chế tạo <span class="muted small">— gửi kế toán đặt mua. Bấm "Copy gửi kế toán" để dán vào Zalo nhóm kế toán–GĐ.</span></label>
@@ -1547,6 +1553,9 @@ function renderDashboard(){
       ${launch('','onclick="goTab(\'kpi\')"','📊','KPI &amp; Báo cáo','Điểm KPI · giờ công · trễ')}
       ${launch('','onclick="goTab(\'guide\')"','📋','Quy trình','Hướng dẫn vận hành bắt buộc')}
       ${launch('','onclick="goTab(\'ncr\')"','⚠','Ghi nhận NCR','Hàng hư / sai lệch')}
+      ${launch('','onclick="openCocPicker()"','📜','Chứng nhận / Phiếu đo','Chọn đơn → xuất Word mẫu DHP')}
+      ${canAdmin()?launch('','onclick="openRptMonth()"','📈','Báo cáo tháng / quý','Word + soạn mail · sai phạm quý'):''}
+      ${canEdit()?launch('','onclick="openZaloImport()"','📥','Nhập từ Zalo','Dán tin báo cáo → cập nhật công đoạn'):''}
       ${launch('','onclick="goTab(\'data\')"','⚙','Dữ liệu &amp; Đồng bộ','Supabase · sao lưu · Excel')}
       ${canEdit()?launch('','onclick="openOrderModal()"','＋','Thêm đơn hàng','Tạo đơn mới (G0)'):''}
       ${canEdit()?launch('','onclick="openQuickIntake()"','⚡','Tạo đơn nhanh','Dán text / mã SKU / file → tự dựng đơn'):''}
@@ -1989,6 +1998,8 @@ function ordersSectionHtml(){
       ${canEdit()?`<button onclick="openQuickIntake()" style="background:#4338ca" title="Dán đoạn text đơn hàng / gõ mã SKU / nạp file báo giá — app tự dựng đơn kèm chi tiết con, công đoạn và giờ định mức">⚡ Tạo đơn nhanh</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openBulkItems()" style="border-color:#4338ca;color:#4338ca;font-weight:700" title="Dựng chi tiết con + công đoạn cho hàng loạt đơn cũ, đọc từ danh sách trong Tên hàng">⚙ Dựng hàng loạt</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="paOpen()" style="border-color:#b45309;color:#b45309;font-weight:700" title="Rải người + ngày cho các công đoạn đang thiếu — thợ phải có đủ hai thứ này mới thấy việc">⚡ Gán người &amp; ngày${(function(){try{const n=(DATA.orders||[]).filter(o=>o&&o.status!=='delivered'&&((o.stages||[]).concat(...(o.items||[]).map(i=>i.stages||[]))).some(st=>st&&st.status!=='done'&&st.status!=='doing'&&!st.doneDate&&(!st.assignee||!st.startDate))).length;return n?` <span style="background:#b45309;color:#fff;border-radius:99px;padding:0 5px;font-size:10px">${n}</span>`:'';}catch(e){return '';}})()}</button>`:''}
+      <button class="ghost sm" onclick="openCocPicker()" style="border-color:#4338ca;color:#4338ca;font-weight:700" title="Chọn đơn → xuất giấy chứng nhận xuất xưởng / phiếu đo (Word)">📜 Chứng nhận / Phiếu đo</button>
+      ${canAdmin()?`<button class="ghost sm" onclick="openRptMonth()" style="border-color:#6366F1;color:#6366F1;font-weight:700" title="Báo cáo tháng (Word + soạn mail) · Sai phạm theo quý">📊 Báo cáo</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openZaloImport()" style="border-color:#0068ff;color:#0068ff;font-weight:700" title="Dán tin báo cáo của nhóm Zalo (#mã-đơn công-đoạn xong/bắt đầu/lỗi) → app cập nhật công đoạn, số đo, NCR">📥 Nhập từ Zalo</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openIncident()" style="border-color:#0891b2;color:#0e7490" title="Ghi sự cố máy/bất khả kháng — tự đánh dấu đơn + tính giờ sửa">🛑 Ghi sự cố</button>`:''}
       <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
@@ -2100,7 +2111,7 @@ function ordersTable(){
       <td>${progressCellHtml(o)}</td>
       <td class="small">${o.assignment==='outsource' ? 'Outsource — '+esc(o.outsourcePartner||'—') : (o.assignment==='mixed' ? `<span style="font-weight:700;color:#6366F1">${t('lb_mixed')}</span>`+(o.outsourcePartner?' — '+esc(o.outsourcePartner):'') : t('lb_inhouse'))}</td>
       <td class="small">${progressNote}${(function(){const fc=computeForecast(o); if(!fc||fc.kind==='done')return ''; const ref=(o.requestedDate||o.dueDate); const late=ref&&fc.date>ref; return `<div style="margin-top:3px;font-size:11px"><span style="${late?'color:var(--st-late);font-weight:700':'color:var(--muted)'}">📅 ${t('lb_forecast')}: ${fmtDate(fc.date)}${fc.kind==='manual'?' '+t('lb_manual'):''}${late?' · '+t('lb_lateKH'):''}</span></div>`;})()}</td>
-      <td class="actions"><a onclick="openOrderView('${o.id}')" style="color:#0EA5E9">👁 Xem</a>${canEdit()?`<a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a>`:''}</td>
+      <td class="actions"><a onclick="openOrderView('${o.id}')" style="color:#0EA5E9">👁 Xem</a><a onclick="openCocDialog('${o.id}','coc')" style="color:#4338ca" title="Giấy chứng nhận xuất xưởng / phiếu đo (Word)">📜 COC</a>${canEdit()?`<a onclick="openOrderModal('${o.id}')">${t('lb_edit')}</a><a onclick="deleteOrder('${o.id}')" style="color:var(--st-late)">${t('lb_del')}</a>`:''}</td>
     </tr>${itemsSubRow(o, rowBg)}`;
   }catch(err){
     console.error('Lỗi hiển thị đơn', o && o.code, err);
@@ -5374,12 +5385,59 @@ function openCocDialog(orderId, mode){
        duAn:(saved.duAn!=null?saved.duAn:(o.target||'')), po:(saved.po!=null?saved.po:(o.poNo||'')), phieuGiao:(saved.phieuGiao||''),
        banVe:(saved.banVe||''), lot:(saved.lot||''), kieuCo:(saved.kieuCo||''), vl:(saved.vl!=null?saved.vl:cocOrderMaterial(o)),
        secOf:Array.from({length:n}, function(_,i){ return (saved.secOf&&saved.secOf[i]) ? saved.secOf[i].slice() : def.slice(); })};
-  const h=document.querySelector('#modalCoc h3');
-  if(h) h.innerHTML = mode==='is'
-    ? '📐 Phiếu đo kiểm (Word) <span class="muted small" style="font-weight:400">— mẫu DHP, CK368 "a member of Dai Hong Phat"; mỗi chi tiết một phiếu</span>'
-    : '📜 Giấy chứng nhận xuất xưởng (COC) <span class="muted small" style="font-weight:400">— DHP đứng tên, sản xuất tại CK368; kèm phiếu đo từng chi tiết</span>';
+  cocSetTitle();
   renderCocDialog();
   openModal('modalCoc');
+}
+function cocSetTitle(){
+  const h=document.querySelector('#modalCoc h3'); if(!h||!COC) return;
+  h.innerHTML = (COC.mode==='is'
+    ? '📐 Phiếu đo kiểm (Word) <span class="muted small" style="font-weight:400">— mẫu DHP, CK368 "a member of Dai Hong Phat"; mỗi chi tiết một phiếu</span>'
+    : '📜 Giấy chứng nhận xuất xưởng (COC) <span class="muted small" style="font-weight:400">— DHP đứng tên, sản xuất tại CK368; kèm phiếu đo từng chi tiết</span>')
+    +'<div class="muted small" style="font-weight:600;margin-top:3px">Đơn <b style="color:#1f2937">'+esc(COC.o.code||'')+'</b> — '+esc(truncate(String(COC.o.name||'').replace(/\s+/g,' '),110))+'</div>';
+}
+// đổi qua lại phiếu đo ↔ giấy chứng nhận ngay trong hộp thoại
+function cocSwitchMode(m){
+  if(!COC||COC.mode===m) return;
+  if(m==='coc' ? !requireEdit() : !requireWork()) return;
+  COC.mode=m; cocSetTitle(); renderCocDialog();
+}
+// từ FORM SỬA ĐƠN: lưu đơn rồi mở hộp xuất (hộp xuất đọc dữ liệu đã lưu)
+function cocFromForm(mode){
+  const id=document.getElementById('ord_id').value;
+  if(!id){ alert('Đơn mới chưa lưu.\nBấm 💾 Lưu đơn hàng trước, sau đó mở lại để xuất.'); return; }
+  saveOrder();
+  if(document.getElementById('modalOrder').classList.contains('show')) return;   // lưu bị chặn (thiếu thông tin) → giữ form
+  openCocDialog(id, mode);
+}
+// LỐI VÀO RIÊNG: chọn đơn (gõ tìm) → mở hộp xuất; kèm danh sách đơn đã đủ thông tin
+function openCocPicker(){
+  if(!requireWork()) return;
+  if(!document.getElementById('modalCocPick')){
+    const d=document.createElement('div'); d.className='modal-bg'; d.id='modalCocPick';
+    d.innerHTML='<div class="modal" style="max-width:760px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+      +'<h3 style="margin:0">📜 Giấy chứng nhận xuất xưởng / 📐 Phiếu đo (Word)</h3><button class="ghost sm" onclick="closeModal(\'modalCocPick\')">Đóng ✕</button></div>'
+      +'<div class="field" style="margin-top:10px"><label>Chọn đơn cần xuất</label><select id="cocpick_order" data-op="1" onchange="cocPickChanged()"></select></div>'
+      +'<div id="cocpick_act"></div><div id="cocpick_ready" style="margin-top:10px"></div></div>';
+    document.body.appendChild(d);
+  }
+  fillSelect(document.getElementById('cocpick_order'), DATA.orders.map(function(o){ return {id:o.id, label:(o.code||'')+' — '+truncate(o.name||'',60)}; }), 'id','label','— Chọn đơn hàng —');
+  document.getElementById('cocpick_order').value='';
+  if(typeof opRefresh==='function') opRefresh(document.getElementById('cocpick_order'));
+  cocPickChanged();
+  const ready=(DATA.orders||[]).filter(function(o){ return o && cocCheck(o,'coc',o.coc||{}).ok; })
+    .sort(function(a,b){ return String(b.completedDate||b.deliveredDate||b.receivedDate||'')<String(a.completedDate||a.deliveredDate||a.receivedDate||'')?-1:1; });
+  document.getElementById('cocpick_ready').innerHTML='<div class="small" style="font-weight:800;color:#15803d;margin-bottom:4px">✓ Đơn đã đủ thông tin để cấp giấy chứng nhận ('+ready.length+')</div>'
+    +(ready.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px">'+ready.slice(0,40).map(function(o){ return '<a class="chip" style="cursor:pointer" title="'+esc(o.name||'')+'" onclick="closeModal(\'modalCocPick\');openCocDialog(\''+o.id+'\',\'coc\')"><b>'+esc(o.code||'')+'</b> '+esc(truncate(o.company||'',18))+'</a>'; }).join('')+'</div>'
+      : '<div class="muted small">Chưa có đơn nào đủ — thường thiếu số đo thực tế hoặc QC cuối chưa Đạt.</div>');
+  openModal('modalCocPick');
+  setTimeout(function(){ const q=document.querySelector('#modalCocPick .op-q'); if(q) q.focus(); }, 60);
+}
+function cocPickChanged(){
+  const el=document.getElementById('cocpick_act'); if(!el) return;
+  const id=document.getElementById('cocpick_order').value, o=(DATA.orders||[]).find(function(x){ return x&&x.id===id; });
+  if(!o){ el.innerHTML=''; return; }
+  el.innerHTML='<div class="toolbar" style="margin-top:4px">'+cocBtnHtml(o,'is').replace('openCocDialog(','closeModal(\'modalCocPick\');openCocDialog(')+cocBtnHtml(o,'coc').replace('openCocDialog(','closeModal(\'modalCocPick\');openCocDialog(')+'</div>';
 }
 function cocSetSec(i,sec,on){
   const a=COC.secOf[i]; const k=a.indexOf(sec);
@@ -5422,7 +5480,11 @@ function renderCocDialog(){
       +'<div class="row3" style="gap:8px;margin-top:8px">'+f('duAn','Dự án / Nơi sử dụng')+f('po','Số đơn hàng (PO)','BGDHP2026.xxxxx')+f('phieuGiao','Số phiếu giao hàng')+'</div>'
       +'<div class="row3" style="gap:8px;margin-top:8px">'+f('banVe','Số bản vẽ / Rev.','DRW-2026-xx-xx / Rev. 00')+f('lot','Số lô sản xuất','LOT.2026-10-0xx')+f('kieuCo','Kiểu và cỡ','để trống = lấy từ Tên hàng')+'</div>'
       +'<div class="row3" style="gap:8px;margin-top:8px">'+f('vl','Vật liệu (phiếu của cả đơn)','vd C45 / SS400')+'</div>';
-  el.innerHTML=gate+warn+fieldsHtml
+  const tabs='<div class="toolbar" style="margin:0 0 10px;gap:6px">'
+    +'<button class="'+(isOnly?'':'ghost ')+'sm" onclick="cocSwitchMode(\'is\')">📐 Phiếu đo</button>'
+    +'<button class="'+(isOnly?'ghost ':'')+'sm" onclick="cocSwitchMode(\'coc\')">📜 Giấy chứng nhận xuất xưởng</button>'
+    +'<span class="muted small">cùng một mẫu Word DHP / CK368</span></div>';
+  el.innerHTML=tabs+gate+warn+fieldsHtml
     +'<div style="margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff">'
     +'<div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:5px">'+(isOnly?'Phiếu đo':'Phiếu kiểm tra kèm chứng nhận')+' — mỗi chi tiết con một phiếu'+(g.parts.length>1?', mỗi phiếu một trang':'')+'</div>'
     +'<div style="overflow-x:auto"><table data-tf="off" style="width:100%;border-collapse:collapse;font-size:11.5px"><thead>'

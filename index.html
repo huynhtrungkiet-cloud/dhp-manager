@@ -1114,7 +1114,7 @@ function save(){
   try{ payload = JSON.stringify(DATA); }
   catch(e){ ok=false; alert('⛔ Dữ liệu đang lỗi nên không tuần tự hoá được: '+e.message); }
   if(payload!=null){
-    try{ localStorage.setItem(STORAGE_KEY, payload); _saveFailed=false; }
+    try{ localStorage.setItem(STORAGE_KEY, payload); _saveFailed=false; try{ persistDirtyBases(); }catch(e2){} }
     catch(e){
       ok = false;
       if(!_saveFailed){
@@ -1359,7 +1359,7 @@ async function syncNow(){
   save(); // ghi localStorage
   if(!supaConfigured()){ alert('Chưa kết nối Supabase. Vào tab Dữ liệu để kết nối.'); return; }
   if(!_syncReady){ alert('Đang tải kho chung về, thử lại sau vài giây.'); return; }
-  clearTimeout(_autoPushTimer); // hủy hẹn 2s, đẩy luôn
+  clearTimeout(_autoPushTimer); _autoPushTimer=null; // hủy hẹn 2s, đẩy luôn
   try{
     if(btn){ btn.innerHTML='⏳ Đang lưu...'; btn.disabled=true; }
     await supaPush(true);
@@ -2869,6 +2869,7 @@ function deleteTemplate(){
 function syncAssignmentsFromOrder(o){
   if(!o || !o.id) return;
   // Xóa các việc CŨ do công đoạn của đơn này tự sinh (giữ lại việc gán tay)
+  const _oldAuto = {}; (DATA.assignments||[]).forEach(a => { if(a && a.fromStage && a.orderId===o.id) _oldAuto[a.id] = a; });
   DATA.assignments = (DATA.assignments||[]).filter(a => !(a && a.fromStage && a.orderId===o.id));
   const mk = (st, label, itemId)=>{
     if(!st || !st.assignee || !st.startDate) return;
@@ -2883,7 +2884,7 @@ function syncAssignmentsFromOrder(o){
     days.forEach((dy,di)=>{
       let dayH; if(evenH!=null){ dayH=evenH; } else { dayH=Math.min(HOURS_PER_DAY, remain); remain-=dayH; }
       DATA.assignments.push({
-        id: localId('PCS'),
+        id: 'PCS-'+o.id+'-'+st.id+'-'+(di+1),   // 19-10-2026: id cố định → 2 máy dựng lại không nhân đôi ô lịch
         staffId: st.assignee,
         date: dy,
         kind: 'order',
@@ -2903,6 +2904,15 @@ function syncAssignmentsFromOrder(o){
   };
   (o.stages||[]).filter(Boolean).forEach(st=>mk(st, '', ''));
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(st=>mk(st, truncate(it.name||'',16), it.id||'')));
+  // ô nào nội dung không đổi (chỉ khác giờ tạo) → giữ nguyên ô cũ, khỏi đẩy lên kho chung vô ích
+  const _strip = a => Object.assign({}, a, {createdAt:0, updatedAt:0});
+  DATA.assignments = DATA.assignments.map(a => {
+    const p = (a && a.fromStage && a.orderId===o.id) ? _oldAuto[a.id] : null;
+    if(!p) return a;
+    if(syncDeq(_strip(p), _strip(a))) return p;
+    a.createdAt = p.createdAt || a.createdAt;
+    return a;
+  });
 }
 
 // Tiền tố mã đơn theo LOẠI (viết tắt EN, dùng lâu dài)
@@ -3408,7 +3418,7 @@ function fillProdDatalist(){
 async function refreshCatalogFromCloud(){
   try{
     if(!(_sb || (typeof initSupabase==='function' && initSupabase()))) return;
-    const { data, error } = await _sb.from('products').select('id,data');
+    const { data, error } = await _selectAll('products', 'id,data');
     if(!error && Array.isArray(data)){
       DATA.products = data.map(r=>r.data).filter(Boolean);
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
@@ -3437,6 +3447,7 @@ function openOrderModal(id){
   fillSelect(document.getElementById('ord_partner'), DATA.partners, 'name', 'name', '— Chọn đối tác —');
   if(id){
     const o = DATA.orders.find(x=>x.id===id);
+    _ordFormBase = o ? JSON.parse(JSON.stringify(o)) : null;   // 19-10-2026: bản gốc để gộp khi lưu
     document.getElementById('orderModalTitle').textContent = 'Sửa đơn hàng — '+o.code;
     document.getElementById('ord_code').value = o.code||'';
     document.getElementById('ord_company').value = o.company||'';
@@ -3480,6 +3491,7 @@ function openOrderModal(id){
     document.getElementById('ord_fmReason').value = '';
     document.getElementById('ord_fmReason').style.display = 'none';
     impLoadForm(null);
+    _ordFormBase = null;
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
     ['ord_code','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
     onPickProduct();
@@ -3602,14 +3614,16 @@ function saveOrder(){
     rec.statusHistory = DATA.orders[idx].statusHistory||[];
     if(DATA.orders[idx].status !== rec.status) rec.statusHistory.push({status:rec.status, date: todayStr()});
     rec.createdAt = DATA.orders[idx].createdAt;
-    DATA.orders[idx] = Object.assign({}, DATA.orders[idx], rec);
+    // GỘP với bản hiện tại: lúc form đang mở, máy khác có thể vừa cập nhật đơn này (vd thợ tick công đoạn)
+    DATA.orders[idx] = syncMergeForm(_ordFormBase, Object.assign({}, DATA.orders[idx], rec), DATA.orders[idx]);
   } else {
     rec.createdAt = new Date().toISOString();
     rec.statusHistory = [{status:rec.status, date: todayStr()}];
     DATA.orders.push(rec);
   }
   ensureCustomersFromOrders();
-  syncAssignmentsFromOrder(rec);
+  syncAssignmentsFromOrder(DATA.orders.find(o=>o.id===rec.id) || rec);
+  _ordFormBase = null;
   closeModal('modalOrder');
   save();
   goTab('orders');
@@ -6124,133 +6138,652 @@ function initSupabase(){
   try{ _sb = supabase.createClient(cleanSupaUrl(DATA.meta.supaUrl), DATA.meta.supaKey.trim()); return true; }
   catch(e){ setSupaStatus('Lỗi khởi tạo: '+e.message, true); return false; }
 }
-// Đẩy dữ liệu lên Supabase.
-//  changedOnly=true  → CHỈ đẩy bản ghi đã sửa/mới + xóa bản đã xóa (dùng cho tự-đồng-bộ, tránh đè đơn người khác)
-//  changedOnly=false → đẩy TOÀN BỘ (nút "Đẩy toàn bộ" — coi máy này là nguồn chuẩn)
-async function supaPush(changedOnly){
+/* ===================================================================================
+   ĐỒNG BỘ GỘP TỪNG Ô — sửa 19-10-2026
+   Lỗi cũ: mỗi đơn là MỘT KHỐI. Máy nào đẩy sau là ĐÈ NGUYÊN KHỐI lên kho chung. Máy đang giữ bản cũ
+   (lỡ real-time do ngủ máy / rớt mạng, form để mở lâu, hoặc lúc mở app dán lại bản "chưa đẩy") chỉ
+   cần sửa 1 ô là xoá luôn việc máy kia vừa nhập — vd xưởng tick công đoạn, máy quản lý sửa hạn giao
+   → công đoạn quay về "chưa xong" trên cả 2 máy.
+   Nay:
+    • Mỗi máy nhớ BẢN GỐC (bản kho chung lúc máy này lấy về). Khi đẩy: lấy bản hiện tại trên kho, chỉ
+      áp những Ô máy này thật sự đã đổi so với bản gốc → phần máy khác vừa làm được giữ nguyên.
+    • Ghi CÓ ĐIỀU KIỆN theo updated_at: ai vừa ghi chen ngang thì lấy lại, gộp lại rồi mới ghi.
+    • Nhận real-time lúc máy này đang có sửa đổi chưa đẩy: GỘP, không thay thế.
+    • Tự đối chiếu lại kho chung khi quay lại tab / có mạng lại / mỗi ~3 phút → bù real-time bị lỡ.
+    • Bản gốc của bản ghi đang sửa dở được ghi xuống máy (rất nhỏ) → F5 / tắt máy vẫn gộp đúng.
+   Hai máy cùng sửa ĐÚNG MỘT Ô cùng lúc: lấy giá trị của lần sửa sau cùng (không thể giữ cả hai).
+   =================================================================================== */
+var BASE_KEY = 'dhp_sync_base_v2';
+var _syncBase = {};        // bảng -> { id -> JSON bản kho chung gần nhất máy này biết }
+var _syncVer = {};         // bảng -> { id -> updated_at trên kho chung }
+var _ordFormBase = null;   // bản đơn lúc MỞ form sửa — lúc lưu chỉ áp những ô đã sửa trong form
+var _pushChain = Promise.resolve();   // mọi lần đẩy / đối chiếu chạy lần lượt, không chồng nhau
+var _syncMergedOrders = [];           // đơn vừa gộp với bản máy khác → dựng lại ô lịch tự sinh
+var _catchUpBusy = false, _lastCatchUp = 0, _hiddenAt = 0, _rtDown = false;
+
+/* ---------- so sánh & gộp ---------- */
+function _sIsObj(x){ return x !== null && typeof x === 'object' && !Array.isArray(x); }
+function _sHas(o, k){ return Object.prototype.hasOwnProperty.call(o, k) && o[k] !== undefined; }
+// So sánh theo NỘI DUNG (không phụ thuộc thứ tự khoá — Postgres jsonb tự xếp lại khoá)
+function syncDeq(a, b){
+  if(a === b) return true;
+  if(a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  const aa = Array.isArray(a), ab = Array.isArray(b);
+  if(aa !== ab) return false;
+  if(aa){
+    if(a.length !== b.length) return false;
+    for(let i = 0; i < a.length; i++){
+      const x = a[i] === undefined ? null : a[i], y = b[i] === undefined ? null : b[i];
+      if(!syncDeq(x, y)) return false;
+    }
+    return true;
+  }
+  const ka = Object.keys(a).filter(function(k){ return a[k] !== undefined; });
+  const kb = Object.keys(b).filter(function(k){ return b[k] !== undefined; });
+  if(ka.length !== kb.length) return false;
+  for(const k of ka){ if(!_sHas(b, k) || !syncDeq(a[k], b[k])) return false; }
+  return true;
+}
+function _sKey(x){ return (_sIsObj(x) && x.id != null && x.id !== '') ? String(x.id) : null; }
+function _sKeyed(arr){
+  const seen = {};
+  for(const x of arr){ const k = _sKey(x); if(k == null || seen[k]) return false; seen[k] = 1; }
+  return true;
+}
+// Gộp 3 bên: base = bản chung lúc trước, local = máy này, remote = kho chung hiện tại.
+// Ô chỉ một bên đổi → lấy bên đổi. Hai bên cùng đổi một ô → lấy máy này (thao tác sau cùng).
+function syncMerge3(base, local, remote){
+  if(syncDeq(local, remote)) return local;
+  if(syncDeq(base, local)) return remote;
+  if(syncDeq(base, remote)) return local;
+  if(_sIsObj(local) && _sIsObj(remote)){
+    const b = _sIsObj(base) ? base : {};
+    const out = {};
+    const keys = Object.keys(local).concat(Object.keys(remote).filter(function(k){ return !Object.prototype.hasOwnProperty.call(local, k); }));
+    keys.forEach(function(k){
+      const lv = local[k], rv = remote[k], bv = b[k];
+      let v;
+      if(lv === undefined) v = (bv !== undefined && syncDeq(bv, rv)) ? undefined : rv;        // máy này bỏ ô / chưa có
+      else if(rv === undefined) v = (bv !== undefined && syncDeq(bv, lv)) ? undefined : lv;   // máy kia bỏ ô / chưa có
+      else v = syncMerge3(bv, lv, rv);
+      if(v !== undefined) out[k] = v;
+    });
+    return out;
+  }
+  if(Array.isArray(local) && Array.isArray(remote)) return syncMergeArr(Array.isArray(base) ? base : [], local, remote);
+  return local;
+}
+function syncMergeArr(base, local, remote){
+  // danh sách có id (công đoạn, chi tiết, file đính kèm...) → gộp theo id
+  if((local.length || remote.length) && _sKeyed(local) && _sKeyed(remote) && _sKeyed(base)){
+    const bm = {}, rm = {}, lm = {};
+    base.forEach(function(x){ bm[_sKey(x)] = x; });
+    remote.forEach(function(x){ rm[_sKey(x)] = x; });
+    local.forEach(function(x){ lm[_sKey(x)] = x; });
+    const out = [];
+    local.forEach(function(lx){
+      const k = _sKey(lx);
+      if(k in rm) out.push(syncMerge3(bm[k], lx, rm[k]));
+      else if((k in bm) && syncDeq(bm[k], lx)) { /* máy kia đã xoá, máy này không đổi → xoá theo */ }
+      else out.push(lx);                       // máy này thêm mới (hoặc sửa cái máy kia xoá → giữ)
+    });
+    remote.forEach(function(rx, ri){
+      const k = _sKey(rx);
+      if(k in lm) return;
+      if((k in bm) && syncDeq(bm[k], rx)) return;   // máy này đã xoá, máy kia không đổi → giữ lệnh xoá
+      let pos = 0;                                  // máy kia thêm mới → chèn đúng chỗ
+      for(let j = ri - 1; j >= 0; j--){
+        const pk = _sKey(remote[j]);
+        const p = out.findIndex(function(o){ return _sKey(o) === pk; });
+        if(p >= 0){ pos = p + 1; break; }
+      }
+      out.splice(pos, 0, rx);
+    });
+    return out;
+  }
+  if(base.length === local.length && local.length === remote.length){
+    return local.map(function(lx, i){ return syncMerge3(base[i], lx, remote[i]); });
+  }
+  // không có id (vd hàng kích thước cần đo), hai bên chỉ THÊM ở cuối / sửa tại chỗ → gộp theo vị trí + nối phần thêm
+  const n = base.length;
+  if(local.length >= n && remote.length >= n){
+    const out = [];
+    for(let i = 0; i < n; i++) out.push(syncMerge3(base[i], local[i], remote[i]));
+    const lx = local.slice(n), rx = remote.slice(n);
+    lx.forEach(function(x){ out.push(x); });
+    rx.forEach(function(x){ if(!lx.some(function(y){ return syncDeq(x, y); })) out.push(x); });
+    return out;
+  }
+  // có bên đã xoá bớt → gộp theo nội dung (thêm của cả hai, xoá của bên nào cũng giữ)
+  const has = function(arr, x){ return arr.some(function(y){ return syncDeq(x, y); }); };
+  const out = [];
+  local.forEach(function(lx){ if(has(base, lx) && !has(remote, lx)) return; out.push(lx); });
+  remote.forEach(function(rx){ if(has(out, rx) || has(local, rx) || has(base, rx)) return; out.push(rx); });
+  return out;
+}
+// Gộp 2 bên khi KHÔNG có bản gốc (chỉ dùng cho dữ liệu sửa dở từ bản app cũ): kho chung thắng khi
+// cùng có giá trị khác nhau, nhưng ô kho chung để trống mà máy này có thì giữ của máy này.
+function _sEmpty(v){ return v === null || v === undefined || v === ''; }
+function syncMerge2(local, remote){
+  if(syncDeq(local, remote)) return local;
+  if(_sIsObj(local) && _sIsObj(remote)){
+    const out = {};
+    Object.keys(local).concat(Object.keys(remote).filter(function(k){ return !Object.prototype.hasOwnProperty.call(local, k); })).forEach(function(k){
+      const lv = local[k], rv = remote[k];
+      const v = (rv === undefined) ? lv : (lv === undefined ? rv : syncMerge2(lv, rv));
+      if(v !== undefined) out[k] = v;
+    });
+    return out;
+  }
+  if(Array.isArray(local) && Array.isArray(remote)){
+    if(_sKeyed(local) && _sKeyed(remote)){
+      const lm = {}; local.forEach(function(x){ lm[_sKey(x)] = x; });
+      const out = remote.map(function(rx){ const k = _sKey(rx); return (k in lm) ? syncMerge2(lm[k], rx) : rx; });
+      local.forEach(function(lx){ if(!remote.some(function(rx){ return _sKey(rx) === _sKey(lx); })) out.push(lx); });
+      return out;
+    }
+    const isPrefix = function(a, b){ return a.length <= b.length && a.every(function(x, i){ return syncDeq(x, b[i]); }); };
+    return isPrefix(remote, local) ? local : remote;
+  }
+  if(_sEmpty(remote) && !_sEmpty(local)) return local;
+  return remote;
+}
+// Lưu form sửa đơn: chỉ áp các ô người dùng đã sửa trong form lên bản HIỆN TẠI (có thể vừa có cập nhật từ máy khác)
+function syncMergeForm(base, mine, cur){
+  if(!base || !mine || !cur || String(base.id) !== String(mine.id)) return mine;
+  try{ return syncMerge3(base, mine, cur); }catch(e){ console.error('[dhp] gộp form', e); return mine; }
+}
+
+/* ---------- đọc ĐỦ mọi dòng: Supabase trả tối đa 1000 dòng mỗi lần → đọc theo trang ---------- */
+async function _selectAll(T, cols, maxRows){
+  const PAGE = 1000, out = [], lim = maxRows || (T === 'products' ? 5000 : 1000000);   // catalogue chỉ để tra cứu → giới hạn 5000
+  let total = null;
+  for(let from = 0; from < lim; ){
+    const { data, error, count } = await _sb.from(T).select(cols, from === 0 ? { count:'exact' } : undefined).order('id', { ascending:true }).range(from, from + PAGE - 1);
+    if(error) return { data:null, error:error };
+    if(from === 0 && typeof count === 'number') total = count;
+    const n = (data || []).length;
+    (data || []).forEach(function(r){ out.push(r); });
+    from += n;
+    if(!n) break;
+    if(total != null ? out.length >= total : n < PAGE) break;   // (kho có thể đặt giới hạn < 1000 dòng → dựa vào tổng số dòng)
+  }
+  return { data:out, error:null };
+}
+
+/* ---------- bản gốc ---------- */
+function _recOf(appT, id){ return (DATA[appT] || []).find(function(r){ return r && String(r.id) === String(id); }) || null; }
+function _baseOf(appT, id){ const B = _syncBase[appT]; return (B && B[id] != null) ? B[id] : null; }
+function _setBase(appT, id, json, ver){
+  (_syncBase[appT] = _syncBase[appT] || {})[id] = json;
+  if(ver !== undefined) (_syncVer[appT] = _syncVer[appT] || {})[id] = ver;
+}
+function _dropBase(appT, id){ if(_syncBase[appT]) delete _syncBase[appT][id]; if(_syncVer[appT]) delete _syncVer[appT][id]; }
+// Mở app: đọc bản gốc của các bản ghi đang sửa dở; bản ghi "sạch" thì chính nó là bản gốc
+function loadSyncBase(){
+  try{
+    const raw = localStorage.getItem(BASE_KEY); const o = raw ? JSON.parse(raw) : null;
+    if(o && typeof o === 'object') Object.keys(o).forEach(function(t){ _syncBase[t] = Object.assign(_syncBase[t] || {}, o[t] || {}); });
+  }catch(e){}
+  try{
+    Object.keys(SUPA_TABLES).forEach(function(appT){
+      const snap = _syncSnap[appT] || {}; const B = (_syncBase[appT] = _syncBase[appT] || {});
+      (DATA[appT] || []).forEach(function(r){
+        if(!r || r.id == null) return; const id = String(r.id);
+        if(B[id] != null || !(id in snap)) return;
+        const j = JSON.stringify(r); if(_hashStr(j) === snap[id]) B[id] = j;
+      });
+    });
+  }catch(e){}
+}
+// Chỉ ghi xuống máy bản gốc của những bản ghi ĐANG SỬA DỞ (thường vài bản ghi → vài KB)
+function persistDirtyBases(){
+  try{
+    const out = {}; let n = 0;
+    Object.keys(SUPA_TABLES).forEach(function(appT){
+      if(appT === 'products') return;
+      const snap = _syncSnap[appT] || {}, B = _syncBase[appT] || {};
+      (DATA[appT] || []).forEach(function(r){
+        if(!r || r.id == null) return; const id = String(r.id);
+        if(!(id in snap) || B[id] == null) return;
+        if(_hashStr(JSON.stringify(r)) === snap[id]) return;
+        (out[appT] = out[appT] || {})[id] = B[id]; n++;
+      });
+    });
+    if(n) localStorage.setItem(BASE_KEY, JSON.stringify(out)); else localStorage.removeItem(BASE_KEY);
+  }catch(e){}
+}
+// Dọn ngày của 1 đơn (như sanitizeOrderDates) — làm TRƯỚC khi so mốc để khỏi tưởng nhầm là "đã sửa"
+function _sanitizeOrder(o){
+  if(!o || typeof o !== 'object') return;
+  if(o.code != null && typeof o.code !== 'string') o.code = String(o.code);
+  if(o.name != null && typeof o.name !== 'string') o.name = String(o.name);
+  if(o.company != null && typeof o.company !== 'string') o.company = String(o.company);
+  ['receivedDate','requestedDate','dueDate','completedDate','deliveredDate','forecastDate'].forEach(function(k){ if(o[k]) o[k] = normDate(o[k]); });
+}
+// "Chữ ký lịch" của đơn: người làm / ngày / giờ của từng công đoạn → đổi thì ô lịch tự sinh phải dựng lại
+function _stageSig(o){
+  if(!o) return '';
+  const f = function(s){ return s ? [s.id || '', s.assignee || '', s.startDate || '', s.endDate || '', s.hours == null ? '' : s.hours, s.otHours == null ? '' : s.otHours, s.plannedDays == null ? '' : s.plannedDays, s.code || '', s.name || ''] : null; };
+  return JSON.stringify([(o.stages || []).map(f), (o.items || []).map(function(it){ return it ? [it.id || '', it.name || '', (it.stages || []).map(f)] : null; })]);
+}
+// Không có bản gốc: bản ghi CHƯA TỪNG lên kho (máy này tạo) → kho chung chỉ có thể là chính bản máy này
+// vừa đẩy (tiếng vọng) → ưu tiên máy này. Bản ghi cũ từ bản app trước → ưu tiên kho chung.
+function _mergeNoBase(local, remote, everSynced){ return everSynced ? syncMerge2(local, remote) : syncMerge2(remote, local); }
+function _isDirty(appT, rec){ const snap = _syncSnap[appT] || {}; return _hashStr(JSON.stringify(rec)) !== snap[String(rec.id)]; }
+
+/* ---------- nhận 1 bản ghi từ kho chung (real-time / đối chiếu) ---------- */
+// trả về '' (không đổi gì) | 'add' | 'replace' | 'merge'
+function _applyRemote(appT, row){
+  if(!row || row.id == null || row.data == null) return '';
+  const id = String(row.id), remote = row.data;
+  if(appT === 'orders') _sanitizeOrder(remote);
+  const arr = (DATA[appT] = DATA[appT] || []); const snap = (_syncSnap[appT] = _syncSnap[appT] || {});
+  const rJson = JSON.stringify(remote), rHash = _hashStr(rJson);
+  const i = arr.findIndex(function(r){ return r && String(r.id) === id; });
+  if(i < 0){
+    if(id in snap){   // máy này vừa xoá mà chưa đẩy lệnh xoá
+      const bj = _baseOf(appT, id);
+      let same = snap[id] === rHash;
+      try{ if(!same && bj != null) same = syncDeq(JSON.parse(bj), remote); }catch(e){}
+      if(same){ _setBase(appT, id, rJson, row.updated_at); return ''; }   // máy kia không đổi gì → giữ lệnh xoá
+      // máy kia vừa sửa bản này → giữ lại bản của họ, không xoá mất việc họ vừa làm
+    }
+    arr.push(remote); snap[id] = rHash; _setBase(appT, id, rJson, row.updated_at);
+    return 'add';
+  }
+  const local = arr[i];
+  const lHash = _hashStr(JSON.stringify(local));
+  if(lHash === snap[id] || syncDeq(local, remote)){
+    arr[i] = remote; snap[id] = rHash; _setBase(appT, id, rJson, row.updated_at);
+    return (lHash === rHash) ? '' : 'replace';
+  }
+  // máy này đang có sửa đổi chưa lên kho → GỘP
+  const bj = _baseOf(appT, id);
+  let merged = local;
+  try{
+    if(bj != null){ const base = JSON.parse(bj); merged = syncDeq(base, remote) ? local : syncMerge3(base, local, remote); }
+    else merged = (rHash === snap[id]) ? local : _mergeNoBase(local, remote, (id in snap));
+  }catch(e){ console.error('[dhp] gộp', e); }
+  arr[i] = merged; snap[id] = rHash; _setBase(appT, id, rJson, row.updated_at);
+  if(appT === 'orders' && merged !== local && _stageSig(merged) !== _stageSig(local)) _syncMergedOrders.push(merged);
+  return 'merge';
+}
+function _applyRemoteDelete(appT, id){
+  id = String(id);
+  const arr = DATA[appT] || [], snap = (_syncSnap[appT] = _syncSnap[appT] || {});
+  const i = arr.findIndex(function(r){ return r && String(r.id) === id; });
+  if(i < 0){ delete snap[id]; _dropBase(appT, id); return false; }
+  if((id in snap) && _isDirty(appT, arr[i])){
+    // máy kia xoá đúng bản ghi máy này đang sửa dở → giữ lại (sẽ đẩy lên như bản mới), không mất việc
+    delete snap[id]; _dropBase(appT, id); return false;
+  }
+  if(!(id in snap)) return false;       // bản mới của máy này, kho chung chưa từng có
+  arr.splice(i, 1); delete snap[id]; _dropBase(appT, id);
+  return true;
+}
+function _afterRemoteBatch(nMerged){
+  if(_syncMergedOrders.length){
+    const list = _syncMergedOrders.splice(0);
+    list.forEach(function(o){ const cur = _recOf('orders', o.id); if(cur){ try{ syncAssignmentsFromOrder(cur); }catch(e){} } });
+  }
+  try{ sanitizeOrderDates(); }catch(e){}
+  try{ rebuildPartners(); }catch(e){}
+  persistSyncSnap(); persistDirtyBases();
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+  try{ renderAllSafe(); }catch(e){}
+  if(nMerged || countPendingLocal() > 0) setTimeout(function(){ try{ scheduleAutoPush(); }catch(e){} }, 300);
+}
+
+/* ---------- ĐẨY LÊN ---------- */
+//  changedOnly=true  → chỉ đẩy bản ghi đã sửa/mới + xoá bản đã xoá — GỘP với bản trên kho (tự đồng bộ)
+//  changedOnly=false → đẩy TOÀN BỘ, máy này là nguồn chuẩn (nút "Đẩy toàn bộ" / khởi tạo kho trống)
+function supaPush(changedOnly){
+  const run = function(){ return _supaPushCore(changedOnly); };
+  const p = _pushChain.then(run, run);
+  _pushChain = p.catch(function(){});
+  return p;
+}
+async function _fetchRowsByIds(T, ids){
+  const out = {};
+  for(let i = 0; i < ids.length; i += 80){
+    const { data, error } = await _sb.from(T).select('id,data,updated_at').in('id', ids.slice(i, i + 80));
+    if(error) throw error;
+    (data || []).forEach(function(r){ if(r && r.id != null) out[String(r.id)] = r; });
+  }
+  return out;
+}
+// Kho chung đã nhận `serverObj`. Nếu người dùng sửa thêm trong lúc chờ mạng → giữ phần sửa thêm.
+function _adoptSynced(appT, id, serverObj, ver, localAtStart, baseAtStart){
+  const sJson = JSON.stringify(serverObj);
+  const snap = (_syncSnap[appT] = _syncSnap[appT] || {});
+  if(_baseOf(appT, id) === baseAtStart){ _setBase(appT, id, sJson, ver); snap[id] = _hashStr(sJson); }
+  // (real-time đã cài bản mới hơn trong lúc chờ mạng → giữ bản đó làm gốc)
+  const arr = DATA[appT] || [];
+  const i = arr.findIndex(function(r){ return r && String(r.id) === String(id); });
+  if(i < 0) return 0;                       // vừa bị xoá trên máy này → lần đẩy sau sẽ xoá trên kho
+  const curLocal = arr[i];
+  let next;
+  if(syncDeq(curLocal, localAtStart)) next = JSON.parse(sJson);
+  else { try{ next = syncMerge3(localAtStart, curLocal, JSON.parse(sJson)); }catch(e){ next = curLocal; } }
+  arr[i] = next;
+  if(appT === 'orders' && _stageSig(next) !== _stageSig(localAtStart)) _syncMergedOrders.push(next);
+  return syncDeq(next, curLocal) ? 1 : 2;   // 1 = chỉ thay đối tượng, 2 = nội dung trên máy đã đổi (có phần máy khác)
+}
+async function _supaPushCore(changedOnly){
   if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
-  // SỬA 03-10-2026: trước đây mọi lỗi đẩy đều bị nuốt vào console.warn rồi chạy tiếp, nên
-  // scheduleAutoPush() vẫn hiện "✓ đã đồng bộ" dù kho chung KHÔNG nhận được gì. Người dùng
-  // tin là đã lưu, F5 một cái là mất. Nay: gom lỗi lại và ném ra để báo thật.
-  const _pushFails = [];
+  const fails = []; let store = false, render = false;
   for(const appT of Object.keys(SUPA_TABLES)){
-    if(appT==='products') continue;   // Coding sở hữu catalogue — Manager CHỈ ĐỌC, tuyệt đối không đẩy/xóa products
-    const cur = _snapOf(appT), prev = _syncSnap[appT]||{};
-    let ids;
-    if(changedOnly){ ids = Object.keys(cur).filter(id=>cur[id]!==prev[id]); }
-    else { ids = Object.keys(cur); }
+    if(appT === 'products') continue;     // Coding sở hữu catalogue — Manager CHỈ ĐỌC, tuyệt đối không đẩy/xóa products
+    const T = SUPA_TABLES[appT];
+    const prev = (_syncSnap[appT] = _syncSnap[appT] || {});
+    const cur = _snapOf(appT);
+    if(!changedOnly){
+      const ids = Object.keys(cur); let ok = true; const fullSnap = {};
+      for(let i = 0; i < ids.length && ok; i += 200){
+        const nowIso = new Date().toISOString();
+        const jsons = {};
+        const rows = ids.slice(i, i + 200).map(function(id){ const rec = _recOf(appT, id); if(!rec) return null; const j = JSON.stringify(rec); jsons[id] = j; return {id: id, data: JSON.parse(j), updated_at: nowIso}; }).filter(Boolean);
+        const { data, error } = await _sb.from(T).upsert(rows).select('id,updated_at');
+        if(error){ ok = false; if(!_isMissingTable(error)) fails.push(T + ': ' + (error.message || 'lỗi không rõ')); break; }
+        const vers = {}; (data || []).forEach(function(r){ if(r && r.id != null) vers[String(r.id)] = r.updated_at; });
+        rows.forEach(function(r){ _setBase(appT, r.id, jsons[r.id], vers[r.id] !== undefined ? vers[r.id] : undefined); fullSnap[r.id] = _hashStr(jsons[r.id]); });
+      }
+      if(ok){ _syncSnap[appT] = fullSnap; persistSyncSnap(); }
+      continue;
+    }
+    // bản ghi đã sửa; bỏ qua cái chỉ khác thứ tự khoá (nội dung y hệt bản gốc)
+    const ids = Object.keys(cur).filter(function(id){
+      if(cur[id] === prev[id]) return false;
+      const bj = _baseOf(appT, id);
+      if(bj != null){ try{ if(syncDeq(JSON.parse(bj), _recOf(appT, id))){ prev[id] = cur[id]; return false; } }catch(e){} }
+      return true;
+    });
+    let skipTable = false;
     if(ids.length){
-      const rows = ids.map(id=>{ const rec=(DATA[appT]||[]).find(r=>r&&String(r.id)===id); return rec?{id, data:rec, updated_at:new Date().toISOString()}:null; }).filter(Boolean);
-      const { error } = await _sb.from(SUPA_TABLES[appT]).upsert(rows);
-      if(error){
-        if(_isMissingTable(error)){ console.warn('Bỏ qua bảng chưa tạo: '+SUPA_TABLES[appT]); continue; }
-        // KHÔNG cập nhật _syncSnap[appT] → lần đẩy sau sẽ thử lại đúng những bản ghi này
-        _pushFails.push(SUPA_TABLES[appT]+': '+(error.message||'lỗi không rõ'));
-        continue;
+      let remote = null;
+      try{ remote = await _fetchRowsByIds(T, ids); }
+      catch(error){
+        if(_isMissingTable(error)) { console.warn('Bỏ qua bảng chưa tạo: ' + T); continue; }
+        fails.push(T + ': ' + ((error && error.message) || 'lỗi không rõ')); continue;   // không đổi mốc → lần sau thử lại đúng các bản ghi này
       }
-    }
-    if(changedOnly){
-      const delIds = Object.keys(prev).filter(id=>!(id in cur));
-      // ===== PHANH AN TOÀN (thêm 30-08-2026) =====
-      // Local rỗng hoặc mất quá nhiều bản ghi = dấu hiệu localStorage hỏng / pull lỗi,
-      // KHÔNG phải người dùng thật sự xoá. Trước đây trường hợp này xoá sạch bảng trên server.
-      const nPrev = Object.keys(prev).length, nCur = Object.keys(cur).length;
-      const wipeRisk = delIds.length && (nCur===0 || (delIds.length>3 && delIds.length > nPrev*0.2));
-      if(wipeRisk){
-        console.error('[dhp] CHẶN xoá hàng loạt trên '+SUPA_TABLES[appT]+': định xoá '+delIds.length+'/'+nPrev+' bản ghi (local còn '+nCur+')');
-        setAutoBadge('⛔ đã chặn xoá '+delIds.length+' bản ghi — bấm "Tải về từ kho chung"', true);
-        alert('⛔ ĐÃ CHẶN MỘT LỆNH XOÁ BẤT THƯỜNG\n\nBảng: '+SUPA_TABLES[appT]+'\nĐịnh xoá: '+delIds.length+'/'+nPrev+' bản ghi (máy này chỉ còn '+nCur+').\n\nDữ liệu trên kho chung VẪN NGUYÊN. Nhiều khả năng bộ nhớ máy này bị lỗi.\nHãy bấm "Tải về từ kho chung" để lấy lại bản đầy đủ trước khi sửa tiếp.');
-        _syncSnap[appT]=cur;   // nhận mốc mới để không hỏi lại vòng lặp sau
-        continue;              // BỎ QUA xoá, giữ nguyên server
-      }
-      if(delIds.length){
-        const { error } = await _sb.from(SUPA_TABLES[appT]).delete().in('id', delIds);
-        if(error){
-          if(!_isMissingTable(error)) _pushFails.push(SUPA_TABLES[appT]+' (xoá): '+(error.message||'lỗi không rõ'));
-          continue;
+      for(const id of ids){
+        const rec0 = _recOf(appT, id); if(!rec0) continue;
+        const localAtStart = JSON.parse(JSON.stringify(rec0));
+        const baseAtStart = _baseOf(appT, id);         // bản gốc ứng với bản máy này — KHÔNG đọc lại giữa chừng
+        const snapAtStart = prev[id];
+        let r = remote[id], attempt = 0;
+        for(;;){
+          let out = localAtStart;
+          if(r){
+            try{
+              if(baseAtStart != null){ const base = JSON.parse(baseAtStart); out = syncDeq(base, r.data) ? localAtStart : syncMerge3(base, localAtStart, r.data); }
+              else out = (snapAtStart != null && _hashStr(JSON.stringify(r.data)) === snapAtStart) ? localAtStart : _mergeNoBase(localAtStart, r.data, snapAtStart != null);
+            }catch(e){ console.error('[dhp] gộp', e); out = localAtStart; }
+            if(syncDeq(out, r.data)){               // kho chung đã có đúng nội dung này
+              const a = _adoptSynced(appT, id, r.data, r.updated_at, localAtStart, baseAtStart);
+              if(a) store = true; if(a === 2) render = true;
+              break;
+            }
+          }
+          const nowIso = new Date().toISOString();
+          let res;
+          if(!r) res = await _sb.from(T).insert([{id: id, data: out, updated_at: nowIso}]).select('id,updated_at');
+          else {
+            let q = _sb.from(T).update({data: out, updated_at: nowIso}).eq('id', id);
+            if(attempt < 4) q = (r.updated_at == null) ? q.is('updated_at', null) : q.eq('updated_at', r.updated_at);
+            res = await q.select('id,updated_at');   // lần 5: ghi thẳng bản đã gộp với bản mới nhất
+          }
+          if(res.error){
+            const dup = /duplicate|23505|already exists/i.test((res.error.message || '') + ' ' + (res.error.code || ''));
+            if(!r && dup && attempt < 4){
+              attempt++;
+              try{ r = (await _fetchRowsByIds(T, [id]))[id]; }catch(e){ fails.push(T + ': ' + (e.message || 'lỗi')); break; }
+              continue;
+            }
+            if(_isMissingTable(res.error)){ skipTable = true; break; }
+            fails.push(T + ': ' + (res.error.message || 'lỗi không rõ'));
+            break;
+          }
+          if(r && (!res.data || !res.data.length)){
+            // máy khác vừa ghi chen ngang (hoặc vừa xoá) → lấy bản mới nhất, gộp lại
+            if(++attempt > 6){ fails.push(T + ': ' + id + ' đang bị sửa cùng lúc — sẽ thử lại'); break; }
+            let fresh;
+            try{ fresh = (await _fetchRowsByIds(T, [id]))[id]; }catch(e){ fails.push(T + ': ' + (e.message || 'lỗi')); break; }
+            r = fresh || null;
+            continue;
+          }
+          const ver = (res.data && res.data[0] && res.data[0].updated_at) || nowIso;
+          const a = _adoptSynced(appT, id, out, ver, localAtStart, baseAtStart);
+          if(a) store = true; if(a === 2) render = true;
+          break;
         }
+        if(skipTable) break;
       }
     }
-    _syncSnap[appT]=cur; // máy này giờ đã đồng bộ bảng này
+    if(skipTable){ console.warn('Bỏ qua bảng chưa tạo: ' + T); continue; }
+    // ── xoá: bản ghi máy này đã xoá ──
+    const nowIds = {}; (DATA[appT] || []).forEach(function(r){ if(r && r.id != null) nowIds[String(r.id)] = 1; });
+    const delIds = Object.keys(prev).filter(function(id){ return !nowIds[id]; });
+    // ===== PHANH AN TOÀN (thêm 30-08-2026) =====
+    // Local rỗng hoặc mất quá nhiều bản ghi = dấu hiệu localStorage hỏng / pull lỗi, KHÔNG phải người dùng thật sự xoá.
+    const nPrev = Object.keys(prev).length, nCur = Object.keys(nowIds).length;
+    const wipeRisk = delIds.length && (nCur === 0 || (delIds.length > 3 && delIds.length > nPrev * 0.2));
+    if(wipeRisk){
+      console.error('[dhp] CHẶN xoá hàng loạt trên ' + T + ': định xoá ' + delIds.length + '/' + nPrev + ' bản ghi (local còn ' + nCur + ')');
+      setAutoBadge('⛔ đã chặn xoá ' + delIds.length + ' bản ghi — bấm "Tải về từ kho chung"', true);
+      alert('⛔ ĐÃ CHẶN MỘT LỆNH XOÁ BẤT THƯỜNG\n\nBảng: ' + T + '\nĐịnh xoá: ' + delIds.length + '/' + nPrev + ' bản ghi (máy này chỉ còn ' + nCur + ').\n\nDữ liệu trên kho chung VẪN NGUYÊN. Nhiều khả năng bộ nhớ máy này bị lỗi.\nHãy bấm "Tải về từ kho chung" để lấy lại bản đầy đủ trước khi sửa tiếp.');
+      delIds.forEach(function(id){ delete prev[id]; _dropBase(appT, id); });   // nhận mốc mới để không hỏi lại; kho chung giữ nguyên
+      persistSyncSnap();
+      continue;
+    }
+    let delErr = false;
+    for(const id of delIds){
+      const v = (_syncVer[appT] || {})[id];
+      let q = _sb.from(T).delete().eq('id', id);
+      if(v !== undefined) q = (v == null) ? q.is('updated_at', null) : q.eq('updated_at', v);
+      const { data, error } = await q.select('id');
+      if(error){
+        if(!_isMissingTable(error)) fails.push(T + ' (xoá): ' + (error.message || 'lỗi không rõ'));
+        delErr = true; break;
+      }
+      if(v !== undefined && (!data || !data.length)){
+        // không xoá được: máy khác vừa sửa (hoặc đã xoá) → xem lại bản trên kho
+        let fresh = null;
+        try{ fresh = (await _fetchRowsByIds(T, [id]))[id] || null; }catch(e){ fails.push(T + ': ' + (e.message || 'lỗi')); delErr = true; break; }
+        if(fresh){ if(_applyRemote(appT, fresh)) { store = true; render = true; } continue; }   // máy kia vừa sửa → giữ bản của họ
+      }
+      delete prev[id]; _dropBase(appT, id);
+    }
+    if(delErr) continue;
     persistSyncSnap();   // ghi mốc xuống máy NGAY — để F5 vẫn biết cái gì đã lên, cái gì chưa
   }
-  _syncReady=true;
-  if(_pushFails.length) throw new Error(_pushFails.join(' · '));
-}
-// Tải toàn bộ từ Supabase về (thay thế local)
-async function supaPull(){
-  if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
-  // ===== SỬA 03-10-2026 — LƯỚI AN TOÀN CUỐI CÙNG =====
-  // Trước đây tải về là THAY THẾ SẠCH dữ liệu trong máy. Nên chỉ cần buổi sáng đẩy lên hỏng
-  // (mất mạng, sai quyền, Supabase lỗi) là F5 một cái mất hết. Nay: giữ lại đúng những bản ghi
-  // máy này đã sửa mà kho chung chưa nhận, dán lại sau khi tải về, rồi đẩy chúng lên ngay.
-  const _pend = pendingLocalChanges(), _keep = {};
-  Object.keys(_pend).forEach(function(appT){
-    _keep[appT] = _pend[appT]
-      .map(function(id){ return (DATA[appT]||[]).find(function(r){ return r && String(r.id)===id; }); })
-      .filter(Boolean)
-      .map(function(r){ try{ return JSON.parse(JSON.stringify(r)); }catch(e){ return null; } })
-      .filter(Boolean);
-  });
-  for(const appT of Object.keys(SUPA_TABLES)){
-    const { data, error } = await _sb.from(SUPA_TABLES[appT]).select('id,data');
-    if(error){ console.warn('Bỏ qua bảng '+SUPA_TABLES[appT]+' (chưa tạo?): '+error.message); continue; } // bảng mới (vd products) chưa tạo → bỏ qua, không sập
-    DATA[appT] = (data||[]).map(row=>row.data).filter(Boolean);
+  _syncReady = true;
+  if(_syncMergedOrders.length){
+    const list = _syncMergedOrders.splice(0);
+    list.forEach(function(o){ const cur = _recOf('orders', o.id); if(cur){ try{ syncAssignmentsFromOrder(cur); }catch(e){} } });
+    store = true; render = true;
   }
+  persistSyncSnap(); persistDirtyBases();
+  if(store){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){} }
+  if(render){
+    try{ renderAllSafe(); }catch(e){}
+    setTimeout(function(){ try{ if(countPendingLocal() > 0) scheduleAutoPush(); }catch(e){} }, 400);
+  }
+  if(fails.length) throw new Error(fails.filter(function(x, i){ return fails.indexOf(x) === i; }).join(' · '));
+}
+
+/* ---------- TẢI VỀ toàn bộ (mở app / nút tải về) — GỘP với phần máy này chưa đẩy ---------- */
+function supaPull(){
+  const run = function(){ return _supaPullCore(); };
+  const p = _pushChain.then(run, run);
+  _pushChain = p.catch(function(){});
+  return p;
+}
+async function _supaPullCore(){
+  if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
+  const haveSnap = _syncReady || _snapFromDisk;   // chưa có mốc nào (máy mới) → kho chung là chuẩn
+  const fetched = {};
+  for(const appT of Object.keys(SUPA_TABLES)){
+    let { data, error } = await _selectAll(SUPA_TABLES[appT], 'id,data,updated_at');
+    if(error && /updated_at/i.test(error.message || '')) ({ data, error } = await _selectAll(SUPA_TABLES[appT], 'id,data'));
+    if(error){ console.warn('Bỏ qua bảng ' + SUPA_TABLES[appT] + ' (chưa tạo?): ' + error.message); continue; }
+    fetched[appT] = (data || []).filter(function(r){ return r && r.id != null && r.data != null; });
+  }
+  let kept = 0;
+  Object.keys(fetched).forEach(function(appT){
+    const rows = fetched[appT];
+    const snap = _syncSnap[appT] || {};
+    const localById = {}; (DATA[appT] || []).forEach(function(r){ if(r && r.id != null) localById[String(r.id)] = r; });
+    const track = haveSnap && appT !== 'products';
+    // bản ghi máy này đã sửa mà kho chung chưa nhận (bỏ qua cái chỉ khác thứ tự khoá)
+    const dirty = {};
+    if(track) Object.keys(localById).forEach(function(id){
+      const rec = localById[id];
+      if(_hashStr(JSON.stringify(rec)) === snap[id]) return;
+      const bj = _baseOf(appT, id);
+      if(bj != null){ try{ if(syncDeq(JSON.parse(bj), rec)) return; }catch(e){} }
+      dirty[id] = 1;
+    });
+    const out = [], newSnap = {}, onServer = {};
+    rows.forEach(function(row){
+      const id = String(row.id); onServer[id] = 1;
+      const remote = row.data;
+      if(appT === 'orders') _sanitizeOrder(remote);
+      const rJson = JSON.stringify(remote), rHash = _hashStr(rJson);
+      const local = localById[id];
+      if(local && dirty[id] && !syncDeq(local, remote)){
+        const bj = _baseOf(appT, id);
+        let m = local;
+        try{
+          if(bj != null){ const base = JSON.parse(bj); m = syncDeq(base, remote) ? local : syncMerge3(base, local, remote); }
+          else m = (rHash === snap[id]) ? local : _mergeNoBase(local, remote, (id in snap));
+        }catch(e){ console.error('[dhp] gộp', e); }
+        out.push(m); kept++;
+        if(appT === 'orders' && m !== local && _stageSig(m) !== _stageSig(local)) _syncMergedOrders.push(m);
+      } else if(!local && track && (id in snap)){
+        // máy này đã xoá mà chưa kịp đẩy lệnh xoá
+        const bj = _baseOf(appT, id);
+        let same = snap[id] === rHash;
+        try{ if(!same && bj != null) same = syncDeq(JSON.parse(bj), remote); }catch(e){}
+        if(!same) out.push(remote);           // máy kia đã sửa sau đó → giữ bản của họ
+      } else out.push(remote);
+      newSnap[id] = rHash; _setBase(appT, id, rJson, row.updated_at);
+    });
+    if(track) Object.keys(localById).forEach(function(id){
+      if(onServer[id]) return;
+      const local = localById[id];
+      if(!(id in snap)){ out.push(local); kept++; return; }                       // bản mới trên máy này → giữ & đẩy
+      if(dirty[id]){ out.push(local); kept++; _dropBase(appT, id); return; }      // máy khác đã xoá nhưng máy này đang sửa dở → giữ
+      _dropBase(appT, id);                                                         // kho chung đã xoá, máy này không sửa → xoá theo
+    });
+    DATA[appT] = out;
+    _syncSnap[appT] = newSnap;
+  });
   rebuildPartners(); sanitizeOrderDates(); ensureCustomersFromOrders();
   const _dupFixed = repairDuplicateIds();
-  if(_dupFixed) console.warn('[dhp] đã tách '+_dupFixed+' bản ghi trùng id sau khi tải về');
-  resetSyncSnap(); // kho chung vừa tải về = mốc đồng bộ; từ giờ chỉ đẩy phần thay đổi
-  // Dán lại phần chưa đẩy — ĐẶT SAU resetSyncSnap() để chúng được tính là "đã thay đổi" và đẩy lên.
-  let _back = 0;
-  Object.keys(_keep).forEach(function(appT){
-    const arr = (DATA[appT] = DATA[appT]||[]);
-    _keep[appT].forEach(function(rec){
-      const i = arr.findIndex(function(r){ return r && String(r.id)===String(rec.id); });
-      if(i>=0) arr[i]=rec; else arr.push(rec);
-      _back++;
-    });
-  });
-  _lastPullKept = _back;
-  if(_back){
-    console.warn('[dhp] đã giữ lại '+_back+' bản ghi sửa trên máy này mà kho chung chưa có');
-    rebuildPartners(); sanitizeOrderDates();
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
-    setTimeout(function(){ try{ scheduleAutoPush(); }catch(e){} }, 300);
+  if(_dupFixed) console.warn('[dhp] đã tách ' + _dupFixed + ' bản ghi trùng id sau khi tải về');
+  if(_syncMergedOrders.length){
+    const list = _syncMergedOrders.splice(0);
+    list.forEach(function(o){ try{ syncAssignmentsFromOrder(o); }catch(e){} });
   }
+  _syncReady = true; _lastCatchUp = Date.now();
+  persistSyncSnap(); persistDirtyBases();
+  _lastPullKept = kept;
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+  if(kept) console.warn('[dhp] đã giữ lại & gộp ' + kept + ' bản ghi sửa trên máy này mà kho chung chưa có');
+  if(countPendingLocal() > 0) setTimeout(function(){ try{ scheduleAutoPush(); }catch(e){} }, 300);
 }
-// Lắng nghe thay đổi real-time → cập nhật ngay không cần F5
+
+/* ---------- ĐỐI CHIẾU NHANH: bù những cập nhật real-time bị lỡ (ngủ máy, rớt mạng) ---------- */
+// Chỉ tải (id, updated_at) — vài chục KB — rồi lấy đúng những bản ghi đã đổi.
+async function supaCatchUp(why){
+  if(!supaConfigured() || !_sb || !_syncReady || _catchUpBusy) return 0;
+  _catchUpBusy = true; let n = 0, nMerged = 0;
+  try{
+    for(const appT of Object.keys(SUPA_TABLES)){
+      const T = SUPA_TABLES[appT];
+      const { data, error } = await _selectAll(T, 'id,updated_at');
+      if(error){ if(_isMissingTable(error)) continue; throw error; }
+      const V = (_syncVer[appT] = _syncVer[appT] || {}); const srv = {};
+      (data || []).forEach(function(r){ if(r && r.id != null) srv[String(r.id)] = r.updated_at; });
+      const need = Object.keys(srv).filter(function(id){ return !(id in V) || V[id] !== srv[id]; });
+      if(need.length){
+        const rows = await _fetchRowsByIds(T, need);
+        Object.keys(rows).forEach(function(id){ const res = _applyRemote(appT, rows[id]); if(res) n++; if(res === 'merge') nMerged++; });
+      }
+      Object.keys(_syncSnap[appT] || {}).forEach(function(id){ if(!(id in srv) && _applyRemoteDelete(appT, id)) n++; });
+    }
+    _lastCatchUp = Date.now();
+    if(n){
+      console.log('[dhp] đối chiếu kho chung (' + (why || '') + '): cập nhật ' + n + ' bản ghi bị lỡ');
+      _afterRemoteBatch(nMerged);
+      setSupaStatus('✓ Đã đối chiếu kho chung lúc ' + new Date().toLocaleTimeString('vi-VN') + ' — cập nhật ' + n + ' bản ghi');
+    }
+  }catch(e){ console.warn('[dhp] đối chiếu kho chung lỗi:', (e && e.message) || e); }
+  finally{ _catchUpBusy = false; }
+  return n;
+}
+function syncCatchUpSoon(why){
+  const run = function(){ return supaCatchUp(why); };
+  const p = _pushChain.then(run, run);
+  _pushChain = p.catch(function(){});
+  return p;
+}
+
+/* ---------- REAL-TIME ---------- */
 function supaSubscribe(){
   if(!_sb) return;
-  _sbChannels.forEach(ch=>{ try{ _sb.removeChannel(ch); }catch(e){} }); _sbChannels=[];
-  Object.keys(SUPA_TABLES).forEach(appT=>{
+  _sbChannels.forEach(function(ch){ try{ _sb.removeChannel(ch); }catch(e){} }); _sbChannels = [];
+  Object.keys(SUPA_TABLES).forEach(function(appT){
     const dbT = SUPA_TABLES[appT];
-    const ch = _sb.channel('rt-'+dbT)
-      .on('postgres_changes', { event:'*', schema:'public', table:dbT }, payload=>{
+    let wasUp = false;
+    const ch = _sb.channel('rt-' + dbT)
+      .on('postgres_changes', { event:'*', schema:'public', table:dbT }, function(payload){
         try{
-          const arr = (DATA[appT] = DATA[appT]||[]);
-          const snap = (_syncSnap[appT] = _syncSnap[appT]||{});
-          if(payload.eventType==='DELETE'){
-            const id = payload.old && payload.old.id; const i=arr.findIndex(r=>r&&String(r.id)===String(id)); if(i>=0) arr.splice(i,1);
-            if(id!=null) delete snap[String(id)];
-            persistSyncSnap();
+          let res = '';
+          if(payload.eventType === 'DELETE'){
+            const id = payload.old && payload.old.id;
+            if(id != null && _applyRemoteDelete(appT, id)) res = 'del';
           } else if(payload.new && payload.new.data){
-            const rec = payload.new.data; const i=arr.findIndex(r=>r&&String(r.id)===String(rec.id));
-            if(i>=0) arr[i]=rec; else arr.push(rec);
-            if(rec&&rec.id!=null) snap[String(rec.id)]=_hashStr(JSON.stringify(rec)); // đã đồng bộ → không đẩy ngược
+            res = _applyRemote(appT, payload.new);
           }
-          if(appT==='orders'){ sanitizeOrderDates(); }
-          if(appT==='products'){ try{ fillProdDatalist(); }catch(e){} }
-          rebuildPartners();
-          try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
-          renderAllSafe();
-          if(!isFormOpen()) setSupaStatus('✓ Nhận cập nhật real-time lúc '+new Date().toLocaleTimeString('vi-VN'));
+          if(!res){ persistSyncSnap(); return; }
+          if(appT === 'products'){ try{ fillProdDatalist(); }catch(e){} }
+          _afterRemoteBatch(res === 'merge' ? 1 : 0);
+          if(!isFormOpen()) setSupaStatus('✓ Nhận cập nhật real-time lúc ' + new Date().toLocaleTimeString('vi-VN'));
         }catch(e){ console.error('realtime', e); }
       })
-      .subscribe();
+      .subscribe(function(status){
+        if(status === 'SUBSCRIBED'){
+          if(wasUp || _rtDown){ _rtDown = false; setTimeout(function(){ syncCatchUpSoon('real-time nối lại'); }, 800); }
+          else if(appT === 'orders') setTimeout(function(){ syncCatchUpSoon('vừa nối real-time'); }, 1500);
+          wasUp = true;
+        } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){ _rtDown = true; }
+      });
     _sbChannels.push(ch);
   });
 }
+// Quay lại tab sau khi để đó / máy ngủ dậy / có mạng lại → đối chiếu ngay; lần đẩy lỗi trước → tự thử lại
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden'){ _hiddenAt = Date.now(); return; }
+  if(_hiddenAt && Date.now() - _hiddenAt > 15000) syncCatchUpSoon('quay lại tab');
+  _hiddenAt = 0;
+});
+window.addEventListener('online', function(){
+  setTimeout(function(){
+    syncCatchUpSoon('có mạng lại');
+    try{ if(countPendingLocal() > 0) scheduleAutoPush(); }catch(e){}
+  }, 1500);
+});
+setInterval(function(){
+  try{
+    if(!supaConfigured() || !_syncReady) return;
+    if(document.visibilityState === 'visible' && Date.now() - _lastCatchUp > 170000) syncCatchUpSoon('định kỳ');
+    if(_syncErrMsg && !_autoPushTimer && countPendingLocal() > 0) scheduleAutoPush();
+  }catch(e){}
+}, 60000);
+
 async function setSupaConfig(){
   DATA.meta.supaUrl = cleanSupaUrl(document.getElementById('supaUrl').value);
   DATA.meta.supaKey = document.getElementById('supaKey').value.trim();
@@ -6346,6 +6879,7 @@ function scheduleAutoPush(){
   clearTimeout(_autoPushTimer);
   setAutoBadge('● đang chờ đồng bộ...');
   _autoPushTimer = setTimeout(async ()=>{
+    _autoPushTimer = null;   // 19-10-2026: tới giờ đẩy rồi → hết "đang chờ"
     try{
       setAutoBadge('● đang đẩy lên...');
       if(supaConfigured()) await supaPush(true); else await pushToSheets(); // true = chỉ đẩy phần thay đổi
@@ -6430,7 +6964,7 @@ async function autoPullOnStart(){
       else { await supaPull(); _suppressAutoPush=true; save(); _suppressAutoPush=false; renderAll(); setAutoBadge('✓ đã tải dữ liệu chung (Supabase) '+new Date().toLocaleTimeString('vi-VN')); }
       supaSubscribe();
       _syncErrMsg=''; _pendSince=0;
-      if(_lastPullKept) alert('ℹ Máy này có '+_lastPullKept+' thay đổi mà kho chung chưa nhận.\nApp đã GIỮ LẠI và đang đẩy lên — không mất.');
+      if(_lastPullKept) setAutoBadge('ℹ đã gộp '+_lastPullKept+' thay đổi của máy này chưa kịp lên kho lần trước — đang đẩy lên');
     }catch(e){
       setAutoBadge('⚠ Supabase: '+e.message, true);
       _syncErrMsg = 'không kết nối được kho chung ('+(e.message||'')+')';
@@ -7577,7 +8111,7 @@ function renderAlertBar(){
   const alerts = getDeadlineAlerts();
   // Nhắc backup — hiện trước cả cảnh báo trễ hạn vì mất dữ liệu là hỏng hết
   const bkDays = backupOverdueDays();
-  const needBackup = canEdit() && (DATA.orders||[]).length>0 && bkDays>=1;
+  const needBackup = false;   // 19-10-2026: bỏ nhắc backup hằng ngày — chỉ lưu JSON khi cần (tab Dữ liệu)
   const backupBar = rptBannerSafe() + (needBackup ? `<div style="max-width:1480px;margin:0 auto;padding:8px 20px;background:#ecfeff;border-bottom:1px solid #a5f3fc;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <b style="color:#0e7490;font-size:12.5px">💾 ${bkDays>900?'Chưa từng backup dữ liệu':'Bản backup gần nhất đã '+bkDays+' ngày ('+fmtDate(lastBackupDate())+')'}</b>
       <span class="muted small">Kho chung không có bản sao lưu — một lệnh xoá nhầm là mất trắng ${(DATA.orders||[]).length} đơn.</span>
@@ -7665,7 +8199,7 @@ var RPT = (function(){
   function build(DATA, todayS){
     const today = D(todayS);
     const orders = (DATA.orders || []).filter(o => o && typeof o === 'object');
-    const staff = (DATA.staff || []).filter(Boolean);
+    const staff = (DATA.staff || []).filter(Boolean).map(s => Object.assign({}, s));   // bản sao: KHÔNG ghi _r vào dữ liệu thật (làm bẩn bản ghi → bị đẩy lên kho)
     const assigns = (DATA.assignments || []).filter(Boolean);
     const ncrs = (DATA.ncrRecords || []).filter(Boolean);
     const sid = {}; staff.forEach(s => sid[s.id] = s);
@@ -9310,18 +9844,12 @@ renderAll();
 applyLang();
 applyRole();
 loadSyncSnap();    // đọc mốc đồng bộ của lần trước — để biết thay đổi nào chưa kịp lên kho chung
+loadSyncBase();    // bản gốc của bản ghi đang sửa dở — để gộp đúng với máy khác, không đè
 autoPullOnStart(); // nếu đã cấu hình URL + bật tự đồng bộ → tự kéo dữ liệu chung về khi mở app
 // ===== GIÁM SÁT ĐỒNG BỘ + BACKUP TỰ ĐỘNG (thêm 03-10-2026) =====
 setInterval(function(){ try{ renderSyncGuard(); }catch(e){} }, 5000);
 setTimeout(function(){ try{ renderSyncGuard(); }catch(e){} }, 1500);
-// Kho chung không có bản sao lưu. Máy QUẢN LÝ tự tải 1 file JSON mỗi ngày, không cần nhớ bấm.
-setTimeout(function(){
-  try{
-    if(typeof canAdmin==='function' && canAdmin() && (DATA.orders||[]).length>0 && backupOverdueDays()>=1){
-      if(backupNow(true)) console.log('[dhp] đã tự tải backup JSON hằng ngày');
-    }
-  }catch(e){}
-}, 12000);
+// 19-10-2026: BỎ tự tải file JSON mỗi ngày — chỉ lưu JSON khi cần (tab Dữ liệu → ⬇ Sao lưu JSON).
 
 /* ===== PWA: service worker network-only — luôn lấy bản mới, tự cập nhật ===== */
 if('serviceWorker' in navigator){

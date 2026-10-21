@@ -3416,10 +3416,14 @@ function fillProdDatalist(){
 }
 // Kéo lại catalogue (bảng products) từ cloud rồi dựng lại ô gợi ý — để mã mới tạo bên Coding hiện ngay
 async function refreshCatalogFromCloud(){
+  // 21-10-2026: trước đây tải lại TOÀN BỘ catalogue (~350 KB) mỗi lần mở form đơn → tối đa 30 phút/lần
+  if(window._catRefAt && Date.now() - window._catRefAt < 30*60000) return;
+  window._catRefAt = Date.now();
   try{
     if(!(_sb || (typeof initSupabase==='function' && initSupabase()))) return;
     const { data, error } = await _selectAll('products', 'id,data');
     if(!error && Array.isArray(data)){
+      try{ localStorage.setItem('dhp_cat_at', String(Date.now())); }catch(e){}
       DATA.products = data.map(r=>r.data).filter(Boolean);
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
       fillProdDatalist();
@@ -6159,7 +6163,8 @@ var _syncVer = {};         // bảng -> { id -> updated_at trên kho chung }
 var _ordFormBase = null;   // bản đơn lúc MỞ form sửa — lúc lưu chỉ áp những ô đã sửa trong form
 var _pushChain = Promise.resolve();   // mọi lần đẩy / đối chiếu chạy lần lượt, không chồng nhau
 var _syncMergedOrders = [];           // đơn vừa gộp với bản máy khác → dựng lại ô lịch tự sinh
-var _catchUpBusy = false, _lastCatchUp = 0, _hiddenAt = 0, _rtDown = false;
+var _catchUpBusy = false, _lastCatchUp = 0, _lastFullScan = 0, _ckSince = null, _hiddenAt = 0, _rtDown = false;
+var CAT_KEY = 'dhp_cat_at';   // lần tải catalogue gần nhất — catalogue (~350 KB) chỉ tải lại tối đa 6 giờ/lần
 
 /* ---------- so sánh & gộp ---------- */
 function _sIsObj(x){ return x !== null && typeof x === 'object' && !Array.isArray(x); }
@@ -6623,12 +6628,16 @@ function supaPull(){
 async function _supaPullCore(){
   if(!_sb && !initSupabase()) throw new Error('Chưa cấu hình Supabase');
   const haveSnap = _syncReady || _snapFromDisk;   // chưa có mốc nào (máy mới) → kho chung là chuẩn
-  const fetched = {};
+  const fetched = {}, pullStart = Date.now();
+  let catAt = 0; try{ catAt = parseInt(localStorage.getItem(CAT_KEY) || '0', 10) || 0; }catch(e){}
   for(const appT of Object.keys(SUPA_TABLES)){
+    // catalogue mã SP: chỉ để tra cứu, Coding mới sửa → tải lại tối đa 6 giờ/lần (đỡ ~350 KB mỗi lần mở app)
+    if(appT === 'products' && (DATA.products || []).length && pullStart - catAt < 6 * 3600000) continue;
     let { data, error } = await _selectAll(SUPA_TABLES[appT], 'id,data,updated_at');
     if(error && /updated_at/i.test(error.message || '')) ({ data, error } = await _selectAll(SUPA_TABLES[appT], 'id,data'));
     if(error){ console.warn('Bỏ qua bảng ' + SUPA_TABLES[appT] + ' (chưa tạo?): ' + error.message); continue; }
     fetched[appT] = (data || []).filter(function(r){ return r && r.id != null && r.data != null; });
+    if(appT === 'products'){ try{ localStorage.setItem(CAT_KEY, String(pullStart)); }catch(e){} window._catRefAt = pullStart; }
   }
   let kept = 0;
   Object.keys(fetched).forEach(function(appT){
@@ -6687,7 +6696,8 @@ async function _supaPullCore(){
     const list = _syncMergedOrders.splice(0);
     list.forEach(function(o){ try{ syncAssignmentsFromOrder(o); }catch(e){} });
   }
-  _syncReady = true; _lastCatchUp = Date.now();
+  _syncReady = true; _lastCatchUp = _lastFullScan = Date.now();
+  _ckSince = new Date(pullStart - 15 * 60000).toISOString();
   persistSyncSnap(); persistDirtyBases();
   _lastPullKept = kept;
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
@@ -6695,17 +6705,35 @@ async function _supaPullCore(){
   if(countPendingLocal() > 0) setTimeout(function(){ try{ scheduleAutoPush(); }catch(e){} }, 300);
 }
 
-/* ---------- ĐỐI CHIẾU NHANH: bù những cập nhật real-time bị lỡ (ngủ máy, rớt mạng) ---------- */
-// Chỉ tải (id, updated_at) — vài chục KB — rồi lấy đúng những bản ghi đã đổi.
-async function supaCatchUp(why){
+/* ---------- ĐỐI CHIẾU: bù những cập nhật real-time bị lỡ (ngủ máy, rớt mạng) ----------
+   • NHẸ (mặc định, ~5 phút/lần): chỉ hỏi những dòng có updated_at mới hơn mốc lần trước (lùi 15 phút để bù lệch
+     đồng hồ giữa các máy) → thường 0 dòng, vài trăm byte.
+   • ĐỦ (sau khi máy ngủ dậy / mất mạng / real-time đứt, tối đa 1 giờ/lần): so cả danh sách (id, updated_at) để
+     bắt cả bản ghi bị xoá — vài chục KB. Catalogue mã SP không đối chiếu (tải lại khi mở app). */
+async function supaCatchUp(why, full){
   if(!supaConfigured() || !_sb || !_syncReady || _catchUpBusy) return 0;
   _catchUpBusy = true; let n = 0, nMerged = 0;
+  const startedAt = Date.now();
   try{
+    const since = _ckSince || new Date(startedAt - 30 * 60000).toISOString();
     for(const appT of Object.keys(SUPA_TABLES)){
+      if(appT === 'products') continue;
       const T = SUPA_TABLES[appT];
+      const V = (_syncVer[appT] = _syncVer[appT] || {});
+      if(!full){
+        const { data, error } = await _sb.from(T).select('id,updated_at').gt('updated_at', since).order('id', { ascending:true }).limit(500);
+        if(error){ if(_isMissingTable(error)) continue; throw error; }
+        const need = (data || []).filter(function(r){ return r && r.id != null && V[String(r.id)] !== r.updated_at; }).map(function(r){ return String(r.id); });
+        if(need.length){   // chỉ tải nội dung những dòng máy này chưa có
+          const rows = await _fetchRowsByIds(T, need);
+          Object.keys(rows).forEach(function(id){ const res = _applyRemote(appT, rows[id]); if(res) n++; if(res === 'merge') nMerged++; });
+        }
+        if((data || []).length >= 500) full = true;   // đổi quá nhiều → lần này so đủ luôn
+        if(!full) continue;
+      }
       const { data, error } = await _selectAll(T, 'id,updated_at');
       if(error){ if(_isMissingTable(error)) continue; throw error; }
-      const V = (_syncVer[appT] = _syncVer[appT] || {}); const srv = {};
+      const srv = {};
       (data || []).forEach(function(r){ if(r && r.id != null) srv[String(r.id)] = r.updated_at; });
       const need = Object.keys(srv).filter(function(id){ return !(id in V) || V[id] !== srv[id]; });
       if(need.length){
@@ -6714,9 +6742,10 @@ async function supaCatchUp(why){
       }
       Object.keys(_syncSnap[appT] || {}).forEach(function(id){ if(!(id in srv) && _applyRemoteDelete(appT, id)) n++; });
     }
-    _lastCatchUp = Date.now();
+    _ckSince = new Date(startedAt - 15 * 60000).toISOString();
+    _lastCatchUp = Date.now(); if(full) _lastFullScan = _lastCatchUp;
     if(n){
-      console.log('[dhp] đối chiếu kho chung (' + (why || '') + '): cập nhật ' + n + ' bản ghi bị lỡ');
+      console.log('[dhp] đối chiếu kho chung (' + (why || '') + (full ? ', đủ' : '') + '): cập nhật ' + n + ' bản ghi bị lỡ');
       _afterRemoteBatch(nMerged);
       setSupaStatus('✓ Đã đối chiếu kho chung lúc ' + new Date().toLocaleTimeString('vi-VN') + ' — cập nhật ' + n + ' bản ghi');
     }
@@ -6724,8 +6753,8 @@ async function supaCatchUp(why){
   finally{ _catchUpBusy = false; }
   return n;
 }
-function syncCatchUpSoon(why){
-  const run = function(){ return supaCatchUp(why); };
+function syncCatchUpSoon(why, full){
+  const run = function(){ return supaCatchUp(why, !!full); };
   const p = _pushChain.then(run, run);
   _pushChain = p.catch(function(){});
   return p;
@@ -6756,7 +6785,7 @@ function supaSubscribe(){
       })
       .subscribe(function(status){
         if(status === 'SUBSCRIBED'){
-          if(wasUp || _rtDown){ _rtDown = false; setTimeout(function(){ syncCatchUpSoon('real-time nối lại'); }, 800); }
+          if(wasUp || _rtDown){ _rtDown = false; setTimeout(function(){ syncCatchUpSoon('real-time nối lại', Date.now() - _lastFullScan > 600000); }, 800); }
           else if(appT === 'orders') setTimeout(function(){ syncCatchUpSoon('vừa nối real-time'); }, 1500);
           wasUp = true;
         } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){ _rtDown = true; }
@@ -6764,25 +6793,100 @@ function supaSubscribe(){
     _sbChannels.push(ch);
   });
 }
-// Quay lại tab sau khi để đó / máy ngủ dậy / có mạng lại → đối chiếu ngay; lần đẩy lỗi trước → tự thử lại
+// Quay lại tab / máy ngủ dậy / có mạng lại → đối chiếu; lần đẩy lỗi trước → tự thử lại
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'hidden'){ _hiddenAt = Date.now(); return; }
-  if(_hiddenAt && Date.now() - _hiddenAt > 15000) syncCatchUpSoon('quay lại tab');
-  _hiddenAt = 0;
+  const away = _hiddenAt ? Date.now() - _hiddenAt : 0; _hiddenAt = 0;
+  if(away > 10 * 60000) syncCatchUpSoon('quay lại sau ' + Math.round(away / 60000) + ' phút', Date.now() - _lastFullScan > 600000);
+  else if(away > 15000 && Date.now() - _lastCatchUp > 60000) syncCatchUpSoon('quay lại tab');
 });
 window.addEventListener('online', function(){
   setTimeout(function(){
-    syncCatchUpSoon('có mạng lại');
+    syncCatchUpSoon('có mạng lại', Date.now() - _lastFullScan > 600000);
     try{ if(countPendingLocal() > 0) scheduleAutoPush(); }catch(e){}
   }, 1500);
 });
 setInterval(function(){
   try{
     if(!supaConfigured() || !_syncReady) return;
-    if(document.visibilityState === 'visible' && Date.now() - _lastCatchUp > 170000) syncCatchUpSoon('định kỳ');
+    if(document.visibilityState === 'visible'){
+      if(Date.now() - _lastFullScan > 3600000) syncCatchUpSoon('định kỳ', true);
+      else if(Date.now() - _lastCatchUp > 290000) syncCatchUpSoon('định kỳ');
+    }
     if(_syncErrMsg && !_autoPushTimer && countPendingLocal() > 0) scheduleAutoPush();
   }catch(e){}
 }, 60000);
+
+/* ===== TỰ LÊN BẢN APP MỚI — thêm 21-10-2026 =====
+   Máy để app mở cả ngày (nhất là app đã "cài" ra màn hình) không bao giờ tải lại trang → chạy mãi bản cũ,
+   kể cả sau khi đã upload bản mới lên GitHub. Nay cứ ~10 phút (và mỗi lần quay lại tab) app hỏi GitHub
+   "index.html đã đổi chưa?" — chỉ hỏi ngày sửa file (vài trăm byte, không đụng tới kho chung Supabase).
+   Có bản mới → hiện thanh báo trên đầu trang và TỰ tải lại khi an toàn: không đang mở form, không còn
+   thay đổi chưa lên kho chung, và người dùng đang không thao tác (hoặc đang ở tab khác). */
+var _updFound = 0, _updChecking = false, _updLastCheck = 0, _updLastInput = Date.now();
+function _updBase(){ return location.pathname.replace(/[^\/]*$/, ''); }
+function _updDocTime(){ const t = Date.parse(document.lastModified); return isNaN(t) ? 0 : t; }
+async function checkAppUpdate(why){
+  if(_updChecking || location.protocol === 'file:') return false;
+  _updChecking = true; _updLastCheck = Date.now();
+  try{
+    const r = await fetch(_updBase() + 'index.html?chk=' + Date.now(), { method:'HEAD', cache:'no-store' });
+    if(!r.ok) return false;
+    const lm = Date.parse(r.headers.get('Last-Modified') || '');
+    const mine = _updDocTime();
+    if(!isNaN(lm) && mine && lm - mine > 60000){
+      if(_updFound !== lm) console.log('[dhp] có bản app mới (' + new Date(lm).toLocaleString('vi-VN') + ') — ' + (why || ''));
+      _updFound = lm; showUpdateBar(); tryApplyUpdate();
+      return true;
+    }
+  }catch(e){ /* mất mạng → thử lần sau */ }
+  finally{ _updChecking = false; }
+  return false;
+}
+function _updSafe(){
+  try{ if(isFormOpen()) return false; }catch(e){}
+  try{ if(_autoPushTimer) return false; }catch(e){}
+  try{ if(supaConfigured() && canWork() && countPendingLocal() > 0) return false; }catch(e){}
+  return true;
+}
+function applyAppUpdate(manual){
+  if(!_updFound) return false;
+  if(!_updSafe()){
+    if(manual) alert('Đang mở form hoặc còn thay đổi chưa lên kho chung.\nLưu / đóng form xong, app sẽ tự cập nhật (không mất dữ liệu).');
+    return false;
+  }
+  try{ sessionStorage.setItem('dhp_upd_to', String(_updFound)); }catch(e){}
+  location.replace(_updBase() + 'index.html?v=' + _updFound);   // ?v= → bỏ qua bản cũ trong bộ nhớ đệm
+  return true;
+}
+function tryApplyUpdate(){
+  if(!_updFound) return;
+  try{ if(sessionStorage.getItem('dhp_upd_to') === String(_updFound)) return; }catch(e){}   // đã thử 1 lần cho bản này → chỉ còn nút bấm, không tự lặp
+  if(document.visibilityState === 'hidden' || Date.now() - _updLastInput > 45000) applyAppUpdate(false);
+}
+function showUpdateBar(){
+  let el = document.getElementById('updBar');
+  if(!el){
+    el = document.createElement('div'); el.id = 'updBar';
+    el.style.cssText = 'position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:100000;background:#173E7C;color:#fff;'
+      + 'padding:8px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-size:13px;display:flex;gap:10px;align-items:center;max-width:94vw';
+    el.innerHTML = '<span>🔄 <b>Đã có bản app mới</b> — app tự tải lại khi bạn rảnh tay (không mất dữ liệu).</span>'
+      + '<button class="sm" style="background:#fff;color:#173E7C;font-weight:700" onclick="applyAppUpdate(true)">Cập nhật ngay</button>';
+    document.body.appendChild(el);
+  }
+}
+['mousedown','keydown','touchstart','wheel'].forEach(function(ev){
+  window.addEventListener(ev, function(){ _updLastInput = Date.now(); }, { passive:true, capture:true });
+});
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden'){ if(_updFound) tryApplyUpdate(); return; }
+  if(Date.now() - _updLastCheck > 120000) checkAppUpdate('quay lại tab');
+});
+setInterval(function(){
+  if(_updFound){ tryApplyUpdate(); return; }
+  if(document.visibilityState === 'visible' && Date.now() - _updLastCheck > 600000) checkAppUpdate('định kỳ');
+}, 30000);
+setTimeout(function(){ checkAppUpdate('mở app'); }, 20000);
 
 async function setSupaConfig(){
   DATA.meta.supaUrl = cleanSupaUrl(document.getElementById('supaUrl').value);

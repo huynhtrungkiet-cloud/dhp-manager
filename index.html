@@ -281,9 +281,7 @@ function gateCheck(){
   <div class="tab" data-tab="process" onclick="goTab('process')">🔧 <span data-i18n="tab_process">Quy trình</span></div>
   -->
   <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 <span data-i18n="tab_kpi">KPI &amp; Báo cáo</span></div>
-  <!-- TẠM ẨN: Outsource
   <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 <span data-i18n="tab_outsource">Outsource</span></div>
-  -->
   <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ <span data-i18n="tab_ncr">Ghi nhận NCR</span></div>
   <div class="tab" data-tab="guide" onclick="goTab('guide')">📋 Quy trình &amp; Hướng dẫn</div>
   <div class="tab" data-tab="data" onclick="goTab('data')">⚙ <span data-i18n="tab_data">Dữ liệu &amp; Đồng bộ</span></div>
@@ -2990,6 +2988,7 @@ function openOrderView(id){
       <button class="ghost sm" onclick="printIntakeSheet('${o.id}')" style="border-color:#D97706;color:#b45309">🖨 Phiếu kiểm đầu vào (G0)</button>
       <button class="ghost sm" onclick="printWorkOrder('${o.id}')" style="border-color:#6366F1;color:#6366F1">🖨 Phiếu gia công (phát cho thợ)</button>
       <button class="ghost sm" onclick="printAllStageSheets('${o.id}')" style="border-color:#0EA5E9;color:#0EA5E9">📐 Bộ phiếu đo theo công đoạn</button>
+      ${outsourceBtnHtml(o)}
       <button class="ghost sm" onclick="printQcSheet('${o.id}')">🖨 Phiếu QC/QA cuối</button>
       ${cocBtnHtml(o,'is')}
       ${cocBtnHtml(o,'coc')}
@@ -3023,6 +3022,7 @@ const PRINT_FORMS = {   // khoá = tiêu đề truyền vào docHeader()
   'PHIẾU ĐO ĐẠC CÔNG ĐOẠN':                                   {proc:'QUY TRÌNH SẢN XUẤT – ĐO ĐẠC CÔNG ĐOẠN',      code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'PHIẾU KIỂM TRA CHẤT LƯỢNG CUỐI (FINAL INSPECTION REPORT)': {proc:'QUY TRÌNH KIỂM SOÁT CHẤT LƯỢNG',             code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'CHỨNG NHẬN XUẤT XƯỞNG':                                    {proc:'QUY TRÌNH XUẤT XƯỞNG',                       code:'', rev:'01', kind:'QUALITY DOCUMENT'},
+  'PHIẾU ĐỀ NGHỊ GIA CÔNG NGOÀI':                             {proc:'QUY TRÌNH SẢN XUẤT – GIA CÔNG NGOÀI (OUTSOURCE)', code:'', rev:'01', kind:'PRODUCTION DOCUMENT'},
 };
 const SHEET_MARK = '<!--DHP-SHEET-->';
 // Mở cửa sổ in A4 — mỗi docHeader() trong nội dung mở một tờ mới, tờ nào cũng có tiêu đề + chân trang
@@ -3069,6 +3069,9 @@ function printDoc(title, bodyHtml){
       table{width:100%;border-collapse:collapse;margin:6px 0} th,td{border:1px solid #999;padding:5px 7px;text-align:left;font-size:12px}
       th{background:#EEF3FA;color:#173E7C} .muted{color:#555} .sign{display:flex;justify-content:space-around;margin-top:36px;text-align:center}
       .sign>div{width:30%} .sign .line{margin:54px 6% 0;border-top:1px solid #333;padding-top:3px}
+      .sign.sign4{margin-top:22px} .sign.sign4>div{width:24%} .sign.sign4 b{font-size:12px}
+      .box{display:inline-block;width:11px;height:11px;border:1.2px solid #333;margin:0 4px -1px 0}
+      .grp td{background:#F6F8FC;font-weight:700;color:#173E7C}
       .big{font-size:22px;text-align:center;font-weight:800;margin:18px 0;letter-spacing:1px}
       .pass{color:#15803D} .fail{color:#b91c1c}
       .noprint{text-align:center;margin:10px 0 28px;font:12px Arial;color:#fff}
@@ -3173,7 +3176,8 @@ function printWorkOrder(id){
     <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, ghi rõ họ tên)</div></div>
       <div><b>Tổ trưởng / Điều phối</b><div class="line">(Ký)</div></div></div>
     <p class="muted" style="margin-top:8px;font-size:11px">* Thợ ghi tay vào phiếu này tại xưởng. Sau khi xong, điều phối nhập số liệu vào app để lưu & in chứng nhận.</p>`;
-  printDoc('Phieu gia cong '+(o.code||''), body);
+  printDoc('Phieu gia cong '+(o.code||''), body + outsourceSheetsHtml(o));   // kèm phiếu đề nghị gia công ngoài (nếu có)
+  outTrackAfterPrint(o);   // → dòng theo dõi gửi/nhận ở tab Outsource
 }
 // Gom TẤT CẢ kích thước cần kiểm của mọi công đoạn (kèm công đoạn nguồn)
 function allOrderChecks(o){
@@ -3228,8 +3232,9 @@ function printAllStageSheets(id){
   let list=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>list.push({s,it:it.name||''})));
   if(!list.length){ alert('Đơn chưa khai báo công đoạn nào.'); return; }
-  const body=list.map(({s,it})=>stageSheetHtml(o,s,it)).join('');   // mỗi docHeader() = 1 tờ A4 riêng
+  const body=list.map(({s,it})=>stageSheetHtml(o,s,it)).join('') + outsourceSheetsHtml(o);   // mỗi docHeader() = 1 tờ A4 riêng; công đoạn làm ngoài → kèm phiếu đề nghị gia công
   printDoc('Bo phieu do '+(o.code||''), body);
+  outTrackAfterPrint(o);   // → dòng theo dõi gửi/nhận ở tab Outsource
 }
 function printCertificate(id){
   const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
@@ -3442,6 +3447,7 @@ function onPickProduct(){
   } else hint.innerHTML='';
 }
 function openOrderModal(id){
+  _outReqPrinted = false;
   document.getElementById('ord_id').value = id||'';
   fillProdDatalist(); refreshCatalogFromCloud();  // dựng ngay từ local + kéo mã mới nhất từ cloud
   (function(){ const insp=document.getElementById('ord_inspector'); if(insp) insp.innerHTML='<option value="">— 👤 Người đo / QC —</option>'+(DATA.staff||[]).filter(s=>s&&s.active!==false).map(s=>'<option>'+esc(s.name)+'</option>').join('');
@@ -3628,6 +3634,7 @@ function saveOrder(){
   ensureCustomersFromOrders();
   syncAssignmentsFromOrder(DATA.orders.find(o=>o.id===rec.id) || rec);
   _ordFormBase = null;
+  if(_outReqPrinted){ _outReqPrinted = false; outTrackAfterPrint(DATA.orders.find(o=>o.id===rec.id), true); }   // đã in phiếu đề nghị từ form → tạo/cập nhật dòng theo dõi
   closeModal('modalOrder');
   save();
   goTab('orders');
@@ -5689,62 +5696,7 @@ function quickStatusChange(id, newStatus){
 /* ============================================================
    OUTSOURCE
    ============================================================ */
-function renderOutsource(){
-  const el = document.getElementById('view-outsource');
-  const ships = DATA.outsourceShipments.slice().sort((a,b)=>(b.sentDate||'').localeCompare(a.sentDate||''));
-  // hiệu suất đối tác — dùng để gợi ý quyết định khối lượng giao việc
-  const partnerStats = DATA.partners.map(p=>{
-    const ps = ships.filter(s=>s.partner===p.name);
-    const withDates = ps.filter(s=>s.committedReturnDate && s.actualReturnDate);
-    const lateCount = withDates.filter(s=>daysBetween(s.committedReturnDate,s.actualReturnDate)>0).length;
-    const failCount = ps.filter(s=>s.inputQcResult==='fail').length;
-    return {name:p.name, total:ps.length, late:lateCount, withDates:withDates.length, fail:failCount};
-  }).filter(p=>p.total>0);
-  el.innerHTML = `
-    <div class="toolbar">
-      <button onclick="openOutModal()">＋ Ghi nhận lô hàng outsource</button>
-      <button class="secondary" onclick="openPartnerPrompt()">＋ Thêm đối tác outsource</button>
-      <span class="muted small">Đối tác hiện có: ${DATA.partners.map(p=>esc(p.name)).join(', ')||'—'} · <a onclick="goTab('grid')" style="cursor:pointer;color:var(--brand);font-weight:700">Xem lịch phân công outsource →</a></span>
-    </div>
-    <div class="card" style="overflow:auto;padding:0">
-      ${ ships.length===0 ? '<div class="empty">Chưa có lô hàng outsource nào được ghi nhận. Mỗi khi gửi hàng đi gia công ngoài (VD: CK Tuyết Vinh), hãy ghi nhận tại đây để theo dõi tách bạch theo đề xuất mục 4.3 trong báo cáo.</div>' :
-      `<table><thead><tr>
-        <th>Đơn hàng</th><th>Đối tác</th><th>Ngày gửi</th><th>Cam kết nhận lại</th><th>Nhận lại thực tế</th><th>Đúng hẹn?</th><th>KT đầu vào</th><th></th>
-      </tr></thead><tbody>
-      ${ships.map(s=>{
-        const ord = DATA.orders.find(o=>o.id===s.orderId);
-        let onTime = '—';
-        if(s.committedReturnDate && s.actualReturnDate){
-          const d = daysBetween(s.committedReturnDate, s.actualReturnDate);
-          onTime = d>0 ? `<span class="pill" style="background:var(--st-late)">trễ ${d} ngày</span>` : `<span class="pill" style="background:var(--st-done)">đúng/sớm hẹn</span>`;
-        }
-        const qcMap = {pass:'<span class="pill" style="background:var(--st-done)">Đạt</span>', fail:'<span class="pill" style="background:var(--st-late)">Không đạt</span>', pending:'<span class="pill" style="background:var(--st-new)">Chưa kiểm tra</span>'};
-        return `<tr>
-          <td><b>${ord?esc(ord.code):'—'}</b><div class="small muted">${ord?esc(truncate(ord.name,40)):''}</div></td>
-          <td>${esc(s.partner)}</td>
-          <td>${fmtDate(s.sentDate)}</td>
-          <td>${fmtDate(s.committedReturnDate)}</td>
-          <td>${fmtDate(s.actualReturnDate)}</td>
-          <td>${onTime}</td>
-          <td>${qcMap[s.inputQcResult]||qcMap.pending}</td>
-          <td class="actions"><a onclick="openOutModal('${s.id}')">Sửa</a><a onclick="deleteOut('${s.id}')" style="color:var(--st-late)">Xóa</a></td>
-        </tr>`;
-      }).join('')}
-      </tbody></table>`}
-    </div>
-    <h2 class="sec"><span class="bar"></span>Hiệu suất đối tác Outsource</h2>
-    <div class="card">
-      ${ partnerStats.length===0 ? '<div class="empty">Chưa có dữ liệu lô hàng outsource.</div>' :
-        `<table><thead><tr><th>Đối tác</th><th>Số lô</th><th>Tỷ lệ trễ hẹn</th><th>Số lô không đạt KT đầu vào</th></tr></thead><tbody>
-          ${partnerStats.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${p.total}</td>
-            <td>${p.withDates? Math.round(p.late/p.withDates*100)+'% ('+p.late+'/'+p.withDates+')' : '—'}</td>
-            <td>${p.fail>0?'<span class="pill" style="background:var(--st-late)">'+p.fail+' lô</span>':'0'}</td></tr>`).join('')}
-        </tbody></table>
-        <p class="small muted" style="margin-top:10px">Dùng số liệu này định kỳ để quyết định tiếp tục/điều chỉnh khối lượng giao việc cho từng đối tác (theo đề xuất mục 4.3 trong báo cáo).</p>`
-      }
-    </div>
-  `;
-}
+// renderOutsource(): đã chuyển sang m10_outsource.js (30-10-2026) — có tình trạng trễ hẹn, nút Nhận về, thống kê NCC
 function openPartnerPrompt(){
   const name = prompt('Tên đối tác outsource mới (VD: tên xưởng gia công ngoài):');
   if(name && name.trim()){
@@ -5778,7 +5730,9 @@ function saveOutsource(){
   const partner = document.getElementById('out_partner').value;
   if(!orderId || !partner){ alert('Vui lòng chọn đơn hàng và đối tác.'); return; }
   const id = document.getElementById('out_id').value;
-  const rec = {
+  const old = id ? (DATA.outsourceShipments.find(x=>x.id===id) || null) : null;
+  // 30-10-2026: GIỮ các ô app tự ghi (số phiếu, công đoạn...) — trước đây lưu là mất
+  const rec = Object.assign({}, old || {}, {
     id: id || uid('OUT','out'),
     orderId, partner,
     sentDate: document.getElementById('out_sent').value || null,
@@ -5786,10 +5740,13 @@ function saveOutsource(){
     actualReturnDate: document.getElementById('out_actual').value || null,
     inputQcResult: document.getElementById('out_qc').value,
     note: document.getElementById('out_note').value.trim(),
-  };
+    touched: true,
+  });
+  if(old && old.auto && (old.committedReturnDate||null) !== rec.committedReturnDate) rec.dueEdited = true;   // điều phối tự sửa hạn → in lại phiếu không ghi đè
   const idx = DATA.outsourceShipments.findIndex(x=>x.id===rec.id);
   if(idx>=0) DATA.outsourceShipments[idx]=rec; else DATA.outsourceShipments.push(rec);
   closeModal('modalOut'); save(); goTab('outsource');
+  if(rec.inputQcResult==='fail' && (!old || old.inputQcResult!=='fail') && confirm('Lô hàng này KHÔNG ĐẠT khi kiểm nhận.\nLập phiếu NCR cho đơn này luôn?')) ncrForOrder(orderId);
 }
 function deleteOut(id){
   if(!confirm('Xóa ghi nhận lô hàng này?')) return;
@@ -9909,10 +9866,327 @@ function ziApply(){
   try{ renderAll(); }catch(e){}
 }
 
+/* ===== PHIẾU ĐỀ NGHỊ GIA CÔNG NGOÀI — thêm 30-10-2026 =====
+   Công đoạn nào làm ở ngoài thì in KÈM phiếu đề nghị gia công: ghi rõ từng kích thước cần gia công
+   (lấy từ bảng "kích thước cần kiểm" của công đoạn), ai là nhà cung cấp (nếu đã chọn), hạn giao lại,
+   chỗ để NCC ghi số đo và DHP kiểm nhận. Khung DHP – CK368 như mọi phiếu khác.
+   Công đoạn tính là GIA CÔNG NGOÀI khi:
+     • người làm là đối tác outsource (danh sách Nhân sự & đối tác), hoặc
+     • ô "Ở đâu" ghi tên xưởng ngoài (không phải CK368), hoặc
+     • chi tiết / cả đơn đặt "Outsource" và công đoạn không ghi rõ làm ở CK368 / người nội bộ.
+   Không tính: L Mua phôi/vật tư · N Vận chuyển · M Thủ tục (không phải gia công).
+   Nhà cung cấp = đối tác được giao; nếu chưa giao ai thì lấy tên ghi ở ô "Ở đâu"; chưa có thì để trống ghi tay.
+   Một phiếu cho MỖI nhà cung cấp của đơn (gom mọi công đoạn của NCC đó). Không in tên khách hàng lên phiếu. */
+const OUT_SKIP_CODES = new Set(['L', 'N', 'M']);
+function _outNorm(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function _outLocInhouse(loc){
+  const k = _outNorm(loc).replace(/\s+/g, '');
+  return !k || ['ck368', 'xuongck368', '368', 'noibo', 'inhouse', 'dhp', 'xuong'].indexOf(k) >= 0;
+}
+// mọi công đoạn của đơn (chung + của từng chi tiết; trong form đang sửa thì công đoạn chi tiết mang _itId)
+function _outStageList(o){
+  const items = (o.items || []).filter(Boolean), byId = {};
+  items.forEach(function(it){ if(it.id) byId[it.id] = it; });
+  const out = [];
+  (o.stages || []).filter(Boolean).forEach(function(s){ out.push({ s: s, it: s._itId ? (byId[s._itId] || null) : null }); });
+  items.forEach(function(it){ (it.stages || []).filter(Boolean).forEach(function(s){ out.push({ s: s, it: it }); }); });
+  return out;
+}
+function outStageInfo(o, s, it){
+  if(!s || !String((s.code || '') + (s.name || '')).trim()) return null;
+  const code = String(s.code || '').replace(/\d+$/, '').toUpperCase();
+  if(OUT_SKIP_CODES.has(code)) return null;
+  const st = (DATA.staff || []).find(function(x){ return x && x.id === s.assignee; }) || null;
+  const outStaff = (st && st.type === 'outsource') ? st : null;
+  const loc = String(s.location || '').trim();
+  const locOut = !!loc && !_outLocInhouse(loc);
+  const parentOut = (it && it.assignment === 'outsource') || o.assignment === 'outsource';
+  const clearlyInhouse = (st && st.type !== 'outsource') || (!!loc && !locOut);
+  if(!outStaff && !locOut && !(parentOut && !clearlyInhouse)) return null;
+  // "Ở đâu" ghi đầy đủ hơn tên đối tác (vd "Bách Khoa - anh Cầm" ⊃ "Cầm") → coi là cùng 1 NCC, in tên đầy đủ
+  const same = outStaff && locOut && (_outNorm(loc).indexOf(_outNorm(outStaff.name)) >= 0 || _outNorm(outStaff.name).indexOf(_outNorm(loc)) >= 0);
+  const supplier = String(outStaff ? ((same && loc.length > outStaff.name.length) ? loc : outStaff.name) : (locOut ? loc : (o.outsourcePartner || ''))).trim();
+  const warn = (outStaff && locOut && !same) ? ('ô "Ở đâu" ghi ' + loc + ' — khác đối tác được giao (' + outStaff.name + ')') : '';
+  // tên CHUẨN để thống kê (ưu tiên tên trong danh sách đối tác) — tên in trên phiếu có thể đầy đủ hơn
+  const partner = String(outStaff ? outStaff.name : supplier).trim();
+  return { s: s, it: it, supplier: supplier, partner: partner, warn: warn };
+}
+function outsourceGroups(o){
+  const groups = [], idx = {};
+  if(!o) return groups;
+  _outStageList(o).forEach(function(x){
+    const inf = outStageInfo(o, x.s, x.it); if(!inf) return;
+    const k = _outNorm(inf.partner) || '__chua_chon__';
+    if(!(k in idx)){ idx[k] = groups.length; groups.push({ supplier: inf.supplier, partner: inf.partner, rows: [] }); }
+    const g = groups[idx[k]];
+    if(inf.supplier.length > g.supplier.length) g.supplier = inf.supplier;   // in tên đầy đủ nhất
+    g.rows.push(inf);
+  });
+  return groups;
+}
+function _outReqNo(o, n, total){ return 'ĐNGC-' + (o.code || '') + (total > 1 ? '-' + String(n).padStart(2, '0') : ''); }
+function outsourceSheetHtml(o, g, n, total){
+  const no = _outReqNo(o, n, total);
+  const ends = g.rows.map(function(r){ return stageEndDate(r.s); }).filter(Boolean).sort();
+  const starts = g.rows.map(function(r){ return normDate(r.s.startDate); }).filter(Boolean).sort();
+  const its = [];
+  g.rows.forEach(function(r){ if(r.it && its.indexOf(r.it) < 0) its.push(r.it); });
+  const qty = (its.length === 1 && its[0].qty != null && its[0].qty !== '')
+    ? esc(String(its[0].qty)) + ' ' + esc(its[0].unit || '')
+    : (o.qty != null ? esc(String(o.qty)) : '') + ' ' + esc(o.unit || '');
+  const mat = (o.materials || []).filter(function(m){ return m && ((m.material || '').trim() || (m.spec || '').trim()); })
+    .map(function(m){ return esc((m.material || '') + (m.spec ? ' ' + m.spec : '')); }).join('; ');
+  const dwg = (o.attachments || []).filter(function(a){ return a && (a.label || '').trim(); }).map(function(a){ return esc(a.label); }).join('; ');
+  const blank = '<span class="muted">………………………</span>';
+  const supCell = g.supplier ? '<b style="font-size:13.5px">' + esc(g.supplier) + '</b>'
+    : '<span class="muted">………………………………………… (chưa chọn nhà cung cấp — điều phối ghi tay)</span>';
+  let tt = 0;
+  const rows = g.rows.map(function(r){
+    const s = r.s;
+    const ck = (s.checks || []).filter(function(c){ return c && ((c.param || '').trim() || (c.spec || '').trim()); });
+    const head = '<tr class="grp"><td colspan="7">Công đoạn ' + esc(s.code || '') + ' — ' + esc(s.name || '')
+      + (r.it ? ' &nbsp;·&nbsp; chi tiết: ' + esc(r.it.name || '') : '')
+      + (s.note ? ' &nbsp;·&nbsp; <span style="font-weight:400">' + esc(s.note) + '</span>' : '')
+      + (ck.length ? '' : ' <span style="font-weight:400;color:#5A6675">(chưa khai kích thước — ghi tay theo bản vẽ)</span>')
+      + (r.warn ? ' <span style="font-weight:400;color:#b91c1c">⚠ ' + esc(r.warn) + '</span>' : '') + '</td></tr>';
+    const lines = (ck.length ? ck : [{}, {}]).map(function(c){
+      tt++;
+      return '<tr><td>' + tt + '</td><td>' + esc(c.param || '') + '</td><td>' + esc(c.spec || '') + '</td><td>' + esc(c.tool || '') + '</td><td></td><td></td><td></td></tr>';
+    }).join('');
+    return head + lines;
+  }).join('');
+  return docHeader('PHIẾU ĐỀ NGHỊ GIA CÔNG NGOÀI') + `
+    <h1 style="text-align:center;margin-top:8px;margin-bottom:1mm">Phiếu đề nghị gia công ngoài</h1>
+    <div style="text-align:center;margin-bottom:3mm;font-size:12px;color:#5A6675">Số phiếu: <b style="color:#173E7C">${esc(no)}</b> &nbsp;·&nbsp; Ngày lập: ${fmtDate(todayStr())}</div>
+    ${impBannerHtml(o)}
+    <table>
+      <tr><th style="width:118px">Nhà cung cấp</th><td colspan="3">${supCell}</td></tr>
+      <tr><th>Mã đơn DHP</th><td>${esc(o.code || '')}</td><th style="width:118px">Số lượng</th><td>${qty}</td></tr>
+      <tr><th>Tên hàng</th><td colspan="3">${esc(o.name || '')}${its.length ? ' &nbsp;—&nbsp; chi tiết: <b>' + its.map(function(it){ return esc(it.name || ''); }).join(', ') + '</b>' : ''}</td></tr>
+      <tr><th>Vật liệu</th><td>${mat || blank}</td><th>Bản vẽ / Rev</th><td>${dwg || blank}</td></tr>
+      <tr><th>Phôi / vật liệu</th><td colspan="3"><span class="box"></span>DHP cấp phôi &nbsp;&nbsp;&nbsp; <span class="box"></span>NCC tự lo vật liệu &nbsp;&nbsp;&nbsp; Số lượng gửi đi: ________</td></tr>
+      <tr><th>Dự kiến gửi</th><td>${starts.length ? fmtDate(starts[0]) : '____/____/______'}</td><th>Giao lại trước</th><td><b>${ends.length ? fmtDate(ends[ends.length - 1]) : '____/____/______'}</b></td></tr>
+    </table>
+    <h2>Kích thước / yêu cầu gia công — NCC đo &amp; ghi kết quả khi giao hàng</h2>
+    <table><thead><tr><th style="width:28px">TT</th><th>Kích thước / thông số gia công</th><th style="width:118px">Yêu cầu + dung sai</th><th style="width:84px">Dụng cụ đo</th><th style="width:68px">NCC đo</th><th style="width:68px">DHP kiểm</th><th style="width:60px">Đạt / Không</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    <h2>Yêu cầu khác</h2>
+    <div style="font-size:12px;line-height:2">
+      <span class="box"></span>Độ nhám: ________ &nbsp;&nbsp; <span class="box"></span>Độ cứng / nhiệt luyện: ________ &nbsp;&nbsp; <span class="box"></span>Xử lý bề mặt: ________<br>
+      <span class="box"></span>Bảo vệ lỗ lắp, rãnh then, mặt lắp ghép khi vận chuyển &nbsp;&nbsp; <span class="box"></span>Gửi kèm kết quả đo &nbsp;&nbsp; Khác: ____________________</div>
+    <h2>Kiểm nhận khi NCC giao lại — DHP ghi</h2>
+    <div style="font-size:12px;line-height:2">Ngày nhận: ____/____/______ &nbsp;&nbsp;&nbsp; Số lượng nhận: ______ / gửi đi ______ &nbsp;&nbsp;&nbsp; Đo kiểm theo bảng trên<br>
+      Kết luận: <span class="box"></span>Đạt — chuyển công đoạn sau &nbsp;&nbsp;&nbsp; <span class="box"></span>Không đạt — trả lại NCC, lập NCR</div>
+    <div class="sign sign4">
+      <div><b>Người đề nghị</b><div class="line">(Điều phối)</div></div>
+      <div><b>Duyệt</b><div class="line">(Quản lý / TPKT)</div></div>
+      <div><b>Nhà cung cấp</b><div class="line">(Ký nhận việc)</div></div>
+      <div><b>Người kiểm nhận</b><div class="line">(QC)</div></div></div>`;
+}
+function outsourceSheetsHtml(o){
+  const gs = outsourceGroups(o);
+  return gs.map(function(g, i){ return outsourceSheetHtml(o, g, i + 1, gs.length); }).join('');
+}
+function printOutsourceRequests(id){
+  const o = (typeof id === 'object' && id) ? id : (DATA.orders || []).find(function(x){ return x.id === id; });
+  if(!o) return;
+  const html = outsourceSheetsHtml(o);
+  if(!html){ alert('Đơn này không có công đoạn gia công ngoài.\n\nCông đoạn được tính là gia công ngoài khi: người làm là đối tác outsource, hoặc ô "Ở đâu" ghi tên xưởng ngoài.'); return; }
+  printDoc('De nghi gia cong ngoai ' + (o.code || ''), html);
+  outTrackAfterPrint(o);
+}
+
+/* ===== THEO DÕI GỬI / NHẬN GIA CÔNG NGOÀI — tự tạo khi in phiếu đề nghị (30-10-2026) =====
+   In phiếu đề nghị (riêng, hoặc kèm phiếu gia công / bộ phiếu đo) → mỗi NCC của đơn có 1 dòng ở tab Outsource:
+   ngày gửi (dự kiến = ngày bắt đầu công đoạn), hẹn nhận lại (= "Giao lại trước" trên phiếu). Khi hàng về, điều phối
+   bấm "📥 Nhận về" ghi ngày + kết quả kiểm nhận → tab tự tính NCC nào hay trễ / hay làm hỏng.
+   In lại phiếu KHÔNG tạo dòng trùng: chỉ cập nhật công đoạn & hạn (nếu điều phối chưa tự sửa hạn).
+   NCC chưa chọn → chưa tạo dòng (chọn NCC rồi in lại). Chỉ quyền Điều phối / Quản lý mới tạo. */
+var _outReqPrinted = false;   // in phiếu từ form đơn đang sửa → lưu đơn xong tạo/cập nhật dòng theo dõi
+function outsourceTrack(o, noSave){
+  const res = { created: [], updated: [], removed: 0, unknown: 0 };
+  if(!o || !o.id) return res;
+  DATA.outsourceShipments = DATA.outsourceShipments || [];
+  const gs = outsourceGroups(o), live = {};
+  gs.forEach(function(g, i){
+    if(!g.partner){ res.unknown++; return; }
+    const key = _outNorm(g.partner); live[key] = 1;
+    const reqNo = _outReqNo(o, i + 1, gs.length);
+    const ends = g.rows.map(function(r){ return stageEndDate(r.s); }).filter(Boolean).sort();
+    const starts = g.rows.map(function(r){ return normDate(r.s.startDate); }).filter(Boolean).sort();
+    const due = ends.length ? ends[ends.length - 1] : null;
+    const stageIds = g.rows.map(function(r){ return r.s.id; }).filter(Boolean);
+    const stTxt = g.rows.map(function(r){ return ((r.s.code || '') + ' ' + (r.s.name || '')).trim(); }).join(', ');
+    let rec = DATA.outsourceShipments.find(function(x){ return x && x.orderId === o.id && _outNorm(x.partner) === key; });
+    if(!rec){
+      DATA.outsourceShipments.push({ id: uid('OUT', 'out'), orderId: o.id, partner: g.partner,
+        sentDate: starts[0] || todayStr(), committedReturnDate: due, actualReturnDate: null, inputQcResult: 'pending',
+        note: reqNo + ' · ' + stTxt, reqNo: reqNo, stages: stTxt, stageIds: stageIds, auto: true, createdAt: new Date().toISOString() });
+      res.created.push(g.partner);
+      return;
+    }
+    if(rec.actualReturnDate) return;                    // đã nhận về → không đụng nữa
+    let ch = false;
+    const ids = Array.from(new Set((rec.stageIds || []).concat(stageIds)));
+    if(ids.length !== (rec.stageIds || []).length){ rec.stageIds = ids; ch = true; }
+    if(rec.stages !== stTxt){ rec.stages = stTxt; ch = true; }
+    if(!rec.reqNo){ rec.reqNo = reqNo; ch = true; }
+    if(due && !rec.dueEdited && rec.committedReturnDate !== due){ rec.committedReturnDate = due; ch = true; }
+    if(ch) res.updated.push(g.partner);
+  });
+  // đơn đổi NCC sau khi in: dòng tự động của NCC cũ (chưa gửi/chưa ai sửa) → bỏ
+  DATA.outsourceShipments = DATA.outsourceShipments.filter(function(x){
+    const drop = x && x.orderId === o.id && x.auto && !x.touched && !x.actualReturnDate && (!x.inputQcResult || x.inputQcResult === 'pending') && !live[_outNorm(x.partner)];
+    if(drop) res.removed++;
+    return !drop;
+  });
+  if(res.created.length || res.updated.length || res.removed){
+    try{ rebuildPartners(); }catch(e){}
+    if(!noSave) save();
+  }
+  return res;
+}
+function outToast(msg){
+  let el = document.getElementById('outToast');
+  if(!el){
+    el = document.createElement('div'); el.id = 'outToast';
+    el.style.cssText = 'position:fixed;right:16px;bottom:58px;z-index:100001;max-width:440px;background:#0e7490;color:#fff;padding:10px 14px;'
+      + 'border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.25);font-size:13px;line-height:1.45;cursor:pointer';
+    el.onclick = function(){ el.style.display = 'none'; };
+    document.body.appendChild(el);
+  }
+  el.innerHTML = msg; el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.style.display = 'none'; }, 8000);
+}
+// gọi sau mỗi lần in có kèm phiếu đề nghị gia công ngoài
+function outTrackAfterPrint(o, noSave){
+  try{
+    if(!o || !outsourceGroups(o).length) return;
+    if(typeof canEdit !== 'function' || !canEdit()) return;
+    const liveOrd = (DATA.orders || []).find(function(x){ return x && x.id === o.id; });
+    if(liveOrd !== o) _outReqPrinted = true;            // in từ form đang sửa → lưu đơn xong cập nhật lại cho khớp
+    if(!liveOrd){ outToast('📤 Lưu đơn xong, app sẽ tự tạo dòng theo dõi gửi/nhận ở tab <b>Outsource</b>.'); return; }
+    const r = outsourceTrack(o, noSave);
+    const parts = [];
+    if(r.created.length) parts.push('đã tạo ' + r.created.length + ' dòng (' + r.created.map(esc).join(', ') + ')');
+    if(r.updated.length) parts.push('cập nhật ' + r.updated.length + ' dòng');
+    if(r.removed) parts.push('bỏ ' + r.removed + ' dòng của NCC cũ');
+    if(r.unknown) parts.push(r.unknown + ' nhóm chưa chọn NCC — chọn NCC rồi in lại để tạo dòng');
+    if(parts.length) outToast('📤 Theo dõi gửi/nhận — tab <b>Outsource</b>: ' + parts.join(' · '));
+  }catch(e){ console.error('[dhp] theo dõi outsource', e); }
+}
+
+/* ---------- TAB OUTSOURCE: theo dõi gửi/nhận + thống kê NCC ---------- */
+function _outStatus(s){
+  if(s.actualReturnDate){
+    if(s.committedReturnDate){
+      const d = daysBetween(s.committedReturnDate, s.actualReturnDate);
+      return d > 0 ? { k: 2, html: '<span class="pill" style="background:var(--st-late)">trả trễ ' + d + ' ngày</span>' }
+                   : { k: 3, html: '<span class="pill" style="background:var(--st-done)">đúng / sớm hẹn</span>' };
+    }
+    return { k: 3, html: '<span class="pill" style="background:#64748b">đã nhận</span>' };
+  }
+  if(s.committedReturnDate){
+    const d = daysBetween(s.committedReturnDate, todayStr());
+    if(d > 0) return { k: 0, late: d, html: '<span class="pill" style="background:var(--st-late)">⚠ đang trễ ' + d + ' ngày</span>' };
+    return { k: 1, html: '<span class="pill" style="background:#0EA5E9">ở NCC · ' + (d === 0 ? 'hạn hôm nay' : 'còn ' + (-d) + ' ngày') + '</span>' };
+  }
+  return { k: 1, html: '<span class="pill" style="background:#0EA5E9">đang ở NCC</span>' };
+}
+function outReceive(id){
+  openOutModal(id);
+  const a = document.getElementById('out_actual'); if(a && !a.value) a.value = todayStr();
+  setTimeout(function(){ const q = document.getElementById('out_qc'); if(q) q.focus(); }, 60);
+}
+function renderOutsource(){
+  const el = document.getElementById('view-outsource');
+  const ships = (DATA.outsourceShipments || []).filter(Boolean).map(function(s){ return { s: s, st: _outStatus(s) }; })
+    .sort(function(a, b){ return (a.st.k - b.st.k) || String(a.st.k < 2 ? (a.s.committedReturnDate || '9') : '').localeCompare(String(b.st.k < 2 ? (b.s.committedReturnDate || '9') : ''))
+      || String(b.s.actualReturnDate || b.s.sentDate || '').localeCompare(String(a.s.actualReturnDate || a.s.sentDate || '')); });
+  // thống kê NCC (gộp tên viết khác dấu / hoa thường)
+  const by = {};
+  ships.forEach(function(x){
+    const s = x.s, k = _outNorm(s.partner) || '?';
+    const p = by[k] = by[k] || { name: s.partner || '?', total: 0, open: 0, overdue: 0, returned: 0, withDates: 0, late: 0, lateDays: 0, checked: 0, fail: 0 };
+    p.total++;
+    if(!s.actualReturnDate){ p.open++; if(x.st.k === 0) p.overdue++; }
+    else {
+      p.returned++;
+      if(s.committedReturnDate){ p.withDates++; const d = daysBetween(s.committedReturnDate, s.actualReturnDate); if(d > 0){ p.late++; p.lateDays += d; } }
+    }
+    if(s.inputQcResult === 'pass' || s.inputQcResult === 'fail') p.checked++;
+    if(s.inputQcResult === 'fail') p.fail++;
+  });
+  const stats = Object.keys(by).map(function(k){ return by[k]; }).sort(function(a, b){ return (b.overdue - a.overdue) || (b.total - a.total); });
+  const nOpen = ships.filter(function(x){ return !x.s.actualReturnDate; }).length;
+  const nOver = ships.filter(function(x){ return x.st.k === 0; }).length;
+  el.innerHTML = `
+    <div class="toolbar">
+      <button onclick="openOutModal()">＋ Ghi nhận lô hàng outsource</button>
+      <button class="secondary" onclick="openPartnerPrompt()">＋ Thêm đối tác outsource</button>
+      <span class="muted small">Dòng <b>tự động</b> được tạo khi in phiếu đề nghị gia công ngoài. Hàng về → bấm <b>📥 Nhận về</b>, ghi kết quả kiểm nhận.
+        ${nOpen ? ' · Đang ở NCC: <b>' + nOpen + '</b>' + (nOver ? ' · <b style="color:var(--st-late)">trễ hẹn: ' + nOver + '</b>' : '') : ''}</span>
+    </div>
+    <div class="card" style="overflow:auto;padding:0">
+      ${ ships.length === 0 ? '<div class="empty">Chưa có lô hàng outsource nào. Từ nay khi in phiếu đề nghị gia công ngoài (kèm phiếu gia công / bộ phiếu đo), app tự tạo dòng theo dõi ở đây.</div>' :
+      `<table><thead><tr>
+        <th>Đơn hàng</th><th>Nhà cung cấp</th><th>Ngày gửi</th><th>Hẹn nhận lại</th><th>Nhận thực tế</th><th>Tình trạng</th><th>Kiểm nhận</th><th></th>
+      </tr></thead><tbody>
+      ${ships.map(function(x){
+        const s = x.s, ord = (DATA.orders || []).find(function(o){ return o.id === s.orderId; });
+        const qcMap = { pass: '<span class="pill" style="background:var(--st-done)">Đạt</span>', fail: '<span class="pill" style="background:var(--st-late)">Không đạt</span>', pending: '<span class="pill" style="background:var(--st-new)">Chưa kiểm</span>' };
+        return `<tr${x.st.k === 0 ? ' style="background:#fff5f5"' : ''}>
+          <td><b>${ord ? esc(ord.code) : '—'}</b><div class="small muted">${ord ? esc(truncate(ord.name, 40)) : ''}</div></td>
+          <td><b>${esc(s.partner || '')}</b>${s.auto ? ' <span class="small" style="color:#0e7490;font-weight:700">· tự động</span>' : ''}
+            <div class="small muted">${esc([s.reqNo, s.stages].filter(Boolean).join(' · ') || s.note || '')}</div></td>
+          <td>${fmtDate(s.sentDate)}</td>
+          <td>${fmtDate(s.committedReturnDate)}</td>
+          <td>${fmtDate(s.actualReturnDate)}</td>
+          <td>${x.st.html}</td>
+          <td>${qcMap[s.inputQcResult] || qcMap.pending}</td>
+          <td class="actions">${s.actualReturnDate ? '' : `<a onclick="outReceive('${s.id}')" style="color:#0e7490;font-weight:700">📥 Nhận về</a>`}<a onclick="openOutModal('${s.id}')">Sửa</a><a onclick="deleteOut('${s.id}')" style="color:var(--st-late)">Xóa</a></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`}
+    </div>
+    <h2 class="sec"><span class="bar"></span>Hiệu suất nhà cung cấp gia công ngoài</h2>
+    <div class="card">
+      ${ stats.length === 0 ? '<div class="empty">Chưa có dữ liệu.</div>' :
+        `<table><thead><tr><th>Nhà cung cấp</th><th>Số lô</th><th>Đang ở NCC</th><th>Đang trễ hẹn</th><th>Trả trễ (đã nhận)</th><th>Trễ TB</th><th>Không đạt kiểm nhận</th></tr></thead><tbody>
+          ${stats.map(function(p){ return `<tr><td><b>${esc(p.name)}</b></td><td>${p.total}</td><td>${p.open || '—'}</td>
+            <td>${p.overdue ? '<span class="pill" style="background:var(--st-late)">' + p.overdue + ' lô</span>' : '0'}</td>
+            <td>${p.withDates ? Math.round(p.late / p.withDates * 100) + '% (' + p.late + '/' + p.withDates + ')' : '—'}</td>
+            <td>${p.late ? (Math.round(p.lateDays / p.late * 10) / 10) + ' ngày' : '—'}</td>
+            <td>${p.fail ? '<span class="pill" style="background:var(--st-late)">' + p.fail + '/' + p.checked + ' lô</span>' : (p.checked ? '0/' + p.checked : '—')}</td></tr>`; }).join('')}
+        </tbody></table>
+        <p class="small muted" style="margin-top:10px">Dùng định kỳ để quyết định tiếp tục / điều chỉnh khối lượng giao cho từng NCC. "Trả trễ" và "Không đạt" chỉ tính các lô đã nhận về và đã ghi kết quả kiểm nhận.</p>`
+      }
+    </div>`;
+}
+function outsourceBtnHtml(o){
+  const gs = outsourceGroups(o); if(!gs.length) return '';
+  const n = gs.reduce(function(a, g){ return a + g.rows.length; }, 0);
+  const unk = gs.some(function(g){ return !g.supplier; });
+  return '<button class="ghost sm" onclick="printOutsourceRequests(\'' + o.id + '\')" style="border-color:#0e7490;color:#0e7490;font-weight:700" title="Phiếu gửi nhà cung cấp: kích thước cần gia công, hạn giao, chỗ NCC ghi số đo + DHP kiểm nhận">📤 Đề nghị gia công ngoài ('
+    + n + ' công đoạn · ' + gs.length + ' NCC' + (unk ? ' · ⚠ chưa chọn NCC' : '') + ')</button>';
+}
+
+// số lô đang TRỄ HẸN ở NCC → chấm đỏ trên tab Outsource
+function outTabBadge(){
+  const tab = document.querySelector('.tab[data-tab="outsource"]'); if(!tab) return;
+  const old = tab.querySelector('.tabBadge'); if(old) old.remove();
+  const n = (DATA.outsourceShipments || []).filter(function(s){ return s && _outStatus(s).k === 0; }).length;
+  if(!n) return;
+  const b = document.createElement('span'); b.className = 'tabBadge'; b.title = n + ' lô gia công ngoài đang trễ hẹn';
+  b.style.cssText = 'display:inline-block;min-width:16px;height:16px;line-height:16px;text-align:center;background:var(--st-late);color:#fff;border-radius:99px;font-size:10px;font-weight:800;margin-left:6px;padding:0 4px';
+  b.textContent = n; tab.appendChild(b);
+}
+
 /* ---------------- INIT ---------------- */
 function renderAll(){
   document.getElementById('topStamp').textContent = 'Cập nhật lúc ' + new Date().toLocaleString('vi-VN');
   try{ renderAlertBar(); }catch(e){ console.error('alertBar', e); }
+  try{ outTabBadge(); }catch(e){}
   const active = document.querySelector('.view.active');
   if(!active) return;
   const id = active.id;

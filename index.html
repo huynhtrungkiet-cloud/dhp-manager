@@ -2185,7 +2185,7 @@ function renderStagesEditor(){
           ${editingItemsNamed().map(it=>`<option value="${esc(it.id)}" ${s._itId===it.id?'selected':''}>▦ ${esc(truncate(it.name,20))}</option>`).join('')}
         </select>`:''}
         ${s.rework?`<span style="font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:1px 6px" title="Công đoạn làm lại — giờ của nó là hao phí">⟳ làm lại</span>`:''}
-        <input style="flex:1;min-width:120px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)">
+        <input style="flex:1;min-width:120px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)" onchange="renderStagesEditor()">
         <select style="width:108px" onchange="updStage(${i},'status',this.value);renderStagesEditor()">
           <option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa làm</option>
           <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
@@ -2215,6 +2215,7 @@ function renderStagesEditor(){
           : `<input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" onchange="renderStagesEditor()" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường"><span class="small" style="color:#d97706;font-weight:700">OT</span>`}
         ${workloadHintHtml(s)}
       </div>
+      ${outStageChipHtml(i)}
       ${stageChecksHtml(s,i)}
     </div>`;}).join('');
   updateFormGates();
@@ -2294,7 +2295,7 @@ function addStageCheck(i){ if(!editingStages[i])return; editingStages[i].checks=
 function addStandardChecklist(i){ if(!editingStages[i])return; editingStages[i].checks=editingStages[i].checks||[];
   QC_STD_CHECKLIST.forEach(x=>editingStages[i].checks.push({param:x.param,spec:x.spec,tool:x.tool,actual1:'',actual2:'',pass:''})); renderStagesEditor(); }
 function rmStageCheck(i,ci){ if(editingStages[i]&&editingStages[i].checks){ editingStages[i].checks.splice(ci,1); renderStagesEditor(); } }
-function updStageCheck(i,ci,k,v){ const c=editingStages[i]&&editingStages[i].checks&&editingStages[i].checks[ci]; if(c) c[k]=v; }
+function updStageCheck(i,ci,k,v){ const c=editingStages[i]&&editingStages[i].checks&&editingStages[i].checks[ci]; if(c) c[k]=v; if(k==='param'||k==='spec'){ try{ outChipRefresh(i); }catch(e){} } }
 function staffName(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return s?s.name:'(?)'; }
 function isOutsourceStaff(id){ const s=(DATA.staff||[]).find(x=>x&&x.id===id); return !!(s && s.type==='outsource'); }
 // Việc người này ĐÃ có trong 1 ngày (từ các đơn khác) — để cảnh báo nhập trùng
@@ -3022,7 +3023,7 @@ const PRINT_FORMS = {   // khoá = tiêu đề truyền vào docHeader()
   'PHIẾU ĐO ĐẠC CÔNG ĐOẠN':                                   {proc:'QUY TRÌNH SẢN XUẤT – ĐO ĐẠC CÔNG ĐOẠN',      code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'PHIẾU KIỂM TRA CHẤT LƯỢNG CUỐI (FINAL INSPECTION REPORT)': {proc:'QUY TRÌNH KIỂM SOÁT CHẤT LƯỢNG',             code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'CHỨNG NHẬN XUẤT XƯỞNG':                                    {proc:'QUY TRÌNH XUẤT XƯỞNG',                       code:'', rev:'01', kind:'QUALITY DOCUMENT'},
-  'PHIẾU ĐỀ NGHỊ GIA CÔNG NGOÀI':                             {proc:'QUY TRÌNH SẢN XUẤT – GIA CÔNG NGOÀI (OUTSOURCE)', code:'', rev:'01', kind:'PRODUCTION DOCUMENT'},
+  'PHIẾU GIA CÔNG NGOÀI':                                     {proc:'QUY TRÌNH SẢN XUẤT – GIA CÔNG NGOÀI (OUTSOURCE)', code:'', rev:'01', kind:'PRODUCTION DOCUMENT'},
 };
 const SHEET_MARK = '<!--DHP-SHEET-->';
 // Mở cửa sổ in A4 — mỗi docHeader() trong nội dung mở một tờ mới, tờ nào cũng có tiêu đề + chân trang
@@ -3176,8 +3177,7 @@ function printWorkOrder(id){
     <div class="sign"><div><b>Người gia công</b><div class="line">(Ký, ghi rõ họ tên)</div></div>
       <div><b>Tổ trưởng / Điều phối</b><div class="line">(Ký)</div></div></div>
     <p class="muted" style="margin-top:8px;font-size:11px">* Thợ ghi tay vào phiếu này tại xưởng. Sau khi xong, điều phối nhập số liệu vào app để lưu & in chứng nhận.</p>`;
-  printDoc('Phieu gia cong '+(o.code||''), body + outsourceSheetsHtml(o));   // kèm phiếu đề nghị gia công ngoài (nếu có)
-  outTrackAfterPrint(o);   // → dòng theo dõi gửi/nhận ở tab Outsource
+  printDoc('Phieu gia cong '+(o.code||''), body);
 }
 // Gom TẤT CẢ kích thước cần kiểm của mọi công đoạn (kèm công đoạn nguồn)
 function allOrderChecks(o){
@@ -3232,9 +3232,8 @@ function printAllStageSheets(id){
   let list=(o.stages||[]).filter(Boolean).map(s=>({s,it:''}));
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>list.push({s,it:it.name||''})));
   if(!list.length){ alert('Đơn chưa khai báo công đoạn nào.'); return; }
-  const body=list.map(({s,it})=>stageSheetHtml(o,s,it)).join('') + outsourceSheetsHtml(o);   // mỗi docHeader() = 1 tờ A4 riêng; công đoạn làm ngoài → kèm phiếu đề nghị gia công
+  const body=list.map(({s,it})=>stageSheetHtml(o,s,it)).join('');   // mỗi docHeader() = 1 tờ A4 riêng
   printDoc('Bo phieu do '+(o.code||''), body);
-  outTrackAfterPrint(o);   // → dòng theo dõi gửi/nhận ở tab Outsource
 }
 function printCertificate(id){
   const o=(DATA.orders||[]).find(x=>x.id===id); if(!o) return;
@@ -3634,7 +3633,7 @@ function saveOrder(){
   ensureCustomersFromOrders();
   syncAssignmentsFromOrder(DATA.orders.find(o=>o.id===rec.id) || rec);
   _ordFormBase = null;
-  if(_outReqPrinted){ _outReqPrinted = false; outTrackAfterPrint(DATA.orders.find(o=>o.id===rec.id), true); }   // đã in phiếu đề nghị từ form → tạo/cập nhật dòng theo dõi
+  if(_outReqPrinted) outAfterOrderSaved(rec.id);   // đã xuất phiếu gia công ngoài từ form → tạo/cập nhật dòng theo dõi
   closeModal('modalOrder');
   save();
   goTab('orders');
@@ -9866,17 +9865,18 @@ function ziApply(){
   try{ renderAll(); }catch(e){}
 }
 
-/* ===== PHIẾU ĐỀ NGHỊ GIA CÔNG NGOÀI — thêm 30-10-2026 =====
-   Công đoạn nào làm ở ngoài thì in KÈM phiếu đề nghị gia công: ghi rõ từng kích thước cần gia công
-   (lấy từ bảng "kích thước cần kiểm" của công đoạn), ai là nhà cung cấp (nếu đã chọn), hạn giao lại,
-   chỗ để NCC ghi số đo và DHP kiểm nhận. Khung DHP – CK368 như mọi phiếu khác.
+/* ===== XUẤT PHIẾU GIA CÔNG NGOÀI / EXPORT OUTSOURCE DOC — 30-10-2026, tách riêng 01-11-2026 =====
+   Phiếu mang theo hàng khi đưa ra ngoài gia công: từng kích thước cần làm (lấy từ bảng 📐 của công đoạn),
+   nhà cung cấp, hạn giao lại, chỗ NCC ghi số đo + DHP kiểm nhận. Khung DHP – CK368 như mọi phiếu khác.
+   KHÔNG in chung với phiếu gia công / bộ phiếu đo — có nút riêng "📤 Xuất phiếu gia công ngoài":
+     • ngay trong công đoạn làm ngoài (form sửa đơn, bước G2) và • trong cửa sổ xem đơn.
+   Chỉ xuất khi công đoạn ĐỦ THÔNG TIN: nhà cung cấp · ≥1 kích thước/yêu cầu (thông số + yêu cầu) · ngày làm.
    Công đoạn tính là GIA CÔNG NGOÀI khi:
      • người làm là đối tác outsource (danh sách Nhân sự & đối tác), hoặc
      • ô "Ở đâu" ghi tên xưởng ngoài (không phải CK368), hoặc
      • chi tiết / cả đơn đặt "Outsource" và công đoạn không ghi rõ làm ở CK368 / người nội bộ.
    Không tính: L Mua phôi/vật tư · N Vận chuyển · M Thủ tục (không phải gia công).
-   Nhà cung cấp = đối tác được giao; nếu chưa giao ai thì lấy tên ghi ở ô "Ở đâu"; chưa có thì để trống ghi tay.
-   Một phiếu cho MỖI nhà cung cấp của đơn (gom mọi công đoạn của NCC đó). Không in tên khách hàng lên phiếu. */
+   Một phiếu cho MỖI nhà cung cấp của đơn (gom các công đoạn của NCC đó). Không in tên khách hàng lên phiếu. */
 const OUT_SKIP_CODES = new Set(['L', 'N', 'M']);
 function _outNorm(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
 function _outLocInhouse(loc){
@@ -9911,11 +9911,33 @@ function outStageInfo(o, s, it){
   const partner = String(outStaff ? outStaff.name : supplier).trim();
   return { s: s, it: it, supplier: supplier, partner: partner, warn: warn };
 }
-function outsourceGroups(o){
+// Đủ thông tin để xuất phiếu? → danh sách còn thiếu (rỗng = đủ)
+function outStageMissing(inf){
+  const miss = [];
+  if(!inf.partner) miss.push('nhà cung cấp');
+  if(!stageHasFullDim(inf.s)) miss.push('kích thước / yêu cầu gia công');
+  if(!stageEndDate(inf.s)) miss.push('ngày làm (từ → tới)');
+  return miss;
+}
+function outAllInfos(o){
+  const out = [];
+  if(o) _outStageList(o).forEach(function(x){ const inf = outStageInfo(o, x.s, x.it); if(inf){ inf.missing = outStageMissing(inf); out.push(inf); } });
+  return out;
+}
+// opts.ready → chỉ công đoạn đủ thông tin · opts.stage → chỉ nhóm NCC của công đoạn đó · opts.partners → chỉ các NCC này
+function outsourceGroups(o, opts){
+  opts = opts || {};
   const groups = [], idx = {};
   if(!o) return groups;
-  _outStageList(o).forEach(function(x){
-    const inf = outStageInfo(o, x.s, x.it); if(!inf) return;
+  let infos = outAllInfos(o);
+  if(opts.stage){
+    const me = infos.find(function(x){ return x.s === opts.stage || (opts.stage.id && x.s.id === opts.stage.id); });
+    const k0 = me ? (_outNorm(me.partner) || '__chua_chon__') : null;
+    infos = infos.filter(function(x){ return k0 !== null && (_outNorm(x.partner) || '__chua_chon__') === k0; });
+  }
+  if(opts.ready) infos = infos.filter(function(x){ return !x.missing.length; });
+  if(opts.partners) infos = infos.filter(function(x){ return opts.partners.indexOf(_outNorm(x.partner)) >= 0; });
+  infos.forEach(function(inf){
     const k = _outNorm(inf.partner) || '__chua_chon__';
     if(!(k in idx)){ idx[k] = groups.length; groups.push({ supplier: inf.supplier, partner: inf.partner, rows: [] }); }
     const g = groups[idx[k]];
@@ -9924,9 +9946,16 @@ function outsourceGroups(o){
   });
   return groups;
 }
-function _outReqNo(o, n, total){ return 'ĐNGC-' + (o.code || '') + (total > 1 ? '-' + String(n).padStart(2, '0') : ''); }
-function outsourceSheetHtml(o, g, n, total){
-  const no = _outReqNo(o, n, total);
+function _outReqNo(o, n, total){ return 'PGCN-' + (o.code || '') + (total > 1 ? '-' + String(n).padStart(2, '0') : ''); }
+// số phiếu CỐ ĐỊNH theo NCC trong đơn (thứ tự NCC theo công đoạn, tính cả công đoạn chưa đủ thông tin)
+// → xuất từ cửa sổ xem đơn hay từ công đoạn trong form, xuất 1 NCC hay cả đơn: cùng NCC = cùng số phiếu
+function _outReqNoFor(o, partner){
+  const all = outsourceGroups(o, {}), k = _outNorm(partner) || '__chua_chon__';
+  const i = all.findIndex(function(g){ return (_outNorm(g.partner) || '__chua_chon__') === k; });
+  return _outReqNo(o, (i < 0 ? all.length : i) + 1, Math.max(all.length, 1));
+}
+function outsourceSheetHtml(o, g){
+  const no = _outReqNoFor(o, g.partner);
   const ends = g.rows.map(function(r){ return stageEndDate(r.s); }).filter(Boolean).sort();
   const starts = g.rows.map(function(r){ return normDate(r.s.startDate); }).filter(Boolean).sort();
   const its = [];
@@ -9955,8 +9984,9 @@ function outsourceSheetHtml(o, g, n, total){
     }).join('');
     return head + lines;
   }).join('');
-  return docHeader('PHIẾU ĐỀ NGHỊ GIA CÔNG NGOÀI') + `
-    <h1 style="text-align:center;margin-top:8px;margin-bottom:1mm">Phiếu đề nghị gia công ngoài</h1>
+  return docHeader('PHIẾU GIA CÔNG NGOÀI') + `
+    <h1 style="text-align:center;margin-top:8px;margin-bottom:0">Phiếu gia công ngoài</h1>
+    <div style="text-align:center;margin-bottom:1mm;font-size:11px;color:#8A93A0;font-style:italic;letter-spacing:.3px">Outsource work order</div>
     <div style="text-align:center;margin-bottom:3mm;font-size:12px;color:#5A6675">Số phiếu: <b style="color:#173E7C">${esc(no)}</b> &nbsp;·&nbsp; Ngày lập: ${fmtDate(todayStr())}</div>
     ${impBannerHtml(o)}
     <table>
@@ -9978,40 +10008,103 @@ function outsourceSheetHtml(o, g, n, total){
     <div style="font-size:12px;line-height:2">Ngày nhận: ____/____/______ &nbsp;&nbsp;&nbsp; Số lượng nhận: ______ / gửi đi ______ &nbsp;&nbsp;&nbsp; Đo kiểm theo bảng trên<br>
       Kết luận: <span class="box"></span>Đạt — chuyển công đoạn sau &nbsp;&nbsp;&nbsp; <span class="box"></span>Không đạt — trả lại NCC, lập NCR</div>
     <div class="sign sign4">
-      <div><b>Người đề nghị</b><div class="line">(Điều phối)</div></div>
+      <div><b>Người lập phiếu</b><div class="line">(Điều phối)</div></div>
       <div><b>Duyệt</b><div class="line">(Quản lý / TPKT)</div></div>
       <div><b>Nhà cung cấp</b><div class="line">(Ký nhận việc)</div></div>
       <div><b>Người kiểm nhận</b><div class="line">(QC)</div></div></div>`;
 }
-function outsourceSheetsHtml(o){
-  const gs = outsourceGroups(o);
-  return gs.map(function(g, i){ return outsourceSheetHtml(o, g, i + 1, gs.length); }).join('');
+function outsourceSheetsHtml(o, opts){
+  const gs = outsourceGroups(o, opts || { ready:true });
+  return gs.map(function(g){ return outsourceSheetHtml(o, g); }).join('');
 }
-function printOutsourceRequests(id){
+function _outMissTxt(list){
+  return list.map(function(x){ return '• ' + ((x.s.code || '') + ' ' + (x.s.name || '')).trim() + (x.it ? ' (' + (x.it.name || '') + ')' : '') + ' — thiếu: ' + x.missing.join(', '); }).join('\n');
+}
+// XUẤT PHIẾU GIA CÔNG NGOÀI — cả đơn (mỗi NCC 1 tờ) hoặc chỉ NCC của 1 công đoạn (stage)
+function exportOutsourceDoc(id, stage){
   const o = (typeof id === 'object' && id) ? id : (DATA.orders || []).find(function(x){ return x.id === id; });
   if(!o) return;
-  const html = outsourceSheetsHtml(o);
-  if(!html){ alert('Đơn này không có công đoạn gia công ngoài.\n\nCông đoạn được tính là gia công ngoài khi: người làm là đối tác outsource, hoặc ô "Ở đâu" ghi tên xưởng ngoài.'); return; }
-  printDoc('De nghi gia cong ngoai ' + (o.code || ''), html);
-  outTrackAfterPrint(o);
+  let all = outAllInfos(o);
+  if(!all.length){ alert('Đơn này không có công đoạn gia công ngoài.\n\nCông đoạn được tính là gia công ngoài khi: người làm là đối tác outsource, hoặc ô "Ở đâu" ghi tên xưởng ngoài.'); return; }
+  const opts = { ready:true, stage: stage || null };
+  const gs = outsourceGroups(o, opts);
+  const scope = stage ? outsourceGroups(o, { stage: stage }).reduce(function(a, g){ return a.concat(g.rows); }, []) : all;
+  const miss = scope.filter(function(x){ return x.missing.length; });
+  if(!gs.length){
+    alert('Chưa xuất được phiếu gia công ngoài — công đoạn còn thiếu thông tin:\n\n' + _outMissTxt(miss) + '\n\nĐiền đủ trong form sửa đơn (bước G2) rồi xuất lại.');
+    return;
+  }
+  printDoc('Phieu gia cong ngoai ' + (o.code || ''), gs.map(function(g){ return outsourceSheetHtml(o, g); }).join(''));
+  outTrackAfterPrint(o, false, opts);
+  if(miss.length) setTimeout(function(){ outToast('⚠ Chưa xuất (còn thiếu thông tin):<br>' + esc(_outMissTxt(miss)).replace(/\n/g, '<br>')); }, 2500);
+}
+function printOutsourceRequests(id){ return exportOutsourceDoc(id); }   // tên cũ
+function outsourceBtnHtml(o){
+  const all = outAllInfos(o); if(!all.length) return '';
+  const ready = all.filter(function(x){ return !x.missing.length; }).length;
+  const ok = ready === all.length;
+  return '<button class="ghost sm" onclick="exportOutsourceDoc(\'' + o.id + '\')" style="border-color:' + (ready ? '#0e7490;color:#0e7490' : '#b45309;color:#b45309') + ';font-weight:700" title="Export outsource doc — phiếu mang theo hàng khi đưa ra ngoài gia công">📤 Xuất phiếu gia công ngoài ('
+    + (ok ? all.length + ' công đoạn' : ready + '/' + all.length + ' công đoạn đủ thông tin') + ')</button>';
+}
+// đơn đang soạn trong form (có cả ô chưa lưu: đối tác, vật tư, file đính kèm, hàng nhập)
+function _outFormOrder(){
+  const f = currentFormOrder();
+  const saved = (DATA.orders || []).find(function(x){ return x && x.id === f.id; }) || {};
+  const v = function(id){ const el = document.getElementById(id); return el ? el.value : ''; };
+  const imp = document.getElementById('ord_imp');
+  return Object.assign({}, saved, f, {
+    assignment: v('ord_assignment') || saved.assignment || 'inhouse',
+    outsourcePartner: v('ord_partner') || saved.outsourcePartner || '',
+    materials: (typeof editingMaterials !== 'undefined' ? editingMaterials : saved.materials) || [],
+    attachments: (typeof editingAtts !== 'undefined' ? editingAtts : saved.attachments) || [],
+    importCritical: imp ? !!imp.checked : !!saved.importCritical,
+    importNote: (v('ord_impNote') || saved.importNote || '').trim()
+  });
+}
+// dòng nhỏ dưới mỗi công đoạn làm ngoài trong form sửa đơn: NCC + đủ/thiếu thông tin + nút xuất phiếu
+function outStageChipHtml(i){
+  try{
+    const s = (editingStages || [])[i]; if(!s) return '';
+    const o = _outFormOrder();
+    const it = s._itId ? (editingItems || []).find(function(x){ return x && x.id === s._itId; }) : null;
+    const inf = outStageInfo(o, s, it); if(!inf) return '';
+    const miss = outStageMissing(inf);
+    return '<div id="outChip_' + i + '" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;padding:5px 8px;border-radius:7px;font-size:12px;'
+      + (miss.length ? 'background:#fffbeb;border:1px solid #fde68a' : 'background:#ecfeff;border:1px solid #a5f3fc') + '">'
+      + '<span>📤 <b style="color:#0e7490">Gia công ngoài</b> → ' + (inf.supplier ? '<b>' + esc(inf.supplier) + '</b>' : '<i style="color:#b45309">chưa chọn NCC</i>') + '</span>'
+      + (miss.length ? '<span style="color:#b45309">· còn thiếu: ' + esc(miss.join(', ')) + '</span>' : '<span style="color:#15803D;font-weight:700">· đủ thông tin</span>')
+      + '<button type="button" class="ghost sm" style="margin-left:auto;border-color:#0e7490;color:#0e7490;font-weight:700" onclick="outExportFromForm(' + i + ')" title="Export outsource doc">📤 Xuất phiếu gia công ngoài</button>'
+      + (inf.warn ? '<span style="color:#b91c1c;width:100%">⚠ ' + esc(inf.warn) + '</span>' : '')
+      + '</div>';
+  }catch(e){ return ''; }
+}
+function outChipRefresh(i){
+  const el = document.getElementById('outChip_' + i); if(!el) return;
+  const h = outStageChipHtml(i);
+  if(h) el.outerHTML = h; else el.remove();
+}
+function outExportFromForm(i){
+  const s = (editingStages || [])[i]; if(!s) return;
+  exportOutsourceDoc(_outFormOrder(), s);
 }
 
-/* ===== THEO DÕI GỬI / NHẬN GIA CÔNG NGOÀI — tự tạo khi in phiếu đề nghị (30-10-2026) =====
-   In phiếu đề nghị (riêng, hoặc kèm phiếu gia công / bộ phiếu đo) → mỗi NCC của đơn có 1 dòng ở tab Outsource:
+/* ===== THEO DÕI GỬI / NHẬN GIA CÔNG NGOÀI — tự tạo khi xuất phiếu gia công ngoài (30-10-2026) =====
+   Xuất phiếu gia công ngoài → mỗi NCC có 1 dòng ở tab Outsource:
    ngày gửi (dự kiến = ngày bắt đầu công đoạn), hẹn nhận lại (= "Giao lại trước" trên phiếu). Khi hàng về, điều phối
    bấm "📥 Nhận về" ghi ngày + kết quả kiểm nhận → tab tự tính NCC nào hay trễ / hay làm hỏng.
    In lại phiếu KHÔNG tạo dòng trùng: chỉ cập nhật công đoạn & hạn (nếu điều phối chưa tự sửa hạn).
    NCC chưa chọn → chưa tạo dòng (chọn NCC rồi in lại). Chỉ quyền Điều phối / Quản lý mới tạo. */
-var _outReqPrinted = false;   // in phiếu từ form đơn đang sửa → lưu đơn xong tạo/cập nhật dòng theo dõi
-function outsourceTrack(o, noSave){
+var _outReqPrinted = false;   // xuất phiếu từ form đơn đang sửa → [NCC đã xuất]; lưu đơn xong tạo/cập nhật dòng theo dõi cho đúng các NCC đó
+function outsourceTrack(o, noSave, opts){
   const res = { created: [], updated: [], removed: 0, unknown: 0 };
   if(!o || !o.id) return res;
   DATA.outsourceShipments = DATA.outsourceShipments || [];
-  const gs = outsourceGroups(o), live = {};
-  gs.forEach(function(g, i){
+  const gs = outsourceGroups(o, opts || { ready:true }), live = {};
+  outsourceGroups(o, {}).forEach(function(g){ if(g.partner) live[_outNorm(g.partner)] = 1; });   // NCC còn trong đơn (kể cả chưa đủ thông tin)
+  gs.forEach(function(g){
     if(!g.partner){ res.unknown++; return; }
-    const key = _outNorm(g.partner); live[key] = 1;
-    const reqNo = _outReqNo(o, i + 1, gs.length);
+    const key = _outNorm(g.partner);
+    const reqNo = _outReqNoFor(o, g.partner);
     const ends = g.rows.map(function(r){ return stageEndDate(r.s); }).filter(Boolean).sort();
     const starts = g.rows.map(function(r){ return normDate(r.s.startDate); }).filter(Boolean).sort();
     const due = ends.length ? ends[ends.length - 1] : null;
@@ -10030,7 +10123,7 @@ function outsourceTrack(o, noSave){
     const ids = Array.from(new Set((rec.stageIds || []).concat(stageIds)));
     if(ids.length !== (rec.stageIds || []).length){ rec.stageIds = ids; ch = true; }
     if(rec.stages !== stTxt){ rec.stages = stTxt; ch = true; }
-    if(!rec.reqNo){ rec.reqNo = reqNo; ch = true; }
+    if(rec.reqNo !== reqNo){ rec.reqNo = reqNo; ch = true; }   // theo số trên phiếu vừa xuất
     if(due && !rec.dueEdited && rec.committedReturnDate !== due){ rec.committedReturnDate = due; ch = true; }
     if(ch) res.updated.push(g.partner);
   });
@@ -10058,22 +10151,35 @@ function outToast(msg){
   el.innerHTML = msg; el.style.display = 'block';
   clearTimeout(el._t); el._t = setTimeout(function(){ el.style.display = 'none'; }, 8000);
 }
-// gọi sau mỗi lần in có kèm phiếu đề nghị gia công ngoài
-function outTrackAfterPrint(o, noSave){
+// gọi sau mỗi lần xuất phiếu gia công ngoài
+function outTrackAfterPrint(o, noSave, opts){
   try{
-    if(!o || !outsourceGroups(o).length) return;
+    if(!o || !outsourceGroups(o, opts || { ready:true }).length) return;
     if(typeof canEdit !== 'function' || !canEdit()) return;
     const liveOrd = (DATA.orders || []).find(function(x){ return x && x.id === o.id; });
-    if(liveOrd !== o) _outReqPrinted = true;            // in từ form đang sửa → lưu đơn xong cập nhật lại cho khớp
+    if(liveOrd !== o){                                   // xuất từ form đang sửa → lưu đơn xong cập nhật lại cho khớp
+      const ks = Array.isArray(_outReqPrinted) ? _outReqPrinted : [];
+      outsourceGroups(o, opts || { ready:true }).forEach(function(g){ const k = _outNorm(g.partner); if(k && ks.indexOf(k) < 0) ks.push(k); });
+      _outReqPrinted = ks;
+    }
     if(!liveOrd){ outToast('📤 Lưu đơn xong, app sẽ tự tạo dòng theo dõi gửi/nhận ở tab <b>Outsource</b>.'); return; }
-    const r = outsourceTrack(o, noSave);
+    const r = outsourceTrack(o, noSave, opts);
     const parts = [];
     if(r.created.length) parts.push('đã tạo ' + r.created.length + ' dòng (' + r.created.map(esc).join(', ') + ')');
     if(r.updated.length) parts.push('cập nhật ' + r.updated.length + ' dòng');
     if(r.removed) parts.push('bỏ ' + r.removed + ' dòng của NCC cũ');
-    if(r.unknown) parts.push(r.unknown + ' nhóm chưa chọn NCC — chọn NCC rồi in lại để tạo dòng');
+    if(r.unknown) parts.push(r.unknown + ' nhóm chưa chọn NCC');
     if(parts.length) outToast('📤 Theo dõi gửi/nhận — tab <b>Outsource</b>: ' + parts.join(' · '));
   }catch(e){ console.error('[dhp] theo dõi outsource', e); }
+}
+
+// gọi trong saveOrder(): đơn vừa lưu có phiếu đã xuất từ form → tạo/cập nhật dòng theo dõi của đúng các NCC đã xuất
+function outAfterOrderSaved(id){
+  const ks = Array.isArray(_outReqPrinted) ? _outReqPrinted.slice() : null;
+  _outReqPrinted = false;
+  if(!ks || !ks.length) return;
+  const o = (DATA.orders || []).find(function(x){ return x && x.id === id; });
+  if(o) outTrackAfterPrint(o, true, { ready:true, partners: ks });
 }
 
 /* ---------- TAB OUTSOURCE: theo dõi gửi/nhận + thống kê NCC ---------- */
@@ -10124,11 +10230,11 @@ function renderOutsource(){
     <div class="toolbar">
       <button onclick="openOutModal()">＋ Ghi nhận lô hàng outsource</button>
       <button class="secondary" onclick="openPartnerPrompt()">＋ Thêm đối tác outsource</button>
-      <span class="muted small">Dòng <b>tự động</b> được tạo khi in phiếu đề nghị gia công ngoài. Hàng về → bấm <b>📥 Nhận về</b>, ghi kết quả kiểm nhận.
+      <span class="muted small">Dòng <b>tự động</b> được tạo khi xuất phiếu gia công ngoài. Hàng về → bấm <b>📥 Nhận về</b>, ghi kết quả kiểm nhận.
         ${nOpen ? ' · Đang ở NCC: <b>' + nOpen + '</b>' + (nOver ? ' · <b style="color:var(--st-late)">trễ hẹn: ' + nOver + '</b>' : '') : ''}</span>
     </div>
     <div class="card" style="overflow:auto;padding:0">
-      ${ ships.length === 0 ? '<div class="empty">Chưa có lô hàng outsource nào. Từ nay khi in phiếu đề nghị gia công ngoài (kèm phiếu gia công / bộ phiếu đo), app tự tạo dòng theo dõi ở đây.</div>' :
+      ${ ships.length === 0 ? '<div class="empty">Chưa có lô hàng outsource nào. Từ nay mỗi lần bấm "📤 Xuất phiếu gia công ngoài", app tự tạo dòng theo dõi ở đây.</div>' :
       `<table><thead><tr>
         <th>Đơn hàng</th><th>Nhà cung cấp</th><th>Ngày gửi</th><th>Hẹn nhận lại</th><th>Nhận thực tế</th><th>Tình trạng</th><th>Kiểm nhận</th><th></th>
       </tr></thead><tbody>
@@ -10163,14 +10269,6 @@ function renderOutsource(){
       }
     </div>`;
 }
-function outsourceBtnHtml(o){
-  const gs = outsourceGroups(o); if(!gs.length) return '';
-  const n = gs.reduce(function(a, g){ return a + g.rows.length; }, 0);
-  const unk = gs.some(function(g){ return !g.supplier; });
-  return '<button class="ghost sm" onclick="printOutsourceRequests(\'' + o.id + '\')" style="border-color:#0e7490;color:#0e7490;font-weight:700" title="Phiếu gửi nhà cung cấp: kích thước cần gia công, hạn giao, chỗ NCC ghi số đo + DHP kiểm nhận">📤 Đề nghị gia công ngoài ('
-    + n + ' công đoạn · ' + gs.length + ' NCC' + (unk ? ' · ⚠ chưa chọn NCC' : '') + ')</button>';
-}
-
 // số lô đang TRỄ HẸN ở NCC → chấm đỏ trên tab Outsource
 function outTabBadge(){
   const tab = document.querySelector('.tab[data-tab="outsource"]'); if(!tab) return;

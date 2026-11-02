@@ -2173,6 +2173,7 @@ function renderStagesEditor(){
       </div>`;
       }
       const isOut = isOutsourceStaff(s.assignee);   // outsource: bỏ OT + không cảnh báo giờ
+      const _outOn = outStageOn(i);   // 02-11-2026: làm ngoài → ẩn "Người làm", hiện khối yêu cầu theo loại
       return `<div style="border:1px solid var(--line);border-left:4px solid ${STAGE_COLORS[st]};border-radius:8px;padding:7px;margin-bottom:6px;background:#fafcff">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <select style="width:170px" onchange="pickStagePreset(${i},this.value)" title="Loại công đoạn">
@@ -2185,15 +2186,15 @@ function renderStagesEditor(){
           ${editingItemsNamed().map(it=>`<option value="${esc(it.id)}" ${s._itId===it.id?'selected':''}>▦ ${esc(truncate(it.name,20))}</option>`).join('')}
         </select>`:''}
         ${s.rework?`<span style="font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:1px 6px" title="Công đoạn làm lại — giờ của nó là hao phí">⟳ làm lại</span>`:''}
-        <input style="flex:1;min-width:120px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)" onchange="renderStagesEditor()">
+        <input style="flex:1;min-width:120px" value="${esc(s.location||'')}" list="stageLocs" placeholder="Ở đâu? (CK368 / CK Tuyết Vinh / Supplier...)" oninput="updStage(${i},'location',this.value)" onchange="outLocChanged(${i})">
         <select style="width:108px" onchange="updStage(${i},'status',this.value);renderStagesEditor()">
           <option value="pending" ${(!s.status||s.status==='pending')?'selected':''}>Chưa làm</option>
           <option value="doing" ${s.status==='doing'?'selected':''}>Đang làm</option>
           <option value="done" ${s.status==='done'?'selected':''}>Xong ✓</option>
         </select>
-        <span style="display:flex;gap:3px;align-items:center"><span class="small muted">từ</span>
+        <span style="display:flex;gap:3px;align-items:center"><span class="small muted">${_outOn?'gửi':'từ'}</span>
           <input type="date" style="width:118px" value="${esc(s.startDate||'')}" onchange="updStage(${i},'startDate',this.value);renderStagesEditor()" title="Ngày bắt đầu — đổi ngày sẽ tự tính lại cảnh báo">
-          <span class="small muted">tới</span>
+          <span class="small muted">${_outOn?'nhận về':'tới'}</span>
           <input type="date" style="width:118px" value="${esc(s.endDate||'')}" min="${esc(s.startDate||'')}" onchange="updStage(${i},'endDate',this.value);renderStagesEditor()" title="Ngày kết thúc dự kiến (để trống = tự tính theo giờ)">
         </span>
         <span style="display:flex;gap:4px">
@@ -2203,7 +2204,7 @@ function renderStagesEditor(){
           <a onclick="rmStage(${i})" style="color:var(--st-late);cursor:pointer;font-weight:800" title="Xóa">✕</a>
         </span>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+      ${_outOn ? '' : `<div style="display:flex;gap:6px;align-items:center;margin-top:6px">
         <span style="font-size:11px;color:#6366F1;font-weight:700;min-width:64px">👤 Người làm:</span>
         <select style="width:210px" onchange="updStage(${i},'assignee',this.value);renderStagesEditor()" title="Gán người làm → tự lên Lịch phân công">
           <option value="">— chọn người / đối tác —</option>
@@ -2214,9 +2215,9 @@ function renderStagesEditor(){
         ${isOut ? `<input type="number" style="width:56px;opacity:.35" value="" placeholder="OT" disabled title="Outsource — không quản OT"><span class="small" style="color:#cbd5e1;font-weight:700">OT</span>`
           : `<input type="number" style="width:56px;border-color:#f59e0b" min="0" step="0.5" value="${s.otHours!=null?s.otHours:''}" placeholder="OT" oninput="updStage(${i},'otHours',this.value)" onchange="renderStagesEditor()" title="Giờ TĂNG CA (OT) — làm thêm trong NGÀY ĐẦU, ngoài 8h thường"><span class="small" style="color:#d97706;font-weight:700">OT</span>`}
         ${workloadHintHtml(s)}
-      </div>
-      ${outStageChipHtml(i)}
-      ${stageChecksHtml(s,i)}
+      </div>`}
+      ${outStageBlockHtml(i)}
+      ${outShowChecks(i) ? stageChecksHtml(s,i) : outDimsLinkHtml(i)}
     </div>`;}).join('');
   updateFormGates();
 }
@@ -2403,6 +2404,7 @@ function updStage(i,k,v){
   }
   if(k==='status' && !impStageGate(impFormOrder(), editingStages[i], v)){ renderStagesEditor(); return; }
   editingStages[i][k] = (k==='plannedDays'||k==='hours'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
+  if(k==='assignee'){ try{ outAssigneeChanged(i); }catch(e){} }   // chọn đối tác ngoài → ô "Ở đâu" = NCC
   if(k==='status'){
     if(v==='done' && !editingStages[i].doneDate) editingStages[i].doneDate = todayStr();
     if(v==='doing' && !editingStages[i].startDate) editingStages[i].startDate = todayStr();
@@ -2949,8 +2951,8 @@ function openOrderView(id){
       const ckTxt=ck.length?` <span style="color:${ckFail?'var(--st-late)':'#0EA5E9'};font-weight:700" title="${ck.map(c=>(c.param||'')+': YC '+(c.spec||'-')+(c.actual1?' / đo '+c.actual1:'')+(c.actual2?' (chéo '+c.actual2+')':'')+(c.pass==='pass'?' ✓':c.pass==='fail'?' ✕':'')).join('\n')}">📐 ${ckPass}/${ck.length}${ckFail?' ⚠'+ckFail:''}</span>`:'';
       return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;font-size:12px">
         <span style="background:${STAGE_COLORS[st]};color:${st==='pending'?'#475569':'#fff'};border-radius:4px;padding:1px 6px;font-weight:800;min-width:26px;text-align:center">${esc(s.code||'?')}</span>
-        <span style="flex:1">${esc(s.name||'')}${it?' <span class="muted">▦ '+esc(truncate(it,16))+'</span>':''}${s.location?' <span style="color:#0EA5E9">@'+esc(s.location)+'</span>':''}${s.assignee?' · 👤 '+esc(staffName(s.assignee)):''}${ckTxt}</span>
-        <span style="color:${st==='late'?'var(--st-late)':'var(--muted)'};font-weight:700">${lbl}${s.startDate?' · '+fmtDate(s.startDate):''} · ${stageHours(s)}h</span>
+        <span style="flex:1">${esc(s.name||'')}${it?' <span class="muted">▦ '+esc(truncate(it,16))+'</span>':''}${outViewWho(o,s)}${ckTxt}</span>
+        <span style="color:${st==='late'?'var(--st-late)':'var(--muted)'};font-weight:700">${lbl}${s.startDate?' · '+fmtDate(s.startDate):''}${outViewHours(o,s)}</span>
       </div>`; }).join('');
   })();
   const matHtml = (o.materials||[]).filter(Boolean).length ? '<ul style="margin:4px 0;padding-left:18px">'+(o.materials||[]).filter(Boolean).map(m=>`<li>${esc(m.material||'')}${m.spec?' — '+esc(m.spec):''}${m.qty?' × '+esc(m.qty)+(m.unit?' '+esc(m.unit):''):''}${m.supplier?' <span class="muted">(NCC: '+esc(m.supplier)+')</span>':''}</li>`).join('')+'</ul>' : '';
@@ -3027,9 +3029,11 @@ const PRINT_FORMS = {   // khoá = tiêu đề truyền vào docHeader()
 };
 const SHEET_MARK = '<!--DHP-SHEET-->';
 // Mở cửa sổ in A4 — mỗi docHeader() trong nội dung mở một tờ mới, tờ nào cũng có tiêu đề + chân trang
-function printDoc(title, bodyHtml){
-  const w = window.open('', '_blank', 'width=900,height=1000');
+// win: cửa sổ đã mở sẵn (vd phiếu gia công ngoài mở ngay lúc bấm, tải ảnh bản vẽ xong mới ghi phiếu vào)
+function printDoc(title, bodyHtml, win){
+  const w = win || window.open('', '_blank', 'width=900,height=1000');
   if(!w){ alert('Trình duyệt chặn cửa sổ in. Hãy cho phép popup rồi thử lại.'); return; }
+  if(win){ try{ w.document.open(); }catch(e){} }
   let parts = String(bodyHtml).split(SHEET_MARK);
   if(parts.length > 1){ parts[1] = parts[0] + parts[1]; parts = parts.slice(1); }
   const n = parts.length;
@@ -3073,6 +3077,12 @@ function printDoc(title, bodyHtml){
       .sign.sign4{margin-top:22px} .sign.sign4>div{width:24%} .sign.sign4 b{font-size:12px}
       .box{display:inline-block;width:11px;height:11px;border:1.2px solid #333;margin:0 4px -1px 0}
       .grp td{background:#F6F8FC;font-weight:700;color:#173E7C}
+      .otbl th,.otbl td{font-size:11px;padding:4px 5px}
+      .oimgs{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0 2px}
+      .oimgs figure{margin:0;border:1px solid #cbd5e1;padding:3px;max-width:49%;break-inside:avoid}
+      .oimgs img{max-height:58mm;max-width:100%;display:block;margin:0 auto}
+      .oimgs figcaption{font-size:9.5px;color:#5A6675;text-align:center;margin-top:2px}
+      .oimgs .miss{font-size:11px;color:#b45309;padding:8px 10px;border-style:dashed}
       .big{font-size:22px;text-align:center;font-weight:800;margin:18px 0;letter-spacing:1px}
       .pass{color:#15803D} .fail{color:#b91c1c}
       .noprint{text-align:center;margin:10px 0 28px;font:12px Arial;color:#fff}
@@ -3158,8 +3168,7 @@ function printWorkOrder(id){
   (o.items||[]).filter(Boolean).forEach(it=>(it.stages||[]).filter(Boolean).forEach(s=>stages.push({s,it:it.name||''})));
   const stageRows = stages.length ? stages.map(({s,it},i)=>`<tr>
     <td>${i+1}</td><td><b>${esc(s.code||'')}</b> ${esc(s.name||'')}${it?' <span class="muted">('+esc(truncate(it,18))+')</span>':''}</td>
-    <td>${s.assignee?esc(staffName(s.assignee)):''}</td><td>${esc(s.location||'CK368')}</td>
-    <td style="text-align:center">${stageHours(s)}h</td><td></td><td></td></tr>`).join('')
+    ${outWorkOrderCells(o,s)}<td></td><td></td></tr>`).join('')
     : '<tr><td colspan="7" class="muted">Chưa khai báo công đoạn.</td></tr>';
   // bảng đo đạc trống cho thợ điền (lấy thông số yêu cầu nếu đã có, thực đo để trống)
   const specRows = (o.measures||[]).filter(Boolean).length
@@ -3190,7 +3199,8 @@ function allOrderChecks(o){
 // 1 tờ phiếu đo cho 1 công đoạn (kèm đúng kích thước cần kiểm của công đoạn đó + ô đo L1/L2 + dụng cụ)
 function stageSheetHtml(o, s, itName){
   const ref=o.requestedDate||o.dueDate;
-  const ck=(s.checks||[]).filter(Boolean);
+  const _ox=_outInfoOf(o,s);   // công đoạn làm ngoài → phiếu KIỂM NHẬN khi NCC giao lại (yêu cầu theo loại)
+  const ck=outSheetChecks(o,s,_ox);
   const rows = (ck.length?ck:[{},{},{},{}]).map((c,i)=>`<tr>
     <td>${i+1}</td><td>${esc(c.param||'')}</td><td>${esc(c.spec||'')}</td><td>${esc(c.tool||'')}</td>
     <td>${esc(c.a1||c.actual1||'')}</td><td>${esc(c.a2||c.actual2||'')}</td>
@@ -3199,12 +3209,11 @@ function stageSheetHtml(o, s, itName){
     <h1 style="text-align:center;margin-top:8px">Phiếu đo đạc — Công đoạn ${esc(s.code||'')} ${esc(s.name||'')}</h1>${impBannerHtml(o)}
     <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:110px">Khách</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${itName?' — chi tiết: '+esc(itName):''}</td></tr>
-    <tr><th>Người làm</th><td>${s.assignee?esc(staffName(s.assignee)):'__________'}</td><th>Nơi làm</th><td>${esc(s.location||'CK368')}</td></tr>
-    <tr><th>Giờ KH</th><td>${stageHours(s)}h</td><th>Hạn giao</th><td>${ref?fmtDate(ref):''}</td></tr></table>
-    <h2>Kích thước cần kiểm — thợ tự đo & ghi</h2>
-    <table><thead><tr><th style="width:28px">TT</th><th>Thông số / kích thước</th><th style="width:110px">Yêu cầu + dung sai</th><th style="width:90px">Dụng cụ đo</th><th style="width:90px">Đo L1<br>(người làm)</th><th style="width:90px">Đo L2<br>(kiểm chéo)</th><th style="width:70px">Đạt/Không</th></tr></thead><tbody>${rows}</tbody></table>
+    ${outSheetWhoRows(o,s,_ox,ref)}</table>
+    <h2>${_ox?'Kích thước / yêu cầu kiểm nhận khi NCC giao lại':'Kích thước cần kiểm — thợ tự đo & ghi'}</h2>
+    <table><thead><tr><th style="width:28px">TT</th><th>Thông số / kích thước</th><th style="width:110px">Yêu cầu + dung sai</th><th style="width:90px">Dụng cụ đo</th><th style="width:90px">Đo L1<br>(${_ox?'kiểm nhận':'người làm'})</th><th style="width:90px">Đo L2<br>(kiểm chéo)</th><th style="width:70px">Đạt/Không</th></tr></thead><tbody>${rows}</tbody></table>
     <p class="muted" style="font-size:11px">* Kích thước trọng yếu phải có ĐO L2 do người thứ 2 đo độc lập (kiểm chéo mẫu đầu). Lệch → dừng, lập NCR.</p>
-    <div class="sign"><div><b>Người gia công</b><div class="line">(Ký)</div></div><div><b>Người kiểm chéo</b><div class="line">(Ký)</div></div><div><b>Tổ trưởng/Điều phối</b><div class="line">(Ký)</div></div></div>`;
+    <div class="sign"><div><b>${_ox?'Người kiểm nhận (QC)':'Người gia công'}</b><div class="line">(Ký)</div></div><div><b>Người kiểm chéo</b><div class="line">(Ký)</div></div><div><b>Tổ trưởng/Điều phối</b><div class="line">(Ký)</div></div></div>`;
 }
 // IN CẢ BỘ: mỗi công đoạn 1 tờ A4 (page-break giữa các tờ)
 // Dựng "đơn tạm" từ form (đang soạn, chưa lưu) để in phiếu ngay trong G2
@@ -3919,10 +3928,9 @@ function stageInlineHtml(s, itemName){
   return `<span style="background:${STAGE_COLORS[st]};color:${st==='pending'?'#475569':'#fff'};border-radius:4px;padding:1px 6px;font-weight:800;margin-right:5px">${esc(s.code||'?')}</span>`
     + `<b>${esc(s.name||'')}</b>`
     + (itemName?` <span class="muted">▦ ${esc(truncate(itemName,18))}</span>`:'')
-    + (s.location?` <span style="color:#0EA5E9">@${esc(s.location)}</span>`:'')
-    + (s.assignee?` · 👤 ${esc(staffName(s.assignee))}`:'')
+    + outInlineWho(s)
     + (s.startDate?` · <span class="muted">từ ${fmtDate(s.startDate)}</span>`:'')
-    + ` · <span class="muted">${stageHours(s)}h</span>`;
+    + outInlineHours(s);
 }
 // KHỐI TIẾN ĐỘ trong ô Xem đơn: thanh %, chuỗi 5 giai đoạn, đang ở công đoạn nào, kế tiếp là gì.
 // Tất cả TỰ TÍNH từ công đoạn + cổng G0/QC — không có ô nào nhập tay.
@@ -4082,7 +4090,7 @@ function legendOrderCard(x){
   const curState = g.current ? stageState(g.current) : null;
   const curColor = curState==='late' ? 'var(--st-late)' : (curState==='doing' ? '#B45309' : (g.total?'#475569':'var(--st-late)'));
   const curIcon  = curState==='late' ? '⏰' : (curState==='doing' ? '▶' : (g.total?'⏸':'⚠'));
-  const who = g.current && g.current.assignee ? ' · 👤 '+staffName(g.current.assignee) : '';
+  const who = g.current ? outCurWho(g.current) : '';
   const kindTip = {plan:'theo ngày công đoạn đã khai', auto:'app tự dàn theo số giờ còn lại (chưa khai ngày bắt đầu)', stale:'lịch đã khai đã trôi qua mà đơn chưa xong — app dàn lại từ hôm nay', manual:'người nhập tay', est:'suy từ % và ngày nhận đơn', done:'ngày giao thật'}[ef&&ef.kind]||'';
   const kindMark = {auto:'~', stale:'⟳'}[ef&&ef.kind]||'';
   const efPast = ef && ef.date < todayStr();
@@ -9815,7 +9823,7 @@ function ziRender(keepText){
       return '<tr class="'+(r.err?'bad':'')+'"><td><input type="checkbox" '+(r.on&&!r.err?'checked':'')+' '+(r.err?'disabled':'')+' onchange="ziToggle('+i+',this.checked)"></td>'
         +'<td style="max-width:330px"><div>'+esc(r.raw)+'</div><div class="muted small">'+fmtDate(r.date)+(r.sender?' · '+esc(r.sender):'')+'</div></td>'
         +'<td style="white-space:nowrap">'+(r.o?'<b>'+esc(r.o.code)+'</b>'+(r.o.importCritical?' 🛃':'')+'<div class="muted small" style="white-space:normal;max-width:180px">'+esc(truncate(r.o.name||'',50))+'</div>':'—')+'</td>'
-        +'<td>'+(s?'<b>'+esc(s.code||'')+'</b> '+esc(s.name||'')+(r.x.it?'<div class="muted small">'+esc(truncate(r.x.it.name||'',30))+'</div>':'')+(s.assignee?'<div class="muted small">👤 '+esc(staffName(s.assignee))+'</div>':''):'—')+'</td>'
+        +'<td>'+(s?'<b>'+esc(s.code||'')+'</b> '+esc(s.name||'')+(r.x.it?'<div class="muted small">'+esc(truncate(r.x.it.name||'',30))+'</div>':'')+(outQuick(s)?'<div class="muted small">🏭 '+esc(outQuick(s))+'</div>':(s.assignee?'<div class="muted small">👤 '+esc(staffName(s.assignee))+'</div>':'')):'—')+'</td>'
         +'<td>'+upd+'</td>'
         +'<td class="small">'+(r.err?'<b style="color:#b91c1c">'+esc(r.err)+'</b>':'')+(r.notes||[]).map(function(t){ return '<div style="color:#92400e">'+esc(t)+'</div>'; }).join('')+'</td></tr>';
     }).join('')+'</tbody></table></div>';
@@ -9865,19 +9873,24 @@ function ziApply(){
   try{ renderAll(); }catch(e){}
 }
 
-/* ===== XUẤT PHIẾU GIA CÔNG NGOÀI / EXPORT OUTSOURCE DOC — 30-10-2026, tách riêng 01-11-2026 =====
-   Phiếu mang theo hàng khi đưa ra ngoài gia công: từng kích thước cần làm (lấy từ bảng 📐 của công đoạn),
-   nhà cung cấp, hạn giao lại, chỗ NCC ghi số đo + DHP kiểm nhận. Khung DHP – CK368 như mọi phiếu khác.
-   KHÔNG in chung với phiếu gia công / bộ phiếu đo — có nút riêng "📤 Xuất phiếu gia công ngoài":
-     • ngay trong công đoạn làm ngoài (form sửa đơn, bước G2) và • trong cửa sổ xem đơn.
-   Chỉ xuất khi công đoạn ĐỦ THÔNG TIN: nhà cung cấp · ≥1 kích thước/yêu cầu (thông số + yêu cầu) · ngày làm.
-   Công đoạn tính là GIA CÔNG NGOÀI khi:
-     • người làm là đối tác outsource (danh sách Nhân sự & đối tác), hoặc
-     • ô "Ở đâu" ghi tên xưởng ngoài (không phải CK368), hoặc
-     • chi tiết / cả đơn đặt "Outsource" và công đoạn không ghi rõ làm ở CK368 / người nội bộ.
-   Không tính: L Mua phôi/vật tư · N Vận chuyển · M Thủ tục (không phải gia công).
-   Một phiếu cho MỖI nhà cung cấp của đơn (gom các công đoạn của NCC đó). Không in tên khách hàng lên phiếu. */
+/* ===== XUẤT PHIẾU GIA CÔNG NGOÀI / EXPORT OUTSOURCE DOC — 30-10-2026 · tách riêng 01-11 · theo LOẠI 02-11-2026 =====
+   Phiếu mang theo hàng khi đưa ra ngoài. Khung DHP – CK368 như mọi phiếu khác. Nút riêng "📤 Xuất phiếu gia công ngoài"
+   (ngay trong công đoạn ở form sửa đơn + trong cửa sổ xem đơn) — KHÔNG in chung phiếu gia công / bộ phiếu đo.
+   02-11-2026:
+     • Công đoạn làm ngoài KHÔNG hiện "Người làm" (NCC tự lo người) — NCC ghi ở ô "Ở đâu".
+     • Mỗi LOẠI gia công ngoài có yêu cầu riêng, in đúng kiểu đó lên phiếu:
+         cơ khí → kích thước + dung sai · nhiệt luyện → vùng/khúc, vật liệu, quy trình, độ cứng, lớp tôi
+         xử lý bề mặt → phương pháp, độ dày lớp, màu · hàn → mối hàn, phương pháp, vật liệu hàn, kiểm tra
+         cân bằng động → cấp cân bằng, tốc độ, số mặt phẳng · khác → yêu cầu tự ghi
+     • Ảnh bản vẽ (khúc cần làm): chọn / dán (Ctrl+V) ngay trong công đoạn → in lên phiếu.
+       Ảnh KHÔNG nằm trong dữ liệu đơn (để app không nặng, không tốn băng thông mỗi lần mở): lưu trên máy (IndexedDB)
+       + bảng dhp_files trên Supabase (chạy dhp_files.sql 1 lần) để máy khác cùng thấy.
+   Chỉ xuất khi ĐỦ THÔNG TIN: nhà cung cấp · yêu cầu đúng loại · ngày gửi → nhận về.
+   Công đoạn tính là GIA CÔNG NGOÀI khi: người làm là đối tác outsource · ô "Ở đâu" ghi xưởng ngoài ·
+   hoặc chi tiết / cả đơn đặt "Outsource" và công đoạn không ghi rõ làm ở CK368. Không tính L / N / M.
+   Một phiếu cho MỖI nhà cung cấp của đơn. Không in tên khách hàng lên phiếu. */
 const OUT_SKIP_CODES = new Set(['L', 'N', 'M']);
+function _ot(v){ return String(v == null ? '' : v).trim(); }
 function _outNorm(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
 function _outLocInhouse(loc){
   const k = _outNorm(loc).replace(/\s+/g, '');
@@ -9911,17 +9924,105 @@ function outStageInfo(o, s, it){
   const partner = String(outStaff ? outStaff.name : supplier).trim();
   return { s: s, it: it, supplier: supplier, partner: partner, warn: warn };
 }
+// công đoạn trong 1 đơn đã lưu / đơn tạm (tự tìm chi tiết chứa công đoạn)
+function _outInfoOf(o, s){
+  if(!o || !s) return null;
+  let it = null;
+  (o.items || []).some(function(x){ if(x && (x.stages || []).indexOf(s) >= 0){ it = x; return true; } return false; });
+  if(!it && s._itId) it = (o.items || []).find(function(x){ return x && x.id === s._itId; }) || null;
+  try{ return outStageInfo(o, s, it); }catch(e){ return null; }
+}
+// không cần đơn: tên NCC nếu công đoạn làm ngoài (đối tác outsource / ô "Ở đâu" ghi xưởng ngoài), '' nếu làm ở xưởng
+function outQuick(s){
+  if(!s) return '';
+  if(OUT_SKIP_CODES.has(String(s.code || '').replace(/\d+$/, '').toUpperCase())) return '';
+  const loc = _ot(s.location);
+  if(loc && !_outLocInhouse(loc)) return loc;
+  const st = (DATA.staff || []).find(function(x){ return x && x.id === s.assignee; });
+  return (st && st.type === 'outsource') ? st.name : '';
+}
+
+/* ---------- LOẠI GIA CÔNG NGOÀI — mỗi loại một kiểu yêu cầu ---------- */
+function _outRowsOf(s){ return ((s && s.outReq) || []).filter(function(r){ return r && Object.keys(r).some(function(k){ return k !== 'id' && _ot(r[k]); }); }); }
+function _outMats(o){ return ((o && o.materials) || []).filter(function(m){ return m && _ot(m.material); }).map(function(m){ return _ot(m.material); }); }
+function _outMat1(o){ const m = _outMats(o); return m.length === 1 ? m[0] : ''; }
+const _BOX = '<span class="box"></span>';
+const OUT_TYPES = [
+  { k:'mach', n:'Gia công cơ khí', ic:'🔧', miss:'kích thước / yêu cầu gia công',
+    ok: function(s){ return stageHasFullDim(s); },
+    other: _BOX + 'Độ nhám: ________ &nbsp;&nbsp; ' + _BOX + 'Độ cứng / nhiệt luyện: ________ &nbsp;&nbsp; ' + _BOX + 'Xử lý bề mặt: ________<br>' + _BOX + 'Bảo vệ lỗ lắp, rãnh then, mặt lắp ghép khi vận chuyển &nbsp;&nbsp; ' + _BOX + 'Gửi kèm kết quả đo' },
+  { k:'heat', n:'Nhiệt luyện', ic:'🔥', miss:'yêu cầu nhiệt luyện (quy trình + độ cứng)',
+    cols: [['zone', 'Vùng / khúc cần nhiệt luyện', 'VD: cổ trục Ø50 dài 40 từ mặt A · vùng răng · toàn bộ', ''],
+           ['mat', 'Vật liệu', 'C45 / SCM440…', '96px', 'outDlMat'],
+           ['proc', 'Quy trình', 'tôi cao tần / tôi + ram…', '140px', 'outDlHeat'],
+           ['hard', 'Độ cứng YC', 'HRC 50–55', '92px'],
+           ['depth', 'Lớp tôi / thấm', '1.5–3 mm', '80px'],
+           ['note', 'Ghi chú', 'không tôi ren, che lỗ then…', '']],
+    ok: function(s, o){ return _outRowsOf(s).some(function(r){ return _ot(r.proc) && _ot(r.hard) && (_ot(r.mat) || _outMats(o).length); }); },
+    doc: [['zone+note', 'Vùng / khúc cần nhiệt luyện', ''], ['mat', 'Vật liệu', '74px'], ['proc', 'Quy trình', '104px'], ['hard', 'Độ cứng YC', '74px'], ['depth', 'Lớp tôi / thấm', '62px']],
+    res: ['Độ cứng NCC đo', 'DHP kiểm', 'Đạt'], tool: 'Máy đo độ cứng',
+    other: _BOX + 'Đo độ cứng ≥ 3 điểm mỗi vùng &nbsp;&nbsp; ' + _BOX + 'Kiểm tra nứt (MT / PT) &nbsp;&nbsp; ' + _BOX + 'Độ cong / đảo sau nhiệt luyện ≤ ______ mm<br>' + _BOX + 'Không tôi ren, rãnh then, lỗ lắp (trừ khi ghi khác) &nbsp;&nbsp; ' + _BOX + 'Gửi kèm biên bản nhiệt luyện (nhiệt độ, thời gian, môi trường tôi)' },
+  { k:'surf', n:'Xử lý bề mặt', ic:'🎨', miss:'phương pháp xử lý bề mặt',
+    cols: [['zone', 'Vùng xử lý', 'toàn bộ / trừ lỗ lắp Ø42H7…', ''],
+           ['proc', 'Phương pháp', 'mạ kẽm / nhuộm đen…', '150px', 'outDlSurf'],
+           ['thick', 'Độ dày lớp', '8–12 µm', '80px'],
+           ['spec', 'Màu / tiêu chuẩn', 'RAL 7035 · ISO 2081…', '120px'],
+           ['mask', 'Che, không xử lý', 'ren M16, lỗ Ø42H7…', '']],
+    ok: function(s){ return _outRowsOf(s).some(function(r){ return _ot(r.proc); }); },
+    doc: [['zone+mask', 'Vùng xử lý', ''], ['proc', 'Phương pháp', '118px'], ['thick', 'Độ dày lớp', '70px'], ['spec', 'Màu / tiêu chuẩn', '96px']],
+    res: ['NCC đo', 'DHP kiểm', 'Đạt'], tool: 'Máy đo độ dày lớp phủ',
+    other: _BOX + 'Đo độ dày lớp phủ &nbsp;&nbsp; ' + _BOX + 'Kiểm tra bám dính &nbsp;&nbsp; ' + _BOX + 'Thử phun muối ______ giờ<br>' + _BOX + 'Che ren, lỗ lắp, mặt lắp ghép &nbsp;&nbsp; ' + _BOX + 'Gửi kèm phiếu kiểm tra / chứng chỉ' },
+  { k:'weld', n:'Hàn / đắp', ic:'⚡', miss:'phương pháp hàn',
+    cols: [['zone', 'Mối hàn / vị trí', 'hàn bích vào ống Ø219…', ''],
+           ['proc', 'Phương pháp', 'TIG / MIG / que…', '120px', 'outDlWeld'],
+           ['filler', 'Vật liệu hàn', 'ER70S-6 / E7018…', '110px'],
+           ['ndt', 'Kiểm tra', 'VT + PT 100%…', '110px'],
+           ['note', 'Ghi chú', 'khử ứng suất sau hàn…', '']],
+    ok: function(s){ return _outRowsOf(s).some(function(r){ return _ot(r.proc); }); },
+    doc: [['zone+note', 'Mối hàn / vị trí', ''], ['proc', 'Phương pháp', '96px'], ['filler', 'Vật liệu hàn', '92px'], ['ndt', 'Kiểm tra', '92px']],
+    res: ['DHP kiểm', 'Đạt'], tool: 'VT / PT',
+    other: _BOX + 'Thợ hàn có chứng chỉ / có WPS &nbsp;&nbsp; ' + _BOX + 'Kiểm tra mối hàn VT / PT / MT / UT &nbsp;&nbsp; ' + _BOX + 'Khử ứng suất sau hàn<br>' + _BOX + 'Làm sạch xỉ, mài phẳng mối hàn &nbsp;&nbsp; ' + _BOX + 'Gửi kèm biên bản kiểm tra' },
+  { k:'bal', n:'Cân bằng động', ic:'⚖', miss:'cấp cân bằng + tốc độ làm việc',
+    cols: [['zone', 'Chi tiết / rotor', 'hub + đĩa phanh lắp cùng…', ''],
+           ['grade', 'Cấp cân bằng', 'G6.3', '80px', 'outDlBal'],
+           ['rpm', 'Tốc độ làm việc', '1480 v/p', '92px'],
+           ['planes', 'Số mặt phẳng', '1 / 2', '80px'],
+           ['note', 'Cách bù / ghi chú', 'khoan bớt mặt B, then nửa then…', '']],
+    ok: function(s){ return _outRowsOf(s).some(function(r){ return _ot(r.grade) && _ot(r.rpm); }); },
+    doc: [['zone+note', 'Chi tiết / rotor', ''], ['grade', 'Cấp cân bằng', '70px'], ['rpm', 'Tốc độ (v/p)', '70px'], ['planes', 'Số mặt phẳng', '62px']],
+    res: ['Mất cân bằng dư (NCC)', 'DHP kiểm', 'Đạt'], tool: 'Biên bản cân bằng',
+    other: _BOX + 'Gửi kèm biên bản cân bằng (mất cân bằng dư từng mặt) &nbsp;&nbsp; ' + _BOX + 'Cân bằng có then / nửa then (ISO 21940-32)<br>' + _BOX + 'Đánh dấu vị trí khoan bớt / thêm khối &nbsp;&nbsp; ' + _BOX + 'Không khoan vào mặt lắp ghép, vùng chịu lực' },
+  { k:'other', n:'Khác', ic:'📌', miss:'yêu cầu gia công',
+    cols: [['req', 'Yêu cầu', 'gia công / kiểm tra gì…', ''], ['val', 'Giá trị / tiêu chuẩn', '…', '160px'], ['note', 'Ghi chú', '', '']],
+    ok: function(s){ return _outRowsOf(s).some(function(r){ return _ot(r.req); }) || stageHasFullDim(s); },
+    doc: [['req', 'Yêu cầu', ''], ['val', 'Giá trị / tiêu chuẩn', '140px'], ['note', 'Ghi chú', '120px']],
+    res: ['NCC ghi', 'DHP kiểm', 'Đạt'], tool: '',
+    other: _BOX + 'Gửi kèm kết quả kiểm tra' }
+];
+const OUT_TYPE_BY = {}; OUT_TYPES.forEach(function(t){ OUT_TYPE_BY[t.k] = t; });
+// loại mặc định theo mã / tên công đoạn — điều phối đổi được ở ô "Loại"
+function outTypeOf(s){
+  if(s && s.outType && OUT_TYPE_BY[s.outType]) return s.outType;
+  const c = String((s && s.code) || '').replace(/\d+$/, '').toUpperCase(), n = _outNorm(s && s.name);
+  if(c === 'H' || /nhiet luyen|toi cao tan|tham (c|carbon|cacbon|nito)|\btoi\b|\bram\b/.test(n)) return 'heat';
+  if(c === 'I' || /\bma\b|nhuom|\bson\b|phun bi|phun cat|anod|xu ly be mat/.test(n)) return 'surf';
+  if(c === 'E' || /\bhan\b|\bdap\b/.test(n)) return 'weld';
+  if(c === 'V' || /can bang/.test(n)) return 'bal';
+  if(typeof DIM_REQUIRED_CODES !== 'undefined' && DIM_REQUIRED_CODES.has(c)) return 'mach';
+  return 'other';
+}
 // Đủ thông tin để xuất phiếu? → danh sách còn thiếu (rỗng = đủ)
-function outStageMissing(inf){
+function outStageMissing(inf, o){
   const miss = [];
   if(!inf.partner) miss.push('nhà cung cấp');
-  if(!stageHasFullDim(inf.s)) miss.push('kích thước / yêu cầu gia công');
-  if(!stageEndDate(inf.s)) miss.push('ngày làm (từ → tới)');
+  const t = OUT_TYPE_BY[outTypeOf(inf.s)];
+  if(!t.ok(inf.s, o || {})) miss.push(t.miss);
+  if(!stageEndDate(inf.s)) miss.push('ngày gửi → nhận về');
   return miss;
 }
 function outAllInfos(o){
   const out = [];
-  if(o) _outStageList(o).forEach(function(x){ const inf = outStageInfo(o, x.s, x.it); if(inf){ inf.missing = outStageMissing(inf); out.push(inf); } });
+  if(o) _outStageList(o).forEach(function(x){ const inf = outStageInfo(o, x.s, x.it); if(inf){ inf.missing = outStageMissing(inf, o); out.push(inf); } });
   return out;
 }
 // opts.ready → chỉ công đoạn đủ thông tin · opts.stage → chỉ nhóm NCC của công đoạn đó · opts.partners → chỉ các NCC này
@@ -9946,106 +10047,60 @@ function outsourceGroups(o, opts){
   });
   return groups;
 }
-function _outReqNo(o, n, total){ return 'PGCN-' + (o.code || '') + (total > 1 ? '-' + String(n).padStart(2, '0') : ''); }
-// số phiếu CỐ ĐỊNH theo NCC trong đơn (thứ tự NCC theo công đoạn, tính cả công đoạn chưa đủ thông tin)
-// → xuất từ cửa sổ xem đơn hay từ công đoạn trong form, xuất 1 NCC hay cả đơn: cùng NCC = cùng số phiếu
-function _outReqNoFor(o, partner){
-  const all = outsourceGroups(o, {}), k = _outNorm(partner) || '__chua_chon__';
-  const i = all.findIndex(function(g){ return (_outNorm(g.partner) || '__chua_chon__') === k; });
-  return _outReqNo(o, (i < 0 ? all.length : i) + 1, Math.max(all.length, 1));
+
+/* ---------- GỢI Ý NHIỆT LUYỆN theo vật liệu + quy trình (chỉ hiện trong form, không in) ---------- */
+const HEAT_PROCS = ['Tôi cao tần', 'Tôi + ram (hoá tốt)', 'Tôi thể tích + ram thấp', 'Thấm carbon + tôi + ram', 'Thấm nitơ', 'Tôi chân không + ram', 'Thường hoá', 'Ủ', 'Ram khử ứng suất'];
+const HEAT_PROC_LABEL = { induct:'tôi cao tần', qt:'tôi + ram (hoá tốt)', through:'tôi thể tích + ram thấp', carb:'thấm C + tôi + ram', nitr:'thấm nitơ', vac:'tôi chân không + ram', norm:'thường hoá', anneal:'ủ', stress:'ram khử ứng suất' };
+const HEAT_HINTS = [
+  { m:/\b(c45|s45c|1045|ck45|c 45)\b/, n:'C45 / S45C', h:{ induct:'HRC 50–56, lớp tôi 1–3 mm', qt:'HB 200–270 (≈ HRC 15–28)', through:'HRC 45–52 (tiết diện nhỏ, dễ cong / nứt)', norm:'HB 170–210' } },
+  { m:/\b(scm ?440|42crmo4?|4140)\b/, n:'SCM440 / 42CrMo4', h:{ qt:'HRC 28–34', induct:'HRC 50–56, lớp tôi 1.5–3 mm', nitr:'HV 500–650, lớp thấm 0.2–0.5 mm' } },
+  { m:/\b(40cr|40x|scr ?440|5140)\b/, n:'40Cr / SCr440', h:{ qt:'HRC 25–32', induct:'HRC 48–55, lớp tôi 1.5–3 mm' } },
+  { m:/\b(20crmnti|scm ?41[05]|scm ?42[05]|20crmo|scr ?420|8620|20mncr5|16mncr5)\b/, n:'thép thấm C (20CrMnTi, SCM420…)', h:{ carb:'HRC 58–62, lớp thấm 0.8–1.5 mm (lõi HRC 30–42)' } },
+  { m:/\b(skd ?11|cr12mov|cr12|d2)\b/, n:'SKD11 / Cr12MoV', h:{ vac:'HRC 58–62', through:'HRC 58–62' } },
+  { m:/\b(suj ?2|gcr15|52100)\b/, n:'SUJ2 / GCr15', h:{ through:'HRC 58–64' } },
+  { m:/\b(65mn|60si2mn|sup ?\d+)\b/, n:'thép lò xo (65Mn…)', h:{ qt:'HRC 42–50', through:'HRC 42–50' } },
+  { m:/\b(ss ?400|ct3|ct38|a36|s235|s275|q235)\b/, n:'thép C thấp (SS400, CT3…)', h:{ carb:'HRC 55–60, lớp thấm 0.8–1.2 mm', _:'không tôi cứng trực tiếp được → thấm C rồi tôi, hoặc chỉ ủ / thường hoá' } },
+  { m:/\b(sus ?30\d|sus ?316l?|inox ?30\d|inox ?316l?|304|316l?)\b/, n:'inox 304 / 316', h:{ _:'inox austenit không tôi cứng được — chỉ ủ dung dịch' } },
+  { m:/\b(sus ?4[12]0(j[12])?|inox ?4[12]0)\b/, n:'inox 410 / 420', h:{ through:'HRC 48–52 (420) · HRC 35–42 (410)', qt:'HRC 48–52 (420) · HRC 35–42 (410)' } },
+  { m:/\b(fc ?\d{3}|fcd ?\d{3}|gang)\b/, n:'gang', h:{ stress:'khử ứng suất đúc, không đổi độ cứng', _:'gang xám thường chỉ ủ khử ứng suất' } }
+];
+function _outProcKey(p){
+  const n = _outNorm(p);
+  if(!n) return '';
+  if(/cao tan|induct/.test(n)) return 'induct';
+  if(/tham (c|carbon|cacbon|cac bon)\b|carbur/.test(n)) return 'carb';
+  if(/nito|nitr/.test(n)) return 'nitr';
+  if(/chan khong|vacuum/.test(n)) return 'vac';
+  if(/thuong hoa|normal/.test(n)) return 'norm';
+  if(/khu ung suat|stress/.test(n)) return 'stress';
+  if(/the tich|ram thap/.test(n)) return 'through';
+  if(/hoa tot|toi ram|ram cao|q t|toi va ram/.test(n)) return 'qt';
+  if(/^u\b|u mem|anneal/.test(n)) return 'anneal';
+  return '';
 }
-function outsourceSheetHtml(o, g){
-  const no = _outReqNoFor(o, g.partner);
-  const ends = g.rows.map(function(r){ return stageEndDate(r.s); }).filter(Boolean).sort();
-  const starts = g.rows.map(function(r){ return normDate(r.s.startDate); }).filter(Boolean).sort();
-  const its = [];
-  g.rows.forEach(function(r){ if(r.it && its.indexOf(r.it) < 0) its.push(r.it); });
-  const qty = (its.length === 1 && its[0].qty != null && its[0].qty !== '')
-    ? esc(String(its[0].qty)) + ' ' + esc(its[0].unit || '')
-    : (o.qty != null ? esc(String(o.qty)) : '') + ' ' + esc(o.unit || '');
-  const mat = (o.materials || []).filter(function(m){ return m && ((m.material || '').trim() || (m.spec || '').trim()); })
-    .map(function(m){ return esc((m.material || '') + (m.spec ? ' ' + m.spec : '')); }).join('; ');
-  const dwg = (o.attachments || []).filter(function(a){ return a && (a.label || '').trim(); }).map(function(a){ return esc(a.label); }).join('; ');
-  const blank = '<span class="muted">………………………</span>';
-  const supCell = g.supplier ? '<b style="font-size:13.5px">' + esc(g.supplier) + '</b>'
-    : '<span class="muted">………………………………………… (chưa chọn nhà cung cấp — điều phối ghi tay)</span>';
-  let tt = 0;
-  const rows = g.rows.map(function(r){
-    const s = r.s;
-    const ck = (s.checks || []).filter(function(c){ return c && ((c.param || '').trim() || (c.spec || '').trim()); });
-    const head = '<tr class="grp"><td colspan="7">Công đoạn ' + esc(s.code || '') + ' — ' + esc(s.name || '')
-      + (r.it ? ' &nbsp;·&nbsp; chi tiết: ' + esc(r.it.name || '') : '')
-      + (s.note ? ' &nbsp;·&nbsp; <span style="font-weight:400">' + esc(s.note) + '</span>' : '')
-      + (ck.length ? '' : ' <span style="font-weight:400;color:#5A6675">(chưa khai kích thước — ghi tay theo bản vẽ)</span>')
-      + (r.warn ? ' <span style="font-weight:400;color:#b91c1c">⚠ ' + esc(r.warn) + '</span>' : '') + '</td></tr>';
-    const lines = (ck.length ? ck : [{}, {}]).map(function(c){
-      tt++;
-      return '<tr><td>' + tt + '</td><td>' + esc(c.param || '') + '</td><td>' + esc(c.spec || '') + '</td><td>' + esc(c.tool || '') + '</td><td></td><td></td><td></td></tr>';
-    }).join('');
-    return head + lines;
-  }).join('');
-  return docHeader('PHIẾU GIA CÔNG NGOÀI') + `
-    <h1 style="text-align:center;margin-top:8px;margin-bottom:0">Phiếu gia công ngoài</h1>
-    <div style="text-align:center;margin-bottom:1mm;font-size:11px;color:#8A93A0;font-style:italic;letter-spacing:.3px">Outsource work order</div>
-    <div style="text-align:center;margin-bottom:3mm;font-size:12px;color:#5A6675">Số phiếu: <b style="color:#173E7C">${esc(no)}</b> &nbsp;·&nbsp; Ngày lập: ${fmtDate(todayStr())}</div>
-    ${impBannerHtml(o)}
-    <table>
-      <tr><th style="width:118px">Nhà cung cấp</th><td colspan="3">${supCell}</td></tr>
-      <tr><th>Mã đơn DHP</th><td>${esc(o.code || '')}</td><th style="width:118px">Số lượng</th><td>${qty}</td></tr>
-      <tr><th>Tên hàng</th><td colspan="3">${esc(o.name || '')}${its.length ? ' &nbsp;—&nbsp; chi tiết: <b>' + its.map(function(it){ return esc(it.name || ''); }).join(', ') + '</b>' : ''}</td></tr>
-      <tr><th>Vật liệu</th><td>${mat || blank}</td><th>Bản vẽ / Rev</th><td>${dwg || blank}</td></tr>
-      <tr><th>Phôi / vật liệu</th><td colspan="3"><span class="box"></span>DHP cấp phôi &nbsp;&nbsp;&nbsp; <span class="box"></span>NCC tự lo vật liệu &nbsp;&nbsp;&nbsp; Số lượng gửi đi: ________</td></tr>
-      <tr><th>Dự kiến gửi</th><td>${starts.length ? fmtDate(starts[0]) : '____/____/______'}</td><th>Giao lại trước</th><td><b>${ends.length ? fmtDate(ends[ends.length - 1]) : '____/____/______'}</b></td></tr>
-    </table>
-    <h2>Kích thước / yêu cầu gia công — NCC đo &amp; ghi kết quả khi giao hàng</h2>
-    <table><thead><tr><th style="width:28px">TT</th><th>Kích thước / thông số gia công</th><th style="width:118px">Yêu cầu + dung sai</th><th style="width:84px">Dụng cụ đo</th><th style="width:68px">NCC đo</th><th style="width:68px">DHP kiểm</th><th style="width:60px">Đạt / Không</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    <h2>Yêu cầu khác</h2>
-    <div style="font-size:12px;line-height:2">
-      <span class="box"></span>Độ nhám: ________ &nbsp;&nbsp; <span class="box"></span>Độ cứng / nhiệt luyện: ________ &nbsp;&nbsp; <span class="box"></span>Xử lý bề mặt: ________<br>
-      <span class="box"></span>Bảo vệ lỗ lắp, rãnh then, mặt lắp ghép khi vận chuyển &nbsp;&nbsp; <span class="box"></span>Gửi kèm kết quả đo &nbsp;&nbsp; Khác: ____________________</div>
-    <h2>Kiểm nhận khi NCC giao lại — DHP ghi</h2>
-    <div style="font-size:12px;line-height:2">Ngày nhận: ____/____/______ &nbsp;&nbsp;&nbsp; Số lượng nhận: ______ / gửi đi ______ &nbsp;&nbsp;&nbsp; Đo kiểm theo bảng trên<br>
-      Kết luận: <span class="box"></span>Đạt — chuyển công đoạn sau &nbsp;&nbsp;&nbsp; <span class="box"></span>Không đạt — trả lại NCC, lập NCR</div>
-    <div class="sign sign4">
-      <div><b>Người lập phiếu</b><div class="line">(Điều phối)</div></div>
-      <div><b>Duyệt</b><div class="line">(Quản lý / TPKT)</div></div>
-      <div><b>Nhà cung cấp</b><div class="line">(Ký nhận việc)</div></div>
-      <div><b>Người kiểm nhận</b><div class="line">(QC)</div></div></div>`;
+function _outHeatHint(r, o){
+  const mat = _ot(r && r.mat) || _outMat1(o);
+  if(!mat) return '';
+  const hit = HEAT_HINTS.find(function(x){ return x.m.test(_outNorm(mat)); });
+  if(!hit) return '';
+  const pk = _outProcKey(r && r.proc);
+  const list = Object.keys(hit.h).filter(function(k){ return k !== '_'; }).map(function(k){ return HEAT_PROC_LABEL[k] + ' → ' + hit.h[k]; });
+  if(pk && hit.h[pk]) return '💡 ' + hit.n + ', ' + HEAT_PROC_LABEL[pk] + ': thường ' + hit.h[pk] + ' — kiểm tra lại theo bản vẽ';
+  return '💡 ' + hit.n + (hit.h._ ? ': ' + hit.h._ : '') + (list.length ? ' — thường dùng: ' + list.join(' · ') : '');
 }
-function outsourceSheetsHtml(o, opts){
-  const gs = outsourceGroups(o, opts || { ready:true });
-  return gs.map(function(g){ return outsourceSheetHtml(o, g); }).join('');
+function _outEnsureDatalists(o){
+  let el = document.getElementById('outDatalists');
+  if(!el){ el = document.createElement('div'); el.id = 'outDatalists'; el.style.display = 'none'; document.body.appendChild(el); }
+  const opt = function(a){ return a.map(function(v){ return '<option value="' + esc(v) + '">'; }).join(''); };
+  const mats = _outMats(o).concat(['C45 (S45C)', 'SCM440 (42CrMo4)', '40Cr (SCr440)', 'SCM420 / 20CrMo', '20CrMnTi', 'SKD11 (Cr12MoV)', 'SUJ2 (GCr15)', '65Mn', 'SS400 (CT3)', 'SUS304', 'SUS420J2', 'FC250', 'FCD450']);
+  el.innerHTML = '<datalist id="outDlMat">' + opt(mats.filter(function(v, i){ return mats.indexOf(v) === i; })) + '</datalist>'
+    + '<datalist id="outDlHeat">' + opt(HEAT_PROCS) + '</datalist>'
+    + '<datalist id="outDlSurf">' + opt(['Mạ kẽm điện phân', 'Mạ kẽm nhúng nóng', 'Nhuộm đen (oxit đen)', 'Mạ crom cứng', 'Mạ niken', 'Phốt phát hoá', 'Sơn tĩnh điện', 'Sơn lót + sơn phủ', 'Phun bi / phun cát', 'Anod hoá (nhôm)']) + '</datalist>'
+    + '<datalist id="outDlWeld">' + opt(['Hàn TIG', 'Hàn MIG / MAG', 'Hàn que (SMAW)', 'Hàn đắp cứng', 'Hàn hồ quang chìm (SAW)']) + '</datalist>'
+    + '<datalist id="outDlBal">' + opt(['G16', 'G6.3', 'G2.5', 'G1.0']) + '</datalist>';
 }
-function _outMissTxt(list){
-  return list.map(function(x){ return '• ' + ((x.s.code || '') + ' ' + (x.s.name || '')).trim() + (x.it ? ' (' + (x.it.name || '') + ')' : '') + ' — thiếu: ' + x.missing.join(', '); }).join('\n');
-}
-// XUẤT PHIẾU GIA CÔNG NGOÀI — cả đơn (mỗi NCC 1 tờ) hoặc chỉ NCC của 1 công đoạn (stage)
-function exportOutsourceDoc(id, stage){
-  const o = (typeof id === 'object' && id) ? id : (DATA.orders || []).find(function(x){ return x.id === id; });
-  if(!o) return;
-  let all = outAllInfos(o);
-  if(!all.length){ alert('Đơn này không có công đoạn gia công ngoài.\n\nCông đoạn được tính là gia công ngoài khi: người làm là đối tác outsource, hoặc ô "Ở đâu" ghi tên xưởng ngoài.'); return; }
-  const opts = { ready:true, stage: stage || null };
-  const gs = outsourceGroups(o, opts);
-  const scope = stage ? outsourceGroups(o, { stage: stage }).reduce(function(a, g){ return a.concat(g.rows); }, []) : all;
-  const miss = scope.filter(function(x){ return x.missing.length; });
-  if(!gs.length){
-    alert('Chưa xuất được phiếu gia công ngoài — công đoạn còn thiếu thông tin:\n\n' + _outMissTxt(miss) + '\n\nĐiền đủ trong form sửa đơn (bước G2) rồi xuất lại.');
-    return;
-  }
-  printDoc('Phieu gia cong ngoai ' + (o.code || ''), gs.map(function(g){ return outsourceSheetHtml(o, g); }).join(''));
-  outTrackAfterPrint(o, false, opts);
-  if(miss.length) setTimeout(function(){ outToast('⚠ Chưa xuất (còn thiếu thông tin):<br>' + esc(_outMissTxt(miss)).replace(/\n/g, '<br>')); }, 2500);
-}
-function printOutsourceRequests(id){ return exportOutsourceDoc(id); }   // tên cũ
-function outsourceBtnHtml(o){
-  const all = outAllInfos(o); if(!all.length) return '';
-  const ready = all.filter(function(x){ return !x.missing.length; }).length;
-  const ok = ready === all.length;
-  return '<button class="ghost sm" onclick="exportOutsourceDoc(\'' + o.id + '\')" style="border-color:' + (ready ? '#0e7490;color:#0e7490' : '#b45309;color:#b45309') + ';font-weight:700" title="Export outsource doc — phiếu mang theo hàng khi đưa ra ngoài gia công">📤 Xuất phiếu gia công ngoài ('
-    + (ok ? all.length + ' công đoạn' : ready + '/' + all.length + ' công đoạn đủ thông tin') + ')</button>';
-}
+
+/* ---------- FORM SỬA ĐƠN: công đoạn làm ngoài ---------- */
 // đơn đang soạn trong form (có cả ô chưa lưu: đối tác, vật tư, file đính kèm, hàng nhập)
 function _outFormOrder(){
   const f = currentFormOrder();
@@ -10061,39 +10116,516 @@ function _outFormOrder(){
     importNote: (v('ord_impNote') || saved.importNote || '').trim()
   });
 }
-// dòng nhỏ dưới mỗi công đoạn làm ngoài trong form sửa đơn: NCC + đủ/thiếu thông tin + nút xuất phiếu
-function outStageChipHtml(i){
+function _outItOf(s){ return (s && s._itId) ? ((editingItems || []).find(function(x){ return x && x.id === s._itId; }) || null) : null; }
+function _outFormInfo(i){
+  const s = (editingStages || [])[i]; if(!s) return null;
+  const o = _outFormOrder(), inf = outStageInfo(o, s, _outItOf(s));
+  return inf ? { inf: inf, o: o, s: s } : null;
+}
+// công đoạn i (form) có làm ngoài không → ẩn "Người làm"
+function outStageOn(i){ try{ return !!_outFormInfo(i); }catch(e){ return false; } }
+function _outStatusHtml(inf, o){
+  const miss = outStageMissing(inf, o);
+  return miss.length ? '<span style="color:#b45309">· còn thiếu: ' + esc(miss.join(', ')) + '</span>' : '<span style="color:#15803D;font-weight:700">· đủ thông tin</span>';
+}
+function _outRid(){ return 'rq' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function _outGrid(t){ return t.cols.map(function(c){ return c[3] || 'minmax(100px,1fr)'; }).join(' ') + ' 22px'; }
+function _outReqEditorHtml(i, s, t, o){
+  const rows = (s.outReq && s.outReq.length) ? s.outReq : [{}];   // chưa có dòng nào → 1 dòng trống để gõ luôn
+  const grid = _outGrid(t);
+  let h = '<div style="display:grid;grid-template-columns:' + grid + ';gap:4px;margin-top:6px;font-size:10.5px;color:#0e7490;font-weight:700">'
+    + t.cols.map(function(c){ return '<span>' + esc(c[1]) + '</span>'; }).join('') + '<span></span></div>';
+  rows.forEach(function(r, ri){
+    h += '<div style="display:grid;grid-template-columns:' + grid + ';gap:4px;margin-top:3px">'
+      + t.cols.map(function(c){
+          return '<input style="font-size:11px;min-width:0" value="' + esc((r && r[c[0]]) || '') + '" placeholder="' + esc(c[2]) + '"' + (c[4] ? ' list="' + c[4] + '"' : '')
+            + ' oninput="outUpdRow(' + i + ',' + ri + ',\'' + c[0] + '\',this.value)">';
+        }).join('')
+      + '<a onclick="outRmRow(' + i + ',' + ri + ')" style="color:var(--st-late);cursor:pointer;font-weight:800;text-align:center;align-self:center" title="Xoá dòng">✕</a></div>';
+    if(t.k === 'heat') h += '<div class="small" id="outHint_' + i + '_' + ri + '" style="color:#64748b;margin:1px 0 0 2px">' + esc(_outHeatHint(r, o)) + '</div>';
+  });
+  return h + '<div style="margin-top:4px"><a onclick="outAddRow(' + i + ')" style="cursor:pointer;font-size:11px;font-weight:700;color:#0e7490">＋ Thêm dòng yêu cầu</a></div>';
+}
+function _outImgsEditorHtml(i, s){
+  const imgs = (s.outImgs || []).filter(function(m){ return m && m.id; });
+  if(imgs.length) _outHydrateSoon();
+  return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">'
+    + '<span class="small" style="color:#0e7490;font-weight:700">🖼 Ảnh bản vẽ' + (outTypeOf(s) === 'heat' ? ' (khúc cần nhiệt luyện)' : ' (khúc cần làm)') + ':</span>'
+    + imgs.map(function(m, k){
+        return '<span style="position:relative;display:inline-block"><img data-outimg="' + esc(m.id) + '" alt="' + esc(m.n || 'ảnh') + '" title="' + esc(m.n || '') + '" style="height:64px;max-width:160px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;object-fit:contain;display:block">'
+          + '<a onclick="outImgRm(' + i + ',' + k + ')" title="Bỏ ảnh này" style="position:absolute;top:-6px;right:-6px;background:#fff;border:1px solid #fecaca;color:#b91c1c;border-radius:99px;width:18px;height:18px;line-height:16px;text-align:center;font-size:11px;font-weight:800;cursor:pointer">✕</a></span>';
+      }).join('')
+    + (imgs.length < 4 ? '<a onclick="document.getElementById(\'outImgIn_' + i + '\').click()" style="cursor:pointer;font-size:11px;font-weight:700;color:#0e7490">＋ Chọn ảnh</a>'
+      + '<input type="file" accept="image/*" multiple id="outImgIn_' + i + '" style="display:none" onchange="outImgFiles(' + i + ',this.files);this.value=\'\'">'
+      + '<div contenteditable="true" onpaste="outImgOnPaste(event,' + i + ')" ondragover="event.preventDefault()" ondrop="outImgOnDrop(event,' + i + ')" onkeydown="if(!(event.ctrlKey||event.metaKey))event.preventDefault()" oninput="this.textContent=\'📋 bấm vào đây rồi Ctrl+V để dán ảnh\'" title="Chụp / copy vùng bản vẽ rồi dán vào đây" style="font-size:11px;color:#64748b;border:1px dashed #94a3b8;border-radius:6px;padding:3px 8px;cursor:text;outline:none">📋 bấm vào đây rồi Ctrl+V để dán ảnh</div>' : '')
+    + '</div>';
+}
+// KHỐI GIA CÔNG NGOÀI thay cho dòng "Người làm": NCC · loại · đủ/thiếu · nút xuất phiếu · yêu cầu theo loại · ảnh bản vẽ
+function outStageBlockHtml(i){
   try{
-    const s = (editingStages || [])[i]; if(!s) return '';
-    const o = _outFormOrder();
-    const it = s._itId ? (editingItems || []).find(function(x){ return x && x.id === s._itId; }) : null;
-    const inf = outStageInfo(o, s, it); if(!inf) return '';
-    const miss = outStageMissing(inf);
-    return '<div id="outChip_' + i + '" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;padding:5px 8px;border-radius:7px;font-size:12px;'
-      + (miss.length ? 'background:#fffbeb;border:1px solid #fde68a' : 'background:#ecfeff;border:1px solid #a5f3fc') + '">'
-      + '<span>📤 <b style="color:#0e7490">Gia công ngoài</b> → ' + (inf.supplier ? '<b>' + esc(inf.supplier) + '</b>' : '<i style="color:#b45309">chưa chọn NCC</i>') + '</span>'
-      + (miss.length ? '<span style="color:#b45309">· còn thiếu: ' + esc(miss.join(', ')) + '</span>' : '<span style="color:#15803D;font-weight:700">· đủ thông tin</span>')
-      + '<button type="button" class="ghost sm" style="margin-left:auto;border-color:#0e7490;color:#0e7490;font-weight:700" onclick="outExportFromForm(' + i + ')" title="Export outsource doc">📤 Xuất phiếu gia công ngoài</button>'
+    const x = _outFormInfo(i); if(!x) return '';
+    const inf = x.inf, s = x.s, o = x.o, tk = outTypeOf(s), t = OUT_TYPE_BY[tk];
+    if(t.cols) _outEnsureDatalists(o);
+    const sel = '<select style="width:150px;font-size:12px" onchange="outSetType(' + i + ',this.value)" title="Loại gia công ngoài — mỗi loại có yêu cầu riêng in lên phiếu">'
+      + OUT_TYPES.map(function(y){ return '<option value="' + y.k + '"' + (y.k === tk ? ' selected' : '') + '>' + y.ic + ' ' + esc(y.n) + '</option>'; }).join('') + '</select>';
+    let h = '<div id="outBlk_' + i + '" style="margin-top:6px;padding:6px 8px;border-radius:8px;border:1px solid #a5f3fc;background:#f0fdff">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px">'
+      + '<span>🏭 <b style="color:#0e7490">Gia công ngoài</b> → ' + (inf.supplier ? '<b>' + esc(inf.supplier) + '</b>' : '<i style="color:#b45309">chưa chọn NCC — ghi ở ô "Ở đâu"</i>') + '</span>'
+      + sel + '<span id="outChip_' + i + '">' + _outStatusHtml(inf, o) + '</span>'
+      + '<span style="margin-left:auto;display:flex;gap:6px">'
+      + '<button type="button" class="ghost sm" onclick="outToInhouse(' + i + ')" title="Đổi về làm tại xưởng CK368 → chọn người làm">↩ Làm tại CK368</button>'
+      + '<button type="button" class="ghost sm" style="border-color:#0e7490;color:#0e7490;font-weight:700" onclick="outExportFromForm(' + i + ')" title="Export outsource doc">📤 Xuất phiếu gia công ngoài</button></span>'
       + (inf.warn ? '<span style="color:#b91c1c;width:100%">⚠ ' + esc(inf.warn) + '</span>' : '')
       + '</div>';
-  }catch(e){ return ''; }
+    h += t.cols ? _outReqEditorHtml(i, s, t, o)
+      : '<div class="small muted" style="margin-top:4px">Ghi kích thước cần gia công + dung sai ở bảng 📐 bên dưới — in lên phiếu gửi NCC. NCC tự lo người làm.</div>';
+    h += _outImgsEditorHtml(i, s);
+    return h + '</div>';
+  }catch(e){ console.error('[dhp] khối gia công ngoài', e); return ''; }
 }
+function outStageChipHtml(i){ return outStageBlockHtml(i); }   // tên cũ
+// bảng 📐 kích thước: công đoạn làm ngoài loại khác cơ khí → ẩn khi trống (bấm "+ thêm kích thước kèm theo" để mở)
+var _outDimsOpen = (typeof WeakSet === 'function') ? new WeakSet() : null;
+function outShowChecks(i){
+  try{
+    const s = (editingStages || [])[i]; if(!s) return true;
+    if(!outStageOn(i)) return true;
+    const tk = outTypeOf(s);
+    if(tk === 'mach' || tk === 'other' || stageNeedsDim(s)) return true;
+    if((s.checks || []).some(function(c){ return c && (_ot(c.param) || _ot(c.spec) || _ot(c.actual1) || _ot(c.actual2)); })) return true;
+    return !!(_outDimsOpen && _outDimsOpen.has(s));
+  }catch(e){ return true; }
+}
+function outDimsLinkHtml(i){ return '<div style="margin-top:4px"><a onclick="outDimsOpen(' + i + ')" class="small" style="cursor:pointer;color:#64748b">＋ thêm kích thước kèm theo (tùy chọn)</a></div>'; }
+function outDimsOpen(i){ const s = (editingStages || [])[i]; if(s && _outDimsOpen) _outDimsOpen.add(s); renderStagesEditor(); }
 function outChipRefresh(i){
   const el = document.getElementById('outChip_' + i); if(!el) return;
-  const h = outStageChipHtml(i);
-  if(h) el.outerHTML = h; else el.remove();
+  const x = _outFormInfo(i);
+  if(x) el.innerHTML = _outStatusHtml(x.inf, x.o);
+}
+function outSetType(i, v){
+  const s = (editingStages || [])[i]; if(!s || !OUT_TYPE_BY[v]) return;
+  s.outType = v;
+  renderStagesEditor();
+}
+function outAddRow(i){
+  const s = (editingStages || [])[i]; if(!s) return;
+  s.outReq = (s.outReq || []).slice();
+  if(!s.outReq.length) s.outReq.push({ id: _outRid() });   // dòng trống đang hiện
+  const r = { id: _outRid() };
+  if(outTypeOf(s) === 'heat'){ const m = _outMat1(_outFormOrder()); if(m) r.mat = m; }
+  s.outReq.push(r);
+  renderStagesEditor();
+}
+function outRmRow(i, ri){
+  const s = (editingStages || [])[i]; if(!s || !s.outReq) return;
+  s.outReq = s.outReq.filter(function(r, k){ return k !== ri; });
+  renderStagesEditor();
+}
+function outUpdRow(i, ri, k, v){
+  const s = (editingStages || [])[i]; if(!s) return;
+  s.outReq = s.outReq || [];
+  if(!s.outReq[ri]) s.outReq[ri] = { id: _outRid() };
+  s.outReq[ri][k] = v;
+  if(outTypeOf(s) === 'heat' && (k === 'mat' || k === 'proc')){
+    const el = document.getElementById('outHint_' + i + '_' + ri);
+    if(el) el.textContent = _outHeatHint(s.outReq[ri], _outFormOrder());
+  }
+  outChipRefresh(i);
+}
+// chọn đối tác outsource ở "Người làm" → ô "Ở đâu" = NCC (một chỗ duy nhất để xem / sửa NCC)
+function outAssigneeChanged(i){
+  const s = (editingStages || [])[i]; if(!s) return;
+  const st = (DATA.staff || []).find(function(x){ return x && x.id === s.assignee; });
+  if(st && st.type === 'outsource' && _outLocInhouse(s.location)) s.location = st.name;
+}
+function _outNameKey(s){ return _outNorm(s).replace(/\bco khi\b/g, 'ck'); }   // "Cơ Khí Duyên" = "CK Duyên"
+function _outPartnerByName(name){
+  const n = _outNameKey(name); if(!n) return null;
+  const ps = (DATA.staff || []).filter(function(x){ return x && x.type === 'outsource' && x.active !== false && _outNameKey(x.name); });
+  return ps.find(function(x){ return _outNameKey(x.name) === n; })
+    || ps.find(function(x){ return n.indexOf(_outNameKey(x.name)) >= 0 || _outNameKey(x.name).indexOf(n) >= 0; }) || null;
+}
+// sửa ô "Ở đâu" của công đoạn → người làm theo cho khớp (làm ngoài: đối tác đúng tên / bỏ trống; về CK368: bỏ đối tác ngoài)
+function outLocChanged(i){
+  const s = (editingStages || [])[i]; if(!s){ renderStagesEditor(); return; }
+  const loc = _ot(s.location);
+  const st = (DATA.staff || []).find(function(x){ return x && x.id === s.assignee; });
+  if(_outLocInhouse(loc)){
+    if(loc && st && st.type === 'outsource') s.assignee = '';
+  } else {
+    const p = _outPartnerByName(loc);
+    s.assignee = p ? p.id : '';
+  }
+  renderStagesEditor();
+}
+function outToInhouse(i){
+  const s = (editingStages || [])[i]; if(!s) return;
+  const st = (DATA.staff || []).find(function(x){ return x && x.id === s.assignee; });
+  if(st && st.type === 'outsource') s.assignee = '';
+  s.location = 'CK368';
+  renderStagesEditor();
 }
 function outExportFromForm(i){
   const s = (editingStages || [])[i]; if(!s) return;
   exportOutsourceDoc(_outFormOrder(), s);
 }
 
+/* ---------- ẢNH BẢN VẼ: máy này (IndexedDB) + bảng dhp_files trên Supabase ---------- */
+const OUT_FILES_T = 'dhp_files';
+var _outDbP = null, _outSrvFailAt = 0, _outSrvHinted = false, _outHydT = null;
+function _outDb(){
+  if(_outDbP) return _outDbP;
+  _outDbP = new Promise(function(ok, ko){
+    try{
+      const rq = indexedDB.open('dhp_files', 1);
+      rq.onupgradeneeded = function(){ rq.result.createObjectStore('imgs', { keyPath: 'id' }); };
+      rq.onsuccess = function(){ ok(rq.result); };
+      rq.onerror = function(){ ko(rq.error); };
+    }catch(e){ ko(e); }
+  });
+  _outDbP.catch(function(){ _outDbP = null; });
+  return _outDbP;
+}
+function _outIdb(mode, fn){
+  return _outDb().then(function(db){ return new Promise(function(ok, ko){
+    const tx = db.transaction('imgs', mode), rq = fn(tx.objectStore('imgs'));
+    tx.oncomplete = function(){ ok(rq ? rq.result : undefined); };
+    tx.onerror = function(){ ko(tx.error); }; tx.onabort = function(){ ko(tx.error); };
+  }); });
+}
+function outImgLocalGet(id){ return _outIdb('readonly', function(st){ return st.get(id); }).catch(function(){ return null; }); }
+function outImgLocalPut(rec){ return _outIdb('readwrite', function(st){ return st.put(rec); }); }
+function _outSb(){
+  try{
+    if(typeof _sb !== 'undefined' && _sb) return _sb;
+    if(typeof initSupabase === 'function' && initSupabase() && typeof _sb !== 'undefined') return _sb;
+  }catch(e){}
+  return null;
+}
+async function outImgUpload(rec){
+  const sb = _outSb(); if(!sb || !rec || rec.up) return !!(rec && rec.up);
+  if(_outSrvFailAt && Date.now() - _outSrvFailAt < 10 * 60000) return false;   // kho ảnh chưa bật → 10 phút thử lại 1 lần
+  try{
+    const r = await sb.from(OUT_FILES_T).upsert([{ id: rec.id, data: { src: rec.src, n: rec.n, w: rec.w, h: rec.h, orderId: rec.orderId || '', stageId: rec.stageId || '', at: rec.at } }]);
+    if(r && r.error) throw r.error;
+    rec.up = true; _outSrvFailAt = 0;
+    await outImgLocalPut(rec).catch(function(){});
+    return true;
+  }catch(e){
+    _outSrvFailAt = Date.now();
+    console.warn('[dhp] chưa đẩy được ảnh lên kho chung:', e && e.message);
+    if(!_outSrvHinted){ _outSrvHinted = true; outToast('🖼 Ảnh bản vẽ đang lưu trên <b>máy này</b>. Muốn máy khác cùng thấy ảnh: chạy file <b>dhp_files.sql</b> trong Supabase (1 lần).'); }
+    return false;
+  }
+}
+async function outImgFetch(ids){
+  const out = {}, sb = _outSb(); if(!sb || !ids.length) return out;
+  try{
+    for(let k = 0; k < ids.length; k += 20){
+      const r = await sb.from(OUT_FILES_T).select('id,data').in('id', ids.slice(k, k + 20));
+      if(r.error) throw r.error;
+      (r.data || []).forEach(function(row){
+        if(!row || !row.data || !row.data.src) return;
+        out[row.id] = row.data.src;
+        outImgLocalPut({ id: row.id, src: row.data.src, n: row.data.n, w: row.data.w, h: row.data.h, up: true, at: row.data.at }).catch(function(){});
+      });
+    }
+  }catch(e){ console.warn('[dhp] tải ảnh từ kho chung:', e && e.message); }
+  return out;
+}
+// ảnh theo id: máy này trước, thiếu thì tải kho chung (ảnh máy này chưa đẩy được → đẩy lại)
+async function outImgsLoad(ids){
+  const map = {}, miss = [];
+  for(const id of ids){
+    const r = await outImgLocalGet(id);
+    if(r && r.src){ map[id] = r.src; if(!r.up) outImgUpload(r); }
+    else miss.push(id);
+  }
+  if(miss.length) Object.assign(map, await outImgFetch(miss));
+  return map;
+}
+// mở app: đẩy nốt ảnh máy này chưa lên kho chung
+async function outImgFlush(){
+  try{
+    const all = await _outIdb('readonly', function(st){ return st.getAll(); });
+    for(const r of (all || [])) if(r && !r.up){ if(!(await outImgUpload(r))) break; }
+  }catch(e){}
+}
+function _outHydrateSoon(){ if(_outHydT) return; _outHydT = setTimeout(function(){ _outHydT = null; outImgHydrate(); }, 0); }
+function outImgHydrate(){
+  const els = Array.prototype.slice.call(document.querySelectorAll('img[data-outimg]:not([src])'));
+  if(!els.length) return;
+  const ids = els.map(function(e){ return e.getAttribute('data-outimg'); }).filter(function(v, k, a){ return a.indexOf(v) === k; });
+  outImgsLoad(ids).then(function(map){
+    els.forEach(function(e){
+      const src = map[e.getAttribute('data-outimg')];
+      if(src) e.src = src;
+      else { const sp = document.createElement('span'); sp.className = 'small'; sp.style.cssText = 'display:inline-block;max-width:150px;padding:6px;border:1px dashed #f59e0b;border-radius:6px;color:#b45309'; sp.textContent = 'ảnh ở máy khác — chưa lên kho chung'; e.replaceWith(sp); }
+    });
+  });
+}
+function _outCompress(file){
+  return new Promise(function(ok, ko){
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){
+      try{
+        let W = im.naturalWidth, H = im.naturalHeight;
+        const sc = Math.min(1, 1600 / Math.max(W, H, 1)); W = Math.max(1, Math.round(W * sc)); H = Math.max(1, Math.round(H * sc));
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.drawImage(im, 0, 0, W, H);
+        const mime = c.toDataURL('image/webp', 0.8).indexOf('data:image/webp') === 0 ? 'image/webp' : 'image/jpeg';
+        let q = 0.82, src = c.toDataURL(mime, q);
+        while(src.length > 450000 && q > 0.46){ q -= 0.12; src = c.toDataURL(mime, q); }
+        if(src.length > 450000){
+          const f = Math.sqrt(450000 / src.length), c2 = document.createElement('canvas');
+          c2.width = Math.max(1, Math.round(W * f)); c2.height = Math.max(1, Math.round(H * f));
+          c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height); src = c2.toDataURL(mime, 0.7); W = c2.width; H = c2.height;
+        }
+        URL.revokeObjectURL(url); ok({ src: src, w: W, h: H });
+      }catch(e){ URL.revokeObjectURL(url); ko(e); }
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); ko(new Error('không đọc được ảnh')); };
+    im.src = url;
+  });
+}
+async function outImgAdd(i, file){
+  const s = (editingStages || [])[i];
+  if(!s || !file || !/^image\//.test(file.type || '')) return false;
+  if((s.outImgs || []).length >= 4){ alert('Tối đa 4 ảnh cho mỗi công đoạn.'); return false; }
+  try{
+    const c = await _outCompress(file);
+    const id = 'IMG-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const nm = (file.name && !/^image\.(png|jpe?g|webp|gif)$/i.test(file.name)) ? file.name : ('Bản vẽ ' + ((s.code || '') + ' ' + (s.name || '')).trim());
+    const rec = { id: id, src: c.src, n: nm, w: c.w, h: c.h, up: false, orderId: (document.getElementById('ord_id') || {}).value || '', stageId: s.id || '', at: new Date().toISOString() };
+    await outImgLocalPut(rec);
+    s.outImgs = (s.outImgs || []).concat([{ id: id, n: nm, w: c.w, h: c.h }]);
+    renderStagesEditor();
+    outImgUpload(rec);
+    return true;
+  }catch(e){ alert('Không thêm được ảnh: ' + ((e && e.message) || e)); return false; }
+}
+async function outImgFiles(i, files){
+  for(const f of Array.prototype.slice.call(files || [])){ if(!(await outImgAdd(i, f))) break; }
+}
+function outImgOnPaste(e, i){
+  e.preventDefault();
+  const items = Array.prototype.slice.call((e.clipboardData && e.clipboardData.items) || []);
+  const it = items.find(function(x){ return x.kind === 'file' && /^image\//.test(x.type); });
+  if(it) outImgAdd(i, it.getAsFile());
+  else outToast('Không thấy ảnh trong bộ nhớ tạm — chụp / copy vùng bản vẽ (Win + Shift + S) rồi dán lại.');
+}
+function outImgOnDrop(e, i){
+  e.preventDefault();
+  outImgFiles(i, Array.prototype.slice.call((e.dataTransfer && e.dataTransfer.files) || []).filter(function(f){ return /^image\//.test(f.type); }));
+}
+function outImgRm(i, k){
+  const s = (editingStages || [])[i]; if(!s || !s.outImgs) return;
+  s.outImgs = s.outImgs.filter(function(m, j){ return j !== k; });   // chỉ bỏ khỏi công đoạn — ảnh vẫn còn trong kho (huỷ form không mất)
+  renderStagesEditor();
+}
+window.addEventListener('load', function(){ setTimeout(outImgFlush, 20000); });
+
+/* ---------- PHIẾU GIA CÔNG NGOÀI (in) ---------- */
+function _outReqNo(o, n, total){ return 'PGCN-' + (o.code || '') + (total > 1 ? '-' + String(n).padStart(2, '0') : ''); }
+// số phiếu CỐ ĐỊNH theo NCC trong đơn (thứ tự NCC theo công đoạn, tính cả công đoạn chưa đủ thông tin)
+// → xuất từ cửa sổ xem đơn hay từ công đoạn trong form, xuất 1 NCC hay cả đơn: cùng NCC = cùng số phiếu
+function _outReqNoFor(o, partner){
+  const all = outsourceGroups(o, {}), k = _outNorm(partner) || '__chua_chon__';
+  const i = all.findIndex(function(g){ return (_outNorm(g.partner) || '__chua_chon__') === k; });
+  return _outReqNo(o, (i < 0 ? all.length : i) + 1, Math.max(all.length, 1));
+}
+function _outMachTable(ck, tt){
+  return '<table class="otbl"><thead><tr><th style="width:26px">TT</th><th>Kích thước / thông số gia công</th><th style="width:118px">Yêu cầu + dung sai</th><th style="width:84px">Dụng cụ đo</th><th style="width:62px">NCC đo</th><th style="width:62px">DHP kiểm</th><th style="width:54px">Đạt / Không</th></tr></thead><tbody>'
+    + ck.map(function(c){ tt.n++; return '<tr><td>' + tt.n + '</td><td>' + esc(c.param || '') + '</td><td>' + esc(c.spec || '') + '</td><td>' + esc(c.tool || '') + '</td><td></td><td></td><td></td></tr>'; }).join('')
+    + '</tbody></table>';
+}
+function _outReqTable(t, rows, o, tt){
+  const cell = function(r, key){
+    if(key.indexOf('+') > 0){ const p = key.split('+'), a = _ot(r[p[0]]), b = _ot(r[p[1]]);
+      return esc(a) + (b ? '<div style="font-size:10px;color:#5A6675">' + (p[1] === 'mask' ? 'che, không xử lý: ' : '') + esc(b) + '</div>' : ''); }
+    if(key === 'mat') return esc(_ot(r.mat) || (Object.keys(r).length ? _outMat1(o) : ''));
+    if(key === 'hard' || key === 'grade') return '<b>' + esc(_ot(r[key])) + '</b>';
+    return esc(_ot(r[key]));
+  };
+  return '<table class="otbl"><thead><tr><th style="width:26px">TT</th>'
+    + t.doc.map(function(c){ return '<th' + (c[2] ? ' style="width:' + c[2] + '"' : '') + '>' + esc(c[1]) + '</th>'; }).join('')
+    + t.res.map(function(h){ return '<th style="width:' + (h.length > 12 ? 70 : 54) + 'px">' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + rows.map(function(r){ tt.n++; return '<tr><td>' + tt.n + '</td>' + t.doc.map(function(c){ return '<td>' + cell(r, c[0]) + '</td>'; }).join('') + t.res.map(function(){ return '<td></td>'; }).join('') + '</tr>'; }).join('')
+    + '</tbody></table>';
+}
+function _outStageSecHtml(o, r, imgMap, tt){
+  const s = r.s, tk = outTypeOf(s), t = OUT_TYPE_BY[tk];
+  const ck = (s.checks || []).filter(function(c){ return c && (_ot(c.param) || _ot(c.spec)); });
+  let h = '<h2>' + t.ic + ' Công đoạn ' + esc(s.code || '') + ' — ' + esc(s.name || '') + ' <span style="font-weight:400">· ' + esc(t.n)
+    + (r.it ? ' · chi tiết: ' + esc(r.it.name || '') : '') + '</span></h2>';
+  if(s.note) h += '<div style="font-size:11.5px;margin:-2px 0 3px">' + esc(s.note) + '</div>';
+  if(r.warn) h += '<div style="font-size:11px;color:#b91c1c;margin:-2px 0 3px">⚠ ' + esc(r.warn) + '</div>';
+  if(!t.cols) h += _outMachTable(ck.length ? ck : [{}, {}], tt);
+  else {
+    const rows = _outRowsOf(s);
+    h += _outReqTable(t, rows.length ? rows : [{}, {}], o, tt);
+    if(ck.length) h += '<div style="font-size:11px;font-weight:700;color:#173E7C;margin-top:4px">Kích thước kèm theo</div>' + _outMachTable(ck, tt);
+  }
+  const imgs = (s.outImgs || []).filter(function(m){ return m && m.id; });
+  if(imgs.length) h += '<div class="oimgs">' + imgs.map(function(m){
+    const src = imgMap && imgMap[m.id];
+    return src ? '<figure><img src="' + src + '" alt=""><figcaption>' + esc(m.n || '') + '</figcaption></figure>'
+               : '<figure class="miss">Ảnh "' + esc(m.n || '') + '" chưa tải được (lưu ở máy khác) — kèm bản vẽ giấy.</figure>';
+  }).join('') + '</div>';
+  return h;
+}
+function outsourceSheetHtml(o, g, imgMap){
+  const no = _outReqNoFor(o, g.partner);
+  const ends = g.rows.map(function(r){ return stageEndDate(r.s); }).filter(Boolean).sort();
+  const starts = g.rows.map(function(r){ return normDate(r.s.startDate); }).filter(Boolean).sort();
+  const its = [];
+  g.rows.forEach(function(r){ if(r.it && its.indexOf(r.it) < 0) its.push(r.it); });
+  const qty = (its.length === 1 && its[0].qty != null && its[0].qty !== '')
+    ? esc(String(its[0].qty)) + ' ' + esc(its[0].unit || '')
+    : (o.qty != null ? esc(String(o.qty)) : '') + ' ' + esc(o.unit || '');
+  const mat = (o.materials || []).filter(function(m){ return m && ((m.material || '').trim() || (m.spec || '').trim()); })
+    .map(function(m){ return esc((m.material || '') + (m.spec ? ' ' + m.spec : '')); }).join('; ');
+  const dwg = (o.attachments || []).filter(function(a){ return a && (a.label || '').trim(); }).map(function(a){ return esc(a.label); }).join('; ');
+  const blank = '<span class="muted">………………………</span>';
+  const supCell = g.supplier ? '<b style="font-size:13.5px">' + esc(g.supplier) + '</b>'
+    : '<span class="muted">………………………………………… (chưa chọn nhà cung cấp — điều phối ghi tay)</span>';
+  const types = []; g.rows.forEach(function(r){ const k = outTypeOf(r.s); if(types.indexOf(k) < 0) types.push(k); });
+  const tnames = types.map(function(k){ return OUT_TYPE_BY[k].n.toLowerCase(); }).join(', ');
+  const tt = { n: 0 };
+  const secs = g.rows.map(function(r){ return _outStageSecHtml(o, r, imgMap, tt); }).join('');
+  const goods = types.indexOf('mach') >= 0
+    ? '<tr><th>Phôi / vật liệu</th><td colspan="3">' + _BOX + 'DHP cấp phôi &nbsp;&nbsp;&nbsp; ' + _BOX + 'NCC tự lo vật liệu &nbsp;&nbsp;&nbsp; Số lượng gửi đi: ________</td></tr>'
+    : '<tr><th>Hàng gửi đi</th><td colspan="3">Số lượng gửi đi: ________ &nbsp;&nbsp;&nbsp; ' + _BOX + 'Kèm bản vẽ &nbsp;&nbsp;&nbsp; ' + _BOX + 'Đã kiểm kích thước trước khi gửi</td></tr>';
+  return docHeader('PHIẾU GIA CÔNG NGOÀI') + `
+    <h1 style="text-align:center;margin-top:8px;margin-bottom:0">Phiếu gia công ngoài</h1>
+    <div style="text-align:center;margin-bottom:1mm;font-size:11px;color:#8A93A0;font-style:italic;letter-spacing:.3px">Outsource work order — ${esc(tnames)}</div>
+    <div style="text-align:center;margin-bottom:3mm;font-size:12px;color:#5A6675">Số phiếu: <b style="color:#173E7C">${esc(no)}</b> &nbsp;·&nbsp; Ngày lập: ${fmtDate(todayStr())}</div>
+    ${impBannerHtml(o)}
+    <table>
+      <tr><th style="width:118px">Nhà cung cấp</th><td colspan="3">${supCell}</td></tr>
+      <tr><th>Mã đơn DHP</th><td>${esc(o.code || '')}</td><th style="width:118px">Số lượng</th><td>${qty}</td></tr>
+      <tr><th>Tên hàng</th><td colspan="3">${esc(o.name || '')}${its.length ? ' &nbsp;—&nbsp; chi tiết: <b>' + its.map(function(it){ return esc(it.name || ''); }).join(', ') + '</b>' : ''}</td></tr>
+      <tr><th>Vật liệu</th><td>${mat || blank}</td><th>Bản vẽ / Rev</th><td>${dwg || blank}</td></tr>
+      ${goods}
+      <tr><th>Dự kiến gửi</th><td>${starts.length ? fmtDate(starts[0]) : '____/____/______'}</td><th>Giao lại trước</th><td><b>${ends.length ? fmtDate(ends[ends.length - 1]) : '____/____/______'}</b></td></tr>
+    </table>
+    ${secs}
+    <h2>Yêu cầu khác</h2>
+    <div style="font-size:12px;line-height:1.95">${types.map(function(k){ return (types.length > 1 ? '<b>' + esc(OUT_TYPE_BY[k].n) + ':</b> ' : '') + OUT_TYPE_BY[k].other; }).join('<br>')} &nbsp;&nbsp; Khác: ____________________</div>
+    <h2>Kiểm nhận khi NCC giao lại — DHP ghi</h2>
+    <div style="font-size:12px;line-height:2">Ngày nhận: ____/____/______ &nbsp;&nbsp;&nbsp; Số lượng nhận: ______ / gửi đi ______ &nbsp;&nbsp;&nbsp; Kiểm theo các bảng trên<br>
+      Kết luận: ${_BOX}Đạt — chuyển công đoạn sau &nbsp;&nbsp;&nbsp; ${_BOX}Không đạt — trả lại NCC, lập NCR</div>
+    <div class="sign sign4">
+      <div><b>Người lập phiếu</b><div class="line">(Điều phối)</div></div>
+      <div><b>Duyệt</b><div class="line">(Quản lý / TPKT)</div></div>
+      <div><b>Nhà cung cấp</b><div class="line">(Ký nhận việc)</div></div>
+      <div><b>Người kiểm nhận</b><div class="line">(QC)</div></div></div>`;
+}
+function outsourceSheetsHtml(o, opts, imgMap){
+  const gs = outsourceGroups(o, opts || { ready:true });
+  return gs.map(function(g){ return outsourceSheetHtml(o, g, imgMap); }).join('');
+}
+function _outMissTxt(list){
+  return list.map(function(x){ return '• ' + ((x.s.code || '') + ' ' + (x.s.name || '')).trim() + (x.it ? ' (' + (x.it.name || '') + ')' : '') + ' — thiếu: ' + x.missing.join(', '); }).join('\n');
+}
+// XUẤT PHIẾU GIA CÔNG NGOÀI — cả đơn (mỗi NCC 1 tờ) hoặc chỉ NCC của 1 công đoạn (stage)
+function exportOutsourceDoc(id, stage){
+  const o = (typeof id === 'object' && id) ? id : (DATA.orders || []).find(function(x){ return x.id === id; });
+  if(!o) return;
+  const all = outAllInfos(o);
+  if(!all.length){ alert('Đơn này không có công đoạn gia công ngoài.\n\nCông đoạn được tính là gia công ngoài khi: người làm là đối tác outsource, hoặc ô "Ở đâu" ghi tên xưởng ngoài.'); return; }
+  const opts = { ready:true, stage: stage || null };
+  const gs = outsourceGroups(o, opts);
+  const scope = stage ? outsourceGroups(o, { stage: stage }).reduce(function(a, g){ return a.concat(g.rows); }, []) : all;
+  const miss = scope.filter(function(x){ return x.missing.length; });
+  if(!gs.length){
+    alert('Chưa xuất được phiếu gia công ngoài — công đoạn còn thiếu thông tin:\n\n' + _outMissTxt(miss) + '\n\nĐiền đủ trong form sửa đơn (bước G2) rồi xuất lại.');
+    return;
+  }
+  const title = 'Phieu gia cong ngoai ' + (o.code || '');
+  const ids = [];
+  gs.forEach(function(g){ g.rows.forEach(function(r){ (r.s.outImgs || []).forEach(function(m){ if(m && m.id && ids.indexOf(m.id) < 0) ids.push(m.id); }); }); });
+  const body = function(map){ return gs.map(function(g){ return outsourceSheetHtml(o, g, map); }).join(''); };
+  if(ids.length){
+    // mở cửa sổ NGAY (đang trong cú bấm → không bị chặn popup), tải ảnh xong mới ghi phiếu vào
+    const w = window.open('', '_blank', 'width=900,height=1000');
+    if(!w){ alert('Trình duyệt chặn cửa sổ in. Hãy cho phép popup rồi thử lại.'); return; }
+    try{ w.document.write('<p style="font:14px Arial;padding:24px;color:#334155">Đang chuẩn bị phiếu gia công ngoài (tải ảnh bản vẽ)…</p>'); }catch(e){}
+    outImgsLoad(ids).then(function(map){ printDoc(title, body(map), w); }, function(){ printDoc(title, body({}), w); });
+  } else printDoc(title, body({}));
+  outTrackAfterPrint(o, false, opts);
+  if(miss.length) setTimeout(function(){ outToast('⚠ Chưa xuất (còn thiếu thông tin):<br>' + esc(_outMissTxt(miss)).replace(/\n/g, '<br>')); }, 2500);
+}
+function printOutsourceRequests(id){ return exportOutsourceDoc(id); }   // tên cũ
+function outsourceBtnHtml(o){
+  const all = outAllInfos(o); if(!all.length) return '';
+  const ready = all.filter(function(x){ return !x.missing.length; }).length;
+  const ok = ready === all.length;
+  return '<button class="ghost sm" onclick="exportOutsourceDoc(\'' + o.id + '\')" style="border-color:' + (ready ? '#0e7490;color:#0e7490' : '#b45309;color:#b45309') + ';font-weight:700" title="Export outsource doc — phiếu mang theo hàng khi đưa ra ngoài gia công">📤 Xuất phiếu gia công ngoài ('
+    + (ok ? all.length + ' công đoạn' : ready + '/' + all.length + ' công đoạn đủ thông tin') + ')</button>';
+}
+
+/* ---------- công đoạn làm ngoài trên các màn / phiếu khác: hiện NCC, không hiện "người làm" ---------- */
+function outViewWho(o, s){
+  const inf = _outInfoOf(o, s);
+  if(inf) return ' <span style="color:#0e7490;font-weight:700">🏭 ' + esc(inf.supplier || 'gia công ngoài — chưa chọn NCC') + '</span>';
+  return (s.location ? ' <span style="color:#0EA5E9">@' + esc(s.location) + '</span>' : '') + (s.assignee ? ' · 👤 ' + esc(staffName(s.assignee)) : '');
+}
+function outViewHours(o, s){
+  if(_outInfoOf(o, s)){ const e = stageEndDate(s); return e && e !== normDate(s.startDate) ? ' → ' + fmtDate(e) : ''; }
+  return ' · ' + stageHours(s) + 'h';
+}
+function outInlineWho(s){
+  const sup = outQuick(s);
+  if(sup) return ' <span style="color:#0e7490;font-weight:700">🏭 ' + esc(sup) + '</span>';
+  return (s.location ? ' <span style="color:#0EA5E9">@' + esc(s.location) + '</span>' : '') + (s.assignee ? ' · 👤 ' + esc(staffName(s.assignee)) : '');
+}
+function outInlineHours(s){
+  if(outQuick(s)){ const e = stageEndDate(s); return e ? ' · <span class="muted">giao lại ' + fmtDate(e) + '</span>' : ''; }
+  return ' · <span class="muted">' + stageHours(s) + 'h</span>';
+}
+function outCurWho(s){
+  const sup = outQuick(s);
+  if(sup) return (s.location && !_outLocInhouse(s.location)) ? ' · 🏭 gia công ngoài' : ' · 🏭 ' + sup;
+  return s.assignee ? ' · 👤 ' + staffName(s.assignee) : '';
+}
+function outWorkOrderCells(o, s){
+  const inf = _outInfoOf(o, s);
+  if(inf) return '<td class="muted">— gia công ngoài</td><td><b>' + esc(inf.supplier || '(chưa chọn NCC)') + '</b></td><td style="text-align:center">—</td>';
+  return '<td>' + (s.assignee ? esc(staffName(s.assignee)) : '') + '</td><td>' + esc(s.location || 'CK368') + '</td><td style="text-align:center">' + stageHours(s) + 'h</td>';
+}
+// phiếu đo công đoạn (bộ phiếu đo) — công đoạn làm ngoài = phiếu KIỂM NHẬN khi NCC giao lại
+function outSheetWhoRows(o, s, inf, ref){
+  if(!inf) return '<tr><th>Người làm</th><td>' + (s.assignee ? esc(staffName(s.assignee)) : '__________') + '</td><th>Nơi làm</th><td>' + esc(s.location || 'CK368') + '</td></tr>'
+    + '<tr><th>Giờ KH</th><td>' + stageHours(s) + 'h</td><th>Hạn giao</th><td>' + (ref ? fmtDate(ref) : '') + '</td></tr>';
+  const e = stageEndDate(s);
+  return '<tr><th>Gia công ngoài</th><td><b>' + esc(inf.supplier || '(chưa chọn NCC)') + '</b></td><th>Loại</th><td>' + esc(OUT_TYPE_BY[outTypeOf(s)].n) + ' · ' + esc(_outReqNoFor(o, inf.partner)) + '</td></tr>'
+    + '<tr><th>Giao lại trước</th><td>' + (e ? fmtDate(e) : '') + '</td><th>Hạn giao</th><td>' + (ref ? fmtDate(ref) : '') + '</td></tr>';
+}
+function outSheetChecks(o, s, inf){
+  const base = (s.checks || []).filter(Boolean);
+  if(!inf) return base;
+  const t = OUT_TYPE_BY[outTypeOf(s)];
+  if(!t.cols) return base;
+  const keep = base.filter(function(c){ return _ot(c.param) || _ot(c.spec) || _ot(c.actual1) || _ot(c.actual2); });
+  const join = function(a){ return a.map(_ot).filter(Boolean).join(' · '); };
+  const mapped = _outRowsOf(s).map(function(r){
+    if(t.k === 'heat') return { param: join([r.zone || 'Toàn bộ', r.proc, _ot(r.mat) || _outMat1(o)]), spec: join([r.hard, r.depth ? 'lớp ' + _ot(r.depth) : '']), tool: t.tool };
+    if(t.k === 'surf') return { param: join([r.proc, r.zone]), spec: join([r.thick, r.spec]), tool: t.tool };
+    if(t.k === 'weld') return { param: join([r.zone, r.proc]), spec: join([r.ndt, r.filler]), tool: t.tool };
+    if(t.k === 'bal') return { param: join([r.zone || 'Rotor', r.planes ? 'cân bằng ' + _ot(r.planes) + ' mặt' : '']), spec: join([r.grade, r.rpm ? _ot(r.rpm) + (/v\/?p|rpm/i.test(r.rpm) ? '' : ' v/p') : '']), tool: t.tool };
+    return { param: _ot(r.req), spec: _ot(r.val), tool: '' };
+  });
+  return keep.concat(mapped);
+}
+
 /* ===== THEO DÕI GỬI / NHẬN GIA CÔNG NGOÀI — tự tạo khi xuất phiếu gia công ngoài (30-10-2026) =====
    Xuất phiếu gia công ngoài → mỗi NCC có 1 dòng ở tab Outsource:
    ngày gửi (dự kiến = ngày bắt đầu công đoạn), hẹn nhận lại (= "Giao lại trước" trên phiếu). Khi hàng về, điều phối
    bấm "📥 Nhận về" ghi ngày + kết quả kiểm nhận → tab tự tính NCC nào hay trễ / hay làm hỏng.
-   In lại phiếu KHÔNG tạo dòng trùng: chỉ cập nhật công đoạn & hạn (nếu điều phối chưa tự sửa hạn).
-   NCC chưa chọn → chưa tạo dòng (chọn NCC rồi in lại). Chỉ quyền Điều phối / Quản lý mới tạo. */
+   Xuất lại phiếu KHÔNG tạo dòng trùng: chỉ cập nhật công đoạn & hạn (nếu điều phối chưa tự sửa hạn).
+   NCC chưa chọn → chưa tạo dòng. Chỉ quyền Điều phối / Quản lý mới tạo. */
 var _outReqPrinted = false;   // xuất phiếu từ form đơn đang sửa → [NCC đã xuất]; lưu đơn xong tạo/cập nhật dòng theo dõi cho đúng các NCC đó
 function outsourceTrack(o, noSave, opts){
   const res = { created: [], updated: [], removed: 0, unknown: 0 };
@@ -10172,7 +10704,6 @@ function outTrackAfterPrint(o, noSave, opts){
     if(parts.length) outToast('📤 Theo dõi gửi/nhận — tab <b>Outsource</b>: ' + parts.join(' · '));
   }catch(e){ console.error('[dhp] theo dõi outsource', e); }
 }
-
 // gọi trong saveOrder(): đơn vừa lưu có phiếu đã xuất từ form → tạo/cập nhật dòng theo dõi của đúng các NCC đã xuất
 function outAfterOrderSaved(id){
   const ks = Array.isArray(_outReqPrinted) ? _outReqPrinted.slice() : null;
@@ -10269,6 +10800,7 @@ function renderOutsource(){
       }
     </div>`;
 }
+
 // số lô đang TRỄ HẸN ở NCC → chấm đỏ trên tab Outsource
 function outTabBadge(){
   const tab = document.querySelector('.tab[data-tab="outsource"]'); if(!tab) return;

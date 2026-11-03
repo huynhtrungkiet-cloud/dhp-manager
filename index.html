@@ -3703,25 +3703,30 @@ function estimateAudit(o){
     miss.push('Chưa khai CÔNG ĐOẠN nào — vào Sửa đơn → "Chuỗi công đoạn", hoặc thêm chi tiết con rồi khai công đoạn cho từng chi tiết.');
     return {ok:false, hours:0, nStage:0, missing:miss};
   }
-  let hours=0; const noH=[], noWho=[], noStart=[];
+  let hours=0; const noH=[], noWho=[], noStart=[], noBack=[];
   all.forEach(x=>{
     const s=x.s;
     const tag=(s.code||'?')+' '+(s.name||'')+(x.it?' ▦'+truncate(x.it,14):'');
     const h=(s.hours!=null&&s.hours!=='')?(parseFloat(s.hours)||0):((parseFloat(s.plannedDays)||0)*HOURS_PER_DAY);
-    if(!(h>0)) noH.push(tag); else hours+=h;
+    // 03-11-2026: công đoạn GIA CÔNG NGOÀI — NCC tự lo người + giờ → không đòi giờ, chỉ cần ngày gửi → NHẬN VỀ
+    const ox=outStageIsOut(o, s);
+    if(ox){ if(h>0) hours+=h; else if(!s.endDate) noBack.push(tag); }
+    else if(!(h>0)) noH.push(tag); else hours+=h;
     if(!s.assignee && !(s.location||'').trim()) noWho.push(tag);
     if(!s.startDate) noStart.push(tag);
   });
   if(noH.length)     miss.push('Thiếu SỐ GIỜ kế hoạch: '+noH.join(' · '));
+  if(noBack.length)  miss.push('Gia công ngoài thiếu NGÀY NHẬN VỀ: '+noBack.join(' · '));
   if(noWho.length)   miss.push('Thiếu NGƯỜI LÀM hoặc NƠI LÀM: '+noWho.join(' · '));
-  if(noStart.length) miss.push('Thiếu NGÀY BẮT ĐẦU: '+noStart.join(' · '));
+  if(noStart.length) miss.push('Thiếu NGÀY BẮT ĐẦU (gia công ngoài: ngày gửi): '+noStart.join(' · '));
   return {ok:miss.length===0, hours, nStage:all.length, missing:miss};
 }
 function estimateBlockMsg(o,au){
   return '⛔ KHÔNG thể chuyển đơn '+(o.code||'')+' sang "5. Đang gia công".\n\n'
     + 'Chưa khai đủ KHỐI LƯỢNG CÔNG VIỆC (estimate) — app không tính được % và ngày dự kiến giao:\n\n— '
     + au.missing.join('\n— ')
-    + '\n\nMở "Sửa" đơn này → khai giờ / người làm / ngày bắt đầu cho từng công đoạn rồi lưu lại.';
+    + '\n\nMở "Sửa" đơn này → khai giờ / người làm / ngày bắt đầu cho từng công đoạn rồi lưu lại.'
+    + '\n(Công đoạn gia công ngoài KHÔNG cần giờ / người làm — chỉ cần NCC ở ô "Ở đâu" + ngày gửi → nhận về.)';
 }
 // Ngày xong dự kiến khi CHƯA khai ngày bắt đầu: dàn phần giờ còn lại từ hôm nay, bỏ Chủ nhật
 function autoPlanFinish(o){
@@ -8470,9 +8475,10 @@ var RPT = (function(){
       for (let i = 1; i < hs.length; i++) if (hs[i] === 'new' && ['done_waiting','delivered','qc','in_production'].includes(hs[i - 1])){ e.push(['dieu_phoi', 'Trạng thái bị lùi về "Mới nhận"']); break; }
       if (r.status === 'delivered' && r.sts.some(x => !stDone(x.s))) e.push(['dieu_phoi', 'Đã giao nhưng còn công đoạn chưa báo xong']);
       r.sts.forEach(({s}) => {
-        if (!stH(s)) e.push(['dieu_phoi', 'Công đoạn thiếu giờ']);
+        const _ox = (typeof outQuick === 'function') ? outQuick(s) : '';   // gia công ngoài: NCC tự lo giờ → cần ngày gửi → nhận về
+        if (!stH(s) && !(_ox && s.endDate)) e.push(['dieu_phoi', _ox ? 'Gia công ngoài thiếu ngày nhận về' : 'Công đoạn thiếu giờ']);
         if (s.assignee && s.location && isPartner(s.assignee) && !norm(s.location).includes(norm(name(s.assignee))) && !norm(name(s.assignee)).includes(norm(s.location))) e.push(['dieu_phoi', 'Người làm và nơi làm không khớp']);
-        if (!['delivered','done_waiting','hold'].includes(r.status) && !stDone(s) && !(s.assignee && s.startDate)) e.push(['dieu_phoi', 'Công đoạn chưa có người hoặc ngày']);
+        if (!['delivered','done_waiting','hold'].includes(r.status) && !stDone(s) && !((s.assignee || _ox) && s.startDate)) e.push(['dieu_phoi', 'Công đoạn chưa có người hoặc ngày']);
         if (stDone(s)) (s.checks || []).forEach(c => { if (c && c.pass === 'pass' && !String(c.actual1 || '').trim() && String(c.param || '').trim()) e.push(['tho:' + (s.assignee || '?'), 'Báo "Đạt" nhưng không ghi số đo']); });
       });
       return e;
@@ -10017,8 +10023,14 @@ function outStageMissing(inf, o){
   if(!inf.partner) miss.push('nhà cung cấp');
   const t = OUT_TYPE_BY[outTypeOf(inf.s)];
   if(!t.ok(inf.s, o || {})) miss.push(t.miss);
-  if(!stageEndDate(inf.s)) miss.push('ngày gửi → nhận về');
+  if(!_outHasDates(inf.s)) miss.push('ngày gửi → nhận về');
   return miss;
+}
+// ngày gửi + ngày NHẬN VỀ (dữ liệu cũ có giờ thì vẫn tính được ngày nhận) — gia công ngoài không cần giờ
+function _outHasDates(s){ return !!(s && s.startDate && (s.endDate || parseFloat(s.hours) > 0)); }
+// công đoạn có làm ngoài không (đơn đủ thông tin thì xét cả "chi tiết / cả đơn = Outsource")
+function outStageIsOut(o, s){
+  try{ return !!(outQuick(s) || (o && (o.id || o.assignment) ? _outInfoOf(o, s) : null)); }catch(e){ return false; }
 }
 function outAllInfos(o){
   const out = [];
@@ -10178,7 +10190,8 @@ function outStageBlockHtml(i){
       + (inf.warn ? '<span style="color:#b91c1c;width:100%">⚠ ' + esc(inf.warn) + '</span>' : '')
       + '</div>';
     h += t.cols ? _outReqEditorHtml(i, s, t, o)
-      : '<div class="small muted" style="margin-top:4px">Ghi kích thước cần gia công + dung sai ở bảng 📐 bên dưới — in lên phiếu gửi NCC. NCC tự lo người làm.</div>';
+      : '<div class="small muted" style="margin-top:4px">Ghi kích thước cần gia công + dung sai ở bảng 📐 bên dưới — in lên phiếu gửi NCC.</div>';
+    h += '<div class="small" style="margin-top:3px;color:#0e7490">⏱ Gia công ngoài <b>không cần khai giờ / người làm</b> (NCC tự lo) — chỉ cần ngày <b>gửi → nhận về</b> ở trên; app tính tiến độ & cổng "Đang gia công" theo ngày đó.</div>';
     h += _outImgsEditorHtml(i, s);
     return h + '</div>';
   }catch(e){ console.error('[dhp] khối gia công ngoài', e); return ''; }

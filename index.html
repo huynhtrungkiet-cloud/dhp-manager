@@ -87,6 +87,12 @@ if(typeof supabase==="undefined"){document.write('<scr'+'ipt src="https://cdn.js
   .small{font-size:11.5px;}
   .empty{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
   .badge-out{font-size:10px;font-weight:800;color:#fff;background:#0EA5E9;border-radius:5px;padding:2px 6px;margin-left:6px;}
+  /* Mã báo giá / mã đơn hàng (20-11-2026) */
+  .ref-box{border:1.5px solid #99f6e4;background:#f0fdfa;border-radius:10px;padding:10px 12px;margin-bottom:12px;}
+  .ref-box.miss{border-color:#fca5a5;background:#fff1f2;}
+  .ref-miss{display:inline-block;font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:1px 6px;white-space:nowrap;}
+  .ref-q{font-weight:700;color:#0f766e;white-space:nowrap;font-size:11.5px;}
+  .ref-p{font-size:10.5px;color:var(--muted);white-space:nowrap;}
   .footer-note{margin-top:40px;padding:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.6;}
   .actions a{cursor:pointer;color:var(--brand);font-weight:700;font-size:12px;margin-right:10px;}
   .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11.5px;color:var(--ink);margin-bottom:6px;}
@@ -455,6 +461,26 @@ function gateCheck(){
   </div>
 </div>
 
+<div class="modal-bg" id="modalRefBulk">
+  <div class="modal wide" style="max-width:980px">
+    <h3>🏷 Gắn Mã báo giá / Mã đơn hàng hàng loạt</h3>
+    <div class="small muted" style="margin-bottom:6px">Mỗi dòng 1 đơn: <b>mã đơn</b> · <b>mã báo giá</b> · <b>mã đơn hàng / PO</b> (PO có thể bỏ trống). Phân cách bằng Tab, dấu phẩy, chấm phẩy hoặc khoảng trắng — dán thẳng 2–3 cột từ Excel được.<br>Ví dụ: <code>254	BGDHP2026.03553</code> · <code>247, BGDHP2026.03210, 4501464721</code> · <code>255 2026.3593</code></div>
+    <textarea id="refBulkRaw" rows="9" style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px" placeholder="254	BGDHP2026.03553
+253	BGDHP2026.03565
+247	BGDHP2026.03210	4501464721"></textarea>
+    <div class="toolbar" style="margin-top:8px">
+      <button type="button" onclick="refBulkPreview()">🔎 Xem trước</button>
+      <label class="small" style="display:inline-flex;align-items:center;gap:5px;font-weight:600"><input type="checkbox" id="refBulkOverwrite" style="width:auto" onchange="refBulkPreview()"> Ghi đè mã đã có</label>
+      <span id="refBulkStat" class="small muted" style="margin-left:auto"></span>
+    </div>
+    <div id="refBulkPrev" style="max-height:46vh;overflow:auto;margin-top:6px"></div>
+    <div class="toolbar" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <button id="refBulkApplyBtn" onclick="refBulkApply()" disabled>✓ Áp dụng</button>
+      <button class="ghost" onclick="closeModal('modalRefBulk')" style="margin-left:auto">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modalQuick">
   <div class="modal wide" style="max-width:1000px">
     <h3>⚡ Tạo đơn nhanh <span class="muted small" style="font-weight:400">— dán text / mã SKU / nạp file → app dựng sẵn chi tiết con, công đoạn và giờ định mức</span></h3>
@@ -470,6 +496,15 @@ function gateCheck(){
     <div class="row2">
       <div class="field"><label>Mã đơn (tự đặt hoặc để trống để tự sinh)</label><input id="ord_code" placeholder="VD: CK368-0142"></div>
       <div class="field"><label>Khách hàng / Công ty</label><input id="ord_company" placeholder="Tên công ty khách hàng"></div>
+    </div>
+    <div id="ord_ref_box" class="ref-box">
+      <div class="row2" style="margin:0">
+        <div class="field" style="margin:0"><label>📄 Mã báo giá <span class="muted small">(BGDHP + năm + số — gõ tắt “2026.3553” cũng được)</span></label>
+          <input id="ord_quote" placeholder="VD: BGDHP2026.03553" autocomplete="off" onchange="this.value=normQuoteNo(this.value);ordRefHint()" oninput="ordRefHint()"></div>
+        <div class="field" style="margin:0"><label>🧾 Mã đơn hàng / PO khách <span class="muted small">(số đơn đặt hàng, PO…)</span></label>
+          <input id="ord_po" placeholder="VD: 4501065573 · 78/ĐĐH-2026" autocomplete="off" oninput="ordRefHint()"></div>
+      </div>
+      <div id="ord_ref_hint" class="small" style="margin-top:5px"></div>
     </div>
     <div class="field"><label>Tên hàng / sản phẩm</label><textarea id="ord_name" rows="2" placeholder="Tên hàng, mô tả ngắn"></textarea></div>
     <div class="field">
@@ -1262,6 +1297,7 @@ const I18N = {
   tab_data:    {vi:'Dữ liệu & Đồng bộ', en:'Data & Sync'},
   /* ---- Bảng đơn hàng ---- */
   th_code:     {vi:'Mã đơn', en:'Order code'},
+  th_quote:    {vi:'Mã báo giá / PO', en:'Quotation / PO'},
   th_name:     {vi:'Tên hàng', en:'Product'},
   th_customer: {vi:'Khách hàng', en:'Customer'},
   th_due:      {vi:'Hạn KH', en:'Due date'},
@@ -1271,7 +1307,7 @@ const I18N = {
   th_assign:   {vi:'Thực hiện', en:'Executed by'},
   th_progress: {vi:'Hạn / Dự báo', en:'Deadline / Forecast'},
   btn_addOrder:{vi:'＋ Thêm đơn hàng', en:'＋ Add order'},
-  search_ph:   {vi:'Tìm theo mã đơn / tên hàng / khách hàng...', en:'Search by code / product / customer...'},
+  search_ph:   {vi:'Tìm theo mã đơn / mã báo giá / PO / tên hàng / khách hàng...', en:'Search by code / quotation / PO / product / customer...'},
   f_allStatus: {vi:'— Tất cả trạng thái —', en:'— All statuses —'},
   f_allAssign: {vi:'— Nội bộ & Outsource —', en:'— Internal & Outsource —'},
   f_inhouse:   {vi:'Chỉ nội bộ', en:'Internal only'},
@@ -1914,7 +1950,66 @@ function deleteStaff(id){
 /* ============================================================
    ORDERS
    ============================================================ */
-let orderFilter = { statuses:[], q:'', assignment:'', sortKey:'dueDate', sortDir:'desc' };
+let orderFilter = { statuses:[], q:'', assignment:'', missingRef:false, sortKey:'dueDate', sortDir:'desc' };
+/* ===================================================================================
+   MÃ BÁO GIÁ / MÃ ĐƠN HÀNG (PO) — thêm 20-11-2026
+   • quoteNo : mã báo giá DHP, chuẩn BGDHP<năm>.<5 số>  (vd BGDHP2026.03553)
+   • poNo    : mã đơn hàng / PO / số đơn đặt hàng của khách (vd 4501065573, 78/ĐĐH-2026)
+   Mọi đơn có khách (tức mọi loại trừ "Nội bộ") phải có ÍT NHẤT 1 trong 2 mã.
+   =================================================================================== */
+const QUOTE_RE = /BG\s*DHP\s*(\d{4})\s*[.\-_\/ ]?\s*(\d{3,5})/i;
+function _quoteFmt(y, n){ return 'BGDHP' + y + '.' + String(n).padStart(5,'0'); }
+// Chuẩn hoá mã báo giá người dùng gõ: "bgdhp 2026.3553" / "2026.3553" / "3553" → BGDHP2026.03553
+function normQuoteNo(v){
+  const s = String(v||'').trim(); if(!s) return '';
+  let m = s.match(QUOTE_RE); if(m) return _quoteFmt(m[1], m[2]);
+  m = s.match(/^(20\d{2})\s*[.\-_\/ ]\s*(\d{3,5})$/); if(m) return _quoteFmt(m[1], m[2]);
+  m = s.match(/^(\d{3,5})$/); if(m) return _quoteFmt(String(todayStr()).slice(0,4), m[1]);
+  return s.toUpperCase().replace(/\s+/g,'');
+}
+function isQuoteNoStd(v){ return /^BGDHP\d{4}\.\d{5}$/.test(String(v||'')); }
+// Rút mã báo giá từ 1 đoạn text bất kỳ (tiêu đề mail "Gia công // BGDHP2026.03553 // ...", ghi chú...)
+function extractQuoteNo(txt){ const m = String(txt||'').match(QUOTE_RE); return m ? _quoteFmt(m[1], m[2]) : ''; }
+// Rút mã đơn hàng / PO khách: "theo Đơn đặt hàng số: 78/ĐĐH-2026", "PO 730376", "PO. 4240064177"
+function extractPoNo(txt){
+  const s = String(txt||'');
+  const re = /(?:đ[ơo]n\s*đ[ặa]t\s*h[àa]ng(?:\s*s[ốo])?|s[ốo]\s*đ[ơo]n\s*h[àa]ng|m[ãa]\s*đ[ơo]n\s*h[àa]ng|purchase\s*order|\bP\.?O\b\.?(?:\s*(?:no\.?|number))?)\s*[:#.]?\s*([A-Z0-9][A-Z0-9\/\-_.ĐđÐ]{2,30})/ig;
+  let m;
+  while((m = re.exec(s))){ const v = m[1].replace(/BGDHP.*$/i,'').replace(/[.\-_\/]+$/,''); if(/\d/.test(v) && !/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v)) return v; }
+  return '';
+}
+function orderNeedsRef(o){ return !!o && (o.orderType||'Gia công') !== 'Nội bộ'; }
+function orderHasRef(o){ return !!o && !!(String(o.quoteNo||'').trim() || String(o.poNo||'').trim()); }
+function orderMissingRef(o){ return orderNeedsRef(o) && !orderHasRef(o); }
+// Chuỗi " · BG: … · PO: …" để chèn cạnh mã đơn trên phiếu in
+function ordRefTxt(o){ const b=[]; if(o&&o.quoteNo) b.push('BG: '+o.quoteNo); if(o&&o.poNo) b.push('PO: '+o.poNo); return b.length ? ' · '+esc(b.join(' · ')) : ''; }
+// Ô "Mã báo giá / PO" trong bảng đơn
+function quoteCellHtml(o){
+  const q = String(o.quoteNo||'').trim(), p = String(o.poNo||'').trim();
+  if(!q && !p) return orderNeedsRef(o)
+    ? `<span class="ref-miss" title="Chưa có mã báo giá / mã đơn hàng — bấm Sửa để bổ sung">⚠ thiếu mã</span>`
+    : '<span class="muted" title="Đơn nội bộ — không cần mã">—</span>';
+  return (q ? `<div class="ref-q" title="Mã báo giá">${esc(q)}</div>` : '')
+       + (p ? `<div class="ref-p" title="Mã đơn hàng / PO khách">PO ${esc(p)}</div>` : '');
+}
+// Nhắc ngay trong form khi chưa có mã
+function ordRefHint(){
+  const box = document.getElementById('ord_ref_box'), h = document.getElementById('ord_ref_hint'); if(!box || !h) return;
+  const q = (document.getElementById('ord_quote')||{}).value||'', p = (document.getElementById('ord_po')||{}).value||'';
+  const type = (document.getElementById('ord_type')||{}).value||'Gia công';
+  const need = type !== 'Nội bộ';
+  const qn = normQuoteNo(q);
+  let msg = '';
+  if(need && !q.trim() && !p.trim()) msg = '<span style="color:#B91C1C;font-weight:700">⚠ Bắt buộc nhập ít nhất 1 mã: Mã báo giá HOẶC Mã đơn hàng / PO.</span>';
+  else if(q.trim() && !isQuoteNoStd(qn)) msg = '<span style="color:#B45309;font-weight:700">Mã báo giá chưa đúng mẫu BGDHP2026.03553 — kiểm tra lại.</span>';
+  else if(qn){
+    const id = (document.getElementById('ord_id')||{}).value||'';
+    const dup = (DATA.orders||[]).filter(o=>o && o.id!==id && o.quoteNo===qn).map(o=>o.code);
+    msg = dup.length ? '<span class="muted">ℹ Mã báo giá này cũng có ở đơn: '+esc(dup.slice(0,6).join(', '))+(dup.length>6?'…':'')+' (1 báo giá nhiều mục là bình thường).</span>' : '<span style="color:#0f766e;font-weight:700">✓ Đã có mã.</span>';
+  } else msg = need ? '<span style="color:#0f766e;font-weight:700">✓ Đã có mã đơn hàng / PO.</span>' : '<span class="muted">Đơn nội bộ — không bắt buộc mã.</span>';
+  h.innerHTML = msg;
+  box.classList.toggle('miss', need && !q.trim() && !p.trim());
+}
 // Bật/tắt 1 trạng thái trong bộ lọc (chọn được nhiều). Rỗng = xem tất cả.
 function toggleStatusFilter(k){
   const i = orderFilter.statuses.indexOf(k);
@@ -1928,6 +2023,7 @@ function orderSortValue(o, key){
   switch(key){
     case 'code': { const m=String(o.code||'').match(/(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):Infinity; } // sắp theo SỐ (hiểu hàng chục/trăm), không theo chữ
     case 'name': return (o.name||'').toLowerCase();
+    case 'quoteNo': return String(o.quoteNo||'').trim() ? String(o.quoteNo).toUpperCase() : (String(o.poNo||'').trim() ? '~'+String(o.poNo).toUpperCase() : '￿');  // chưa có mã → xuống cuối
     case 'company': return (o.company||'').toLowerCase();
     case 'dueDate': return (o.dueDate||'');
     case 'expFinish': return (expectedFinishDate(o)||'9999-99-99');
@@ -1999,6 +2095,7 @@ function ordersSectionHtml(){
       <button class="ghost sm" onclick="openCocPicker()" style="border-color:#4338ca;color:#4338ca;font-weight:700" title="Chọn đơn → xuất giấy chứng nhận xuất xưởng / phiếu đo (Word)">📜 Chứng nhận / Phiếu đo</button>
       ${canAdmin()?`<button class="ghost sm" onclick="openRptMonth()" style="border-color:#6366F1;color:#6366F1;font-weight:700" title="Báo cáo tháng (Word + soạn mail) · Sai phạm theo quý">📊 Báo cáo</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openZaloImport()" style="border-color:#0068ff;color:#0068ff;font-weight:700" title="Dán tin báo cáo của nhóm Zalo (#mã-đơn công-đoạn xong/bắt đầu/lỗi) → app cập nhật công đoạn, số đo, NCR">📥 Nhập từ Zalo</button>`:''}
+      ${canEdit()?`<button class="ghost sm" onclick="openRefBulk()" style="border-color:#0f766e;color:#0f766e;font-weight:700" title="Gắn Mã báo giá / Mã đơn hàng cho nhiều đơn một lúc — dán danh sách 'mã đơn  BGDHP…  PO'">🏷 Mã báo giá hàng loạt</button>`:''}
       ${canEdit()?`<button class="ghost sm" onclick="openIncident()" style="border-color:#0891b2;color:#0e7490" title="Ghi sự cố máy/bất khả kháng — tự đánh dấu đơn + tính giờ sửa">🛑 Ghi sự cố</button>`:''}
       <input id="ofQ" data-ord-search placeholder="${t('search_ph')}" style="min-width:240px" autocomplete="off"
              oninput="onOrderSearchInput(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onOrderSearchInput('');}"
@@ -2014,6 +2111,7 @@ function ordersSectionHtml(){
       <span class="small muted" style="font-weight:700;margin-right:2px">Lọc trạng thái (chọn nhiều):</span>
       <span class="chip" onclick="clearStatusFilter()" style="cursor:pointer;${orderFilter.statuses.length===0?'outline:2px solid var(--brand);font-weight:800':''}" title="Xem tất cả">⭐ Tất cả</span>
       ${ORDER_STATUSES.map(s=>{ const on=orderFilter.statuses.includes(s.k); return `<span class="chip" onclick="toggleStatusFilter('${s.k}')" style="cursor:pointer;${on?'outline:2px solid '+s.color+';font-weight:800;background:'+s.color+'1a':''}" title="${on?'Bỏ chọn':'Thêm vào lọc'}">${on?'✓ ':''}<i style="background:${s.color}"></i>${esc(stLabel(s))}</span>`; }).join('')}
+      ${(function(){ const n=(DATA.orders||[]).filter(orderMissingRef).length; const on=!!orderFilter.missingRef; if(!n && !on) return ''; return `<span class="chip" onclick="orderFilter.missingRef=!orderFilter.missingRef;refreshOrders()" style="cursor:pointer;color:#B91C1C;${on?'outline:2px solid #B91C1C;font-weight:800;background:#fef2f2':''}" title="Đơn chưa có Mã báo giá lẫn Mã đơn hàng / PO">${on?'✓ ':''}⚠ Thiếu mã BG/PO (${n})</span>`; })()}
     </div>
     <div class="card" data-ord-table style="overflow:auto;padding:0">
       ${ ordersTableOrEmptyHtml() }
@@ -2028,7 +2126,8 @@ function filteredOrders(){
   return DATA.orders.filter(o=>{
     if(orderFilter.statuses && orderFilter.statuses.length && !orderFilter.statuses.includes(o.status)) return false;
     if(orderFilter.assignment && (o.assignment||'inhouse')!==orderFilter.assignment) return false;
-    if(q && !((o.code||'')+' '+(o.name||'')+' '+(o.company||'')).toLowerCase().includes(q)) return false;
+    if(orderFilter.missingRef && !orderMissingRef(o)) return false;
+    if(q && !((o.code||'')+' '+(o.quoteNo||'')+' '+(o.poNo||'')+' '+(o.name||'')+' '+(o.company||'')).toLowerCase().includes(q)) return false;
     return true;
   }).sort((a,b)=>{
     const key = orderFilter.sortKey||'dueDate', dir = orderFilter.sortDir||'desc';
@@ -2044,7 +2143,7 @@ function ordersTable(){
   if(!rows.length) return '<div class="empty">Không có đơn nào khớp bộ lọc.</div>';
   const statusOpts = ORDER_STATUSES.map(s=>`<option value="${s.k}">${s.label.replace(/^\d+\.\s*/,'')}</option>`).join('');
   return `<table><thead><tr>
-    ${sortHeader('code',t('th_code'))}${sortHeader('name',t('th_name'))}${sortHeader('company',t('th_customer'))}${sortHeader('dueDate',t('th_due'))}${sortHeader('expFinish',t('th_expFinish'))}${sortHeader('status',t('th_status'))}<th>${t('th_pct')}</th>${sortHeader('assignment',t('th_assign'))}${sortHeader('progress',t('th_progress'))}<th></th>
+    ${sortHeader('code',t('th_code'))}${sortHeader('quoteNo',t('th_quote'))}${sortHeader('name',t('th_name'))}${sortHeader('company',t('th_customer'))}${sortHeader('dueDate',t('th_due'))}${sortHeader('expFinish',t('th_expFinish'))}${sortHeader('status',t('th_status'))}<th>${t('th_pct')}</th>${sortHeader('assignment',t('th_assign'))}${sortHeader('progress',t('th_progress'))}<th></th>
   </tr></thead><tbody>
   ${rows.map(o=>{ try{
     const dueRef = o.requestedDate || o.dueDate;
@@ -2071,6 +2170,7 @@ function ordersTable(){
     const rowBg = overdue ? 'background:#fff5f5' : urgentToday ? 'background:#fffbeb' : '';
     return `<tr style="${rowBg}">
       <td><b>${esc(o.code)}</b>${o.assignment==='outsource'?'<span class="badge-out" title="Gia công ngoài">'+esc(o.outsourcePartner||'OUT')+'</span>':''}</td>
+      <td>${quoteCellHtml(o)}</td>
       <td style="min-width:220px;white-space:normal;word-break:break-word">${(o.orderType&&o.orderType!=='Gia công')?`<span style="display:inline-block;font-size:9px;font-weight:800;color:#fff;background:#6366F1;border-radius:4px;padding:1px 5px;margin-right:5px">${esc(o.orderType)}</span>`:''}${esc(o.name)}${(function(){
         let bits=[];
         if(o.items&&o.items.length) bits.push(`<a onclick="event.stopPropagation();toggleItemsRow('${o.id}',this)" data-lbl="${o.items.length} ${t('lb_detail')}" style="cursor:pointer;font-size:10px;font-weight:700;color:#6366F1" title="Thu gọn / xổ bảng chi tiết">▼ ${o.items.length} ${t('lb_detail')}</a>`);
@@ -2113,7 +2213,7 @@ function ordersTable(){
     </tr>${itemsSubRow(o, rowBg)}`;
   }catch(err){
     console.error('Lỗi hiển thị đơn', o && o.code, err);
-    return `<tr style="background:#fff5f5"><td><b>${esc((o&&o.code)||'?')}</b></td><td colspan="7" style="color:var(--st-late);font-size:11px">⚠ Đơn này có dữ liệu lỗi nên tạm bỏ qua hiển thị (${esc(err.message)}). Bấm Sửa để kiểm tra.</td><td class="actions"><a onclick="openOrderModal('${o&&o.id}')">Sửa</a><a onclick="deleteOrder('${o&&o.id}')" style="color:var(--st-late)">Xóa</a></td></tr>`;
+    return `<tr style="background:#fff5f5"><td><b>${esc((o&&o.code)||'?')}</b></td><td colspan="8" style="color:var(--st-late);font-size:11px">⚠ Đơn này có dữ liệu lỗi nên tạm bỏ qua hiển thị (${esc(err.message)}). Bấm Sửa để kiểm tra.</td><td class="actions"><a onclick="openOrderModal('${o&&o.id}')">Sửa</a><a onclick="deleteOrder('${o&&o.id}')" style="color:var(--st-late)">Xóa</a></td></tr>`;
   } }).join('')}
   </tbody></table>`;
 }
@@ -2961,6 +3061,8 @@ function openOrderView(id){
   document.getElementById('ord_view_body').innerHTML = `
     ${orderProgressBlockHtml(o)}
     <table style="font-size:12.5px;border-collapse:collapse;width:100%">
+      ${row('Mã báo giá', o.quoteNo?`<b style="color:#0f766e">${esc(o.quoteNo)}</b>`:(orderMissingRef(o)?'<span class="ref-miss">⚠ thiếu mã báo giá / PO</span>':''))}
+      ${row('Mã đơn hàng / PO', o.poNo?esc(o.poNo):'')}
       ${row('Tên hàng', esc(o.name||''))}
       ${row('Mã SP (Coding)', o.productSku?`<b style="color:#0EA5E9">${esc(o.productSku)}</b>${(function(){const im=productImageBySku(o.productSku);return im?` <img src="${esc(im)}" style="height:40px;max-width:70px;object-fit:contain;vertical-align:middle;border:1px solid var(--line);border-radius:5px;margin-left:6px">`:'';})()}`:'')}
       ${row('Khách hàng', esc(o.company||''))}
@@ -3117,7 +3219,7 @@ function printIntakeSheet(id){
   const blank=Array.from({length:6}).map((_,i)=>`<tr><td>${i+1}</td><td></td><td></td><td></td></tr>`).join('');
   const body=`${docHeader('PHIẾU KIỂM TRA ĐẦU VÀO (CỔNG G0)')}
     <h1 style="text-align:center;margin-top:8px">Phiếu kiểm tra đầu vào</h1>
-    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:110px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}${ordRefTxt(o)}</td><th style="width:110px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn giao</th><td>${ref?fmtDate(ref):''}</td></tr>
     <tr><th>Tham chiếu catalogue</th><td colspan="3">${esc(k.ref||'')}</td></tr></table>
@@ -3146,7 +3248,7 @@ function printQcSheet(id){
   const res=o.qcResult==='pass'?'<span class="pass">✓ ĐẠT</span>':o.qcResult==='fail'?'<span class="fail">✕ KHÔNG ĐẠT</span>':'— Chưa kết luận —';
   const body=`${docHeader('PHIẾU KIỂM TRA CHẤT LƯỢNG CUỐI (FINAL INSPECTION REPORT)')}
     <h1 style="text-align:center;margin-top:10px">Phiếu kiểm tra chất lượng cuối</h1>
-    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}${ordRefTxt(o)}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn KH</th><td>${ref?fmtDate(ref):''}</td></tr>
     <tr><th>Số bản vẽ / Rev</th><td>${esc((o.intake&&o.intake.note)||'')||'____________'}</td><th>Ngày kiểm</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td></tr></table>
@@ -3176,7 +3278,7 @@ function printWorkOrder(id){
     : Array.from({length:6}).map((_,i)=>`<tr><td>${i+1}</td><td></td><td></td><td></td><td></td></tr>`).join('');
   const body=`${docHeader('PHIẾU GIA CÔNG & ĐO ĐẠC')}
     <h1 style="text-align:center;margin-top:10px">Phiếu gia công</h1>${impBannerHtml(o)}
-    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}${ordRefTxt(o)}</td><th style="width:120px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Hạn giao</th><td>${ref?fmtDate(ref):''}</td></tr></table>
     <h2>Các công đoạn — thợ ghi giờ thực tế & ngày xong</h2>
@@ -3207,7 +3309,7 @@ function stageSheetHtml(o, s, itName){
     <td class="${c.pass==='pass'?'pass':c.pass==='fail'?'fail':''}">${c.pass==='pass'?'Đạt':c.pass==='fail'?'Không':''}</td></tr>`).join('');
   return `${docHeader('PHIẾU ĐO ĐẠC CÔNG ĐOẠN')}
     <h1 style="text-align:center;margin-top:8px">Phiếu đo đạc — Công đoạn ${esc(s.code||'')} ${esc(s.name||'')}</h1>${impBannerHtml(o)}
-    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:110px">Khách</th><td>${esc(o.company||'')}</td></tr>
+    <table><tr><th style="width:120px">Mã đơn</th><td>${esc(o.code||'')}${ordRefTxt(o)}</td><th style="width:110px">Khách</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên hàng</th><td colspan="3">${esc(o.name||'')}${itName?' — chi tiết: '+esc(itName):''}</td></tr>
     ${outSheetWhoRows(o,s,_ox,ref)}</table>
     <h2>${_ox?'Kích thước / yêu cầu kiểm nhận khi NCC giao lại':'Kích thước cần kiểm — thợ tự đo & ghi'}</h2>
@@ -3250,7 +3352,7 @@ function printCertificate(id){
   const body=`${docHeader('CHỨNG NHẬN XUẤT XƯỞNG')}
     <h1 style="text-align:center;margin-top:16px">Giấy chứng nhận xuất xưởng</h1>
     <div class="big pass">✓ ĐẠT YÊU CẦU — ĐƯỢC PHÉP XUẤT XƯỞNG</div>
-    <table><tr><th style="width:140px">Mã đơn</th><td>${esc(o.code||'')}</td><th style="width:140px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
+    <table><tr><th style="width:140px">Mã đơn</th><td>${esc(o.code||'')}${ordRefTxt(o)}</td><th style="width:140px">Khách hàng</th><td>${esc(o.company||'')}</td></tr>
     <tr><th>Tên sản phẩm</th><td colspan="3">${esc(o.name||'')}${o.productSku?' · <b>Mã SP:</b> '+esc(o.productSku):''}</td></tr>
     <tr><th>Số lượng</th><td>${o.qty!=null?esc(String(o.qty)):''} ${esc(o.unit||'')}</td><th>Người kiểm QC</th><td>${esc(o.inspector||'')}</td></tr>
     <tr><th>Ngày nghiệm thu</th><td>${o.inspectDate?fmtDate(o.inspectDate):fmtDate(todayStr())}</td><th>Số kích thước đạt</th><td>${(function(){const all=allOrderChecks(o).concat((o.measures||[]).filter(Boolean).map(m=>({pass:m.pass})));return all.filter(c=>c.pass==='pass').length+'/'+all.length;})()}</td></tr></table>
@@ -3468,6 +3570,8 @@ function openOrderModal(id){
     _ordFormBase = o ? JSON.parse(JSON.stringify(o)) : null;   // 19-10-2026: bản gốc để gộp khi lưu
     document.getElementById('orderModalTitle').textContent = 'Sửa đơn hàng — '+o.code;
     document.getElementById('ord_code').value = o.code||'';
+    document.getElementById('ord_quote').value = o.quoteNo||'';
+    document.getElementById('ord_po').value = o.poNo||'';
     document.getElementById('ord_company').value = o.company||'';
     document.getElementById('ord_name').value = o.name||'';
     document.getElementById('ord_product').value = o.productSku||''; onPickProduct();
@@ -3511,7 +3615,7 @@ function openOrderModal(id){
     impLoadForm(null);
     _ordFormBase = null;
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
-    ['ord_code','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
+    ['ord_code','ord_quote','ord_po','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
     onPickProduct();
     editingItems = [];
     editingAtts = [];
@@ -3540,11 +3644,13 @@ function openOrderModal(id){
   toggleTargetField();
   updateFormGates();
   updateG0Days();
+  ordRefHint();
   openModal('modalOrder');
 }
 function toggleTargetField(){
   const f=document.getElementById('ord_target_field');
   if(f) f.style.display = (document.getElementById('ord_type').value==='Nội bộ') ? 'block' : 'none';
+  try{ ordRefHint(); }catch(e){}
   updateFormGates();   // áp mode đơn nội bộ (ẩn/hiện G1-G2)
 }
 function toggleOutsourceField(){
@@ -3557,6 +3663,16 @@ function saveOrder(){
   const name = document.getElementById('ord_name').value.trim();
   if(!name){ alert('Vui lòng nhập tên hàng / sản phẩm.'); return; }
   let code = document.getElementById('ord_code').value.trim();
+  // 20-11-2026: BẮT BUỘC có Mã báo giá HOẶC Mã đơn hàng / PO (trừ đơn Nội bộ)
+  const quoteNo = normQuoteNo(document.getElementById('ord_quote').value);
+  const poNo = document.getElementById('ord_po').value.trim();
+  document.getElementById('ord_quote').value = quoteNo;
+  if(document.getElementById('ord_type').value!=='Nội bộ' && !quoteNo && !poNo){
+    alert('⛔ Chưa có MÃ BÁO GIÁ hoặc MÃ ĐƠN HÀNG / PO.\n\nNhập ít nhất 1 trong 2 ô ở đầu form:\n• Mã báo giá — vd BGDHP2026.03553\n• Mã đơn hàng / PO khách — vd 4501065573\n\n(Chỉ đơn loại "Nội bộ" mới được để trống.)');
+    ordRefHint(); const qi=document.getElementById('ord_quote'); if(qi) qi.focus();
+    return;
+  }
+  if(quoteNo && !isQuoteNoStd(quoteNo) && !confirm('Mã báo giá "'+quoteNo+'" không đúng mẫu BGDHP2026.03553.\n\nVẫn lưu như vậy?')) return;
   const intake = collectG0();
   const qcResult = document.getElementById('ord_qc_result').value;
   const qcNote = document.getElementById('ord_qc_note').value.trim();
@@ -3581,6 +3697,8 @@ function saveOrder(){
   const rec = {
     id: id || uid('DH', 'order'),
     code: code || nextOrderCodeFor(document.getElementById('ord_type').value),
+    quoteNo: quoteNo,
+    poNo: poNo,
     company: document.getElementById('ord_company').value.trim(),
     name,
     orderType: document.getElementById('ord_type').value,
@@ -4062,7 +4180,7 @@ function itemsSubRow(o, rowBg){
     </tr>`;
   }).join('');
   const topAll = mixAll[0];
-  return `<tr id="sub_${o.id}" style="${rowBg}"><td></td><td colspan="9" style="padding:4px 10px 10px;background:#fbfcfe">
+  return `<tr id="sub_${o.id}" style="${rowBg}"><td></td><td colspan="10" style="padding:4px 10px 10px;background:#fbfcfe">
     <div style="border-left:3px solid #6366F1;padding-left:10px">
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin:0">
         <thead><tr style="color:#6366F1;font-weight:800;font-size:10px;text-align:left;border-bottom:1px solid #dfe5ee">
@@ -4183,17 +4301,30 @@ const QI_LABELS=[
   {re:/^(thuong\s*hieu|thương\s*hiệu|brand|h[aã]ng\s*sx|hãng)\s*[:\-]\s*(.+)$/i, f:'brand'},
   {re:/^(han\s*giao|hạn\s*giao|ngay\s*giao|ngày\s*giao|giao\s*hang|giao\s*hàng|deadline|due)\s*[:\-]\s*(.+)$/i, f:'due'},
   {re:/^(ngay\s*nhan|ngày\s*nhận|received)\s*[:\-]\s*(.+)$/i, f:'received'},
-  {re:/^(ma\s*don|mã\s*đơn|so\s*don|số\s*đơn|po|order)\s*[:\-]\s*(.+)$/i, f:'code'},
+  {re:/^(m[aã]\s*b[aá]o\s*gi[aá]|ma\s*bao\s*gia|b[aá]o\s*gi[aá]\s*s[oố]|quotation(?:\s*no\.?)?|bg)\s*[:\-#]\s*(.+)$/i, f:'quoteNo'},
+  {re:/^(po|p\.o\.?|purchase\s*order|order\s*no\.?|m[aã]\s*đ[oơ]n\s*h[aà]ng|ma\s*don\s*hang|s[oố]\s*đ[oơ]n\s*h[aà]ng|so\s*don\s*hang|đ[oơ]n\s*đ[aặ]t\s*h[aà]ng(?:\s*s[oố])?|don\s*dat\s*hang(?:\s*so)?)\s*[:\-#]\s*(.+)$/i, f:'poNo'},
+  {re:/^(ma\s*don|mã\s*đơn|so\s*don|số\s*đơn|order)\s*[:\-]\s*(.+)$/i, f:'code'},
   {re:/^(sku|ma\s*sp|mã\s*sp|ma\s*san\s*pham|mã\s*sản\s*phẩm)\s*[:\-]\s*(.+)$/i, f:'sku'},
   {re:/^(ghi\s*chu|ghi\s*chú|note|luu\s*y|lưu\s*ý)\s*[:\-]\s*(.+)$/i, f:'note'}
 ];
 const QI_COMPANY=/(c[oô]ng\s*ty|cty|ctcp|tnhh|co\.,?\s*ltd|corp|jsc|corporation|company)/i;
 function parseOrderText(txt){
   const lines=String(txt||'').replace(/\r/g,'').split('\n').map(function(l){return l.trim();});
-  const o={company:'',name:'',qty:null,unit:'',material:'',brand:'',due:null,received:null,code:'',sku:'',note:'',items:[],warns:[]};
+  const o={company:'',name:'',qty:null,unit:'',material:'',brand:'',due:null,received:null,code:'',sku:'',note:'',quoteNo:'',poNo:'',items:[],warns:[]};
   const nameLines=[], bullets=[];
+  let subjCust='', subjProd='';
   lines.forEach(function(line){
     if(!line) return;
+    // Dòng tiêu đề mail kiểu "Gia công // BGDHP2026.03553 // NGUYỄN GIA // Khớp nối Loop 010" → lấy mã BG, khách, tên hàng
+    if(/\/\//.test(line) && QUOTE_RE.test(line)){
+      const parts=line.split('//').map(function(x){return x.trim();});
+      const bi=parts.findIndex(function(x){return QUOTE_RE.test(x);});
+      if(!o.quoteNo) o.quoteNo=extractQuoteNo(line);
+      if(!o.poNo){ const pp=extractPoNo(line); if(pp) o.poNo=pp; }
+      if(!subjCust && parts[bi+1]) subjCust=parts[bi+1];
+      if(!subjProd && parts.length>bi+2) subjProd=parts.slice(bi+2).join(' / ');
+      return;
+    }
     const b=line.match(/^[-+•*·▪]\s*(.+)$/) || line.match(/^\d{1,2}[.)]\s+(.+)$/);
     if(b){ bullets.push(b[1].trim()); return; }
     for(var i=0;i<QI_LABELS.length;i++){
@@ -4202,6 +4333,7 @@ function parseOrderText(txt){
         if(f==='qty'){ o.qty=qiNum(v); const u=v.match(QI_UNITS); if(u&&!o.unit) o.unit=u[1]; }
         else if(f==='due')       o.due=qiDate(v);
         else if(f==='received')  o.received=qiDate(v);
+        else if(f==='quoteNo')   { if(!o.quoteNo) o.quoteNo=normQuoteNo(v); }
         else if(!o[f])           o[f]=v;
         return;
       }
@@ -4209,8 +4341,10 @@ function parseOrderText(txt){
     if(!o.company && QI_COMPANY.test(line) && line.length<160){ o.company=line; return; }
     nameLines.push(line);
   });
+  if(!o.company && subjCust) o.company=subjCust;
   // Tên hàng = các dòng còn lại, giữ nguyên xuống dòng như anh em vẫn ghi
   if(!o.name) o.name=nameLines.join('\n').trim();
+  if(!o.name && subjProd) o.name=subjProd;
   else if(nameLines.length) o.name=(o.name+'\n'+nameLines.join('\n')).trim();
   // Bổ sung vật liệu / thương hiệu vào tên hàng nếu chưa có trong đó
   const nlow=o.name.toLowerCase();
@@ -4248,6 +4382,10 @@ function parseOrderText(txt){
   if(!o.name) o.warns.push('Chưa tách được TÊN HÀNG — gõ tay ở ô bên dưới.');
   if(!o.company) o.warns.push('Chưa tách được KHÁCH HÀNG — chọn/gõ ở ô bên dưới.');
   if(!o.due) o.warns.push('Chưa thấy HẠN GIAO trong đoạn text — điền tay.');
+  // Mã báo giá / PO nằm lẫn trong text (vd "theo BGDHP2026.02317", "Đơn đặt hàng số 4501065573")
+  if(!o.quoteNo) o.quoteNo=extractQuoteNo(txt);
+  if(!o.poNo) o.poNo=extractPoNo(txt);
+  if(!o.quoteNo && !o.poNo) o.warns.push('Chưa thấy MÃ BÁO GIÁ / MÃ ĐƠN HÀNG — bắt buộc nhập 1 trong 2 ở ô bên dưới.');
   return o;
 }
 
@@ -4482,6 +4620,8 @@ function renderQuickIntake(){
       +'<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;margin-bottom:8px">'
       +'<div class="row2" style="gap:8px"><div class="field" style="margin:0"><label>Khách hàng</label><input id="qiCompany" list="custDatalist" value="'+esc(p.company||'')+'"></div>'
       +'<div class="field" style="margin:0"><label>Hạn giao</label><input id="qiDue" type="date" value="'+esc(p.due||'')+'"></div></div>'
+      +'<div class="row2" style="gap:8px;margin-top:8px"><div class="field" style="margin:0"><label>📄 Mã báo giá <span class="muted small">(bắt buộc 1 trong 2)</span></label><input id="qiQuote" placeholder="BGDHP2026.03553" value="'+esc(p.quoteNo||'')+'" oninput="QI.parsed.quoteNo=this.value" onchange="this.value=normQuoteNo(this.value);QI.parsed.quoteNo=this.value" style="'+((p.quoteNo||p.poNo)?'':'border-color:#fca5a5;background:#fff1f2')+'"></div>'
+      +'<div class="field" style="margin:0"><label>🧾 Mã đơn hàng / PO khách</label><input id="qiPo" placeholder="4501065573" value="'+esc(p.poNo||'')+'" oninput="QI.parsed.poNo=this.value" style="'+((p.quoteNo||p.poNo)?'':'border-color:#fca5a5;background:#fff1f2')+'"></div></div>'
       +'<div class="field" style="margin:8px 0 0"><label>Tên hàng / sản phẩm</label><textarea id="qiName" rows="3" style="width:100%">'+esc(p.name||'')+'</textarea></div>'
       +'<div class="row3" style="gap:8px;margin-top:8px">'
       +'<div class="field" style="margin:0"><label>Số lượng</label><input id="qiQty" type="number" min="0" value="'+(p.qty!=null?p.qty:1)+'"></div>'
@@ -4525,6 +4665,9 @@ function qiCreate(openAfter){
   const name=String(g('qiName')||'').trim();
   if(!name){ alert('Chưa có TÊN HÀNG — điền vào ô "Tên hàng / sản phẩm".'); return; }
   const company=String(g('qiCompany')||'').trim();
+  const quoteNo=normQuoteNo(g('qiQuote')), poNo=String(g('qiPo')||'').trim();
+  if(!quoteNo && !poNo){ alert('⛔ Chưa có MÃ BÁO GIÁ hoặc MÃ ĐƠN HÀNG / PO.\nNhập ít nhất 1 trong 2 ô (vd BGDHP2026.03553) rồi bấm Tạo đơn lại.'); const e=document.getElementById('qiQuote'); if(e) e.focus(); return; }
+  if(quoteNo && !isQuoteNoStd(quoteNo) && !confirm('Mã báo giá "'+quoteNo+'" không đúng mẫu BGDHP2026.03553.\n\nVẫn tạo đơn?')) return;
   const due=g('qiDue')||null;
   const loc=String(g('qiLoc')||'').trim()||'CK368';
   const use=QI.items.filter(function(it){return it.use && String(it.name||'').trim();});
@@ -4556,6 +4699,7 @@ function qiCreate(openAfter){
   const rec={
     id: uid('DH','order'),
     code: nextOrderCodeFor('Gia công'),
+    quoteNo: quoteNo, poNo: poNo,
     company: company, name: name, orderType:'Gia công cơ khí', productSku: QI.sku||'',
     target:'', qty: parseFloat(g('qiQty'))||1, unit: String(g('qiUnit')||'Cái').trim(), priority:'Trung bình',
     receivedDate: todayStr(), requestedDate: due, dueDate: due,
@@ -5435,7 +5579,7 @@ function openCocDialog(orderId, mode){
   const def=cocDefaultSections(o), saved=o.coc||{};
   const n=cocParts(o).length;
   COC={o:o, mode:mode, cocNo:(o.cocNo||cocNextNo()), rev:(saved.rev||'00'), ngayCap:todayStr(),
-       duAn:(saved.duAn!=null?saved.duAn:(o.target||'')), po:(saved.po!=null?saved.po:(o.poNo||'')), phieuGiao:(saved.phieuGiao||''),
+       duAn:(saved.duAn!=null?saved.duAn:(o.target||'')), po:(saved.po!=null?saved.po:(o.poNo||o.quoteNo||'')), phieuGiao:(saved.phieuGiao||''),
        banVe:(saved.banVe||''), lot:(saved.lot||''), kieuCo:(saved.kieuCo||''), vl:(saved.vl!=null?saved.vl:cocOrderMaterial(o)),
        secOf:Array.from({length:n}, function(_,i){ return (saved.secOf&&saved.secOf[i]) ? saved.secOf[i].slice() : def.slice(); })};
   cocSetTitle();
@@ -5891,6 +6035,77 @@ function incRenderOrders(sel){ sel=sel||[]; const box=document.getElementById('i
     return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="incOrdCk" value="${o.id}" ${sel.includes(o.id)?'checked':''} style="width:auto"> <b>${esc(o.code||'')}</b> <span class="muted">${esc(truncate(o.name||'',34))}</span>${cur?` <span style="color:#0EA5E9;font-size:11px">📍${esc(truncate(cur,16))}</span>`:''}</label>`; }).join('')||'<span class="muted small">Không có đơn đang mở</span>';
 }
 function incPickStage(){ document.querySelectorAll('#inc_orders .incOrdCk').forEach(ck=>{ const o=(DATA.orders||[]).find(x=>x.id===ck.value); if(!o){ck.checked=false;return;} const g=orderProgressInfo(o); const cur=g.current; ck.checked=!!(cur && (/^A\d*$/i.test(cur.code||'') || /ti[eệ]n/i.test(cur.name||''))); }); }
+/* ---- 🏷 Gắn Mã báo giá / Mã đơn hàng hàng loạt (20-11-2026) ---- */
+let _refBulkPlan = [];
+function openRefBulk(){
+  if(!requireEdit()) return;
+  const ta = document.getElementById('refBulkRaw'); if(ta) ta.value = '';
+  _refBulkPlan = [];
+  document.getElementById('refBulkPrev').innerHTML = '<div class="small muted">Còn <b>'+(DATA.orders||[]).filter(orderMissingRef).length+'</b> đơn chưa có mã báo giá / PO. Dán danh sách rồi bấm “Xem trước”.</div>';
+  document.getElementById('refBulkStat').textContent = '';
+  document.getElementById('refBulkApplyBtn').disabled = true;
+  openModal('modalRefBulk');
+}
+function refBulkParse(raw){
+  const out = [];
+  String(raw||'').replace(/\r/g,'').split('\n').forEach(function(line){
+    line = line.trim(); if(!line) return;
+    const toks = (/[\t;,|]/.test(line) ? line.split(/[\t;,|]+/) : line.split(/\s+/)).map(function(t){ return t.trim(); }).filter(Boolean);
+    if(!toks.length) return;
+    const code = toks[0]; let quote = '', po = '';
+    toks.slice(1).forEach(function(t){
+      const q = extractQuoteNo(t) || (/^20\d{2}\s*\.\s*\d{3,5}$/.test(t) ? normQuoteNo(t) : '');
+      if(q && !quote){ quote = q; return; }
+      if(!po) po = t;
+    });
+    out.push({line:line, code:code, quote:quote, po:po});
+  });
+  return out;
+}
+function refBulkPreview(){
+  const raw = (document.getElementById('refBulkRaw')||{}).value||'';
+  const ow = !!(document.getElementById('refBulkOverwrite')||{}).checked;
+  const rows = refBulkParse(raw);
+  _refBulkPlan = [];
+  let nOk = 0, nMiss = 0, nKeep = 0;
+  const html = rows.map(function(r){
+    const key = String(r.code).trim().toLowerCase();
+    const os = (DATA.orders||[]).filter(function(o){ return o && String(o.code||'').trim().toLowerCase() === key; });
+    if(!os.length){ nMiss++; return '<tr style="background:#fff5f5"><td><b>'+esc(r.code)+'</b></td><td colspan="4" class="small" style="color:var(--st-late)">✕ Không tìm thấy đơn có mã này</td><td class="small muted">'+esc(r.line)+'</td></tr>'; }
+    return os.map(function(o){
+      const setQ = r.quote && (ow || !o.quoteNo) && r.quote !== o.quoteNo;
+      const setP = r.po && (ow || !o.poNo) && r.po !== o.poNo;
+      if(setQ || setP){ nOk++; _refBulkPlan.push({id:o.id, quoteNo: setQ ? r.quote : null, poNo: setP ? r.po : null}); }
+      else nKeep++;
+      const cell = function(cur, nw, set){ return set ? (cur ? '<s class="muted">'+esc(cur)+'</s> → ' : '')+'<b style="color:#0f766e">'+esc(nw)+'</b>' : (cur ? esc(cur) : (nw ? '<span class="muted">'+esc(nw)+' (giữ mã cũ)</span>' : '<span class="muted">—</span>')); };
+      return '<tr'+((setQ||setP)?'':' style="opacity:.55"')+'><td><b>'+esc(o.code)+'</b></td><td class="small">'+esc(truncate(o.company||'',28))+'</td><td class="small">'+esc(truncate(o.name||'',40))+'</td>'
+        +'<td class="small">'+cell(o.quoteNo, r.quote, setQ)+(r.quote && !isQuoteNoStd(r.quote) ? ' <span style="color:#B45309">⚠ sai mẫu</span>':'')+'</td>'
+        +'<td class="small">'+cell(o.poNo, r.po, setP)+'</td><td class="small">'+((setQ||setP)?'<span style="color:#0f766e;font-weight:700">sẽ cập nhật</span>':'<span class="muted">không đổi</span>')+'</td></tr>';
+    }).join('');
+  }).join('');
+  document.getElementById('refBulkPrev').innerHTML = rows.length
+    ? '<table style="width:100%;font-size:12px"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tên hàng</th><th>Mã báo giá</th><th>Mã đơn hàng / PO</th><th></th></tr></thead><tbody>'+html+'</tbody></table>'
+    : '<div class="small muted">Chưa có dòng nào.</div>';
+  document.getElementById('refBulkStat').textContent = nOk+' đơn sẽ cập nhật · '+nKeep+' không đổi · '+nMiss+' không tìm thấy';
+  const btn = document.getElementById('refBulkApplyBtn');
+  btn.disabled = !nOk; btn.textContent = '✓ Áp dụng '+nOk+' đơn';
+}
+function refBulkApply(){
+  if(!requireEdit()) return;
+  if(!_refBulkPlan.length){ alert('Chưa có gì để áp dụng — bấm “Xem trước” trước.'); return; }
+  if(!confirm('Ghi mã báo giá / mã đơn hàng cho '+_refBulkPlan.length+' đơn?')) return;
+  const now = new Date().toISOString(); let n = 0;
+  _refBulkPlan.forEach(function(p){
+    const o = (DATA.orders||[]).find(function(x){ return x && x.id === p.id; }); if(!o) return;
+    if(p.quoteNo != null) o.quoteNo = p.quoteNo;
+    if(p.poNo != null) o.poNo = p.poNo;
+    o.updatedAt = now; n++;
+  });
+  _refBulkPlan = [];
+  closeModal('modalRefBulk');
+  save();
+  alert('✓ Đã gắn mã cho '+n+' đơn. Còn '+(DATA.orders||[]).filter(orderMissingRef).length+' đơn chưa có mã.');
+}
 function openIncident(id){
   if(!requireEdit()) return;
   document.getElementById('inc_id').value=id||'';
@@ -7153,12 +7368,12 @@ function rebuildPartners(){
 // Xuất đơn hàng ra Excel (CSV có BOM — Excel/Google Sheets mở đúng tiếng Việt)
 function csvCell(v){ v=(v==null?'':String(v)); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
 function exportOrdersExcel(){
-  const head=['Mã đơn','Tên hàng','Khách hàng','Loại','SL','ĐVT','Ngày nhận','Hạn giao','Trạng thái','% HT','Thực hiện','Chuỗi công đoạn','Vật tư mua/phôi','Mục tiêu','Ghi chú'];
+  const head=['Mã đơn','Mã báo giá','Mã đơn hàng / PO','Tên hàng','Khách hàng','Loại','SL','ĐVT','Ngày nhận','Hạn giao','Trạng thái','% HT','Thực hiện','Chuỗi công đoạn','Vật tư mua/phôi','Mục tiêu','Ghi chú'];
   const rows=(DATA.orders||[]).slice().sort((a,b)=>orderSortValue(a,'code')-orderSortValue(b,'code')).map(o=>{
     const stagesTxt=(o.stages||[]).filter(Boolean).map(s=>(s.code||'')+' '+(s.name||'')+(s.assignee?'@'+staffName(s.assignee):'')+(stageState(s)==='done'?'✓':'')).join(' → ');
     const matTxt=(o.materials||[]).filter(Boolean).map(m=>(m.material||'')+(m.spec?' '+m.spec:'')+(m.qty?' ×'+m.qty+(m.unit?m.unit:''):'')).join('; ');
     const exec=o.assignment==='outsource'?('Outsource '+(o.outsourcePartner||'')):(o.assignment==='mixed'?'Hỗn hợp':'Nội bộ');
-    return [o.code,o.name,o.company,o.orderType||'',o.qty,o.unit,fmtDate(o.receivedDate),fmtDate(o.requestedDate||o.dueDate),stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''),orderOverallProgress(o)+'%',exec,stagesTxt,matTxt,o.target||'',o.note||''];
+    return [o.code,o.quoteNo||'',o.poNo||'',o.name,o.company,o.orderType||'',o.qty,o.unit,fmtDate(o.receivedDate),fmtDate(o.requestedDate||o.dueDate),stLabel(statusByKey(o.status)).replace(/^\d+\.\s*/,''),orderOverallProgress(o)+'%',exec,stagesTxt,matTxt,o.target||'',o.note||''];
   });
   const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
   const blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8'});
@@ -7239,6 +7454,8 @@ function importPaste(){
     const rec = {
       id: uid('DH','order'),
       code: stt ? ('CK368-'+stt) : uid('CK368','order'),
+      quoteNo: extractQuoteNo(line),
+      poNo: extractPoNo(line),
       company: (company||'').trim(),
       name: name.trim(),
       qty: parseFloat(qty)||null,

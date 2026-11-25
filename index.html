@@ -195,6 +195,7 @@ if(typeof supabase==="undefined"){document.write('<scr'+'ipt src="https://cdn.js
   .stk-kv td{padding:4px 0}
   .stk-toast{position:fixed;right:16px;bottom:64px;z-index:100000;background:#0f172a;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.45;max-width:440px;box-shadow:0 10px 30px rgba(15,23,42,.35);transition:opacity .4s;opacity:0;pointer-events:none}
   .stk-toast.ok{background:#166534} .stk-toast.err{background:#991b1b}
+  .stk-mailbar{position:fixed;left:16px;bottom:16px;z-index:100001;background:#fff;color:#0f172a;border:2px solid #15803d;border-radius:12px;padding:10px 12px;max-width:470px;font-size:13px;line-height:1.5;box-shadow:0 12px 32px rgba(15,23,42,.28);display:flex;gap:10px;align-items:flex-start}
   .dr-row{border:1px solid #e0e7ff;background:#fff;border-radius:9px;padding:8px 10px;margin-bottom:8px}
   .dr-g{display:grid;grid-template-columns:1.1fr 1.3fr 1.3fr .8fr auto;gap:8px;margin-bottom:6px}
   .dr-g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
@@ -1083,16 +1084,23 @@ function gateCheck(){
 <div class="modal-bg" id="modalStkMail">
   <div class="modal">
     <h3>✉ Thư báo kho tự động</h3>
-    <div class="small" style="margin:-6px 0 10px;line-height:1.6">Người nhận: <b id="skm_to"></b> <span class="muted">(cố định ở máy chủ — muốn đổi phải đổi KHO_MAIL_TO trong Supabase → Edge Functions → Secrets)</span></div>
+    <div class="small" style="margin:-6px 0 10px;line-height:1.6">Người nhận: <b id="skm_to"></b></div>
+    <div class="field"><label>Cách gửi</label>
+      <select id="skm_mode">
+        <option value="webmail">📧 Mở thư SOẠN SẴN trong webmail công ty — người báo kho chỉ bấm Gửi (khuyên dùng)</option>
+        <option value="mailto">💻 Mở thư soạn sẵn bằng Outlook / ứng dụng mail trên máy</option>
+        <option value="auto">🤖 Máy chủ tự gửi (cần IT cấp SMTP cho function kho-mail)</option>
+      </select></div>
+    <div class="field"><label>Email đăng nhập webmail trên MÁY NÀY <span class="muted" style="font-weight:400">(để mở đúng hộp thư soạn sẵn)</span></label><input id="skm_login" placeholder="vd: tech.manager@dhp-corp.com.vn"></div>
     <div class="field"><label>Tự gửi thư khi thợ báo kho / khi lập phiếu:</label>
       <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onLow" style="width:auto"> Có món còn ít (tồn ≤ tối thiểu) hoặc hết hàng</label>
       <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onBroken" style="width:auto"> Có hàng / dao cụ bị hư</label>
       <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onDiff" style="width:auto"> Thợ đếm lại thấy lệch sổ</label>
       <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onEvery" style="width:auto"> Mọi lần báo kho (kể cả bình thường)</label>
     </div>
-    <div class="small muted" style="line-height:1.55;margin-bottom:10px">Cài đặt lưu trên máy này. Thư gửi qua Supabase (function <b>kho-mail</b>). Gửi lỗi thì tab Kho hiện báo đỏ, có nút gửi lại hoặc gửi tay qua webmail.</div>
+    <div class="small muted" style="line-height:1.55;margin-bottom:10px">Báo kho xong, app mở ngay thư đã điền sẵn người nhận + tiêu đề + nội dung. Nội dung cũng được copy — nếu thư trống thì bấm Soạn thư → Ctrl+V. Trình duyệt hỏi chặn cửa sổ thì chọn <b>Luôn cho phép</b>.</div>
     <div class="toolbar" style="justify-content:space-between">
-      <span><button class="ghost sm" onclick="stkMailTest()">✉ Gửi thử ngay</button> <span id="skm_status" class="small"></span></span>
+      <span><button class="ghost sm" onclick="stkMailTest()">✉ Thử mở / gửi thư</button> <span id="skm_status" class="small"></span></span>
       <span style="display:flex;gap:8px"><button class="ghost" onclick="closeModal('modalStkMail')">Đóng</button><button onclick="saveStkMailSettings()">💾 Lưu</button></span>
     </div>
   </div>
@@ -3829,8 +3837,41 @@ function g0SendFeedbackMail(){
 }
 // Mở WEBMAIL công ty (tab mới) + copy sẵn nội dung để người gửi dán & soạn thêm (không tự động gửi)
 function getWebmailUrl(){ return (DATA.meta&&DATA.meta.webmailUrl)||'https://mail.dhp-corp.com.vn/SOGo/'; }
+/* ---- 📧 Thư SOẠN SẴN trong webmail SOGo (25-11-2026): mở khung soạn thư đã điền người nhận + tiêu đề + nội dung → chỉ bấm Gửi ---- */
+function webmailLogin(ask){
+  let v = ''; try{ v = localStorage.getItem('dhp_webmail_login') || ''; }catch(e){}
+  if(!v && ask){
+    const p = prompt('Email ĐĂNG NHẬP WEBMAIL trên máy này (hỏi 1 lần) — để app mở thư soạn sẵn, chỉ việc bấm Gửi.\nVD: tech.manager@dhp-corp.com.vn\n\nĐể trống nếu máy này không đăng nhập webmail (app sẽ copy nội dung để dán).', '');
+    if(p && /@/.test(p)){ v = p.trim(); try{ localStorage.setItem('dhp_webmail_login', v); }catch(e){} }
+  }
+  return v;
+}
+function webmailComposeUrl(to, cc, subject, body, login){
+  login = login || webmailLogin(false); if(!login) return '';
+  const base = getWebmailUrl().replace(/\/+$/, '').replace(/\/SOGo(\/.*)?$/i, '');
+  const q = []; if(cc) q.push('cc=' + encodeURIComponent(cc)); q.push('subject=' + encodeURIComponent(subject||'')); q.push('body=' + encodeURIComponent(body||''));
+  return base + '/SOGo/so/' + String(login).replace(/[^\w.@+-]/g, encodeURIComponent) + '/Mail/UIxMailPopupView#!/Mail/0/new?' + encodeURIComponent('mailto:' + (to||'') + '?' + q.join('&'));
+}
+// Gọi NGAY trong lúc bấm nút (không sau await) để trình duyệt không chặn cửa sổ. Trả 'compose' | 'webmail' | 'mailto' | '' (bị chặn)
+function openMailDraft(to, cc, subject, body, opts){
+  opts = opts || {};
+  const clip = 'Người nhận (To): ' + (to||'') + (cc ? '\nCC: ' + cc : '') + '\nTiêu đề: ' + (subject||'') + '\n\n' + (body||'');
+  try{ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(clip).catch(function(){}); }catch(e){}
+  if(opts.mode==='mailto'){
+    const q = []; if(cc) q.push('cc=' + encodeURIComponent(cc)); q.push('subject=' + encodeURIComponent(subject||'')); q.push('body=' + encodeURIComponent(body||''));
+    try{ const a = document.createElement('a'); a.href = 'mailto:' + (to||'') + '?' + q.join('&'); a.style.display = 'none'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); }, 0); return 'mailto'; }catch(e){ return ''; }
+  }
+  const url = webmailComposeUrl(to, cc, subject, body, webmailLogin(opts.ask!==false));
+  const w = window.open(url || getWebmailUrl(), '_blank');
+  return w ? (url ? 'compose' : 'webmail') : '';
+}
 function openWebmailWithContent(to, cc, subject, body){
   const text='Người nhận (To): '+(to||'(điền)')+(cc?'\nCC: '+cc:'')+'\nTiêu đề: '+subject+'\n\n'+body;
+  const curl = webmailComposeUrl(to, cc, subject, body);
+  if(curl){
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(function(){}); }catch(e){}
+    if(window.open(curl,'_blank')){ try{ stkToast('📧 Đã mở thư <b>soạn sẵn</b> trong webmail — kiểm tra người nhận rồi bấm <b>Gửi</b>.<br><span style="opacity:.85">Thư trống? Bấm Soạn thư → Ctrl+V (nội dung đã copy).</span>', 'ok'); }catch(e){} return; }
+  }
   window.open(getWebmailUrl(),'_blank');   // mở webmail NGAY trong click → tránh bị chặn popup
   const go=()=>alert('✓ Đã COPY nội dung email (người nhận + tiêu đề + nội dung).\n\nQua tab Webmail → "Soạn thư mới" → dán (Ctrl+V) → kiểm tra người nhận → gửi.');
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(go,()=>prompt('Copy nội dung email rồi dán vào webmail:',text));
@@ -11774,9 +11815,9 @@ function renderKho(){
     + '<div class="small" style="margin-top:4px;color:#78350f">Quản lý làm 1 lần: Supabase → SQL Editor → dán file <b>supabase_kho_2026-11-25.sql</b> → Run → bấm F5.</div>'
     + '<div class="toolbar" style="margin:8px 0 0"><button class="ghost sm" onclick="stkCopySql()">📋 Copy đoạn SQL</button></div></div>' : '';
   const mailWarn = failed.length ? '<div class="card" style="border-left:4px solid #dc2626;background:#fef2f2;margin-bottom:12px;padding:10px 14px">'
-    + '<b style="color:#b91c1c">📨 ' + failed.length + ' thư báo kho CHƯA gửi được</b> <span class="small" style="color:#7f1d1d">— lỗi gần nhất: ' + esc(truncate((failed[0].mail||{}).err||'không rõ', 140)) + '</span>'
-    + '<div class="toolbar" style="margin:6px 0 0">' + failed.slice(0, 4).map(function(m){ return '<button class="ghost sm" onclick="stkMailResend(\'' + m.id + '\')">↻ Gửi lại ' + esc(m.reportNo || m.no || '') + '</button>'; }).join('')
-    + '<button class="ghost sm" onclick="stkMailWebmail(\'' + failed[0].id + '\')">📧 Gửi tay qua webmail</button><button class="ghost sm" onclick="openStkMailSettings()">✉ Cài đặt thư</button></div></div>' : '';
+    + '<b style="color:#b91c1c">📨 ' + failed.length + ' thư báo kho CHƯA gửi</b> <span class="small" style="color:#7f1d1d">— ' + esc(truncate((failed[0].mail||{}).err||'không rõ', 140)) + '</span>'
+    + '<div class="toolbar" style="margin:6px 0 0">' + failed.slice(0, 4).map(function(m){ return stkMailCfg().mode==='auto' ? '<button class="ghost sm" onclick="stkMailResend(\'' + m.id + '\')">↻ Gửi lại ' + esc(m.reportNo || m.no || '') + '</button>' : '<button class="sm" style="background:#15803d;border-color:#15803d" onclick="stkMailWebmail(\'' + m.id + '\')">📧 Mở thư ' + esc(m.reportNo || m.no || '') + '</button>'; }).join('')
+    + (stkMailCfg().mode==='auto' ? '<button class="ghost sm" onclick="stkMailWebmail(\'' + failed[0].id + '\')">📧 Gửi tay qua webmail</button>' : '') + '<button class="ghost sm" onclick="openStkMailSettings()">✉ Cài đặt thư</button></div></div>' : '';
   const actions = '<div class="toolbar kho-actions" style="margin-top:14px">'
     + '<button onclick="openStkUseModal()" style="background:#15803d;border-color:#15803d;font-size:14px;padding:10px 18px" title="Thợ lấy hàng / dao cụ: ghi lấy ra · hư · đếm còn lại — bấm GỬI, sắp hết app tự gửi mail">📤 LẤY HÀNG / BÁO KHO</button>'
     + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'buy_blank\'})" style="border-color:#15803d;color:#15803d">⬇ Phiếu nhập</button>'
@@ -11899,8 +11940,9 @@ function khoPanelBody(k){
       + '<span class="small muted">App tự gửi khi một món vừa xuống dưới tối thiểu; nút này gửi lại cả danh sách.</span></div>' + tbl;
   }
   if(k==='mail'){
-    return '<div class="toolbar" style="margin-bottom:8px"><button class="ghost sm" onclick="khoRenderPanel(\'mail\')">↻ Tải lại</button><button class="ghost sm" onclick="stkMailTest()">✉ Gửi thử</button>'
-      + '<span class="small muted">Nhật ký lấy từ máy chủ — mọi máy xem như nhau. Người nhận: <b>' + esc(STK_MAIL_TO) + '</b></span></div>' + tbl;
+    const auto = stkMailCfg().mode==='auto';
+    return '<div class="toolbar" style="margin-bottom:8px"><button class="ghost sm" onclick="khoRenderPanel(\'mail\')">↻ Tải lại</button><button class="ghost sm" onclick="stkMailTest()">' + (auto ? '✉ Gửi thử' : '✉ Thử mở thư') + '</button><button class="ghost sm" onclick="openStkMailSettings()">⚙ Cách gửi</button>'
+      + '<span class="small muted">' + (auto ? 'Nhật ký lấy từ máy chủ — mọi máy xem như nhau.' : 'Thư được <b>soạn sẵn trong webmail</b> — người báo kho bấm Gửi.') + ' Người nhận: <b>' + esc(STK_MAIL_TO) + '</b></span></div>' + tbl;
   }
   return tbl;
 }
@@ -12038,7 +12080,7 @@ function khoTblMoves(){
       const lnHtml = (m.lines||[]).filter(Boolean).map(function(l){ const it = stkItemById(l.itemId);
         return '<div>' + esc(it ? (it.code + ' · ' + (it.name||'')) : (l.name||'')) + (l.grade ? ' <b>' + esc(l.grade) + '</b>' : '') + (l.spec ? ' ' + esc(l.spec) : '')
           + ' — <b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b> ' + esc(l.unit||(it&&it.unit)||'') + (stkHasNum(l.kg) ? ' · ' + stkFmt(stkNum(l.kg)) + ' kg' : '') + (l.heatNo ? ' <span class="muted">· heat ' + esc(l.heatNo) + '</span>' : '') + (l.note ? ' <span class="muted">· ' + esc(l.note) + '</span>' : '') + (it ? '' : ' <span class="muted" style="font-size:10px" title="Không có trong danh mục — không tính tồn">(ngoài DM)</span>') + '</div>'; }).join('');
-      const mail = m.mail ? (m.mail.status==='sent' ? '<span title="Đã gửi ' + esc(fmtDate(m.mail.at)) + '" style="color:#15803d">📨✓</span>' : (m.mail.status==='failed' ? '<a onclick="stkMailResend(\'' + m.id + '\')" title="Chưa gửi được: ' + esc(m.mail.err||'') + ' — bấm để gửi lại" style="cursor:pointer;color:#b91c1c;font-weight:800">📨✕</a>' : '<span class="muted">…</span>')) : '';
+      const mail = m.mail ? (m.mail.status==='sent' ? '<span title="Đã gửi ' + esc(fmtDate(m.mail.at)) + '" style="color:#15803d">📨✓</span>' : (m.mail.status==='opened' ? '<a onclick="stkMailWebmail(\'' + m.id + '\')" title="Đã mở thư soạn sẵn lúc ' + esc(new Date(m.mail.at).toLocaleString('vi-VN')) + ' (người dùng bấm Gửi) — bấm để mở lại" style="cursor:pointer;color:#15803d">📧</a>' : ((m.mail.status==='failed' || m.mail.status==='pending') ? '<a onclick="stkMailResend(\'' + m.id + '\')" title="Chưa gửi: ' + esc(m.mail.err||'') + ' — bấm để gửi" style="cursor:pointer;color:#b91c1c;font-weight:800">📨✕</a>' : '<span class="muted">…</span>'))) : '';
       return '<tr><td style="white-space:nowrap">' + fmtDate(m.date) + '</td>'
         + '<td style="white-space:nowrap"><a class="kho-link" onclick="viewStkMove(\'' + m.id + '\')"><b style="color:' + d.c + '">' + d.ic + ' ' + esc(m.no||'') + '</b></a>' + (m.reportNo ? '<div style="font-size:10px;font-weight:800;color:#15803d">📤 ' + esc(m.reportNo) + '</div>' : '') + '</td>'
         + '<td><span style="font-size:10.5px;font-weight:800;color:#fff;background:' + p.color + ';border-radius:5px;padding:1px 6px;white-space:nowrap">' + esc(p.short) + '</span></td>'
@@ -12115,6 +12157,17 @@ function khoTblLow(){
 /* ---------- bảng: thư đã gửi (nhật ký trên máy chủ) ---------- */
 async function khoTblMail(){
   const box = document.getElementById('khoT_mail'); if(!box) return;
+  if(stkMailCfg().mode!=='auto'){
+    const rows = (DATA.stockMoves||[]).filter(function(m){ return m && m.mail; }).sort(function(a, b){ return String((b.mail||{}).at||'').localeCompare(String((a.mail||{}).at||'')); }).slice(0, 40);
+    if(!rows.length){ box.innerHTML = '<div class="empty" style="padding:20px">Chưa có thư báo kho nào. Thư được <b>soạn sẵn trong webmail</b> mỗi khi báo kho có món sắp hết / hư / lệch — người báo chỉ bấm Gửi.</div>'; return; }
+    box.innerHTML = '<table data-kho="mail"><thead><tr><th>Lúc</th><th>Phiếu</th><th>Tiêu đề</th><th>Trạng thái</th><th></th></tr></thead><tbody>'
+      + rows.map(function(m){ const x = m.mail, t = new Date(x.at);
+        const st = x.status==='sent' ? '<b style="color:#15803d">✓ máy chủ đã gửi</b>' : x.status==='opened' ? '<b style="color:#15803d">📧 đã mở thư soạn sẵn</b>' : '<b style="color:#b91c1c">✕ chưa gửi</b> <span class="muted">' + esc(truncate(x.err||'', 60)) + '</span>';
+        return '<tr><td class="small" style="white-space:nowrap">' + esc(isNaN(t) ? '' : t.toLocaleString('vi-VN')) + '</td><td class="small"><a class="kho-link" onclick="viewStkMove(\'' + m.id + '\')">' + esc(m.reportNo || m.no || '') + '</a></td><td class="small">' + esc(x.subject||'') + '</td><td class="small">' + st + '</td>'
+          + '<td><button class="ghost sm" onclick="stkMailWebmail(\'' + m.id + '\')">📧 Mở lại</button></td></tr>'; }).join('')
+      + '</tbody></table>';
+    return;
+  }
   if(!supaConfigured()){ box.innerHTML = '<div class="empty" style="padding:20px">Chưa kết nối Supabase — chưa gửi thư tự động được.</div>'; return; }
   if(!_sb && !initSupabase()){ box.innerHTML = '<div class="empty" style="padding:20px">Không khởi tạo được Supabase.</div>'; return; }
   box.innerHTML = '<div class="small muted" style="padding:10px">Đang tải nhật ký thư…</div>';
@@ -12755,7 +12808,19 @@ let _su = null;
 const _rdGen = {};
 // Vẽ lại SAU sự kiện change/blur (nếu vẽ ngay trong lúc ô đang mất focus, Chrome báo lỗi và mất dữ liệu đang gõ)
 function deferRender(key, fn){ const g = (_rdGen[key] = (_rdGen[key] || 0) + 1); setTimeout(function(){ if(_rdGen[key]===g) fn(); }, 0); }
-function stkMailCfg(){ const c = (DATA.meta && DATA.meta.khoMail) || {}; return {onLow:c.onLow!==false, onBroken:c.onBroken!==false, onDiff:c.onDiff!==false, onEvery:!!c.onEvery}; }
+// mode: 'webmail' = mở thư soạn sẵn trong webmail, người dùng bấm Gửi (mặc định) · 'mailto' = mở Outlook/ứng dụng mail trên máy · 'auto' = máy chủ tự gửi (function kho-mail, cần SMTP)
+function stkMailCfg(){ const c = (DATA.meta && DATA.meta.khoMail) || {}; return {onLow:c.onLow!==false, onBroken:c.onBroken!==false, onDiff:c.onDiff!==false, onEvery:!!c.onEvery, mode:(c.mode==='auto' || c.mode==='mailto') ? c.mode : 'webmail'}; }
+function stkMailBar(html){
+  let b = document.getElementById('stkMailBar');
+  if(!b){ b = document.createElement('div'); b.id = 'stkMailBar'; b.className = 'stk-mailbar'; document.body.appendChild(b); }
+  b.innerHTML = '<div style="flex:1;min-width:220px">' + html + '</div><button class="ghost sm" onclick="document.getElementById(\'stkMailBar\').remove()" title="Đóng">✕</button>';
+  clearTimeout(b._h); b._h = setTimeout(function(){ const x = document.getElementById('stkMailBar'); if(x && !x.matches(':hover')) x.remove(); }, 45000);
+}
+function stkMailOpenedHtml(how, id){
+  return '📧 Đã mở thư <b>soạn sẵn</b> gửi <b>' + esc(STK_MAIL_TO) + '</b> — kiểm tra rồi bấm <b>Gửi</b>.'
+    + '<div class="small muted" style="margin-top:3px">' + (how==='mailto' ? 'Mở bằng ứng dụng mail trên máy (Outlook…).' : how==='compose' ? 'Webmail đòi đăng nhập hoặc thư trống → đăng nhập, bấm <b>Soạn thư</b> rồi <b>Ctrl+V</b> (nội dung đã copy sẵn).' : 'Máy này chưa lưu email đăng nhập webmail → bấm <b>Soạn thư</b> rồi <b>Ctrl+V</b> (nội dung đã copy sẵn).') + '</div>'
+    + (id ? ' <button class="ghost sm" style="margin-top:4px" onclick="stkMailWebmail(\'' + id + '\')">↻ Mở lại thư</button>' : '');
+}
 function stkAppUrl(){ try{ return /^https?:/.test(location.protocol) ? location.origin + location.pathname : 'https://huynhtrungkiet-cloud.github.io/dhp-manager/'; }catch(e){ return ''; } }
 function stkToast(msg, kind){
   let t = document.getElementById('stkToast');
@@ -12782,6 +12847,14 @@ async function stkMailSend(kind, subject, text){
 }
 async function stkMailForMove(moveId, kind, subject, text){
   const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===moveId; }); if(!m) return {ok:false, err:'mất phiếu'};
+  const mode = stkMailCfg().mode;
+  if(mode!=='auto'){   // mở thư soạn sẵn NGAY (còn trong lúc bấm nút) — người dùng bấm Gửi
+    const how = openMailDraft(STK_MAIL_TO, '', subject, text, {mode:mode});
+    m.mail = {status:how ? 'opened' : 'pending', mode:mode, err:how ? '' : 'Trình duyệt chặn cửa sổ — bấm Mở thư', at:new Date().toISOString(), tries:((m.mail && m.mail.tries) || 0) + 1, kind:kind, subject:subject, text:text};
+    m.updatedAt = new Date().toISOString(); save();
+    stkMailBar(how ? stkMailOpenedHtml(how, moveId) : '📧 Thư báo kho đã <b>soạn sẵn</b> nhưng trình duyệt chặn cửa sổ mới. <button class="sm" style="background:#15803d;border-color:#15803d;margin-top:4px" onclick="stkMailWebmail(\'' + moveId + '\')">📧 Mở thư để gửi</button>');
+    return {ok:!!how, manual:true};
+  }
   const r = await stkMailSend(kind, subject, text);
   const cur = (DATA.stockMoves||[]).find(function(x){ return x && x.id===moveId; });
   if(cur){
@@ -12794,20 +12867,33 @@ async function stkMailForMove(moveId, kind, subject, text){
   return r;
 }
 function stkFailedMails(){
-  return (DATA.stockMoves||[]).filter(function(m){ return m && m.mail && m.mail.status==='failed'; })
+  return (DATA.stockMoves||[]).filter(function(m){ return m && m.mail && (m.mail.status==='failed' || m.mail.status==='pending'); })
     .sort(function(a, b){ return String((b.mail||{}).at||'').localeCompare(String((a.mail||{}).at||'')); });
 }
 function stkMailResend(id){
   if(!requireWork()) return;
   const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m || !m.mail) return;
+  if(stkMailCfg().mode!=='auto'){ stkMailWebmail(id); return; }
   stkToast('📨 Đang gửi lại thư…');
   stkMailForMove(id, m.mail.kind || 'report', m.mail.subject, m.mail.text);
 }
 function stkMailWebmail(id){
   const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m || !m.mail) return;
-  openWebmailWithContent(STK_MAIL_TO, '', m.mail.subject || '', m.mail.text || '');
+  const mode = stkMailCfg().mode==='mailto' ? 'mailto' : 'webmail';
+  const how = openMailDraft(STK_MAIL_TO, '', m.mail.subject || '', m.mail.text || '', {mode:mode});
+  if(!how){ alert('Trình duyệt đang chặn cửa sổ mới.\nBấm biểu tượng chặn popup trên thanh địa chỉ → "Luôn cho phép" trang này, rồi bấm lại.'); return; }
+  if(m.mail.status!=='sent'){ m.mail.status = 'opened'; m.mail.mode = mode; m.mail.err = ''; m.mail.at = new Date().toISOString(); m.updatedAt = m.mail.at; save(); }
+  stkMailBar(stkMailOpenedHtml(how, id));
+  try{ if(document.getElementById('khoT_moves') || document.querySelector('.kho-board')) renderKho(); }catch(e){}
 }
 function stkMailTest(){
+  const _sel = document.getElementById('skm_mode'), mode = (_sel && document.getElementById('modalStkMail').classList.contains('show')) ? _sel.value : stkMailCfg().mode;
+  if(mode!=='auto'){
+    const lg = document.getElementById('skm_login'); if(lg && lg.value.trim()) try{ localStorage.setItem('dhp_webmail_login', lg.value.trim()); }catch(e){}
+    const how = openMailDraft(STK_MAIL_TO, '', '[DHP Kho] Thư thử — thư báo kho soạn sẵn', 'Đây là thư thử từ DHP Manager (tab 📦 Kho & Vật tư).\nThư báo kho được soạn sẵn: người nhận, tiêu đề, nội dung — chỉ cần bấm Gửi.\n\nLúc: ' + new Date().toLocaleString('vi-VN'), {mode:mode==='mailto' ? 'mailto' : 'webmail'});
+    const st = document.getElementById('skm_status'); if(st) st.innerHTML = how ? '<b style="color:#15803d">✓ Đã mở thư soạn sẵn — kiểm tra người nhận, tiêu đề, nội dung</b>' : '<b style="color:#b91c1c">✕ Trình duyệt chặn cửa sổ mới — cho phép popup trang này rồi bấm lại</b>';
+    return;
+  }
   stkToast('✉ Đang gửi thư thử…');
   const who = (DATA.meta && DATA.meta.user) || '';
   stkMailSend('test', 'Gửi thử thư báo kho' + (who ? ' — ' + who : ''), 'Đây là thư thử từ DHP Manager (tab 📦 Kho & Vật tư).\nNếu anh/chị nhận được thư này thì thư báo kho tự động đã chạy.\n\nGửi lúc: ' + new Date().toLocaleString('vi-VN') + (who ? '\nMáy: ' + who : '') + '\n' + stkAppUrl())
@@ -12822,12 +12908,16 @@ function openStkMailSettings(){
   const c = stkMailCfg();
   ['onLow','onBroken','onDiff','onEvery'].forEach(function(k){ document.getElementById('skm_' + k).checked = !!c[k]; });
   document.getElementById('skm_to').textContent = STK_MAIL_TO;
+  document.getElementById('skm_mode').value = c.mode;
+  document.getElementById('skm_login').value = webmailLogin(false);
   document.getElementById('skm_status').innerHTML = '';
   openModal('modalStkMail');
 }
 function saveStkMailSettings(){
   DATA.meta = DATA.meta || {};
-  DATA.meta.khoMail = {}; ['onLow','onBroken','onDiff','onEvery'].forEach(function(k){ DATA.meta.khoMail[k] = document.getElementById('skm_' + k).checked; });
+  DATA.meta.khoMail = {mode:document.getElementById('skm_mode').value}; ['onLow','onBroken','onDiff','onEvery'].forEach(function(k){ DATA.meta.khoMail[k] = document.getElementById('skm_' + k).checked; });
+  const lg = document.getElementById('skm_login').value.trim(); try{ if(lg) localStorage.setItem('dhp_webmail_login', lg); else localStorage.removeItem('dhp_webmail_login'); }catch(e){}
+  try{ khoRenderPanel('mail'); }catch(e){}
   closeModal('modalStkMail'); save();
 }
 
@@ -12858,6 +12948,12 @@ function stkMailLowList(){
   const subject = '⚠ Danh sách sắp hết / cần mua — ' + low.length + ' món (' + fmtDate(todayStr()) + ')';
   const text = 'DANH SÁCH HÀNG DƯỚI TỒN TỐI THIỂU — CẦN MUA\nLập lúc ' + new Date().toLocaleString('vi-VN') + ((DATA.meta && DATA.meta.user) ? ' · ' + DATA.meta.user : '') + '\n\n'
     + stkLowText(low, Q) + '\n\n— Thư từ DHP Manager · tab 📦 Kho & Vật tư · ' + stkAppUrl();
+  if(stkMailCfg().mode!=='auto'){
+    const how = openMailDraft(STK_MAIL_TO, '', subject, text, {mode:stkMailCfg().mode});
+    if(how){ stkMarkLowMailed(low.map(function(it){ return {it:it, q:Q[it.id] || 0}; })); save(); stkMailBar(stkMailOpenedHtml(how, '')); }
+    else alert('Trình duyệt chặn cửa sổ mới — cho phép popup trang này rồi bấm lại.');
+    return;
+  }
   stkToast('📨 Đang gửi danh sách sắp hết…');
   stkMailSend('lowlist', subject, text).then(function(r){
     if(r.ok){ stkMarkLowMailed(low.map(function(it){ return {it:it, q:Q[it.id] || 0}; })); save(); stkToast('📨 Đã gửi danh sách ' + low.length + ' món sắp hết cho <b>' + esc(STK_MAIL_TO) + '</b>', 'ok'); }
@@ -13030,7 +13126,7 @@ function stkUseSubmit(){
     + '\n\n— Thư tự động từ DHP Manager · tab 📦 Kho & Vật tư · ' + stkAppUrl();
   if(lowNow.length) stkMarkLowMailed(lowNow);
   save();
-  stkToast(msg + '<br>📨 Đang gửi thư cho ' + esc(STK_MAIL_TO) + '…', 'ok');
+  stkToast(msg + (stkMailCfg().mode==='auto' ? '<br>📨 Đang gửi thư cho ' + esc(STK_MAIL_TO) + '…' : ''), 'ok');
   stkMailForMove(made[0].id, 'report', subject, text);
 }
 
@@ -13048,7 +13144,7 @@ function viewStkMove(id){
   const p = STK_PURPOSES[m.purpose] || {label:m.purpose||''}, d = STK_DIR[m.dir] || STK_DIR.in, o = stkOrderById(m.orderId);
   const lines = (m.lines||[]).filter(Boolean).map(function(l, i){ const it = stkItemById(l.itemId), lo = l.orderId ? stkOrderById(l.orderId) : null;
     return '<tr><td>' + (i + 1) + '</td><td>' + (it ? '<a class="kho-link" onclick="viewStkItem(\'' + it.id + '\')"><b>' + esc(it.code||'') + '</b></a> ' + esc(it.name||'') : esc(l.name||'') + ' <span class="muted">(ngoài DM)</span>') + '</td><td>' + esc(l.grade||'') + '</td><td>' + esc(l.spec||'') + '</td><td style="text-align:right"><b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b> ' + esc(l.unit||(it&&it.unit)||'') + '</td><td>' + esc(l.kg ? l.kg + ' kg' : '') + '</td><td>' + esc(l.heatNo||'') + '</td><td>' + esc(lo ? lo.code : '') + '</td><td class="small">' + esc(l.note||'') + '</td></tr>'; }).join('');
-  const mail = m.mail ? (m.mail.status==='sent' ? '<b style="color:#15803d">📨 Đã gửi ' + esc(new Date(m.mail.at).toLocaleString('vi-VN')) + '</b>' : '<b style="color:#b91c1c">📨 Chưa gửi được: ' + esc(m.mail.err||'') + '</b> <a class="kho-link" onclick="stkMailResend(\'' + m.id + '\')">↻ Gửi lại</a> · <a class="kho-link" onclick="stkMailWebmail(\'' + m.id + '\')">📧 Gửi tay</a>') : '';
+  const mail = m.mail ? (m.mail.status==='opened' ? '<b style="color:#15803d">📧 Đã mở thư soạn sẵn ' + esc(new Date(m.mail.at).toLocaleString('vi-VN')) + '</b> <span class="muted">(người lập bấm Gửi trong webmail)</span> · <a class="kho-link" onclick="stkMailWebmail(\'' + m.id + '\')">↻ Mở lại thư</a>' : m.mail.status==='sent' ? '<b style="color:#15803d">📨 Đã gửi ' + esc(new Date(m.mail.at).toLocaleString('vi-VN')) + '</b>' : '<b style="color:#b91c1c">📨 Chưa gửi được: ' + esc(m.mail.err||'') + '</b> <a class="kho-link" onclick="stkMailResend(\'' + m.id + '\')">↻ Gửi lại</a> · <a class="kho-link" onclick="stkMailWebmail(\'' + m.id + '\')">📧 Gửi tay</a>') : '';
   const siblings = m.reportNo ? (DATA.stockMoves||[]).filter(function(x){ return x && x.reportNo===m.reportNo && x.id!==m.id; }) : [];
   stkInfo(d.ic + ' ' + (m.no||'') + ' · ' + (p.label||''), stkKv([
       ['Ngày', fmtDate(m.date)], ['Loại', '<b style="color:' + d.c + '">' + d.t + '</b> · ' + esc(p.label||'')],

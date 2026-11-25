@@ -70,10 +70,12 @@ Mọi người **đều xem được mọi thứ**. Chỉ 2 người (TPKT & đi
 - Đơn gia công mới tự bật ô **🔍 Kiểm hàng xuất kho** (trong form đơn, cạnh ô 🛃 hàng nhập) — bỏ tick nếu đơn không lấy hàng từ kho.
 - **📏 Dụng cụ đo**: mỗi cái 1 dòng, ghi ngày hiệu chuẩn + chu kỳ → app báo quá hạn; phiếu kiểm dùng thước quá hạn sẽ bị nhắc.
 
-### 📤 Lấy hàng / báo kho (thợ) — tự gửi thư tech.manager
+### 📤 Lấy hàng / báo kho (thợ) — thư soạn sẵn cho tech.manager
 - Tab Kho → nút xanh **📤 LẤY HÀNG / BÁO KHO**: chọn người, đơn hàng (hoặc "dùng chung"), từng món **lấy ra · hư (lý do) · đếm còn lại trên kệ** — cả 3 ô bắt buộc.
-- Bấm **GỬI** là xong: app tự tạo phiếu xuất / hủy / kiểm kê (nếu đếm lệch sổ). Món còn ít (≤ tối thiểu), có hàng hư hoặc đếm lệch → **tự gửi thư cho tech.manager@dhp-corp.com.vn**.
-- Thư chưa gửi được → tab Kho báo đỏ, có nút **↻ Gửi lại** hoặc **📧 Gửi tay qua webmail**.
+- Bấm **GỬI** là app tự tạo phiếu xuất / hủy / kiểm kê (nếu đếm lệch sổ). Món còn ít (≤ tối thiểu), có hàng hư hoặc đếm lệch → app **mở ngay thư soạn sẵn trong webmail** (người nhận tech.manager@dhp-corp.com.vn, tiêu đề, nội dung) → chỉ việc bấm **Gửi**.
+- Lần đầu trên mỗi máy app hỏi **email đăng nhập webmail** của máy đó (để mở đúng hộp thư). Trình duyệt hỏi chặn cửa sổ → chọn **Luôn cho phép**.
+- Thư trống hoặc webmail đòi đăng nhập → đăng nhập, bấm **Soạn thư** → **Ctrl+V** (nội dung đã copy sẵn).
+- Đổi cách gửi: tab Kho → **✉ Thư báo kho** → Cách gửi (webmail · Outlook trên máy · máy chủ tự gửi khi IT cấp SMTP).
 
 ### Bảng & cửa sổ linh hoạt
 - **Cột bảng**: kéo mép tiêu đề để giãn · kéo tiêu đề sang chỗ khác để đổi vị trí · **⚙ Cột** để ẩn/hiện. Nhớ theo từng máy.

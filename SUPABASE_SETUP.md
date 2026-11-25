@@ -59,7 +59,8 @@ end $$;
 → Báo **Success** là xong.
 
 > 🆕 **25-11-2026 — thư báo kho tự động**: chạy `supabase_kho_mail_2026-11-25.sql`, deploy Edge Function `supabase/functions/kho-mail` (tắt Verify JWT),
-> rồi thêm Secrets: `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (cổng 465) — hoặc `RESEND_API_KEY`. Tab Kho → ✉ Thư báo kho → Gửi thử.
+> rồi thêm Secrets: `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (cổng 465) — hoặc `RESEND_API_KEY`. Tab Kho → ✉ Thư báo kho → Cách gửi = Máy chủ tự gửi → Gửi thử.
+> (25-11-2026: đã cài function + SMTP_HOST/PORT/USER nhưng mailcow từ chối đăng nhập 535 → app đang dùng mặc định **thư soạn sẵn trong webmail**. Mailcow: dùng App password có quyền SMTP.)
 >
 > 🆕 **25-11-2026 — tab 📦 Kho & Vật tư** dùng thêm 3 bảng `stock_items`, `stock_moves`, `stock_checks`.
 > Chạy file **`supabase_kho_2026-11-25.sql`** (dán toàn bộ vào SQL Editor → Run, 1 lần). Chưa chạy thì tab Kho vẫn dùng được

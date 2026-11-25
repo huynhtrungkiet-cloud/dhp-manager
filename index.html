@@ -42,7 +42,7 @@ if(typeof supabase==="undefined"){document.write('<scr'+'ipt src="https://cdn.js
   .tab{padding:12px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;}
   .tab.active{color:var(--brand);border-color:var(--brand);}
   .tab:hover{color:var(--brand-dark);}
-  main{max-width:1480px;margin:0 auto;padding:18px 20px 60px;}
+  main{max-width:var(--main-max,1480px);margin:0 auto;padding:18px 20px 60px;}
   .view{display:none;} .view.active{display:block;}
   .grid{display:grid;gap:14px;}
   .grid-4{grid-template-columns:repeat(4,1fr);} .grid-3{grid-template-columns:repeat(3,1fr);} .grid-2{grid-template-columns:repeat(2,1fr);}
@@ -135,6 +135,73 @@ if(typeof supabase==="undefined"){document.write('<scr'+'ipt src="https://cdn.js
   .colorpick{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
   .colorpick i{width:26px;height:26px;border-radius:6px;display:inline-block;cursor:pointer;border:2px solid transparent;}
   .colorpick i.sel{border-color:var(--ink);}
+  /* ===== 25-11-2026: bố cục rộng · cột kéo giãn/đổi chỗ · cửa sổ nổi · tab Kho v2 ===== */
+  body.ui-full{--main-max:none}
+  body.ui-dens-compact th, body.ui-dens-compact td{padding:4px 7px}
+  body.ui-dens-wide th, body.ui-dens-wide td{padding:12px 14px}
+  body.ui-font-s table{font-size:11.5px} body.ui-font-l table{font-size:14px}
+  .tc-rz{position:absolute;top:0;right:-5px;width:10px;height:100%;cursor:col-resize;z-index:4;user-select:none;touch-action:none}
+  .tc-rz:hover, body.tc-resizing .tc-rz{background:linear-gradient(90deg,transparent 4px,#3b82f6 4px,#3b82f6 6px,transparent 6px)}
+  th[draggable=true]{cursor:grab}
+  th.tc-dragging{opacity:.4}
+  th.tc-over-l{box-shadow:inset 3px 0 0 #2563eb} th.tc-over-r{box-shadow:inset -3px 0 0 #2563eb}
+  .tc-hid{display:none!important}
+  body.tc-resizing, body.tc-resizing *{cursor:col-resize!important;user-select:none!important}
+  .tc-bar{display:flex;gap:12px;align-items:center;padding:5px 10px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line);background:#fcfdff}
+  .tc-bar .tc-btn{margin-left:auto}
+  .tc-btn{cursor:pointer;color:#2563eb;font-weight:700;font-size:11.5px;white-space:nowrap;margin-left:10px}
+  .tc-mrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:1px 0}
+  .tc-mrow a{cursor:pointer;color:#2563eb;padding:0 4px;font-weight:700}
+  .win-bar{display:flex;align-items:center;gap:8px;margin:-22px -22px 12px;padding:6px 10px 6px 14px;background:#f1f5f9;border-bottom:1px solid var(--line);border-radius:14px 14px 0 0;cursor:move;user-select:none;touch-action:none;position:sticky;top:-22px;z-index:6}
+  .win-grip{font-size:11.5px;color:#64748b;font-weight:700}
+  .win-btns{margin-left:auto;display:flex;gap:2px}
+  .win-btns a{cursor:pointer;font-size:12.5px;color:#475569;border:1px solid transparent;border-radius:6px;padding:1px 7px;line-height:1.5}
+  .win-btns a:hover{background:#fff;border-color:var(--line)}
+  body.win-dragging{user-select:none}
+  .modal-bg.win-float{background:transparent;pointer-events:none;padding:0;overflow:visible}
+  .modal-bg.win-float.show{display:block}
+  .modal-bg.win-float .modal{pointer-events:auto;position:fixed;margin:0;width:min(640px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;resize:both;min-width:380px;box-shadow:0 22px 60px rgba(15,23,42,.38);border:1px solid #94a3b8}
+  .modal-bg.win-float .modal.wide{width:min(880px,calc(100vw - 16px))}
+  .kho-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+  @media(max-width:1100px){.kho-board{grid-template-columns:1fr}}
+  .kho-board .kho-full{grid-column:1/-1}
+  .kho-panel{background:#fff;border:1px solid var(--line);border-radius:12px;min-width:0}
+  .kho-ph{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:#f8fafc;border-radius:12px 12px 0 0;cursor:grab;user-select:none}
+  .kho-grip{color:#94a3b8;font-size:17px;line-height:1}
+  .kho-pbtn{margin-left:auto;display:flex;gap:4px}
+  .kho-pbtn a{cursor:pointer;font-size:11.5px;color:#475569;border:1px solid var(--line);border-radius:6px;padding:1px 7px;background:#fff;white-space:nowrap}
+  .kho-pbtn a:hover{border-color:#2563eb;color:#2563eb}
+  .kho-pb{padding:10px 12px}
+  .kho-tbl{overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .kho-board .kho-tbl{max-height:62vh}
+  .kho-panel.kho-dragging{opacity:.45}
+  .kho-panel.kho-over{outline:2px dashed #2563eb;outline-offset:3px}
+  .kho-fbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+  .kho-f{padding:6px 8px;font-size:12px;max-width:230px}
+  input.kho-f{min-width:190px} input.kho-fd{min-width:0;width:140px}
+  .kho-freset{cursor:pointer;color:#b91c1c;font-weight:700;font-size:12px}
+  .kho-fcount{font-size:11.5px;color:var(--muted)}
+  .kho-link{cursor:pointer;color:inherit;text-decoration:none} .kho-link:hover{color:#2563eb;text-decoration:underline}
+  .su-line{border:1px solid #d1fae5;background:#f7fefb;border-radius:10px;padding:9px 11px;margin-bottom:8px}
+  .su-item{flex:1;font-size:13px;font-weight:700}
+  .su-info{font-size:11.5px;color:#475569;margin:4px 0 6px 26px}
+  .su-row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;margin-left:26px}
+  .su-row label{display:flex;flex-direction:column;font-size:11px;font-weight:700;color:#475569;gap:3px}
+  .su-row input{width:110px;font-size:14px;font-weight:700;padding:7px 9px}
+  .su-row .su-reason input{width:200px;font-weight:400;font-size:12.5px}
+  .su-st{font-size:11.5px;font-weight:700;padding-bottom:8px}
+  .stk-kv{width:100%;border-collapse:collapse;font-size:12.5px}
+  .stk-kv th{width:150px;background:transparent;text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);position:static;padding:4px 8px 4px 0}
+  .stk-kv td{padding:4px 0}
+  .stk-toast{position:fixed;right:16px;bottom:64px;z-index:100000;background:#0f172a;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.45;max-width:440px;box-shadow:0 10px 30px rgba(15,23,42,.35);transition:opacity .4s;opacity:0;pointer-events:none}
+  .stk-toast.ok{background:#166534} .stk-toast.err{background:#991b1b}
+  .dr-row{border:1px solid #e0e7ff;background:#fff;border-radius:9px;padding:8px 10px;margin-bottom:8px}
+  .dr-g{display:grid;grid-template-columns:1.1fr 1.3fr 1.3fr .8fr auto;gap:8px;margin-bottom:6px}
+  .dr-g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+  .dr-row label{display:flex;flex-direction:column;font-size:10.5px;font-weight:700;color:#475569;gap:2px}
+  .dr-row input,.dr-row select{font-size:12px;padding:5px 7px}
+  .dr-note{display:flex;flex-direction:column}
+  .dr-w{font-size:12px;color:#991b1b;margin:3px 0;line-height:1.45} .dr-ok{font-size:12px;color:#334155;margin:3px 0;line-height:1.45}
 </style>
 </head>
 <body>
@@ -269,6 +336,7 @@ function gateCheck(){
       <button id="syncNowBtn" class="ghost sm" onclick="syncNow()" title="Lưu thay đổi & đồng bộ ngay lên kho chung" style="display:none">💾 Lưu &amp; Đồng bộ</button>
       <button id="lockEditBtn" class="ghost sm" onclick="lockEdit()" title="Khóa sửa (về chỉ xem)" style="display:none">🔒 Khóa sửa</button>
       <a class="ghost sm" href="dhp_coding.html" title="Catalogue sản phẩm &amp; Sinh mã SKU (DHP Coding)" style="text-decoration:none;padding:4px 9px;border:1px solid rgba(255,255,255,.5);border-radius:8px;color:#fff;font-weight:700">🏷 Coding</a>
+      <button class="ghost sm" onclick="uiMenu(this)" title="Bố cục màn hình: bề ngang trang · khoảng cách dòng · cỡ chữ · cột bảng">🖥 Bố cục</button>
       <button class="ghost sm" onclick="toggleLang()" title="Đổi ngôn ngữ / Switch language"><span id="langLabel">EN</span></button>
       <button class="ghost sm" onclick="lockApp()" title="Đăng xuất">⎋</button>
     </div>
@@ -849,6 +917,7 @@ function gateCheck(){
       <div class="field"><label>Tồn tối thiểu <span class="muted small">(dưới mức này app báo)</span></label><input id="si_min" inputmode="decimal"></div>
       <div class="field"><label>ĐVT</label><input id="si_unit" list="stkDlUnit" placeholder="cây · kg · tấm · cái"></div>
     </div>
+    <div id="si_open_note" class="small" style="margin:-6px 0 10px;color:#475569"></div>
     <div class="row2">
       <div class="field"><label>Vị trí kệ / khu</label><input id="si_loc" placeholder="Kệ A2 · khu thép tròn · tủ dụng cụ đo"></div>
       <div class="field" id="si_machine_f"><label>Máy dùng (dao cụ)</label><input id="si_machine" placeholder="Tiện CNC 1 · Phay đứng"></div>
@@ -899,6 +968,7 @@ function gateCheck(){
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8fafc">
       <label style="font-weight:800;color:#334155">Hàng trên phiếu <span class="muted small" style="font-weight:600">— gõ mã / tên để chọn từ danh mục (tính tồn). Hàng của KH, chưa có trong danh mục → gõ tự do. Cột "Đơn riêng" khi phôi mua chung cho nhiều đơn.</span></label>
       <div id="sm_lines"></div>
+      <div id="sm_lock" class="small" style="color:#92400e;margin-top:4px"></div>
       <div class="toolbar" style="margin:6px 0 0"><button type="button" class="ghost sm" onclick="stkAddLine()">＋ Thêm dòng</button><span id="sm_hint" class="small" style="color:#5b21b6"></span></div>
     </div>
     <div class="row2">
@@ -982,6 +1052,95 @@ function gateCheck(){
   <div class="modal wide">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 id="stkInfoTitle" style="margin:0"></h3><button class="ghost sm" onclick="closeModal('modalStkInfo')">✕ Đóng</button></div>
     <div id="stkInfoBody"></div>
+  </div>
+</div>
+
+<!-- ===== 📤 Báo kho nhanh cho thợ (25-11-2026) ===== -->
+<div class="modal-bg" id="modalStkUse">
+  <div class="modal wide">
+    <h3>📤 Lấy hàng / báo kho <span class="muted small" id="su_no"></span></h3>
+    <div class="small" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:8px 11px;margin:-6px 0 12px;color:#065f46;line-height:1.55">
+      Lấy món nào ghi món đó: <b>lấy ra bao nhiêu · hư bao nhiêu (lý do) · đếm lại trên kệ còn bao nhiêu</b>. Cả 3 ô đều bắt buộc (không có ghi 0).<br><span id="su_mailhint"></span>
+    </div>
+    <div class="row3">
+      <div class="field"><label>👷 Người lấy / báo</label><select id="su_who"></select></div>
+      <div class="field" style="grid-column:span 2"><label>Lấy cho đơn hàng</label><select id="su_order" data-op="1"></select></div>
+    </div>
+    <div id="su_lines"></div>
+    <div class="toolbar" style="margin:4px 0 10px"><button type="button" class="ghost sm" onclick="stkUseAdd()">＋ Thêm món</button></div>
+    <div class="row3">
+      <div class="field"><label>Ngày</label><input id="su_date" type="date"></div>
+      <div class="field" style="grid-column:span 2"><label>Ghi chú (tuỳ chọn)</label><input id="su_note" placeholder="vd: lấy thêm cho công đoạn tiện thô; dao mẻ do phôi cứng…"></div>
+    </div>
+    <div class="toolbar" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal('modalStkUse')">Hủy</button>
+      <button onclick="stkUseSubmit()" style="background:#15803d;border-color:#15803d;font-size:15px;padding:11px 22px">✓ GỬI BÁO KHO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ✉ Cài đặt thư báo kho ===== -->
+<div class="modal-bg" id="modalStkMail">
+  <div class="modal">
+    <h3>✉ Thư báo kho tự động</h3>
+    <div class="small" style="margin:-6px 0 10px;line-height:1.6">Người nhận: <b id="skm_to"></b> <span class="muted">(cố định ở máy chủ — muốn đổi phải đổi KHO_MAIL_TO trong Supabase → Edge Functions → Secrets)</span></div>
+    <div class="field"><label>Tự gửi thư khi thợ báo kho / khi lập phiếu:</label>
+      <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onLow" style="width:auto"> Có món còn ít (tồn ≤ tối thiểu) hoặc hết hàng</label>
+      <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onBroken" style="width:auto"> Có hàng / dao cụ bị hư</label>
+      <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onDiff" style="width:auto"> Thợ đếm lại thấy lệch sổ</label>
+      <label class="small" style="display:flex;gap:8px;font-weight:600;margin:4px 0"><input type="checkbox" id="skm_onEvery" style="width:auto"> Mọi lần báo kho (kể cả bình thường)</label>
+    </div>
+    <div class="small muted" style="line-height:1.55;margin-bottom:10px">Cài đặt lưu trên máy này. Thư gửi qua Supabase (function <b>kho-mail</b>). Gửi lỗi thì tab Kho hiện báo đỏ, có nút gửi lại hoặc gửi tay qua webmail.</div>
+    <div class="toolbar" style="justify-content:space-between">
+      <span><button class="ghost sm" onclick="stkMailTest()">✉ Gửi thử ngay</button> <span id="skm_status" class="small"></span></span>
+      <span style="display:flex;gap:8px"><button class="ghost" onclick="closeModal('modalStkMail')">Đóng</button><button onclick="saveStkMailSettings()">💾 Lưu</button></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ⚖ Trách nhiệm & xử lý sau NCR ===== -->
+<div class="modal-bg" id="modalNcrResp">
+  <div class="modal wide" style="max-width:1000px">
+    <h3 id="drTitle">⚖ Trách nhiệm & xử lý</h3>
+    <div id="dr_head" class="small" style="background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:-6px 0 10px;line-height:1.5"></div>
+    <div class="row3">
+      <div class="field"><label>Mức lỗi theo khung</label><select id="dr_tier" onchange="discWarn()"><option value="">— chọn —</option><option value="1">Mức 1 — Nhẹ (lỗi trong xưởng, chưa thiệt hại)</option><option value="2">Mức 2 — Trung bình (lọt đến khách, giao lại)</option><option value="3">Mức 3 — Nặng (thiệt hại lớn / mất đơn / tái phạm)</option><option value="4">Mức 4 — Rất nặng (cố ý, giấu lỗi, khai khống)</option></select></div>
+      <div class="field"><label>Tiến độ hồ sơ</label><select id="dr_status" onchange="discWarn()"><option value="draft">Nháp — đang soạn đề xuất</option><option value="proposed">Đã gửi đề nghị xử lý</option><option value="statements">Đang thu tường trình</option><option value="meeting">Đã họp xác minh / xử lý</option><option value="decided">Đã ra quyết định / phiếu</option><option value="closed">Đóng hồ sơ</option></select></div>
+      <div class="field"><label>Đơn vị sử dụng lao động (in trên quyết định)</label><input id="dr_employer"></div>
+    </div>
+    <div class="field" style="border:1px solid #c7d2fe;background:#f5f7ff;border-radius:10px;padding:10px">
+      <label style="font-weight:800;color:#3730a3">Người liên quan theo từng khâu <span class="muted small" style="font-weight:600">— là ĐỀ XUẤT, chốt sau tường trình + họp xác minh</span></label>
+      <div id="dr_rows"></div>
+      <div class="toolbar" style="margin:6px 0 0"><button type="button" class="ghost sm" onclick="discAutoFill()" style="border-color:#4338ca;color:#4338ca;font-weight:700">⚡ Điền theo các khâu của đơn</button><button type="button" class="ghost sm" onclick="_drRows.push(discRowNew());discRender()">＋ Thêm người</button></div>
+    </div>
+    <div class="field" style="border:1px solid #fecaca;background:#fff7f7;border-radius:10px;padding:10px">
+      <label style="font-weight:800;color:#b91c1c">Điều kiện pháp lý <span class="muted small" style="font-weight:600">(Bộ luật Lao động 2019 — HR xác nhận)</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 6px" class="small">
+        <label style="font-weight:600"><input type="checkbox" id="dr_l_inRules" onchange="discWarn()" style="width:auto"> Hành vi có trong NỘI QUY LAO ĐỘNG đã đăng ký</label>
+        <label style="font-weight:600"><input type="checkbox" id="dr_l_bonusRules" onchange="discWarn()" style="width:auto"> Quy chế thưởng có điều khoản trừ / hạ bậc KPI</label>
+        <label style="font-weight:600"><input type="checkbox" id="dr_l_notified" onchange="discWarn()" style="width:auto"> Đã báo họp trước cho NLĐ + tổ chức đại diện</label>
+        <label style="font-weight:600"><input type="checkbox" id="dr_l_union" onchange="discWarn()" style="width:auto"> Tổ chức đại diện NLĐ tham dự</label>
+        <label style="font-weight:600"><input type="checkbox" id="dr_l_present" onchange="discWarn()" style="width:auto"> NLĐ có mặt, được bào chữa</label>
+        <label style="font-weight:600"><input type="checkbox" id="dr_l_minutes" onchange="discWarn()" style="width:auto"> Có biên bản họp ký đủ</label>
+      </div>
+      <div class="row3" style="gap:8px">
+        <div class="field" style="margin:0"><label>Điều khoản nội quy</label><input id="dr_rulesRef" placeholder="vd: Nội quy LĐ đăng ký …/…, Điều …" oninput="discWarn()"></div>
+        <div class="field" style="margin:0"><label>Ngày họp · địa điểm</label><div style="display:flex;gap:6px"><input id="dr_meetingDate" type="date" style="width:150px" onchange="discWarn()"><input id="dr_meetingPlace" placeholder="Văn phòng xưởng"></div></div>
+        <div class="field" style="margin:0"><label>Số · ngày quyết định</label><div style="display:flex;gap:6px"><input id="dr_decisionNo" placeholder="số QĐ"><input id="dr_decisionDate" type="date" style="width:150px"></div></div>
+      </div>
+      <div id="dr_warn" style="margin-top:8px"></div>
+    </div>
+    <div class="toolbar" style="justify-content:space-between;flex-wrap:wrap">
+      <span style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="ghost sm" onclick="printDiscStatement()">🖨 Bảng tường trình</button>
+        <button class="ghost sm" onclick="printDiscMinutes()">🖨 Biên bản họp</button>
+        <button class="ghost sm" onclick="printDiscReminder()">🖨 Phiếu nhắc nhở</button>
+        <button class="ghost sm" onclick="printDiscDecision()" style="border-color:#b91c1c;color:#b91c1c">🖨 Quyết định kỷ luật</button>
+        <button class="ghost sm" onclick="discCopyMail()">📋 Copy mail đề nghị</button>
+        <button class="ghost sm" onclick="discMail()" style="border-color:#0369a1;color:#0369a1;font-weight:700">📧 Mail đề nghị xử lý</button>
+      </span>
+      <span style="display:flex;gap:8px"><button class="ghost" onclick="closeModal('modalNcrResp')">Đóng</button><button onclick="saveNcrResp()">💾 Lưu</button></span>
+    </div>
   </div>
 </div>
 
@@ -1600,10 +1759,10 @@ function lockApp(){
   ['dhp_gate_ok','dhp_role'].forEach(k=>{ localStorage.removeItem(k); sessionStorage.removeItem(k); });
   location.reload();
 }
-function openModal(id){ document.getElementById(id).classList.add('show'); }
+function openModal(id){ document.getElementById(id).classList.add('show'); try{ winSetup(id); }catch(e){ console.error('winSetup', e); } }
 // ===== HOÃN VẼ LẠI KHI ĐANG MỞ FORM (thêm 30-08-2026) =====
 // Trước đây: máy khác sửa đơn → realtime gọi renderAll() → form đang gõ dở bị vẽ lại, mất nội dung.
-function isFormOpen(){ return !!document.querySelector('.modal-bg.show'); }
+function isFormOpen(){ return !!document.querySelector('.modal-bg.show:not(#modalStkInfo):not(#modalView)'); }
 let _renderPending = false;
 function renderAllSafe(){
   if(isFormOpen()){
@@ -3305,6 +3464,10 @@ const PRINT_FORMS = {   // khoá = tiêu đề truyền vào docHeader()
   'PHIẾU NHẬP KHO':                                           {proc:'QUY TRÌNH QUẢN LÝ KHO – NHẬP KHO',            code:'', rev:'01', kind:'WAREHOUSE DOCUMENT'},
   'PHIẾU XUẤT KHO':                                           {proc:'QUY TRÌNH QUẢN LÝ KHO – XUẤT KHO',            code:'', rev:'01', kind:'WAREHOUSE DOCUMENT'},
   'BIÊN BẢN KIỂM KÊ KHO':                                     {proc:'QUY TRÌNH QUẢN LÝ KHO – KIỂM KÊ',             code:'', rev:'01', kind:'WAREHOUSE DOCUMENT'},
+  'BẢNG TƯỜNG TRÌNH SAI SÓT':                                {proc:'QUY TRÌNH KIỂM SOÁT CHẤT LƯỢNG – XỬ LÝ SAI LỖI', code:'', rev:'01', kind:'HR DOCUMENT'},
+  'BIÊN BẢN HỌP XỬ LÝ KỶ LUẬT LAO ĐỘNG':                     {proc:'XỬ LÝ TRÁCH NHIỆM SAU NCR',                   code:'', rev:'01', kind:'HR DOCUMENT'},
+  'QUYẾT ĐỊNH XỬ LÝ KỶ LUẬT LAO ĐỘNG':                       {proc:'XỬ LÝ KỶ LUẬT LAO ĐỘNG',                      code:'', rev:'01', kind:'HR DOCUMENT'},
+  'PHIẾU NHẮC NHỞ CHẤT LƯỢNG':                               {proc:'QUY TRÌNH KIỂM SOÁT CHẤT LƯỢNG – NHẮC NHỞ',    code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'PHIẾU KIỂM TRA HÀNG XUẤT KHO TRƯỚC GIA CÔNG':              {proc:'QUY TRÌNH SẢN XUẤT – KIỂM HÀNG XUẤT KHO TRƯỚC GIA CÔNG', code:'', rev:'01', kind:'QUALITY DOCUMENT'},
 };
 const SHEET_MARK = '<!--DHP-SHEET-->';
@@ -6136,9 +6299,9 @@ function renderNcr(){
           <td class="small">${esc(n.rootCause||'—')}</td>
           <td>${esc(n.action)}</td>
           <td class="small">${n.importImpact?'<b style="color:#b91c1c">🛃 Có</b>'+(n.leadWeeks?'<div>chờ '+esc(String(n.leadWeeks))+' tuần</div>':''):'—'}</td>
-          <td>${ncrStatusHtml(n)}</td>
+          <td>${ncrStatusHtml(n)}${discBadgeHtml(n)}</td>
           <td class="small">${esc(n.reportedBy||'—')}</td>
-          <td class="actions"><a onclick="openNcrModal('${n.id}')">Sửa</a><a onclick="deleteNcr('${n.id}')" style="color:var(--st-late)">Xóa</a></td>
+          <td class="actions"><a onclick="openNcrResp('${n.id}')" style="color:#4338ca;font-weight:700" title="Người liên quan từng khâu, tường trình, họp, khiển trách / nhắc nhở, mail đề nghị xử lý">⚖ Trách nhiệm</a><a onclick="openNcrModal('${n.id}')">Sửa</a><a onclick="deleteNcr('${n.id}')" style="color:var(--st-late)">Xóa</a></td>
         </tr>`;
       }).join('')}
       </tbody></table>`}
@@ -8593,7 +8756,7 @@ function renderAlertBar(){
   // Nhắc backup — hiện trước cả cảnh báo trễ hạn vì mất dữ liệu là hỏng hết
   const bkDays = backupOverdueDays();
   const needBackup = false;   // 19-10-2026: bỏ nhắc backup hằng ngày — chỉ lưu JSON khi cần (tab Dữ liệu)
-  const backupBar = rptBannerSafe() + (needBackup ? `<div style="max-width:1480px;margin:0 auto;padding:8px 20px;background:#ecfeff;border-bottom:1px solid #a5f3fc;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  const backupBar = rptBannerSafe() + (needBackup ? `<div style="max-width:var(--main-max,1480px);margin:0 auto;padding:8px 20px;background:#ecfeff;border-bottom:1px solid #a5f3fc;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <b style="color:#0e7490;font-size:12.5px">💾 ${bkDays>900?'Chưa từng backup dữ liệu':'Bản backup gần nhất đã '+bkDays+' ngày ('+fmtDate(lastBackupDate())+')'}</b>
       <span class="muted small">Kho chung không có bản sao lưu — một lệnh xoá nhầm là mất trắng ${(DATA.orders||[]).length} đơn.</span>
       <button class="sm" style="margin-left:auto" onclick="backupNow()">Tải backup ngay</button>
@@ -8617,7 +8780,7 @@ function renderAlertBar(){
   const lateN = alerts.filter(a=>a.type==='late').length;
   const soonN = alerts.filter(a=>a.type==='soon').length;
   el.style.display='block';
-  el.innerHTML = backupBar + `<div style="max-width:1480px;margin:0 auto;padding:10px 20px;background:${lateN?'#fef2f2':'#fffbeb'};border-bottom:1px solid ${lateN?'#fecaca':'#fde68a'}">
+  el.innerHTML = backupBar + `<div style="max-width:var(--main-max,1480px);margin:0 auto;padding:10px 20px;background:${lateN?'#fef2f2':'#fffbeb'};border-bottom:1px solid ${lateN?'#fecaca':'#fde68a'}">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <b style="color:${lateN?'var(--st-late)':'var(--st-prod)'};font-size:13px">🔔 ${lateN?lateN+' đơn QUÁ HẠN':''}${lateN&&soonN?' · ':''}${soonN?soonN+' đơn sắp tới hạn (≤3 ngày)':''} — chưa giao</b>
       <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">
@@ -9134,7 +9297,7 @@ function impLoadForm(o){
    thiệt hại, biện pháp phòng ngừa, trạng thái mở/đóng, hồ sơ PDF (thư mục 00-CHUNG\11-NCR).
    ===================================================================================== */
 const NCR_CAUSES=['Đọc sai / dùng sai bản vẽ','Thông tin đầu vào sai / thiếu (G0)','Gá kẹp / rà tâm sai','Dao cụ / máy / chế độ cắt',
-  'Không đo hoặc đo sai','Phôi / vật liệu lỗi','Đối tác gia công ngoài','Vận chuyển / bảo quản','Khác — ghi ở mô tả'];
+  'Không đo hoặc đo sai','Kho xuất sai mã / size (không đối chiếu)','Phôi / vật liệu lỗi','Đối tác gia công ngoài','Vận chuyển / bảo quản','Khác — ghi ở mô tả'];
 function ncrOrderChanged(){
   const id=document.getElementById('ncr_order').value;
   const o=(DATA.orders||[]).find(function(x){ return x&&x.id===id; });
@@ -9725,7 +9888,7 @@ function rptBannerHtml(){
   if(typeof canAdmin!=='function' || !canAdmin() || !(DATA.orders||[]).length) return '';
   const c=rptCfg(), t=todayStr(); if(c.snooze===t) return '';
   const out=[], pm=rptPrevMonth(t), mk=rptMonthKey(pm[0],pm[1]), pq=rptPrevQuarter(t), qk=pq[0]+'-Q'+pq[1];
-  const bar=function(bg,bd,html){ return '<div style="max-width:1480px;margin:0 auto;padding:8px 20px;background:'+bg+';border-bottom:1px solid '+bd+';display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+html+'</div>'; };
+  const bar=function(bg,bd,html){ return '<div style="max-width:var(--main-max,1480px);margin:0 auto;padding:8px 20px;background:'+bg+';border-bottom:1px solid '+bd+';display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+html+'</div>'; };
   if(mk>='2026-09' && !c.done[mk]) out.push(bar('#eef2ff','#c7d2fe','<b style="color:#3730a3;font-size:12.5px">📊 Báo cáo tháng '+pm[1]+'/'+pm[0]+' đã chốt sổ — chưa gửi.</b><span class="muted small">Gửi anh Kiệt, CC Tuấn &amp; Hằng HR: tải Word + soạn sẵn mail.</span>'
     +'<button class="sm" style="margin-left:auto" onclick="openRptMonth('+pm[0]+','+pm[1]+')">Mở báo cáo &amp; gửi</button>'));
   if(qk>='2026-Q3' && !c.qdone[qk]) out.push(bar('#fff7ed','#fed7aa','<b style="color:#9a3412;font-size:12.5px">⚠ Báo cáo sai phạm quý '+pq[1]+'/'+pq[0]+(c.qauto[qk]?' — app đã tự xuất file Word ngày '+fmtDate(c.qauto[qk])+'.':' — chưa xuất.')+'</b>'
@@ -9978,7 +10141,11 @@ document.addEventListener('mousedown', function(e){ const m=document.getElementB
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') tfCloseMenu(); });
 window.addEventListener('scroll', function(e){ const m=document.getElementById('tfMenu'); if(m && !m.contains(e.target)) tfCloseMenu(); }, true);
 let _tfTimer=null;
-function tfScan(){ _tfTimer=null; try{ document.querySelectorAll('.view table, .modal table').forEach(function(t){ if(tfEligible(t)) tfEnhance(t); }); }catch(e){ console.error('tfScan', e); } }
+function tfScan(){ _tfTimer=null; try{ document.querySelectorAll('.view table, .modal table').forEach(function(t){
+    let tc=false; try{ if(typeof tcEligible==='function' && tcEligible(t)){ tcSetup(t); tc=true; } }catch(e){ console.error('tcSetup', e); }   // 25-11-2026: cột kéo giãn / đổi chỗ TRƯỚC khi gắn lọc theo vị trí cột
+    if(tfEligible(t)) tfEnhance(t);
+    if(tc || t.dataset.tcDone){ try{ tcBar(t); }catch(e){} }
+  }); }catch(e){ console.error('tfScan', e); } }
 new MutationObserver(function(){ if(!_tfTimer) _tfTimer=setTimeout(tfScan, 60); }).observe(document.body, {childList:true, subtree:true});
 
 /* ---------- (2) Ô CHỌN ĐƠN CÓ TÌM KIẾM ---------- */
@@ -11298,7 +11465,7 @@ const STK_PARTNERS = ['China Steel (Đài Loan)','Posco','Hòa Phát','Thép Vi�
 const STK_UNITS = ['cây','kg','tấm','cái','bộ','hộp','mét','đoạn','cuộn'];
 const STK_TABLES = ['stockItems','stockMoves','stockChecks'];
 
-let khoSub = 'stock', khoCat = '', khoQ = '', khoLow = false, khoMvDir = '', khoMvQ = '', khoChkQ = '';
+let _smLock = false;   // phiếu đã lưu + không phải điều phối → khoá số lượng / mặt hàng
 let _smLines = [], _scDims = [], _scChecks = {}, _stkFlagTouched = false;
 
 function stkCat(c){ return STK_CATS[c] || STK_CATS.other; }
@@ -11486,51 +11653,266 @@ function stkOrderOptions(){
 }
 
 /* =====================================================================================
-   TAB 📦 KHO
+   TAB 📦 KHO — v2 (25-11-2026)
+   • Hai kiểu xem: "▭ Từng bảng" (tab) hoặc "▦ Bảng kéo thả" — nắm tiêu đề bảng kéo sang góc khác,
+     chọn ½ / cả bề ngang, thu gọn, ẩn; bố cục nhớ theo máy.
+   • Bộ lọc riêng cho từng bảng (nhóm, vị trí, NCC, tình trạng, ngày, lý do, đơn, người…) + lọc cột chung.
+   • Bấm tên / số phiếu là XEM (ai cũng xem được); sửa thông tin không đụng số lượng.
    ===================================================================================== */
-function khoSetSub(k){ khoSub = k; khoCat = ''; renderKho(); }
-function khoSetCat(c){ khoCat = c; renderKho(); }
+const KHO_PANELS = {
+  low:   {t:'⚠ Sắp hết · cần mua',            def:'half'},
+  stock: {t:'📦 Tồn kho thép · sắt · hàng',    def:'full'},
+  tool:  {t:'🔪 Dao cụ',                       def:'half'},
+  gauge: {t:'📏 Dụng cụ đo',                   def:'half'},
+  moves: {t:'🧾 Phiếu nhập · xuất · báo kho',  def:'full'},
+  check: {t:'🔍 Kiểm trước gia công',          def:'full'},
+  mail:  {t:'📨 Thư báo kho đã gửi',           def:'half'},
+};
+const KHO_LAYOUT_KEY = 'dhp_kho_layout_v1';
+function khoLayout(){
+  let L = null; try{ L = JSON.parse(localStorage.getItem(KHO_LAYOUT_KEY) || 'null'); }catch(e){}
+  L = (L && typeof L==='object') ? L : {};
+  L.mode = L.mode==='board' ? 'board' : 'tabs';
+  L.tab = KHO_PANELS[L.tab] ? L.tab : 'stock';
+  L.order = (Array.isArray(L.order) ? L.order : []).filter(function(k, i, a){ return KHO_PANELS[k] && a.indexOf(k)===i; });
+  Object.keys(KHO_PANELS).forEach(function(k){ if(L.order.indexOf(k)<0) L.order.push(k); });
+  L.size = L.size || {}; L.hide = L.hide || {}; L.fold = L.fold || {};
+  return L;
+}
+function khoSaveLayout(L){ try{ localStorage.setItem(KHO_LAYOUT_KEY, JSON.stringify(L)); }catch(e){} }
+function khoMode(m){ const L = khoLayout(); L.mode = m; khoSaveLayout(L); renderKho(); }
+function khoTab(k){ const L = khoLayout(); L.tab = k; khoSaveLayout(L); renderKho(); }
+function khoGo(k){
+  const L = khoLayout();
+  if(L.mode==='tabs'){ L.tab = k; khoSaveLayout(L); renderKho(); return; }
+  if(L.hide[k] || L.fold[k]){ delete L.hide[k]; delete L.fold[k]; khoSaveLayout(L); renderKho(); }
+  const p = document.querySelector('.kho-panel[data-k="' + k + '"]'); if(p) p.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function khoSize(k){ const L = khoLayout(); L.size[k] = ((L.size[k] || KHO_PANELS[k].def)==='full') ? 'half' : 'full'; khoSaveLayout(L); renderKho(); }
+function khoFold(k){ const L = khoLayout(); if(L.fold[k]) delete L.fold[k]; else L.fold[k] = 1; khoSaveLayout(L); renderKho(); }
+function khoHide(k){ const L = khoLayout(); L.hide[k] = 1; khoSaveLayout(L); renderKho(); }
+function khoMovePanel(k, d){
+  const L = khoLayout(); const vis = L.order.filter(function(x){ return !L.hide[x]; });
+  const i = vis.indexOf(k), j = i + d; if(i<0 || j<0 || j>=vis.length) return;
+  const a = L.order.indexOf(vis[i]), b = L.order.indexOf(vis[j]); L.order[a] = vis[j]; L.order[b] = vis[i];
+  khoSaveLayout(L); renderKho();
+}
+function khoPanelsMenu(btn){
+  tfCloseMenu();
+  const L = khoLayout();
+  const m = document.createElement('div'); m.className = 'tf-menu'; m.id = 'tfMenu';
+  m.innerHTML = '<b style="font-size:12px">Bảng hiển thị (kiểu kéo thả)</b><div class="tf-vals">'
+    + L.order.map(function(k){ return '<label><input type="checkbox" data-k="' + k + '" ' + (L.hide[k] ? '' : 'checked') + '><span>' + esc(KHO_PANELS[k].t) + '</span></label>'; }).join('')
+    + '</div><div class="tf-row"><button class="ghost sm" data-reset>↺ Bố cục mặc định</button><button class="sm" data-ok>Áp dụng</button></div>';
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(window.innerWidth - 290, r.left - 80)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
+  m.querySelector('[data-ok]').onclick = function(){ const L2 = khoLayout(); L2.hide = {}; m.querySelectorAll('input[data-k]').forEach(function(c){ if(!c.checked) L2.hide[c.dataset.k] = 1; }); if(L2.mode!=='board') L2.mode = 'board'; khoSaveLayout(L2); tfCloseMenu(); renderKho(); };
+  m.querySelector('[data-reset]').onclick = function(){ try{ localStorage.removeItem(KHO_LAYOUT_KEY); }catch(e){} const L2 = khoLayout(); L2.mode = 'board'; khoSaveLayout(L2); tfCloseMenu(); renderKho(); };
+}
+
+/* ---------- bộ lọc ---------- */
+const KF = {
+  stock:{q:'', cat:'', loc:'', sup:'', st:''},
+  tool: {q:'', loc:'', mach:'', st:''},
+  gauge:{q:'', st:'', holder:''},
+  moves:{q:'', dir:'', purpose:'', from:'', to:'', order:'', who:'', sup:'', rep:''},
+  check:{q:'', res:'', from:'', to:'', insp:''},
+};
+function khoF(k, f, v){ KF[k][f] = v; khoRenderPanel(k); }
+function khoFReset(k){ Object.keys(KF[k]).forEach(function(f){ KF[k][f] = ''; }); renderKho(); }
+function khoUniq(arr){ return arr.filter(function(v, i){ return v && arr.indexOf(v)===i; }).sort(function(a, b){ return String(a).localeCompare(String(b), 'vi', {numeric:true}); }); }
+function khoSel(k, f, opts, ph){
+  return '<select class="kho-f" onchange="khoF(\'' + k + '\',\'' + f + '\',this.value)" title="' + esc(ph) + '"><option value="">' + esc(ph) + '</option>'
+    + opts.map(function(o){ const v = Array.isArray(o) ? o[0] : o, l = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (KF[k][f]===v ? ' selected' : '') + '>' + esc(l) + '</option>'; }).join('') + '</select>';
+}
+function khoInp(k, f, ph, type){
+  return '<input class="kho-f' + (type==='date' ? ' kho-fd' : '') + '"' + (type ? ' type="' + type + '"' : '') + ' placeholder="' + esc(ph) + '" title="' + esc(ph) + '" value="' + esc(KF[k][f]) + '" oninput="khoF(\'' + k + '\',\'' + f + '\',this.value)">';
+}
+function khoFActive(k){ return Object.keys(KF[k]).some(function(f){ return KF[k][f]; }); }
+function khoFBar(k, inner){
+  return '<div class="kho-fbar">' + inner + (khoFActive(k) ? '<a class="kho-freset" onclick="khoFReset(\'' + k + '\')">✕ Bỏ lọc</a>' : '') + '<span class="kho-fcount" id="khoC_' + k + '"></span></div>';
+}
+function khoSetCount(k, shown, total){ const c = document.getElementById('khoC_' + k); if(c) c.textContent = (shown===total ? total : shown + ' / ' + total) + ' dòng'; }
+
+/* ---------- tình trạng tồn ---------- */
+function stkItemStatus(it, Q){
+  const q = (Q && Q[it.id]) || 0, mn = stkNum(it.minQty);
+  if(q < 0) return {k:'out', t:'Âm kho — kiểm kê lại', c:'#b91c1c'};
+  if(mn > 0 && q <= mn) return {k: q<=0 ? 'out' : 'low', t: q<=0 ? 'HẾT HÀNG' : 'Sắp hết', c: q<=0 ? '#b91c1c' : '#b45309'};
+  if(q <= 0) return {k:'zero', t:'Đang hết', c:'#64748b'};
+  if(!(mn > 0)) return {k:'none', t:'Chưa đặt tối thiểu', c:'#64748b'};
+  return {k:'ok', t:'Còn hàng', c:'#15803d'};
+}
+// "Còn ít": tồn ≤ tối thiểu (mặt hàng có đặt tối thiểu) hoặc âm kho
+function stkLowItems(Q){
+  Q = Q || stkQtyMap();
+  return (DATA.stockItems||[]).filter(function(it){
+    if(!it || it.cat==='gauge') return false;
+    const q = Q[it.id] || 0, mn = stkNum(it.minQty);
+    return (mn > 0 && q <= mn) || q < 0;
+  });
+}
+
+/* ---------- vẽ tab ---------- */
 function renderKho(){
   const el = document.getElementById('view-kho'); if(!el) return;
+  const L = khoLayout();
   const Q = stkQtyMap();
   const items = (DATA.stockItems||[]).filter(Boolean);
-  const low = items.filter(function(it){ return it.cat!=='gauge' && stkNum(it.minQty)>0 && Q[it.id] < stkNum(it.minQty); });
+  const low = stkLowItems(Q);
   const gauges = items.filter(function(g){ return g.cat==='gauge' && g.status!=='retired'; });
   const gOver = gauges.filter(function(g){ const k = stkCalState(g).k; return k==='over' || k==='broken' || k==='lost'; });
   const gSoon = gauges.filter(function(g){ return stkCalState(g).k==='soon'; });
   const waiting = stkOrdersWaitingCheck();
   const month = todayStr().slice(0, 7);
   const mvMonth = (DATA.stockMoves||[]).filter(function(m){ return m && String(m.date||'').slice(0, 7)===month; }).length;
-  const subBtn = function(k, label, n, red){
-    return '<button class="' + (khoSub===k ? '' : 'ghost') + ' sm" onclick="khoSetSub(\'' + k + '\')" style="' + (khoSub===k ? '' : 'border-color:var(--brand);color:var(--brand)') + '">' + label
-      + (n ? ' <span style="display:inline-block;min-width:16px;background:' + (red ? 'var(--st-late)' : '#64748b') + ';color:#fff;border-radius:99px;font-size:10px;padding:0 5px;margin-left:3px">' + n + '</span>' : '') + '</button>';
-  };
+  const failed = stkFailedMails();
+  const kpi = function(go, label, val, sub, accent){ return '<div onclick="khoGo(\'' + go + '\')" style="cursor:pointer" title="Bấm để mở bảng">' + kpiCard(label, val, sub, accent) + '</div>'; };
   const cloudWarn = stkCloudMissing() ? '<div class="card" style="border-left:4px solid #f59e0b;background:#fffbeb;margin-bottom:12px">'
     + '<b style="color:#92400e">⚠ Kho chung (Supabase) chưa có 3 bảng kho — dữ liệu kho hiện CHỈ lưu trên máy này, máy khác chưa thấy.</b>'
-    + '<div class="small" style="margin-top:4px;color:#78350f">Quản lý làm 1 lần: Supabase → SQL Editor → New query → dán nội dung file <b>supabase_kho_2026-11-25.sql</b> → Run → quay lại app bấm F5. Dữ liệu đã nhập trên máy này sẽ tự đẩy lên.</div>'
+    + '<div class="small" style="margin-top:4px;color:#78350f">Quản lý làm 1 lần: Supabase → SQL Editor → dán file <b>supabase_kho_2026-11-25.sql</b> → Run → bấm F5.</div>'
     + '<div class="toolbar" style="margin:8px 0 0"><button class="ghost sm" onclick="stkCopySql()">📋 Copy đoạn SQL</button></div></div>' : '';
-  let body = '';
-  if(khoSub==='stock') body = khoStockHtml(Q, ['steel','iron','goods','other']);
-  else if(khoSub==='tool') body = khoStockHtml(Q, ['tool']);
-  else if(khoSub==='gauge') body = khoGaugeHtml();
-  else if(khoSub==='moves') body = khoMovesHtml();
-  else if(khoSub==='check') body = khoChecksHtml(waiting);
-  el.innerHTML = cloudWarn + '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
-      + kpiCard('🔍 Đơn chờ kiểm hàng kho', waiting.length, waiting.length ? 'chưa có phiếu kiểm ĐẠT → chưa cho gia công' : 'không có đơn nào đang chờ', waiting.length ? 'var(--st-late)' : 'var(--st-done)')
-      + kpiCard('📉 Dưới tồn tối thiểu', low.length, low.length ? 'cần đặt mua thêm' : 'tồn kho đủ', low.length ? '#f59e0b' : 'var(--st-done)')
-      + kpiCard('📏 Dụng cụ đo cần xử lý', gOver.length, gOver.length ? 'quá hạn hiệu chuẩn / hỏng / mất' : (gSoon.length ? gSoon.length + ' cái sắp hết hạn (≤30 ngày)' : 'tất cả còn hạn'), gOver.length ? 'var(--st-late)' : (gSoon.length ? '#f59e0b' : 'var(--st-done)'))
-      + kpiCard('📦 Mặt hàng trong danh mục', items.length, STK_CAT_ORDER.map(function(c){ const n = items.filter(function(i){ return i.cat===c; }).length; return n ? STK_CATS[c].label + ' ' + n : ''; }).filter(Boolean).join(' · ') || 'chưa có — bấm ＋ Thêm mặt hàng', '')
-      + kpiCard('🧾 Phiếu nhập/xuất tháng này', mvMonth, 'tổng ' + (DATA.stockMoves||[]).length + ' phiếu', '')
-    + '</div>'
-    + '<div class="toolbar" style="margin-top:14px">'
-      + subBtn('stock', '📦 Tồn kho thép · sắt · hàng', low.filter(function(i){ return i.cat!=='tool'; }).length, false)
-      + subBtn('tool', '🔪 Dao cụ', low.filter(function(i){ return i.cat==='tool'; }).length, false)
-      + subBtn('gauge', '📏 Dụng cụ đo', gOver.length, true)
-      + subBtn('moves', '🧾 Phiếu nhập / xuất', 0)
-      + subBtn('check', '🔍 Kiểm trước gia công', waiting.length, true)
-    + '</div>' + body;
-  if(khoSub==='moves') khoRenderMovesTable();
-  if(khoSub==='stock' || khoSub==='tool') khoRenderItemsTable();
+  const mailWarn = failed.length ? '<div class="card" style="border-left:4px solid #dc2626;background:#fef2f2;margin-bottom:12px;padding:10px 14px">'
+    + '<b style="color:#b91c1c">📨 ' + failed.length + ' thư báo kho CHƯA gửi được</b> <span class="small" style="color:#7f1d1d">— lỗi gần nhất: ' + esc(truncate((failed[0].mail||{}).err||'không rõ', 140)) + '</span>'
+    + '<div class="toolbar" style="margin:6px 0 0">' + failed.slice(0, 4).map(function(m){ return '<button class="ghost sm" onclick="stkMailResend(\'' + m.id + '\')">↻ Gửi lại ' + esc(m.reportNo || m.no || '') + '</button>'; }).join('')
+    + '<button class="ghost sm" onclick="stkMailWebmail(\'' + failed[0].id + '\')">📧 Gửi tay qua webmail</button><button class="ghost sm" onclick="openStkMailSettings()">✉ Cài đặt thư</button></div></div>' : '';
+  const actions = '<div class="toolbar kho-actions" style="margin-top:14px">'
+    + '<button onclick="openStkUseModal()" style="background:#15803d;border-color:#15803d;font-size:14px;padding:10px 18px" title="Thợ lấy hàng / dao cụ: ghi lấy ra · hư · đếm còn lại — bấm GỬI, sắp hết app tự gửi mail">📤 LẤY HÀNG / BÁO KHO</button>'
+    + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'buy_blank\'})" style="border-color:#15803d;color:#15803d">⬇ Phiếu nhập</button>'
+    + (canEdit() ? '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'to_prod\'})" style="border-color:#b45309;color:#b45309">⬆ Phiếu xuất</button>' : '')
+    + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'adj\',purpose:\'count\'})">🧮 Kiểm kê</button>'
+    + '<button class="ghost" onclick="openStkCheckModal()" style="border-color:#7c3aed;color:#6d28d9">🔍 Phiếu kiểm</button>'
+    + '<button class="ghost" onclick="openStkItemModal(null,\'steel\')">＋ Mặt hàng</button>'
+    + '<span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">'
+      + '<button class="sm ' + (L.mode==='tabs' ? '' : 'ghost') + '" onclick="khoMode(\'tabs\')" title="Mỗi lần xem một bảng">▭ Từng bảng</button>'
+      + '<button class="sm ' + (L.mode==='board' ? '' : 'ghost') + '" onclick="khoMode(\'board\')" title="Nhiều bảng cùng lúc — nắm tiêu đề kéo sang chỗ khác">▦ Bảng kéo thả</button>'
+      + (L.mode==='board' ? '<button class="ghost sm" onclick="khoPanelsMenu(this)">⚙ Chọn bảng</button>' : '')
+      + '<button class="ghost sm" onclick="openStkMailSettings()" title="Thư tự động gửi tech.manager">✉ Thư báo kho</button>'
+    + '</span></div>';
+  let content = '';
+  if(L.mode==='tabs'){
+    const tabN = {low:low.length, tool:low.filter(function(i){ return i.cat==='tool'; }).length, gauge:gOver.length, check:waiting.length};
+    content = '<div class="toolbar" style="gap:6px;margin-bottom:10px">' + L.order.map(function(k){
+      const on = L.tab===k, n = tabN[k];
+      return '<button class="sm ' + (on ? '' : 'ghost') + '" onclick="khoTab(\'' + k + '\')" style="' + (on ? '' : 'border-color:var(--brand);color:var(--brand)') + '">' + esc(KHO_PANELS[k].t)
+        + (n ? ' <span style="display:inline-block;min-width:16px;background:' + (k==='low' || k==='tool' ? '#f59e0b' : 'var(--st-late)') + ';color:#fff;border-radius:99px;font-size:10px;padding:0 5px;margin-left:3px">' + n + '</span>' : '') + '</button>';
+    }).join('') + '</div>' + khoPanelHtml(L.tab, L, false);
+  } else {
+    content = '<div class="small muted" style="margin:-4px 0 8px">Nắm <b>⠿ tiêu đề bảng</b> kéo thả sang chỗ khác · <b>◧ ½ / ▭ toàn</b> đổi bề ngang · <b>▾</b> thu gọn · <b>✕</b> ẩn (mở lại ở ⚙ Chọn bảng). Bố cục nhớ trên máy này.</div>'
+      + '<div class="kho-board" id="khoBoard">' + L.order.filter(function(k){ return !L.hide[k]; }).map(function(k){ return khoPanelHtml(k, L, true); }).join('') + '</div>';
+  }
+  el.innerHTML = cloudWarn + mailWarn
+    + '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
+      + kpi('check', '🔍 Đơn chờ kiểm hàng kho', waiting.length, waiting.length ? 'chưa có phiếu kiểm ĐẠT → chưa cho gia công' : 'không có đơn nào đang chờ', waiting.length ? 'var(--st-late)' : 'var(--st-done)')
+      + kpi('low', '⚠ Sắp hết · cần mua', low.length, low.length ? 'tồn ≤ tối thiểu — đã/ sẽ báo mail tech.manager' : 'tồn kho đủ', low.length ? '#f59e0b' : 'var(--st-done)')
+      + kpi('gauge', '📏 Dụng cụ đo cần xử lý', gOver.length, gOver.length ? 'quá hạn hiệu chuẩn / hỏng / mất' : (gSoon.length ? gSoon.length + ' cái sắp hết hạn (≤30 ngày)' : 'tất cả còn hạn'), gOver.length ? 'var(--st-late)' : (gSoon.length ? '#f59e0b' : 'var(--st-done)'))
+      + kpi('stock', '📦 Mặt hàng trong danh mục', items.length, STK_CAT_ORDER.map(function(c){ const n = items.filter(function(i){ return i.cat===c; }).length; return n ? STK_CATS[c].label + ' ' + n : ''; }).filter(Boolean).join(' · ') || 'chưa có — bấm ＋ Mặt hàng', '')
+      + kpi('moves', '🧾 Phiếu tháng này', mvMonth, 'tổng ' + (DATA.stockMoves||[]).length + ' phiếu nhập / xuất / báo kho', '')
+    + '</div>' + actions + content;
+  (L.mode==='tabs' ? [L.tab] : L.order.filter(function(k){ return !L.hide[k] && !L.fold[k]; })).forEach(khoRenderPanel);
+  if(L.mode==='board') khoBoardWire();
+}
+function khoPanelHtml(k, L, board){
+  const P = KHO_PANELS[k], size = L.size[k] || P.def, fold = board && !!L.fold[k];
+  const head = board ? '<div class="kho-ph" draggable="true" data-k="' + k + '"><span class="kho-grip" title="Nắm kéo để đổi chỗ">⠿</span><b>' + esc(P.t) + '</b>'
+    + '<span class="kho-pbtn"><a onclick="khoMovePanel(\'' + k + '\',-1)" title="Đưa lên trước">↑</a><a onclick="khoMovePanel(\'' + k + '\',1)" title="Đưa xuống sau">↓</a>'
+    + '<a onclick="khoSize(\'' + k + '\')" title="Nửa bề ngang / cả bề ngang">' + (size==='full' ? '◧ ½' : '▭ toàn') + '</a>'
+    + '<a onclick="khoFold(\'' + k + '\')" title="Thu gọn / mở">' + (fold ? '▸ mở' : '▾') + '</a><a onclick="khoHide(\'' + k + '\')" title="Ẩn bảng này">✕</a></span></div>' : '';
+  return '<section class="kho-panel' + (board ? ' kho-' + size : '') + '" data-k="' + k + '">' + head + (fold ? '' : '<div class="kho-pb">' + khoPanelBody(k) + '</div>') + '</section>';
+}
+let _khoDrag = null;
+function khoBoardWire(){
+  const board = document.getElementById('khoBoard'); if(!board) return;
+  board.querySelectorAll('.kho-ph[draggable]').forEach(function(h){
+    h.addEventListener('dragstart', function(e){
+      if(e.target && e.target.closest && e.target.closest('a')){ e.preventDefault(); return; }
+      _khoDrag = h.dataset.k; e.dataTransfer.effectAllowed = 'move'; try{ e.dataTransfer.setData('text/plain', _khoDrag); }catch(x){}
+      h.parentElement.classList.add('kho-dragging');
+    });
+    h.addEventListener('dragend', function(){ board.querySelectorAll('.kho-panel').forEach(function(p){ p.classList.remove('kho-dragging', 'kho-over'); }); _khoDrag = null; });
+  });
+  board.querySelectorAll('.kho-panel').forEach(function(p){
+    p.addEventListener('dragover', function(e){ if(!_khoDrag || _khoDrag===p.dataset.k) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; p.classList.add('kho-over'); });
+    p.addEventListener('dragleave', function(e){ if(!p.contains(e.relatedTarget)) p.classList.remove('kho-over'); });
+    p.addEventListener('drop', function(e){
+      e.preventDefault(); const from = _khoDrag, to = p.dataset.k; _khoDrag = null;
+      if(!from || from===to) return;
+      const L = khoLayout(); const o = L.order.filter(function(k){ return k!==from; });
+      const r = p.getBoundingClientRect(); const after = (e.clientY > r.top + r.height / 2);
+      const i = o.indexOf(to); o.splice(after ? i + 1 : i, 0, from); L.order = o; khoSaveLayout(L); renderKho();
+    });
+  });
+}
+function khoPanelBody(k){
+  const tbl = '<div class="kho-tbl" id="khoT_' + k + '"></div>';
+  const items = (DATA.stockItems||[]).filter(Boolean);
+  if(k==='stock' || k==='tool'){
+    const isTool = k==='tool';
+    const mine = items.filter(function(it){ return isTool ? it.cat==='tool' : ['steel','iron','goods','other'].indexOf(it.cat||'other')>=0; });
+    return khoFBar(k, khoInp(k, 'q', 'Tìm mã / tên / mác / quy cách…')
+        + (isTool ? '' : khoSel(k, 'cat', ['steel','iron','goods','other'].map(function(c){ return [c, STK_CATS[c].ic + ' ' + STK_CATS[c].label]; }), 'Mọi nhóm'))
+        + khoSel(k, 'loc', khoUniq(mine.map(function(i){ return i.loc; })), 'Mọi vị trí')
+        + (isTool ? khoSel(k, 'mach', khoUniq(mine.map(function(i){ return i.machine; })), 'Mọi máy') : khoSel(k, 'sup', khoUniq(mine.map(function(i){ return i.brand; })), 'Mọi NCC / hãng'))
+        + khoSel(k, 'st', [['low','⚠ Sắp hết'],['out','⛔ Hết / âm'],['ok','✓ Còn hàng'],['zero','Đang hết (không đặt tối thiểu)'],['none','Chưa đặt tối thiểu']], 'Mọi tình trạng')
+        + '<span style="margin-left:auto;display:flex;gap:6px"><button class="ghost sm" onclick="openStkItemModal(null,\'' + (isTool ? 'tool' : (KF.stock.cat || 'steel')) + '\')">＋ Thêm</button><button class="ghost sm" onclick="khoExportItems(' + (isTool ? '[\'tool\']' : '[\'steel\',\'iron\',\'goods\',\'other\']') + ')">📊 Excel</button></span>')
+      + tbl;
+  }
+  if(k==='gauge'){
+    const gs = items.filter(function(g){ return g.cat==='gauge'; });
+    return khoFBar(k, khoInp(k, 'q', 'Tìm mã / tên / seri…')
+        + khoSel(k, 'st', [['over','⛔ Quá hạn HC'],['soon','⚠ Sắp hết hạn'],['ok','✓ Còn hạn'],['none','Chưa ghi ngày HC'],['calib','Đang gửi HC'],['broken','Hỏng'],['lost','Mất'],['retired','Thanh lý']], 'Mọi tình trạng')
+        + khoSel(k, 'holder', [['__kho','(đang ở kho)']].concat(khoUniq(gs.map(function(g){ return g.holder; })).map(function(n){ return [n, '👤 ' + n]; })), 'Mọi người giữ')
+        + '<span style="margin-left:auto;display:flex;gap:6px"><button class="ghost sm" onclick="openStkItemModal(null,\'gauge\')">＋ Thêm</button><button class="ghost sm" onclick="khoExportItems([\'gauge\'])">📊 Excel</button></span>')
+      + tbl;
+  }
+  if(k==='moves'){
+    const mv = (DATA.stockMoves||[]).filter(Boolean);
+    const ordIds = khoUniq([].concat.apply([], mv.map(function(m){ return (m.lines||[]).map(function(l){ return stkLineOrder(m, l); }); })));
+    const ordOpts = ordIds.map(function(id){ const o = stkOrderById(id); return o ? [id, (o.code||'') + ' — ' + truncate(o.name||'', 30)] : null; }).filter(Boolean);
+    const who = khoUniq([].concat.apply([], mv.map(function(m){ return [m.by, m.receiver]; })));
+    return khoFBar(k, khoInp(k, 'q', 'Tìm số phiếu / hàng / heat / chứng từ…')
+        + khoSel(k, 'dir', [['in','⬇ Nhập'],['out','⬆ Xuất'],['adj','🧮 Kiểm kê']], 'Nhập + xuất + kiểm kê')
+        + khoSel(k, 'purpose', Object.keys(STK_PURPOSES).map(function(p){ return [p, STK_DIR[STK_PURPOSES[p].dir].ic + ' ' + STK_PURPOSES[p].short]; }), 'Mọi lý do')
+        + khoInp(k, 'from', 'Từ ngày', 'date') + khoInp(k, 'to', 'Đến ngày', 'date')
+        + khoSel(k, 'order', ordOpts, 'Mọi đơn hàng')
+        + khoSel(k, 'who', who, 'Mọi người')
+        + khoSel(k, 'sup', khoUniq(mv.map(function(m){ return m.partner; })), 'Mọi NCC / nguồn')
+        + khoSel(k, 'rep', [['rep','📤 Chỉ phiếu báo kho của thợ'],['mailfail','📨 Thư chưa gửi được']], 'Mọi phiếu')
+        + '<span style="margin-left:auto"><button class="ghost sm" onclick="khoExportMoves()">📊 Excel</button></span>')
+      + tbl;
+  }
+  if(k==='check'){
+    const cs = (DATA.stockChecks||[]).filter(Boolean);
+    return '<div class="small" style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;padding:7px 10px;margin-bottom:8px;color:#4c1d95;line-height:1.55">'
+        + '🔍 Hàng lấy từ kho / KH gửi về → <b>mở hộp, đọc mã trên sản phẩm, đo kích thước</b> → ĐẠT mới giao thợ. Chưa có phiếu ĐẠT thì app <b>không cho bắt đầu / báo xong</b> công đoạn gia công.</div>'
+      + '<div id="khoW_check"></div>'
+      + khoFBar(k, khoInp(k, 'q', 'Tìm số phiếu / mã đơn / mã hàng…')
+        + khoSel(k, 'res', [['pass','✓ Đạt'],['fail','✕ Không đạt'],['none','… chưa kết luận']], 'Mọi kết luận')
+        + khoInp(k, 'from', 'Từ ngày', 'date') + khoInp(k, 'to', 'Đến ngày', 'date')
+        + khoSel(k, 'insp', khoUniq(cs.map(function(c){ return c.inspector; })), 'Mọi người kiểm')
+        + '<span style="margin-left:auto"><button class="ghost sm" onclick="openStkCheckModal()">＋ Phiếu kiểm</button></span>')
+      + tbl;
+  }
+  if(k==='low'){
+    return '<div class="toolbar" style="margin-bottom:8px"><button class="sm" onclick="stkMailLowList()" style="background:#b45309;border-color:#b45309">📧 Gửi danh sách này cho tech.manager</button>'
+      + '<span class="small muted">App tự gửi khi một món vừa xuống dưới tối thiểu; nút này gửi lại cả danh sách.</span></div>' + tbl;
+  }
+  if(k==='mail'){
+    return '<div class="toolbar" style="margin-bottom:8px"><button class="ghost sm" onclick="khoRenderPanel(\'mail\')">↻ Tải lại</button><button class="ghost sm" onclick="stkMailTest()">✉ Gửi thử</button>'
+      + '<span class="small muted">Nhật ký lấy từ máy chủ — mọi máy xem như nhau. Người nhận: <b>' + esc(STK_MAIL_TO) + '</b></span></div>' + tbl;
+  }
+  return tbl;
+}
+function khoRenderPanel(k){
+  try{
+    if(k==='stock' || k==='tool') khoTblItems(k);
+    else if(k==='gauge') khoTblGauges();
+    else if(k==='moves') khoTblMoves();
+    else if(k==='check') khoTblChecks();
+    else if(k==='low') khoTblLow();
+    else if(k==='mail') khoTblMail();
+  }catch(e){ console.error('khoRenderPanel ' + k, e); const b = document.getElementById('khoT_' + k); if(b) b.innerHTML = '<div class="empty">⚠ Lỗi hiển thị: ' + esc(e.message) + '</div>'; }
 }
 function stkCopySql(){
   const sql = "create table if not exists stock_items  (id text primary key, data jsonb not null, updated_at timestamptz default now());\n"
@@ -11548,175 +11930,206 @@ function stkCopySql(){
   else fallbackCopy(sql, done);
 }
 
-/* ---------- 📦 tồn kho / 🔪 dao cụ ---------- */
-function khoStockHtml(Q, cats){
-  const isTool = cats.length===1 && cats[0]==='tool';
-  const chips = isTool ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap">' + [''].concat(cats).map(function(c){
-    const on = khoCat===c; const lbl = c ? STK_CATS[c].ic + ' ' + STK_CATS[c].label : 'Tất cả';
-    return '<button class="' + (on ? '' : 'ghost') + ' sm" onclick="khoSetCat(\'' + c + '\')" style="border-radius:99px">' + lbl + '</button>';
-  }).join('') + '</div>';
-  return '<div class="toolbar">'
-      + '<button onclick="openStkItemModal(null,\'' + (isTool ? 'tool' : (khoCat||'steel')) + '\')">＋ Thêm ' + (isTool ? 'dao cụ' : 'mặt hàng') + '</button>'
-      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'' + (isTool ? 'buy_stock' : 'buy_blank') + '\'})" style="border-color:#15803d;color:#15803d">⬇ Phiếu nhập</button>'
-      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'' + (isTool ? 'tool_issue' : 'to_prod') + '\'})" style="border-color:#b45309;color:#b45309">⬆ Phiếu xuất' + (isTool ? ' / cấp cho thợ' : '') + '</button>'
-      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'adj\',purpose:\'count\'})">🧮 Kiểm kê</button>'
-      + '<button class="ghost" onclick="khoExportItems(' + (isTool ? '[\'tool\']' : '[\'steel\',\'iron\',\'goods\',\'other\']') + ')">📊 Xuất Excel tồn kho</button>'
-      + chips
-      + '<input id="khoQ" placeholder="Tìm mã / tên / mác / quy cách / vị trí…" value="' + esc(khoQ) + '" oninput="khoQ=this.value;khoRenderItemsTable()" style="min-width:240px;flex:1">'
-      + '<label class="small" style="display:flex;align-items:center;gap:5px;font-weight:700;cursor:pointer"><input type="checkbox" ' + (khoLow ? 'checked' : '') + ' onchange="khoLow=this.checked;khoRenderItemsTable()" style="width:auto"> chỉ hàng dưới tối thiểu</label>'
-    + '</div>'
-    + '<div class="small muted" style="margin:-6px 0 8px">' + (isTool
-        ? 'Dao cụ: nhập khi mua về, <b>cấp cho thợ</b> bằng phiếu xuất (ghi người nhận). Đặt "tồn tối thiểu" để app báo cần mua thêm.'
-        : 'Phôi mua cho đơn nào, hàng KH gửi về gia công lỗ / cắt bớt — ghi ở <b>Phiếu nhập</b> và chọn đơn hàng. Hàng của KH không có trong danh mục thì gõ tên tự do (không tính vào tồn).') + '</div>'
-    + '<div class="card" style="overflow:auto;padding:0" id="khoItemsTbl" data-cats="' + cats.join(',') + '"></div>';
-}
-function khoRenderItemsTable(){
-  const box = document.getElementById('khoItemsTbl'); if(!box) return;
-  const cats = (box.dataset.cats||'').split(',').filter(Boolean);
-  const isTool = cats.length===1 && cats[0]==='tool';
+/* ---------- bảng: tồn kho / dao cụ ---------- */
+function khoTblItems(k){
+  const box = document.getElementById('khoT_' + k); if(!box) return;
+  const isTool = k==='tool', f = KF[k];
   const Q = stkQtyMap(), last = stkLastMoveMap();
-  const q = tfNorm(khoQ||'');
-  let list = (DATA.stockItems||[]).filter(function(it){ return it && cats.indexOf(it.cat||'other')>=0 && (!khoCat || it.cat===khoCat || isTool); });
-  if(q) list = list.filter(function(it){ return tfNorm([it.code, it.name, it.grade, it.spec, it.loc, it.brand, it.machine].join(' ')).indexOf(q)>=0; });
-  if(khoLow) list = list.filter(function(it){ return stkNum(it.minQty)>0 && Q[it.id] < stkNum(it.minQty); });
-  list.sort(function(a,b){ return (STK_CAT_ORDER.indexOf(a.cat) - STK_CAT_ORDER.indexOf(b.cat)) || String(a.code||'').localeCompare(String(b.code||'')); });
-  if(!list.length){ box.innerHTML = '<div class="empty">' + ((DATA.stockItems||[]).some(function(it){ return it && cats.indexOf(it.cat)>=0; }) ? 'Không có mặt hàng khớp bộ lọc.' : 'Chưa có ' + (isTool ? 'dao cụ' : 'mặt hàng') + ' nào. Bấm <b>＋ Thêm</b> để tạo danh mục (mã, mác, quy cách, vị trí, tồn đầu kỳ).') + '</div>'; return; }
-  box.innerHTML = '<table><thead><tr><th>Mã</th><th>Tên hàng</th><th>' + (isTool ? 'Loại · kích thước' : 'Mác / vật liệu') + '</th><th>Quy cách</th><th>' + (isTool ? 'Máy dùng' : 'NCC / hãng') + '</th><th>Vị trí</th><th style="text-align:right">Tồn</th><th style="text-align:right">Tối thiểu</th><th>Gần nhất</th><th></th></tr></thead><tbody>'
+  const all = (DATA.stockItems||[]).filter(function(it){ return it && (isTool ? it.cat==='tool' : ['steel','iron','goods','other'].indexOf(it.cat||'other')>=0); });
+  let list = all.slice();
+  if(!isTool && f.cat) list = list.filter(function(it){ return (it.cat||'other')===f.cat; });
+  if(f.loc) list = list.filter(function(it){ return (it.loc||'')===f.loc; });
+  if(f.sup) list = list.filter(function(it){ return (it.brand||'')===f.sup; });
+  if(f.mach) list = list.filter(function(it){ return (it.machine||'')===f.mach; });
+  if(f.st) list = list.filter(function(it){ return stkItemStatus(it, Q).k===f.st; });
+  if(f.q){ const q = tfNorm(f.q); list = list.filter(function(it){ return tfNorm([it.code, it.name, it.grade, it.spec, it.loc, it.brand, it.machine, it.note].join(' ')).indexOf(q)>=0; }); }
+  list.sort(function(a, b){ return (STK_CAT_ORDER.indexOf(a.cat) - STK_CAT_ORDER.indexOf(b.cat)) || String(a.code||'').localeCompare(String(b.code||''), 'vi', {numeric:true}); });
+  khoSetCount(k, list.length, all.length);
+  if(!list.length){ box.innerHTML = '<div class="empty">' + (all.length ? 'Không có mặt hàng khớp bộ lọc.' : 'Chưa có ' + (isTool ? 'dao cụ' : 'mặt hàng') + ' nào. Bấm <b>＋ Thêm</b> để tạo danh mục (mã, mác, quy cách, vị trí, tồn đầu kỳ, tồn tối thiểu).') + '</div>'; return; }
+  box.innerHTML = '<table data-kho="' + k + '"><thead><tr><th>Mã</th><th>Tên hàng</th>' + (isTool ? '' : '<th>Nhóm</th>') + '<th>' + (isTool ? 'Loại · VL dao' : 'Mác / vật liệu') + '</th><th>Quy cách</th><th>' + (isTool ? 'Máy dùng' : 'NCC / hãng') + '</th><th>Vị trí</th><th style="text-align:right">Tồn</th><th style="text-align:right">Tối thiểu</th><th>Tình trạng</th><th>Gần nhất</th><th>Thao tác</th></tr></thead><tbody>'
     + list.map(function(it){
-      const qty = Q[it.id] || 0, min = stkNum(it.minQty), isLow = min>0 && qty < min;
+      const qty = Q[it.id] || 0, min = stkNum(it.minQty), st = stkItemStatus(it, Q);
       const lm = last[it.id];
-      const lmTxt = lm ? '<span style="color:' + STK_DIR[lm.m.dir].c + ';font-weight:700">' + STK_DIR[lm.m.dir].ic + '</span> ' + fmtDate(lm.m.date) + '<div class="muted" style="font-size:10.5px">' + esc((STK_PURPOSES[lm.m.purpose]||{}).short||'') + (stkLineOrder(lm.m, lm.l) ? ' · ' + esc((stkOrderById(stkLineOrder(lm.m, lm.l))||{}).code||'') : '') + '</div>' : '<span class="muted">—</span>';
-      return '<tr style="' + (isLow ? 'background:#fffbeb' : '') + '">'
-        + '<td style="white-space:nowrap"><b>' + esc(it.code||'') + '</b><div class="muted" style="font-size:10px">' + stkCat(it.cat).ic + ' ' + esc(stkCat(it.cat).label) + '</div></td>'
-        + '<td style="min-width:160px">' + esc(it.name||'') + (it.note ? '<div class="muted small">' + esc(truncate(it.note, 60)) + '</div>' : '') + '</td>'
+      const lmTxt = lm ? '<span style="color:' + STK_DIR[lm.m.dir].c + ';font-weight:700">' + STK_DIR[lm.m.dir].ic + '</span> ' + fmtDate(lm.m.date) + '<div class="muted" style="font-size:10.5px">' + esc((STK_PURPOSES[lm.m.purpose]||{}).short||'') + (stkLineOrder(lm.m, lm.l) ? ' · ' + esc((stkOrderById(stkLineOrder(lm.m, lm.l))||{}).code||'') : '') + (lm.m.receiver ? ' · ' + esc(lm.m.receiver) : '') + '</div>' : '<span class="muted">—</span>';
+      return '<tr style="' + (st.k==='low' || st.k==='out' ? 'background:#fffbeb' : '') + '">'
+        + '<td style="white-space:nowrap"><a class="kho-link" onclick="viewStkItem(\'' + it.id + '\')"><b>' + esc(it.code||'') + '</b></a></td>'
+        + '<td style="min-width:150px"><a class="kho-link" onclick="viewStkItem(\'' + it.id + '\')">' + esc(it.name||'') + '</a>' + (it.note ? '<div class="muted small">' + esc(truncate(it.note, 60)) + '</div>' : '') + '</td>'
+        + (isTool ? '' : '<td class="small">' + stkCat(it.cat).ic + ' ' + esc(stkCat(it.cat).label) + '</td>')
         + '<td>' + esc(it.grade||'') + '</td><td>' + esc(it.spec||'') + '</td>'
         + '<td class="small">' + esc(isTool ? (it.machine||'') : (it.brand||'')) + '</td>'
         + '<td class="small">' + esc(it.loc||'') + '</td>'
-        + '<td style="text-align:right;white-space:nowrap;font-weight:800;color:' + (qty<0 ? 'var(--st-late)' : (isLow ? '#b45309' : 'inherit')) + '">' + stkFmt(qty) + ' <span class="muted" style="font-weight:600">' + esc(it.unit||'') + '</span>' + (isLow ? '<div style="font-size:10px;color:#b45309">⚠ dưới tối thiểu</div>' : '') + '</td>'
+        + '<td style="text-align:right;white-space:nowrap;font-weight:800;color:' + (st.k==='out' ? 'var(--st-late)' : (st.k==='low' ? '#b45309' : 'inherit')) + '">' + stkFmt(qty) + ' <span class="muted" style="font-weight:600">' + esc(it.unit||'') + '</span></td>'
         + '<td style="text-align:right" class="small">' + (min ? stkFmt(min) : '—') + '</td>'
+        + '<td><span style="font-size:11px;font-weight:800;color:' + st.c + '">' + esc(st.t) + '</span>' + (it.lowMailAt && (st.k==='low' || st.k==='out') ? '<div class="muted" style="font-size:10px">📨 đã báo ' + fmtDate(it.lowMailAt) + '</div>' : '') + '</td>'
         + '<td class="small" style="white-space:nowrap">' + lmTxt + '</td>'
         + '<td class="actions" style="white-space:nowrap">'
-          + '<a onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'' + (isTool ? 'buy_stock' : 'buy_blank') + '\',itemId:\'' + it.id + '\'})" title="Nhập kho">⬇ Nhập</a>'
-          + '<a onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'' + (isTool ? 'tool_issue' : 'to_prod') + '\',itemId:\'' + it.id + '\'})" title="Xuất kho">⬆ ' + (isTool ? 'Cấp' : 'Xuất') + '</a>'
-          + '<a onclick="openStkCard(\'' + it.id + '\')" title="Thẻ kho — lịch sử nhập xuất">📒</a>'
-          + '<a onclick="openStkItemModal(\'' + it.id + '\')">Sửa</a>'
+          + '<a onclick="viewStkItem(\'' + it.id + '\')" title="Xem thông tin + thẻ kho">👁</a>'
+          + '<a onclick="openStkUseModal({itemId:\'' + it.id + '\'})" title="Lấy ra / báo hư / đếm lại" style="color:#15803d">📤 Lấy</a>'
+          + '<a onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'' + (isTool ? 'buy_stock' : 'buy_blank') + '\',itemId:\'' + it.id + '\'})" title="Nhập thêm">⬇ Nhập</a>'
+          + '<a onclick="openStkItemModal(\'' + it.id + '\')" title="Sửa thông tin (không đổi số lượng)">✏</a>'
         + '</td></tr>';
     }).join('') + '</tbody></table>';
 }
 
-/* ---------- 📏 dụng cụ đo ---------- */
-function khoGaugeHtml(){
-  const list = (DATA.stockItems||[]).filter(function(g){ return g && g.cat==='gauge'; })
-    .sort(function(a,b){ const r = {over:0, broken:1, lost:2, none:3, soon:4, calib:5, ok:6, retired:9}; return (r[stkCalState(a).k] - r[stkCalState(b).k]) || String(a.code||'').localeCompare(String(b.code||'')); });
-  const rows = list.map(function(g){
-    const st = stkCalState(g), due = stkCalDue(g);
-    const lastLog = (g.calibLog||[]).slice(-1)[0];
-    return '<tr style="' + (st.k==='over' || st.k==='broken' || st.k==='lost' ? 'background:#fff5f5' : (st.k==='retired' ? 'opacity:.55' : '')) + '">'
-      + '<td style="white-space:nowrap"><b>' + esc(g.code||'') + '</b></td>'
-      + '<td>' + esc(g.name||'') + (g.spec ? ' <span class="muted">' + esc(g.spec) + '</span>' : '') + '</td>'
-      + '<td class="small">' + esc(g.serial||'—') + '</td>'
-      + '<td class="small">' + esc([g.range, g.resolution].filter(Boolean).join(' · ') || '—') + '</td>'
-      + '<td class="small">' + (g.holder ? '👤 ' + esc(g.holder) : '<span class="muted">' + esc(g.loc ? 'ở ' + g.loc : 'trong kho') + '</span>') + '</td>'
-      + '<td class="small" style="white-space:nowrap">' + (g.calibDate ? fmtDate(g.calibDate) : '—') + (g.calibOrg ? '<div class="muted" style="font-size:10.5px">' + esc(truncate(g.calibOrg, 28)) + '</div>' : '') + '</td>'
-      + '<td class="small" style="white-space:nowrap">' + (due ? fmtDate(due) : '—') + '</td>'
-      + '<td><span style="font-size:11px;font-weight:800;color:' + st.c + '">' + esc(st.t) + '</span>' + (lastLog && lastLog.result==='fail' ? '<div class="small" style="color:#b91c1c">lần HC gần nhất: KHÔNG ĐẠT</div>' : '') + '</td>'
-      + '<td class="actions" style="white-space:nowrap"><a onclick="openStkCalModal(\'' + g.id + '\')" style="color:#7c3aed">✓ Ghi hiệu chuẩn</a><a onclick="openStkCard(\'' + g.id + '\')">📒 Lịch sử</a><a onclick="openStkItemModal(\'' + g.id + '\')">Sửa</a></td>'
-      + '</tr>';
-  }).join('');
-  return '<div class="toolbar">'
-      + '<button onclick="openStkItemModal(null,\'gauge\')">＋ Thêm dụng cụ đo</button>'
-      + '<button class="ghost" onclick="khoExportItems([\'gauge\'])">📊 Xuất Excel danh sách</button>'
-      + '<span class="small muted">Mỗi dụng cụ là 1 dòng (đánh mã DCĐ-001…). Ghi ngày hiệu chuẩn + chu kỳ → app tự báo quá hạn. Phiếu kiểm hàng xuất kho chọn dụng cụ quá hạn sẽ bị nhắc.</span>'
-    + '</div>'
-    + '<div class="card" style="overflow:auto;padding:0">' + (list.length
-      ? '<table><thead><tr><th>Mã</th><th>Tên dụng cụ</th><th>Số seri</th><th>Phạm vi · độ chia</th><th>Người giữ</th><th>Hiệu chuẩn gần nhất</th><th>Hạn tiếp theo</th><th>Tình trạng</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>'
-      : '<div class="empty">Chưa khai dụng cụ đo nào. Bấm <b>＋ Thêm dụng cụ đo</b> — thước cặp, panme, đồng hồ so, calip nút, đo lỗ…</div>') + '</div>';
+/* ---------- bảng: dụng cụ đo ---------- */
+function khoTblGauges(){
+  const box = document.getElementById('khoT_gauge'); if(!box) return;
+  const f = KF.gauge;
+  const all = (DATA.stockItems||[]).filter(function(g){ return g && g.cat==='gauge'; });
+  let list = all.slice();
+  if(f.st) list = list.filter(function(g){ return stkCalState(g).k===f.st; });
+  if(f.holder) list = list.filter(function(g){ return f.holder==='__kho' ? !g.holder : (g.holder||'')===f.holder; });
+  if(f.q){ const q = tfNorm(f.q); list = list.filter(function(g){ return tfNorm([g.code, g.name, g.spec, g.serial, g.range, g.resolution, g.holder, g.loc, g.calibOrg].join(' ')).indexOf(q)>=0; }); }
+  const rank = {over:0, broken:1, lost:2, none:3, soon:4, calib:5, ok:6, retired:9};
+  list.sort(function(a, b){ return (rank[stkCalState(a).k] - rank[stkCalState(b).k]) || String(a.code||'').localeCompare(String(b.code||''), 'vi', {numeric:true}); });
+  khoSetCount('gauge', list.length, all.length);
+  if(!list.length){ box.innerHTML = '<div class="empty">' + (all.length ? 'Không có dụng cụ khớp bộ lọc.' : 'Chưa khai dụng cụ đo nào. Bấm <b>＋ Thêm</b> — thước cặp, panme, đồng hồ so, calip nút, đo lỗ…') + '</div>'; return; }
+  box.innerHTML = '<table data-kho="gauge"><thead><tr><th>Mã</th><th>Tên dụng cụ</th><th>Số seri</th><th>Phạm vi · độ chia</th><th>Người giữ</th><th>HC gần nhất</th><th>Hạn tiếp theo</th><th>Tình trạng</th><th>Thao tác</th></tr></thead><tbody>'
+    + list.map(function(g){
+      const st = stkCalState(g), due = stkCalDue(g), lastLog = (g.calibLog||[]).slice(-1)[0];
+      return '<tr style="' + (st.k==='over' || st.k==='broken' || st.k==='lost' ? 'background:#fff5f5' : (st.k==='retired' ? 'opacity:.55' : '')) + '">'
+        + '<td style="white-space:nowrap"><a class="kho-link" onclick="viewStkItem(\'' + g.id + '\')"><b>' + esc(g.code||'') + '</b></a></td>'
+        + '<td><a class="kho-link" onclick="viewStkItem(\'' + g.id + '\')">' + esc(g.name||'') + '</a>' + (g.spec ? ' <span class="muted">' + esc(g.spec) + '</span>' : '') + '</td>'
+        + '<td class="small">' + esc(g.serial||'—') + '</td>'
+        + '<td class="small">' + esc([g.range, g.resolution].filter(Boolean).join(' · ') || '—') + '</td>'
+        + '<td class="small">' + (g.holder ? '👤 ' + esc(g.holder) : '<span class="muted">' + esc(g.loc ? 'ở ' + g.loc : 'trong kho') + '</span>') + '</td>'
+        + '<td class="small" style="white-space:nowrap">' + (g.calibDate ? fmtDate(g.calibDate) : '—') + (g.calibOrg ? '<div class="muted" style="font-size:10.5px">' + esc(truncate(g.calibOrg, 28)) + '</div>' : '') + '</td>'
+        + '<td class="small" style="white-space:nowrap">' + (due ? fmtDate(due) : '—') + '</td>'
+        + '<td><span style="font-size:11px;font-weight:800;color:' + st.c + '">' + esc(st.t) + '</span>' + (lastLog && lastLog.result==='fail' ? '<div class="small" style="color:#b91c1c">lần HC gần nhất: KHÔNG ĐẠT</div>' : '') + '</td>'
+        + '<td class="actions" style="white-space:nowrap"><a onclick="viewStkItem(\'' + g.id + '\')">👁</a><a onclick="openStkCalModal(\'' + g.id + '\')" style="color:#7c3aed">✓ Ghi HC</a><a onclick="openStkItemModal(\'' + g.id + '\')" title="Sửa · đổi người giữ">✏</a></td>'
+        + '</tr>';
+    }).join('') + '</tbody></table>';
 }
 
-/* ---------- 🧾 phiếu nhập / xuất ---------- */
-function khoMovesHtml(){
-  return '<div class="toolbar">'
-      + '<button onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'buy_blank\'})" style="background:#15803d;border-color:#15803d">⬇ Phiếu nhập</button>'
-      + '<button onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'to_prod\'})" style="background:#b45309;border-color:#b45309">⬆ Phiếu xuất</button>'
-      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'adj\',purpose:\'count\'})">🧮 Kiểm kê</button>'
-      + '<button class="ghost" onclick="khoExportMoves()">📊 Xuất Excel phiếu</button>'
-      + '<span style="display:flex;gap:5px">' + ['', 'in', 'out', 'adj'].map(function(d){ return '<button class="' + (khoMvDir===d ? '' : 'ghost') + ' sm khoDirBtn" data-d="' + d + '" onclick="khoMvDir=this.dataset.d;document.querySelectorAll(\'.khoDirBtn\').forEach(function(b){b.classList.toggle(\'ghost\', b.dataset.d!==khoMvDir);});khoRenderMovesTable()" style="border-radius:99px">' + (d ? STK_DIR[d].ic + ' ' + (d==='adj' ? 'Kiểm kê' : (d==='in' ? 'Nhập' : 'Xuất')) : 'Tất cả') + '</button>'; }).join('') + '</span>'
-      + '<input id="khoMvQ" placeholder="Tìm số phiếu / mã đơn / hàng / NCC (China Steel…) / heat…" value="' + esc(khoMvQ) + '" oninput="khoMvQ=this.value;khoRenderMovesTable()" style="min-width:260px;flex:1">'
-    + '</div>'
-    + '<div class="card" style="overflow:auto;padding:0" id="khoMvTbl"></div>';
+/* ---------- bảng: phiếu nhập / xuất ---------- */
+function khoMovesFiltered(){
+  const f = KF.moves;
+  let list = (DATA.stockMoves||[]).filter(Boolean);
+  if(f.dir) list = list.filter(function(m){ return m.dir===f.dir; });
+  if(f.purpose) list = list.filter(function(m){ return m.purpose===f.purpose; });
+  if(f.from) list = list.filter(function(m){ return String(m.date||'') >= f.from; });
+  if(f.to) list = list.filter(function(m){ return String(m.date||'') <= f.to; });
+  if(f.order) list = list.filter(function(m){ return m.orderId===f.order || (m.lines||[]).some(function(l){ return stkLineOrder(m, l)===f.order; }); });
+  if(f.who) list = list.filter(function(m){ return m.by===f.who || m.receiver===f.who; });
+  if(f.sup) list = list.filter(function(m){ return (m.partner||'')===f.sup; });
+  if(f.rep==='rep') list = list.filter(function(m){ return !!m.reportNo; });
+  if(f.rep==='mailfail') list = list.filter(function(m){ return m.mail && m.mail.status==='failed'; });
+  if(f.q){
+    const q = tfNorm(f.q);
+    list = list.filter(function(m){
+      const ords = (m.lines||[]).map(function(l){ const o = stkOrderById(stkLineOrder(m, l)); return o ? (o.code||'') + ' ' + (o.quoteNo||'') + ' ' + (o.poNo||'') + ' ' + (o.company||'') : ''; }).join(' ');
+      const ln = (m.lines||[]).map(function(l){ const it = stkItemById(l.itemId); return [it ? stkItemLabel(it) : '', l.name, l.grade, l.spec, l.heatNo, l.note].join(' '); }).join(' ');
+      return tfNorm([m.no, m.reportNo, m.partner, m.docRef, m.certRef, m.receiver, m.by, m.note, (STK_PURPOSES[m.purpose]||{}).label, ords, ln].join(' ')).indexOf(q)>=0;
+    });
+  }
+  return list.sort(function(a, b){ return stkMoveTime(b).localeCompare(stkMoveTime(a)); });
 }
-function khoRenderMovesTable(){
-  const box = document.getElementById('khoMvTbl'); if(!box) return;
-  const q = tfNorm(khoMvQ||'');
-  let list = (DATA.stockMoves||[]).filter(function(m){ return m && (!khoMvDir || m.dir===khoMvDir); });
-  if(q) list = list.filter(function(m){
-    const ords = (m.lines||[]).map(function(l){ const o = stkOrderById(stkLineOrder(m, l)); return o ? (o.code||'') + ' ' + (o.quoteNo||'') + ' ' + (o.poNo||'') + ' ' + (o.company||'') : ''; }).join(' ');
-    const ln = (m.lines||[]).map(function(l){ const it = stkItemById(l.itemId); return [it ? stkItemLabel(it) : '', l.name, l.grade, l.spec, l.heatNo].join(' '); }).join(' ');
-    return tfNorm([m.no, m.partner, m.docRef, m.certRef, m.receiver, m.by, m.note, (STK_PURPOSES[m.purpose]||{}).label, ords, ln].join(' ')).indexOf(q)>=0;
-  });
-  list.sort(function(a,b){ return stkMoveTime(b).localeCompare(stkMoveTime(a)); });
-  if(!list.length){ box.innerHTML = '<div class="empty">' + ((DATA.stockMoves||[]).length ? 'Không có phiếu khớp bộ lọc.' : 'Chưa có phiếu nhập / xuất nào. Phôi mua về, hàng KH gửi gia công lỗ / cắt bớt — bấm <b>⬇ Phiếu nhập</b> và chọn đơn hàng.') + '</div>'; return; }
-  box.innerHTML = '<table><thead><tr><th>Ngày</th><th>Số phiếu</th><th>Loại</th><th>Đơn hàng</th><th>Hàng hoá</th><th>NCC / nguồn · người nhận</th><th>Chứng từ · CO/CQ</th><th></th></tr></thead><tbody>'
-    + list.slice(0, 400).map(function(m){
+function khoTblMoves(){
+  const box = document.getElementById('khoT_moves'); if(!box) return;
+  const all = (DATA.stockMoves||[]).filter(Boolean).length;
+  const list = khoMovesFiltered();
+  khoSetCount('moves', list.length, all);
+  if(!list.length){ box.innerHTML = '<div class="empty">' + (all ? 'Không có phiếu khớp bộ lọc.' : 'Chưa có phiếu nào. Phôi mua về, hàng KH gửi gia công lỗ / cắt bớt → <b>⬇ Phiếu nhập</b>. Thợ lấy hàng → <b>📤 Lấy hàng / báo kho</b>.') + '</div>'; return; }
+  box.innerHTML = '<table data-kho="moves"><thead><tr><th>Ngày</th><th>Số phiếu</th><th>Loại</th><th>Đơn hàng</th><th>Hàng hoá</th><th>NCC / nguồn · người</th><th>Chứng từ · CO/CQ</th><th>Thư</th><th>Thao tác</th></tr></thead><tbody>'
+    + list.slice(0, 500).map(function(m){
       const p = STK_PURPOSES[m.purpose] || {short:m.purpose||'', color:'#64748b'}, d = STK_DIR[m.dir] || STK_DIR.in;
-      const ordIds = []; (m.lines||[]).forEach(function(l){ const id = stkLineOrder(m, l); if(id && ordIds.indexOf(id)<0) ordIds.push(id); }); if(m.orderId && ordIds.indexOf(m.orderId)<0) ordIds.unshift(m.orderId);
+      const ordIds = []; if(m.orderId) ordIds.push(m.orderId); (m.lines||[]).forEach(function(l){ const id = stkLineOrder(m, l); if(id && ordIds.indexOf(id)<0) ordIds.push(id); });
       const ordHtml = ordIds.map(function(id){ const o = stkOrderById(id); return o ? '<a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a>' : '<span class="muted">(đơn đã xoá)</span>'; }).join(' ') || '<span class="muted">—</span>';
       const lnHtml = (m.lines||[]).filter(Boolean).map(function(l){ const it = stkItemById(l.itemId);
         return '<div>' + esc(it ? (it.code + ' · ' + (it.name||'')) : (l.name||'')) + (l.grade ? ' <b>' + esc(l.grade) + '</b>' : '') + (l.spec ? ' ' + esc(l.spec) : '')
-          + ' — <b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b> ' + esc(l.unit||(it&&it.unit)||'') + (stkHasNum(l.kg) ? ' · ' + stkFmt(stkNum(l.kg)) + ' kg' : '') + (l.heatNo ? ' <span class="muted">· heat ' + esc(l.heatNo) + '</span>' : '') + (it ? '' : ' <span class="muted" style="font-size:10px" title="Không có trong danh mục — không tính tồn">(ngoài DM)</span>') + '</div>'; }).join('');
+          + ' — <b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b> ' + esc(l.unit||(it&&it.unit)||'') + (stkHasNum(l.kg) ? ' · ' + stkFmt(stkNum(l.kg)) + ' kg' : '') + (l.heatNo ? ' <span class="muted">· heat ' + esc(l.heatNo) + '</span>' : '') + (l.note ? ' <span class="muted">· ' + esc(l.note) + '</span>' : '') + (it ? '' : ' <span class="muted" style="font-size:10px" title="Không có trong danh mục — không tính tồn">(ngoài DM)</span>') + '</div>'; }).join('');
+      const mail = m.mail ? (m.mail.status==='sent' ? '<span title="Đã gửi ' + esc(fmtDate(m.mail.at)) + '" style="color:#15803d">📨✓</span>' : (m.mail.status==='failed' ? '<a onclick="stkMailResend(\'' + m.id + '\')" title="Chưa gửi được: ' + esc(m.mail.err||'') + ' — bấm để gửi lại" style="cursor:pointer;color:#b91c1c;font-weight:800">📨✕</a>' : '<span class="muted">…</span>')) : '';
       return '<tr><td style="white-space:nowrap">' + fmtDate(m.date) + '</td>'
-        + '<td style="white-space:nowrap"><b style="color:' + d.c + '">' + d.ic + ' ' + esc(m.no||'') + '</b></td>'
+        + '<td style="white-space:nowrap"><a class="kho-link" onclick="viewStkMove(\'' + m.id + '\')"><b style="color:' + d.c + '">' + d.ic + ' ' + esc(m.no||'') + '</b></a>' + (m.reportNo ? '<div style="font-size:10px;font-weight:800;color:#15803d">📤 ' + esc(m.reportNo) + '</div>' : '') + '</td>'
         + '<td><span style="font-size:10.5px;font-weight:800;color:#fff;background:' + p.color + ';border-radius:5px;padding:1px 6px;white-space:nowrap">' + esc(p.short) + '</span></td>'
         + '<td>' + ordHtml + '</td>'
         + '<td class="small" style="min-width:220px">' + lnHtml + (m.note ? '<div class="muted" style="font-size:10.5px">' + esc(truncate(m.note, 80)) + '</div>' : '') + '</td>'
-        + '<td class="small">' + esc(m.partner||'') + (m.receiver ? '<div class="muted">👤 ' + esc(m.receiver) + '</div>' : '') + '</td>'
+        + '<td class="small">' + esc(m.partner||'') + (m.receiver ? '<div class="muted">👤 ' + esc(m.receiver) + '</div>' : '') + (m.by && m.by!==m.receiver ? '<div class="muted">✍ ' + esc(m.by) + '</div>' : '') + '</td>'
         + '<td class="small">' + esc(m.docRef||'') + (m.certRef ? '<div class="muted">📄 ' + esc(m.certRef) + '</div>' : '') + '</td>'
-        + '<td class="actions" style="white-space:nowrap"><a onclick="openStkMoveModal(\'' + m.id + '\')">Sửa</a><a onclick="printStkMove(\'' + m.id + '\')">🖨 In</a></td></tr>';
-    }).join('') + '</tbody></table>' + (list.length>400 ? '<div class="small muted" style="padding:8px 12px">Hiện 400/' + list.length + ' phiếu mới nhất — gõ ô tìm để lọc.</div>' : '');
+        + '<td style="text-align:center">' + mail + '</td>'
+        + '<td class="actions" style="white-space:nowrap"><a onclick="viewStkMove(\'' + m.id + '\')">👁</a><a onclick="openStkMoveModal(\'' + m.id + '\')" title="Sửa thông tin phiếu">✏</a><a onclick="printStkMove(\'' + m.id + '\')">🖨</a></td></tr>';
+    }).join('') + '</tbody></table>' + (list.length>500 ? '<div class="small muted" style="padding:8px 12px">Hiện 500/' + list.length + ' phiếu mới nhất — dùng bộ lọc để thu hẹp.</div>' : '');
 }
 
-/* ---------- 🔍 kiểm trước gia công ---------- */
-function khoChecksHtml(waiting){
-  const wRows = waiting.slice().sort(function(a,b){ return String(a.dueDate||a.requestedDate||'9').localeCompare(String(b.dueDate||b.requestedDate||'9')); }).map(function(o){
-    const st = stockCheckState(o), g = orderProgressInfo(o), cur = g && g.current ? ((g.current.code||'') + ' ' + (g.current.name||'')).trim() : '';
-    const src = stkLinesOfOrder(o.id).filter(function(x){ return stkLineNeedsCheck(x.m, x.l); }).map(function(x){ const it = stkItemById(x.l.itemId); return esc((x.m.no||'') + ' ' + (it ? it.name : (x.l.name||''))); }).join('<br>');
-    return '<tr><td><a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a><div class="muted small">' + esc(truncate(o.company||'', 30)) + '</div></td>'
-      + '<td style="min-width:220px">' + esc(truncate(o.name||'', 90)) + (src ? '<div class="small muted" style="margin-top:2px">📦 ' + src + '</div>' : '') + '</td>'
-      + '<td>' + pillFor(o.status) + (cur ? '<div class="small muted">⏳ ' + esc(cur) + '</div>' : '') + '</td>'
-      + '<td class="small">' + fmtDate(o.dueDate||o.requestedDate) + '</td>'
-      + '<td>' + (st==='fail' ? '<b style="color:#b91c1c;font-size:11px">✕ phiếu trước KHÔNG ĐẠT</b>' : '<b style="color:#b45309;font-size:11px">chưa kiểm</b>') + '</td>'
-      + '<td><button class="sm" onclick="openStkCheckModal(null,\'' + o.id + '\')">🔍 Lập phiếu kiểm</button></td></tr>';
-  }).join('');
-  const q = tfNorm(khoChkQ||'');
-  let list = (DATA.stockChecks||[]).filter(Boolean);
-  if(q) list = list.filter(function(c){ const o = stkOrderById(c.orderId); return tfNorm([c.no, c.itemName, c.labelCode, c.partCode, c.inspector, c.receiver, c.note, o && o.code, o && o.name, o && o.company].join(' ')).indexOf(q)>=0; });
-  list.sort(function(a,b){ return ((b.date||'') + (b.createdAt||'')).localeCompare((a.date||'') + (a.createdAt||'')); });
-  const cRows = list.slice(0, 300).map(function(c){
-    const o = stkOrderById(c.orderId), dims = (c.dims||[]).filter(function(d){ return d && String(d.param||'').trim(); });
-    const dOk = dims.filter(function(d){ return d.pass==='pass'; }).length, dNg = dims.filter(function(d){ return d.pass==='fail'; }).length;
-    const mism = stkCodeMismatch(c.labelCode, c.partCode);
-    return '<tr style="' + (c.result==='fail' ? 'background:#fff5f5' : '') + '"><td style="white-space:nowrap">' + fmtDate(c.date) + '<div class="muted small">' + esc(c.no||'') + '</div></td>'
-      + '<td>' + (o ? '<a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a>' : '<span class="muted">(đơn đã xoá)</span>') + '</td>'
-      + '<td style="min-width:180px">' + esc(c.itemName||'') + (c.qty ? ' <span class="muted">× ' + esc(c.qty) + '</span>' : '') + '</td>'
-      + '<td class="small">📦 ' + esc(c.labelCode||'—') + '<br>🔩 <b style="color:' + (mism ? '#b91c1c' : 'inherit') + '">' + esc(c.partCode||'—') + '</b>' + (mism ? ' <span style="color:#b91c1c;font-weight:800" title="Mã trên hộp và mã trên sản phẩm KHÁC nhau">≠</span>' : '') + '</td>'
-      + '<td class="small">' + dims.length + ' kích thước' + (dims.length ? '<div>' + (dOk ? '<span style="color:#15803d">✓' + dOk + '</span> ' : '') + (dNg ? '<span style="color:#b91c1c;font-weight:800">✕' + dNg + '</span>' : '') + '</div>' : '') + '</td>'
-      + '<td class="small">' + esc(c.inspector||'—') + (c.receiver ? '<div class="muted">→ ' + esc(c.receiver) + '</div>' : '') + '</td>'
-      + '<td>' + (c.result==='pass' ? '<b style="color:#15803d">✓ ĐẠT</b>' : c.result==='fail' ? '<b style="color:#b91c1c">✕ KHÔNG ĐẠT</b>' : '<span class="muted">chưa kết luận</span>') + '</td>'
-      + '<td class="actions" style="white-space:nowrap"><a onclick="openStkCheckModal(\'' + c.id + '\')">Sửa</a><a onclick="printStkCheck(\'' + c.id + '\')">🖨 In</a></td></tr>';
-  }).join('');
-  return '<div class="card" style="border-left:4px solid #7c3aed;background:#faf5ff;margin-bottom:12px">'
-      + '<b style="color:#5b21b6">🔍 Quy tắc: hàng lấy từ kho / KH gửi về → MỞ HỘP, ĐỌC MÃ TRÊN SẢN PHẨM, ĐO KÍCH THƯỚC → ĐẠT mới giao thợ gia công.</b>'
-      + '<div class="small" style="margin-top:4px;color:#4c1d95;line-height:1.6">Đơn nào phải kiểm: ô <b>🔍 Kiểm hàng xuất kho</b> trên đơn (đơn gia công mới tự bật), hoặc đơn có phiếu kho "Xuất cho gia công" / "Hàng gửi về gia công lỗ · cắt bớt". '
-      + 'Chưa có phiếu ĐẠT thì app <b>không cho BẮT ĐẦU / báo XONG</b> công đoạn gia công (Tiện, Phay, Cắt dây, Khoan, Xọc…). Phiếu KHÔNG ĐẠT → giữ hàng lại, lập NCR, đổi hàng rồi kiểm lại.</div></div>'
-    + '<h2 class="sec" style="margin-top:6px"><span class="bar"></span>⏳ Đơn đang chờ kiểm (' + waiting.length + ')</h2>'
-    + '<div class="card" style="overflow:auto;padding:0">' + (waiting.length
-      ? '<table><thead><tr><th>Đơn</th><th>Tên hàng · nguồn hàng</th><th>Trạng thái</th><th>Hạn KH</th><th>Kiểm</th><th></th></tr></thead><tbody>' + wRows + '</tbody></table>'
-      : '<div class="empty" style="padding:22px">✓ Không có đơn nào đang chờ kiểm hàng xuất kho.</div>') + '</div>'
-    + '<h2 class="sec"><span class="bar"></span>📋 Phiếu kiểm đã lập (' + (DATA.stockChecks||[]).length + ')</h2>'
-    + '<div class="toolbar"><button onclick="openStkCheckModal()">＋ Phiếu kiểm mới</button><input placeholder="Tìm số phiếu / mã đơn / mã hàng / người kiểm…" value="' + esc(khoChkQ) + '" onchange="khoChkQ=this.value;renderKho()" style="min-width:260px;flex:1"></div>'
-    + '<div class="card" style="overflow:auto;padding:0">' + (list.length
-      ? '<table><thead><tr><th>Ngày · số</th><th>Đơn</th><th>Món kiểm</th><th>Mã hộp / mã trên SP</th><th>Kích thước</th><th>Người kiểm → thợ</th><th>Kết luận</th><th></th></tr></thead><tbody>' + cRows + '</tbody></table>'
-      : '<div class="empty" style="padding:22px">Chưa có phiếu kiểm nào.</div>') + '</div>';
+/* ---------- bảng: kiểm trước gia công ---------- */
+function khoTblChecks(){
+  const wbox = document.getElementById('khoW_check');
+  if(wbox){
+    const waiting = stkOrdersWaitingCheck().slice().sort(function(a, b){ return String(a.dueDate||a.requestedDate||'9').localeCompare(String(b.dueDate||b.requestedDate||'9')); });
+    wbox.innerHTML = '<b class="small" style="display:block;margin:2px 0 6px">⏳ Đơn đang chờ kiểm (' + waiting.length + ')</b>' + (waiting.length
+      ? '<div style="overflow:auto;margin-bottom:12px"><table data-kho="wait"><thead><tr><th>Đơn</th><th>Tên hàng · nguồn hàng</th><th>Trạng thái</th><th>Hạn KH</th><th>Kiểm</th><th></th></tr></thead><tbody>'
+        + waiting.map(function(o){
+          const st = stockCheckState(o), g = orderProgressInfo(o), cur = g && g.current ? ((g.current.code||'') + ' ' + (g.current.name||'')).trim() : '';
+          const src = stkLinesOfOrder(o.id).filter(function(x){ return stkLineNeedsCheck(x.m, x.l); }).map(function(x){ const it = stkItemById(x.l.itemId); return esc((x.m.no||'') + ' ' + (it ? it.name : (x.l.name||''))); }).join('<br>');
+          return '<tr><td><a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a><div class="muted small">' + esc(truncate(o.company||'', 30)) + '</div></td>'
+            + '<td style="min-width:200px">' + esc(truncate(o.name||'', 90)) + (src ? '<div class="small muted" style="margin-top:2px">📦 ' + src + '</div>' : '') + '</td>'
+            + '<td>' + pillFor(o.status) + (cur ? '<div class="small muted">⏳ ' + esc(cur) + '</div>' : '') + '</td>'
+            + '<td class="small">' + fmtDate(o.dueDate||o.requestedDate) + '</td>'
+            + '<td>' + (st==='fail' ? '<b style="color:#b91c1c;font-size:11px">✕ phiếu trước KHÔNG ĐẠT</b>' : '<b style="color:#b45309;font-size:11px">chưa kiểm</b>') + '</td>'
+            + '<td><button class="sm" onclick="openStkCheckModal(null,\'' + o.id + '\')">🔍 Lập phiếu kiểm</button></td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '<div class="small" style="color:#15803d;margin-bottom:10px">✓ Không có đơn nào đang chờ kiểm hàng xuất kho.</div>');
+  }
+  const box = document.getElementById('khoT_check'); if(!box) return;
+  const f = KF.check;
+  const all = (DATA.stockChecks||[]).filter(Boolean);
+  let list = all.slice();
+  if(f.res) list = list.filter(function(c){ return f.res==='none' ? !c.result : c.result===f.res; });
+  if(f.from) list = list.filter(function(c){ return String(c.date||'') >= f.from; });
+  if(f.to) list = list.filter(function(c){ return String(c.date||'') <= f.to; });
+  if(f.insp) list = list.filter(function(c){ return (c.inspector||'')===f.insp; });
+  if(f.q){ const q = tfNorm(f.q); list = list.filter(function(c){ const o = stkOrderById(c.orderId); return tfNorm([c.no, c.itemName, c.labelCode, c.partCode, c.inspector, c.receiver, c.note, o && o.code, o && o.name, o && o.company].join(' ')).indexOf(q)>=0; }); }
+  list.sort(function(a, b){ return ((b.date||'') + (b.createdAt||'')).localeCompare((a.date||'') + (a.createdAt||'')); });
+  khoSetCount('check', list.length, all.length);
+  if(!list.length){ box.innerHTML = '<div class="empty" style="padding:22px">' + (all.length ? 'Không có phiếu khớp bộ lọc.' : 'Chưa có phiếu kiểm nào.') + '</div>'; return; }
+  box.innerHTML = '<table data-kho="check"><thead><tr><th>Ngày · số</th><th>Đơn</th><th>Món kiểm</th><th>Mã hộp / mã trên SP</th><th>Kích thước</th><th>Người kiểm → thợ</th><th>Kết luận</th><th>Thao tác</th></tr></thead><tbody>'
+    + list.slice(0, 400).map(function(c){
+      const o = stkOrderById(c.orderId), dims = (c.dims||[]).filter(function(d){ return d && String(d.param||'').trim(); });
+      const dOk = dims.filter(function(d){ return d.pass==='pass'; }).length, dNg = dims.filter(function(d){ return d.pass==='fail'; }).length;
+      const mism = stkCodeMismatch(c.labelCode, c.partCode);
+      return '<tr style="' + (c.result==='fail' ? 'background:#fff5f5' : '') + '"><td style="white-space:nowrap">' + fmtDate(c.date) + '<div><a class="kho-link small" onclick="viewStkCheck(\'' + c.id + '\')">' + esc(c.no||'') + '</a></div></td>'
+        + '<td>' + (o ? '<a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a>' : '<span class="muted">(đơn đã xoá)</span>') + '</td>'
+        + '<td style="min-width:160px"><a class="kho-link" onclick="viewStkCheck(\'' + c.id + '\')">' + esc(c.itemName||'') + '</a>' + (c.qty ? ' <span class="muted">× ' + esc(c.qty) + '</span>' : '') + '</td>'
+        + '<td class="small">📦 ' + esc(c.labelCode||'—') + '<br>🔩 <b style="color:' + (mism ? '#b91c1c' : 'inherit') + '">' + esc(c.partCode||'—') + '</b>' + (mism ? ' <span style="color:#b91c1c;font-weight:800" title="Mã trên hộp và mã trên sản phẩm KHÁC nhau">≠</span>' : '') + '</td>'
+        + '<td class="small">' + dims.length + ' kích thước' + (dims.length ? '<div>' + (dOk ? '<span style="color:#15803d">✓' + dOk + '</span> ' : '') + (dNg ? '<span style="color:#b91c1c;font-weight:800">✕' + dNg + '</span>' : '') + '</div>' : '') + '</td>'
+        + '<td class="small">' + esc(c.inspector||'—') + (c.receiver ? '<div class="muted">→ ' + esc(c.receiver) + '</div>' : '') + '</td>'
+        + '<td>' + (c.result==='pass' ? '<b style="color:#15803d">✓ ĐẠT</b>' : c.result==='fail' ? '<b style="color:#b91c1c">✕ KHÔNG ĐẠT</b>' : '<span class="muted">chưa kết luận</span>') + '</td>'
+        + '<td class="actions" style="white-space:nowrap"><a onclick="viewStkCheck(\'' + c.id + '\')">👁</a><a onclick="openStkCheckModal(\'' + c.id + '\')">✏</a><a onclick="printStkCheck(\'' + c.id + '\')">🖨</a></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+/* ---------- bảng: sắp hết ---------- */
+function khoTblLow(){
+  const box = document.getElementById('khoT_low'); if(!box) return;
+  const Q = stkQtyMap(); const list = stkLowItems(Q).sort(function(a, b){ return ((Q[a.id]||0) - stkNum(a.minQty)) - ((Q[b.id]||0) - stkNum(b.minQty)); });
+  if(!list.length){ box.innerHTML = '<div class="empty" style="padding:20px">✓ Không có món nào dưới tồn tối thiểu.<div class="small muted" style="margin-top:4px">Đặt "Tồn tối thiểu" cho từng mặt hàng để app biết khi nào báo.</div></div>'; return; }
+  box.innerHTML = '<table data-kho="low"><thead><tr><th>Mã</th><th>Tên hàng</th><th>Nhóm</th><th style="text-align:right">Tồn</th><th style="text-align:right">Tối thiểu</th><th style="text-align:right">Thiếu</th><th>NCC / hãng</th><th>Đã báo mail</th><th></th></tr></thead><tbody>'
+    + list.map(function(it){ const q = Q[it.id]||0, mn = stkNum(it.minQty), st = stkItemStatus(it, Q);
+      return '<tr><td><a class="kho-link" onclick="viewStkItem(\'' + it.id + '\')"><b>' + esc(it.code||'') + '</b></a></td><td>' + esc(it.name||'') + (it.spec ? ' <span class="muted">' + esc(it.spec) + '</span>' : '') + '</td><td class="small">' + stkCat(it.cat).ic + ' ' + esc(stkCat(it.cat).label) + '</td>'
+        + '<td style="text-align:right;font-weight:800;color:' + st.c + '">' + stkFmt(q) + ' ' + esc(it.unit||'') + '</td><td style="text-align:right">' + (mn ? stkFmt(mn) : '—') + '</td><td style="text-align:right;font-weight:700">' + (mn ? stkFmt(Math.max(0, mn - q)) : '—') + '</td>'
+        + '<td class="small">' + esc(it.brand||'') + '</td><td class="small">' + (it.lowMailAt ? '📨 ' + fmtDate(it.lowMailAt) : '<span class="muted">chưa</span>') + '</td>'
+        + '<td class="actions"><a onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'buy_stock\',itemId:\'' + it.id + '\'})">⬇ Nhập</a></td></tr>'; }).join('')
+    + '</tbody></table>';
+}
+
+/* ---------- bảng: thư đã gửi (nhật ký trên máy chủ) ---------- */
+async function khoTblMail(){
+  const box = document.getElementById('khoT_mail'); if(!box) return;
+  if(!supaConfigured()){ box.innerHTML = '<div class="empty" style="padding:20px">Chưa kết nối Supabase — chưa gửi thư tự động được.</div>'; return; }
+  if(!_sb && !initSupabase()){ box.innerHTML = '<div class="empty" style="padding:20px">Không khởi tạo được Supabase.</div>'; return; }
+  box.innerHTML = '<div class="small muted" style="padding:10px">Đang tải nhật ký thư…</div>';
+  try{
+    const r = await _sb.rpc('kho_mail_recent');
+    if(r.error) throw r.error;
+    const rows = r.data || [];
+    if(!rows.length){ box.innerHTML = '<div class="empty" style="padding:20px">Chưa gửi thư nào.</div>'; return; }
+    box.innerHTML = '<table data-kho="mail"><thead><tr><th>Lúc</th><th>Loại</th><th>Tiêu đề</th><th>Kết quả</th></tr></thead><tbody>'
+      + rows.map(function(x){ const t = new Date(x.at); return '<tr><td class="small" style="white-space:nowrap">' + esc(isNaN(t) ? String(x.at||'') : t.toLocaleString('vi-VN')) + '</td><td class="small">' + esc(({report:'Báo kho', low:'Sắp hết', lowlist:'Danh sách sắp hết', test:'Gửi thử'})[x.kind] || x.kind || '') + '</td><td class="small">' + esc(x.subject||'') + '</td>'
+        + '<td class="small">' + (x.ok===true ? '<b style="color:#15803d">✓ đã gửi</b>' : (x.ok===false ? '<b style="color:#b91c1c">✕ lỗi</b> <span class="muted">' + esc(truncate(x.err||'', 80)) + '</span>' : '<span class="muted">đang gửi…</span>')) + '</td></tr>'; }).join('')
+      + '</tbody></table>';
+  }catch(e){
+    box.innerHTML = '<div class="empty" style="padding:20px">Chưa có nhật ký thư trên máy chủ' + (_isMissingTable(e) || /kho_mail_recent|function/i.test((e&&e.message)||'') ? ' — cần chạy <b>supabase_kho_mail_2026-11-25.sql</b> và deploy function <b>kho-mail</b>.' : ': ' + esc((e && e.message) || '')) + '</div>';
+  }
 }
 
 /* =====================================================================================
@@ -11736,6 +12149,11 @@ function openStkItemModal(id, cat){
   set('si_open', v.openingQty); set('si_min', v.minQty); set('si_unit', v.unit || (it ? '' : STK_CATS[v.cat||'steel'].unit)); set('si_loc', v.loc); set('si_machine', v.machine);
   set('si_serial', v.serial); set('si_range', v.range); set('si_res', v.resolution); set('si_cal', v.calibDate); set('si_cyc', v.calibCycle || (it ? '' : 12));
   set('si_status', v.status || 'ok'); set('si_calorg', v.calibOrg); set('si_note', v.note);
+  // 25-11-2026: đã có phiếu → khoá tồn đầu kỳ; số lượng chỉ đổi qua phiếu nhập / xuất / kiểm kê / báo kho
+  const used = it ? (DATA.stockMoves||[]).some(function(m){ return m && (m.lines||[]).some(function(l){ return l && l.itemId===it.id; }); }) : false;
+  const so = document.getElementById('si_open'); so.readOnly = used; so.style.background = used ? '#f1f5f9' : '';
+  document.getElementById('si_open_note').innerHTML = used ? '🔒 Mặt hàng đã có phiếu — tồn hiện tại <b>' + stkFmt(stkQtyMap()[it.id] || 0) + ' ' + esc(it.unit||'') + '</b>. Sửa thông tin thoải mái; đổi SỐ LƯỢNG bằng 🧮 Kiểm kê hoặc 📤 Báo kho'
+    + (canEdit() ? ' · <a class="kho-link" onclick="stkUnlockOpening()">mở khoá tồn đầu kỳ (điều phối)</a>' : '') : '';
   const hs = document.getElementById('si_holder');
   hs.innerHTML = '<option value="">— trong kho (không ai giữ) —</option>' + stkStaffNames().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join('');
   if(v.holder && stkStaffNames().indexOf(v.holder)<0) hs.innerHTML += '<option>' + esc(v.holder) + '</option>';
@@ -11769,7 +12187,7 @@ function saveStkItem(){
   const rec = Object.assign({}, old || {}, {
     id: id || uid('VT', 'stkItem'), code: code, cat: cat, name: name,
     grade: g('si_grade'), spec: g('si_spec'), brand: g('si_brand'), unit: g('si_unit'), loc: g('si_loc'), machine: g('si_machine'), note: g('si_note'),
-    openingQty: cat==='gauge' ? 1 : (g('si_open')==='' ? 0 : stkNum(g('si_open'))), minQty: cat==='gauge' ? '' : (g('si_min')==='' ? '' : stkNum(g('si_min'))),
+    openingQty: cat==='gauge' ? 1 : ((old && document.getElementById('si_open').readOnly) ? old.openingQty : (g('si_open')==='' ? 0 : stkNum(g('si_open')))), minQty: cat==='gauge' ? '' : (g('si_min')==='' ? '' : stkNum(g('si_min'))),
     updatedAt: new Date().toISOString()
   });
   if(cat==='gauge'){
@@ -11778,9 +12196,15 @@ function saveStkItem(){
     if(old && (old.holder||'')!==rec.holder) rec.holdLog = (old.holdLog||[]).concat([{date:todayStr(), from:old.holder||'', to:rec.holder||'', at:new Date().toISOString()}]).slice(-30);
   }
   if(!old) rec.createdAt = new Date().toISOString();
+  if(old && stkNum(old.openingQty)!==stkNum(rec.openingQty)) rec.qtyLog = (old.qtyLog||[]).concat([{at:new Date().toISOString(), by:(DATA.meta && DATA.meta.user) || (ROLE_INFO[getRole()]||{}).name || '', what:'tồn đầu kỳ', from:old.openingQty, to:rec.openingQty}]).slice(-30);
   const arr = stkArr('stockItems'), i = arr.findIndex(function(x){ return x && x.id===rec.id; });
   if(i>=0) arr[i] = rec; else arr.push(rec);
   closeModal('modalStkItem'); save();
+}
+function stkUnlockOpening(){
+  if(!requireEdit()) return;
+  if(!confirm('Mở khoá "Tồn đầu kỳ"?\n\nChỉ dùng khi nhập SAI tồn ban đầu. Muốn khớp số thực tế thì nên dùng 🧮 Kiểm kê (có dấu vết từng lần). App sẽ ghi lại lịch sử sửa.')) return;
+  const so = document.getElementById('si_open'); so.readOnly = false; so.style.background = '#fffbeb'; so.focus();
 }
 function deleteStkItem(){
   if(!requireEdit()) return;
@@ -11823,7 +12247,8 @@ function saveStkCal(){
 }
 
 /* ---------- 📒 thẻ kho ---------- */
-function openStkCard(id){
+function openStkCard(id){ viewStkItem(id); }
+function viewStkItem(id){
   const it = stkItemById(id); if(!it) return;
   const rows = []; let bal = stkNum(it.openingQty);
   (DATA.stockMoves||[]).filter(Boolean).slice().sort(function(a,b){ return stkMoveTime(a).localeCompare(stkMoveTime(b)); }).forEach(function(m){
@@ -11845,12 +12270,15 @@ function openStkCard(id){
   }
   html += rows.length ? '<div style="overflow:auto;max-height:60vh"><table><thead><tr><th>Ngày</th><th>Phiếu</th><th>Loại</th><th>Đơn</th><th style="text-align:right">Nhập</th><th style="text-align:right">Xuất</th><th style="text-align:right">Tồn</th><th>Ghi chú</th></tr></thead><tbody>'
     + rows.slice().reverse().map(function(r){ const o = stkOrderById(stkLineOrder(r.m, r.l)); const n = stkNum(r.l.qty);
-      return '<tr><td>' + fmtDate(r.m.date) + '</td><td><a onclick="closeModal(\'modalStkInfo\');openStkMoveModal(\'' + r.m.id + '\')" style="cursor:pointer;color:#0369a1;font-weight:700">' + esc(r.m.no||'') + '</a></td><td class="small">' + esc((STK_PURPOSES[r.m.purpose]||{}).short||'') + '</td><td>' + (o ? esc(o.code||'') : '') + '</td>'
+      return '<tr><td>' + fmtDate(r.m.date) + '</td><td><a onclick="viewStkMove(\'' + r.m.id + '\')" style="cursor:pointer;color:#0369a1;font-weight:700">' + esc(r.m.no||'') + '</a></td><td class="small">' + esc((STK_PURPOSES[r.m.purpose]||{}).short||'') + '</td><td>' + (o ? esc(o.code||'') : '') + '</td>'
         + '<td style="text-align:right">' + (r.m.dir==='in' ? stkFmt(n) : '') + '</td><td style="text-align:right">' + (r.m.dir==='out' ? stkFmt(n) : '') + (r.m.dir==='adj' ? '<span class="muted">đếm ' + stkFmt(n) + '</span>' : '') + '</td><td style="text-align:right;font-weight:800">' + stkFmt(r.bal) + '</td><td class="small">' + esc([r.m.partner, r.m.receiver, r.l.heatNo ? 'heat ' + r.l.heatNo : ''].filter(Boolean).join(' · ')) + '</td></tr>'; }).join('')
     + '</tbody></table></div>' : '<div class="empty" style="padding:20px">Chưa có phiếu nhập / xuất nào cho mặt hàng này.</div>';
-  document.getElementById('stkInfoTitle').textContent = '📒 Thẻ kho — ' + (it.code||'') + ' · ' + (it.name||'');
-  document.getElementById('stkInfoBody').innerHTML = html;
-  openModal('modalStkInfo');
+  const Qn = stkQtyMap(), stn = it.cat==='gauge' ? null : stkItemStatus(it, Qn);
+  const head = stkKv([['Mã', '<b>' + esc(it.code||'') + '</b> · ' + stkCat(it.cat).ic + ' ' + esc(stkCat(it.cat).label)], ['Tên', esc(it.name||'')], ['Mác / loại', esc(it.grade||'')], ['Quy cách', esc(it.spec||'')], ['NCC / hãng', esc(it.brand||'')], ['Máy dùng', esc(it.machine||'')], ['Vị trí', esc(it.loc||'')],
+    ['Tồn hiện tại', stn ? '<b style="font-size:15px;color:' + stn.c + '">' + stkFmt(Qn[it.id]||0) + ' ' + esc(it.unit||'') + '</b> · tối thiểu ' + (stkNum(it.minQty) ? stkFmt(stkNum(it.minQty)) : '—') + ' · <span style="color:' + stn.c + ';font-weight:700">' + esc(stn.t) + '</span>' + (it.lowMailAt ? ' · 📨 đã báo ' + fmtDate(it.lowMailAt) : '') : ''], ['Ghi chú', esc(it.note||'')]]);
+  const acts = canWork() ? '<div class="toolbar" style="margin:8px 0">' + (it.cat!=='gauge' ? '<button class="sm" onclick="closeModal(\'modalStkInfo\');openStkUseModal({itemId:\'' + it.id + '\'})" style="background:#15803d;border-color:#15803d">📤 Lấy / báo kho</button><button class="ghost sm" onclick="closeModal(\'modalStkInfo\');openStkMoveModal(null,{dir:\'in\',purpose:\'buy_stock\',itemId:\'' + it.id + '\'})">⬇ Nhập</button>' : '<button class="ghost sm" onclick="closeModal(\'modalStkInfo\');openStkCalModal(\'' + it.id + '\')">✓ Ghi hiệu chuẩn</button>') + '<button class="ghost sm" onclick="closeModal(\'modalStkInfo\');openStkItemModal(\'' + it.id + '\')">✏ Sửa thông tin</button></div>' : '';
+  const qlog = (it.qtyLog||[]).length ? '<div class="small muted" style="margin-top:8px">Sửa tồn đầu kỳ: ' + it.qtyLog.slice().reverse().map(function(q){ return esc(new Date(q.at).toLocaleString('vi-VN')) + ' ' + esc(q.by||'') + ': ' + esc(String(q.from)) + ' → ' + esc(String(q.to)); }).join(' · ') + '</div>' : '';
+  stkInfo('📦 ' + (it.code||'') + ' · ' + (it.name||''), head + acts + '<h4 style="margin:10px 0 4px;font-size:13px">📒 Thẻ kho — lịch sử nhập / xuất</h4>' + html + qlog);
 }
 
 /* =====================================================================================
@@ -11879,6 +12307,9 @@ function openStkMoveModal(id, preset){
   else if(preset.itemId){ const it = stkItemById(preset.itemId); _smLines = [stkNewLine(it ? {itemId:it.id, grade:it.grade||'', spec:it.spec||'', unit:it.unit||''} : {})]; }
   else _smLines = [stkNewLine()];
   document.getElementById('sm_del').style.display = m ? '' : 'none';
+  _smLock = !!m && !canEdit();
+  document.getElementById('sm_lock').innerHTML = _smLock ? '🔒 Phiếu đã lưu: sửa được thông tin (NCC, chứng từ, CO/CQ, heat, ghi chú…). Số lượng / mặt hàng chỉ điều phối sửa — muốn chỉnh tồn thì dùng 🧮 Kiểm kê hoặc 📤 Báo kho.' : (m ? 'Đổi số lượng / mặt hàng của phiếu đã lưu: app hỏi lại và ghi lịch sử sửa.' : '');
+  const addBtn = document.querySelector('#modalStkMove [onclick="stkAddLine()"]'); if(addBtn) addBtn.style.display = _smLock ? 'none' : '';
   stkMoveDirChanged(true);
   opSyncAll();
   openModal('modalStkMove');
@@ -11906,7 +12337,8 @@ function stkMovePurposeChanged(){
 }
 function stkRenderLines(){
   const wrap = document.getElementById('sm_lines'); if(!wrap) return;
-  const dir = document.getElementById('sm_dirsel').value; const Q = stkQtyMap();
+  _rdGen.sm = (_rdGen.sm || 0) + 1;
+  const dir = document.getElementById('sm_dirsel').value; const Q = stkQtyMap(); const lk = _smLock ? ' disabled' : '';
   const ordOpts = '<option value="">(theo phiếu)</option>' + stkOrderOptions().filter(function(o){ return !/\(đã giao\)$/.test(o.label); }).map(function(o){ return '<option value="' + esc(o.id) + '">' + esc(o.label.split(' — ')[0]) + '</option>'; }).join('');
   wrap.innerHTML = '<div style="display:flex;gap:5px;font-size:10px;font-weight:800;color:var(--muted);padding:0 2px 3px"><span style="flex:1;min-width:150px">Mã / tên hàng</span><span style="width:84px">Mác / VL</span><span style="width:100px">Quy cách</span><span style="width:58px">' + (dir==='adj' ? 'SL đếm' : 'SL') + '</span><span style="width:58px">ĐVT</span><span style="width:56px">kg</span><span style="width:74px">Heat / lô</span><span style="width:92px">Đơn riêng</span><span style="width:14px"></span></div>'
     + _smLines.map(function(l, i){
@@ -11914,19 +12346,19 @@ function stkRenderLines(){
       const stockTxt = it ? '<span style="color:' + (dir==='out' && stkNum(l.qty) > (Q[it.id]||0) ? '#b91c1c' : '#64748b') + '">tồn hiện tại: <b>' + stkFmt(Q[it.id]||0) + '</b> ' + esc(it.unit||'') + '</span>' : (String(l.name||'').trim() ? '<span class="muted">ngoài danh mục — không tính tồn' + (dir==='in' ? ' · <a onclick="stkLineToCatalog(' + i + ')" style="cursor:pointer;color:#0369a1;font-weight:700">＋ thêm vào danh mục</a>' : '') + '</span>' : '');
       const lineOrd = l.orderId ? ordOpts.replace('value="' + esc(l.orderId) + '"', 'value="' + esc(l.orderId) + '" selected') : ordOpts;
       return '<div style="margin-bottom:5px"><div style="display:flex;gap:5px;align-items:center">'
-        + '<input style="flex:1;min-width:150px;font-size:11px" list="stkDlItems" value="' + esc(it ? stkItemLabel(it) : (l.name||'')) + '" placeholder="gõ mã / tên — vd THEP-001 hoặc KTR Rotex 38" onchange="stkLinePick(' + i + ',this.value)">'
+        + '<input' + lk + ' style="flex:1;min-width:150px;font-size:11px" list="stkDlItems" value="' + esc(it ? stkItemLabel(it) : (l.name||'')) + '" placeholder="gõ mã / tên — vd THEP-001 hoặc KTR Rotex 38" onchange="stkLinePick(' + i + ',this.value)">'
         + '<input style="width:84px;font-size:11px" list="stkDlGrade" value="' + esc(l.grade||'') + '" placeholder="S45C" oninput="_smLines[' + i + '].grade=this.value">'
         + '<input style="width:100px;font-size:11px" value="' + esc(l.spec||'') + '" placeholder="Ø120×200" oninput="_smLines[' + i + '].spec=this.value">'
-        + '<input style="width:58px;font-size:11px" value="' + esc(l.qty==null ? '' : l.qty) + '" placeholder="1" inputmode="decimal" oninput="_smLines[' + i + '].qty=this.value">'
-        + '<input style="width:58px;font-size:11px" list="stkDlUnit" value="' + esc(l.unit||'') + '" placeholder="' + esc(it ? (it.unit||'') : 'cây') + '" oninput="_smLines[' + i + '].unit=this.value">'
-        + '<input style="width:56px;font-size:11px" value="' + esc(l.kg==null ? '' : l.kg) + '" placeholder="kg" inputmode="decimal" oninput="_smLines[' + i + '].kg=this.value">'
+        + '<input' + lk + ' style="width:58px;font-size:11px" value="' + esc(l.qty==null ? '' : l.qty) + '" placeholder="1" inputmode="decimal" oninput="_smLines[' + i + '].qty=this.value">'
+        + '<input' + lk + ' style="width:58px;font-size:11px" list="stkDlUnit" value="' + esc(l.unit||'') + '" placeholder="' + esc(it ? (it.unit||'') : 'cây') + '" oninput="_smLines[' + i + '].unit=this.value">'
+        + '<input' + lk + ' style="width:56px;font-size:11px" value="' + esc(l.kg==null ? '' : l.kg) + '" placeholder="kg" inputmode="decimal" oninput="_smLines[' + i + '].kg=this.value">'
         + '<input style="width:74px;font-size:11px" value="' + esc(l.heatNo||'') + '" placeholder="heat / lô" oninput="_smLines[' + i + '].heatNo=this.value">'
         + '<select style="width:92px;font-size:11px;padding:6px 4px" onchange="_smLines[' + i + '].orderId=this.value" title="Dòng này thuộc đơn khác với đơn của phiếu (phôi mua chung cho nhiều đơn)">' + lineOrd + '</select>'
-        + '<a onclick="_smLines.splice(' + i + ',1);if(!_smLines.length)_smLines.push(stkNewLine());stkRenderLines()" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>'
+        + (_smLock ? '' : '<a onclick="_smLines.splice(' + i + ',1);if(!_smLines.length)_smLines.push(stkNewLine());stkRenderLines()" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>')
         + '</div>' + (stockTxt ? '<div style="font-size:10.5px;margin:1px 0 0 4px">' + stockTxt + '</div>' : '') + '</div>';
     }).join('');
 }
-function stkAddLine(){ _smLines.push(stkNewLine()); stkRenderLines(); }
+function stkAddLine(){ const a = document.activeElement; if(a && a.blur && wrapHas('sm_lines', a)) a.blur(); _smLines.push(stkNewLine()); stkRenderLines(); }
 function stkLinePick(i, val){
   const l = _smLines[i]; if(!l) return;
   const v = String(val||'').trim();
@@ -11935,7 +12367,7 @@ function stkLinePick(i, val){
     || items.find(function(x){ return x.code && (v.toUpperCase()===String(x.code).toUpperCase() || v.toUpperCase().indexOf(String(x.code).toUpperCase() + ' ')===0); });
   if(hit){ l.itemId = hit.id; l.name = ''; if(!l.grade) l.grade = hit.grade||''; if(!l.spec) l.spec = hit.spec||''; if(!l.unit) l.unit = hit.unit||''; }
   else { l.itemId = ''; l.name = v; }
-  stkRenderLines();
+  deferRender('sm', stkRenderLines);
 }
 function stkLineToCatalog(i){
   const l = _smLines[i]; if(!l || !String(l.name||'').trim()) return;
@@ -11960,6 +12392,15 @@ function saveStkMove(andPrint){
   const noQty = lines.filter(function(l){ return !stkHasNum(l.qty); });
   if(noQty.length){ alert('Còn ' + noQty.length + ' dòng chưa ghi SỐ LƯỢNG (số).'); return; }
   if(p.needOrder && !orderId && lines.some(function(l){ return !l.orderId; })){ alert('⛔ "' + p.label + '" phải chọn ĐƠN HÀNG — để biết phôi / hàng này của đơn nào.'); return; }
+  let qtyEdit = null;
+  if(old){
+    const sig = function(ls){ return JSON.stringify((ls||[]).filter(Boolean).map(function(l){ return [l.itemId||'', String(l.name||'').trim(), String(l.qty==null ? '' : l.qty).trim()]; })); };
+    if(sig(old.lines)!==sig(lines)){
+      if(!canEdit()){ alert('⛔ Sửa SỐ LƯỢNG / mặt hàng của phiếu đã lưu cần quyền điều phối.\nMuốn chỉnh tồn: dùng 🧮 Kiểm kê hoặc 📤 Báo kho.'); return; }
+      if(!confirm('Đổi số lượng / mặt hàng của phiếu ' + (old.no||'') + ' đã lưu — tồn kho sẽ tính lại.\nApp ghi lại lịch sử sửa. Tiếp tục?')) return;
+      qtyEdit = {at:new Date().toISOString(), by:(DATA.meta && DATA.meta.user) || (ROLE_INFO[getRole()]||{}).name || '', before:stkLinesSummary(old.lines), after:stkLinesSummary(lines)};
+    }
+  }
   if(dir==='out'){
     const Q = stkQtyMap(); if(old) (old.lines||[]).forEach(function(l){ if(l && l.itemId && l.itemId in Q) Q[l.itemId] += stkNum(l.qty); });
     const over = lines.filter(function(l){ return l.itemId && stkNum(l.qty) > (Q[l.itemId]||0); });
@@ -11975,9 +12416,11 @@ function saveStkMove(andPrint){
     lines: lines, updatedAt: new Date().toISOString()
   });
   if(!old) rec.createdAt = new Date().toISOString();
+  if(qtyEdit) rec.editLog = ((old && old.editLog) || []).concat([qtyEdit]).slice(-30);
   const arr = stkArr('stockMoves'), i = arr.findIndex(function(x){ return x && x.id===rec.id; });
   if(i>=0) arr[i] = rec; else arr.push(rec);
   closeModal('modalStkMove'); save();
+  try{ stkAfterMoveSaved(rec); }catch(e){ console.error('stkAfterMoveSaved', e); }   // món vừa tụt dưới tối thiểu → tự báo thư
   if(andPrint) printStkMove(rec.id);
   // hàng cần kiểm → nhắc lập phiếu kiểm ngay (thợ chưa được gia công cho tới khi ĐẠT)
   if(p.check && !old){
@@ -11986,6 +12429,7 @@ function saveStkMove(andPrint){
     if(todo.length===1 && confirm('🔍 Đơn ' + (todo[0].code||'') + ' cần KIỂM HÀNG XUẤT KHO trước gia công.\n\nLập phiếu kiểm (mã trên sản phẩm + kích thước) ngay bây giờ?')) setTimeout(function(){ openStkCheckModal(null, todo[0].id); }, 60);
   }
 }
+function stkLinesSummary(ls){ return (ls||[]).filter(Boolean).map(function(l){ const it = stkItemById(l.itemId); return (it ? it.code : (l.name||'?')) + ' ×' + (l.qty==null ? '' : l.qty); }).join('; '); }
 function deleteStkMove(){
   if(!requireEdit()) return;
   const id = document.getElementById('sm_id').value; const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m) return;
@@ -12059,13 +12503,13 @@ function stkDimTpl(k, silent){
   t.d.forEach(function(p){ if(have.indexOf(p)<0) _scDims.push({id:localId('DM'), param:p, spec:'', actual:'', gauge:'', gaugeId:'', pass:''}); });
   if(!silent) stkRenderCheckForm();
 }
-function stkAddDim(){ _scDims.push({id:localId('DM'), param:'', spec:'', actual:'', gauge:'', gaugeId:'', pass:''}); stkRenderCheckForm(); }
+function stkAddDim(){ const a = document.activeElement; if(a && a.blur && wrapHas('sc_dims', a)) a.blur(); _scDims.push({id:localId('DM'), param:'', spec:'', actual:'', gauge:'', gaugeId:'', pass:''}); stkRenderCheckForm(); }
 function stkSetCheck(k, v){ _scChecks[k] = (_scChecks[k]===v ? '' : v); stkRenderCheckForm(); }
 function stkDimSet(i, k, v){
   const d = _scDims[i]; if(!d) return;
   d[k] = v;
-  if(k==='gauge'){ const g = stkGaugeByText(v); d.gaugeId = g ? g.id : ''; stkRenderCheckForm(); }
-  if(k==='pass') stkRenderCheckForm();
+  if(k==='gauge'){ const g = stkGaugeByText(v); d.gaugeId = g ? g.id : ''; deferRender('sc', stkRenderCheckForm); }
+  if(k==='pass') deferRender('sc', stkRenderCheckForm);
 }
 function stkRenderCheckForm(){
   const ck = document.getElementById('sc_checks');
@@ -12297,6 +12741,968 @@ function khoExportMoves(){
   });
   if(!rows.length){ alert('Chưa có phiếu nào để xuất.'); return; }
   stkDownloadCsv(['Ngày','Số phiếu','Loại','Lý do','Mã đơn','Mã BG / PO','Mã kho','Tên hàng','Mác','Quy cách','SL','ĐVT','kg','Heat / lô','NCC / nguồn / xuất cho','Chứng từ','CO/CQ','Người giao / nhận','Người lập','Ghi chú'], rows, 'DHP_phieu_kho');
+}
+
+/* =====================================================================================
+   📤 BÁO KHO NHANH CHO THỢ + 📨 THƯ TỰ ĐỘNG CHO tech.manager            (thêm 25-11-2026)
+   Thợ lấy món nào ghi món đó: LẤY RA bao nhiêu · HƯ bao nhiêu (lý do) · ĐẾM CÒN LẠI trên kệ.
+   Bấm GỬI → app tạo phiếu xuất / phiếu hủy / phiếu kiểm kê (nếu đếm lệch sổ), tồn kho luôn khớp thực tế.
+   Món nào còn ít (≤ tối thiểu), có hàng hư hoặc đếm lệch → app tự gửi thư cho tech.manager qua
+   Supabase Edge Function "kho-mail" (người nhận cố định ở máy chủ). Chưa gửi được → báo đỏ, gửi lại 1 nút.
+   ===================================================================================== */
+const STK_MAIL_TO = 'tech.manager@dhp-corp.com.vn';
+let _su = null;
+const _rdGen = {};
+// Vẽ lại SAU sự kiện change/blur (nếu vẽ ngay trong lúc ô đang mất focus, Chrome báo lỗi và mất dữ liệu đang gõ)
+function deferRender(key, fn){ const g = (_rdGen[key] = (_rdGen[key] || 0) + 1); setTimeout(function(){ if(_rdGen[key]===g) fn(); }, 0); }
+function stkMailCfg(){ const c = (DATA.meta && DATA.meta.khoMail) || {}; return {onLow:c.onLow!==false, onBroken:c.onBroken!==false, onDiff:c.onDiff!==false, onEvery:!!c.onEvery}; }
+function stkAppUrl(){ try{ return /^https?:/.test(location.protocol) ? location.origin + location.pathname : 'https://huynhtrungkiet-cloud.github.io/dhp-manager/'; }catch(e){ return ''; } }
+function stkToast(msg, kind){
+  let t = document.getElementById('stkToast');
+  if(!t){ t = document.createElement('div'); t.id = 'stkToast'; document.body.appendChild(t); }
+  t.className = 'stk-toast ' + (kind || ''); t.innerHTML = msg; t.style.opacity = '1';
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.style.opacity = '0'; }, kind==='err' ? 12000 : 6000);
+}
+
+/* ---------- gửi thư ---------- */
+async function stkMailSend(kind, subject, text){
+  if(!supaConfigured()) return {ok:false, err:'Máy này chưa kết nối Supabase (tab Dữ liệu & Đồng bộ)'};
+  if(!_sb && !initSupabase()) return {ok:false, err:'Không khởi tạo được Supabase'};
+  try{
+    const r = await _sb.functions.invoke('kho-mail', {body:{kind:kind, subject:subject, text:text}});
+    if(r.error){
+      let msg = r.error.message || 'lỗi không rõ';
+      try{ const ctx = r.error.context; if(ctx && typeof ctx.json==='function'){ const j = await ctx.json(); if(j && j.error) msg = j.error; } }catch(e){}
+      if(/not found|404/i.test(msg)) msg = 'Chưa deploy function kho-mail trên Supabase';
+      if(/Failed to send a request|Failed to fetch/i.test(msg)) msg = 'Không gọi được function kho-mail (chưa deploy hoặc mất mạng)';
+      return {ok:false, err:msg};
+    }
+    return (r.data && r.data.ok) ? {ok:true} : {ok:false, err:(r.data && r.data.error) || 'không rõ'};
+  }catch(e){ return {ok:false, err:(e && e.message) || String(e)}; }
+}
+async function stkMailForMove(moveId, kind, subject, text){
+  const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===moveId; }); if(!m) return {ok:false, err:'mất phiếu'};
+  const r = await stkMailSend(kind, subject, text);
+  const cur = (DATA.stockMoves||[]).find(function(x){ return x && x.id===moveId; });
+  if(cur){
+    cur.mail = {status:r.ok ? 'sent' : 'failed', err:r.ok ? '' : r.err, at:new Date().toISOString(), tries:((cur.mail && cur.mail.tries) || 0) + 1, kind:kind, subject:subject, text:text};
+    cur.updatedAt = new Date().toISOString();
+    save();
+  }
+  if(r.ok) stkToast('📨 Đã gửi thư cho <b>' + esc(STK_MAIL_TO) + '</b><br><span style="opacity:.8">' + esc(subject) + '</span>', 'ok');
+  else stkToast('📨 CHƯA gửi được thư: ' + esc(r.err) + '<br><span style="opacity:.8">Phiếu vẫn đã lưu. Tab Kho có nút gửi lại / gửi tay qua webmail.</span>', 'err');
+  return r;
+}
+function stkFailedMails(){
+  return (DATA.stockMoves||[]).filter(function(m){ return m && m.mail && m.mail.status==='failed'; })
+    .sort(function(a, b){ return String((b.mail||{}).at||'').localeCompare(String((a.mail||{}).at||'')); });
+}
+function stkMailResend(id){
+  if(!requireWork()) return;
+  const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m || !m.mail) return;
+  stkToast('📨 Đang gửi lại thư…');
+  stkMailForMove(id, m.mail.kind || 'report', m.mail.subject, m.mail.text);
+}
+function stkMailWebmail(id){
+  const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m || !m.mail) return;
+  openWebmailWithContent(STK_MAIL_TO, '', m.mail.subject || '', m.mail.text || '');
+}
+function stkMailTest(){
+  stkToast('✉ Đang gửi thư thử…');
+  const who = (DATA.meta && DATA.meta.user) || '';
+  stkMailSend('test', 'Gửi thử thư báo kho' + (who ? ' — ' + who : ''), 'Đây là thư thử từ DHP Manager (tab 📦 Kho & Vật tư).\nNếu anh/chị nhận được thư này thì thư báo kho tự động đã chạy.\n\nGửi lúc: ' + new Date().toLocaleString('vi-VN') + (who ? '\nMáy: ' + who : '') + '\n' + stkAppUrl())
+    .then(function(r){
+      if(r.ok) stkToast('✉ Gửi thử thành công → kiểm tra hộp thư <b>' + esc(STK_MAIL_TO) + '</b>', 'ok');
+      else stkToast('✉ Gửi thử CHƯA được: ' + esc(r.err), 'err');
+      const st = document.getElementById('skm_status'); if(st) st.innerHTML = r.ok ? '<b style="color:#15803d">✓ Gửi thử thành công</b>' : '<b style="color:#b91c1c">✕ ' + esc(r.err) + '</b>';
+      try{ khoRenderPanel('mail'); }catch(e){}
+    });
+}
+function openStkMailSettings(){
+  const c = stkMailCfg();
+  ['onLow','onBroken','onDiff','onEvery'].forEach(function(k){ document.getElementById('skm_' + k).checked = !!c[k]; });
+  document.getElementById('skm_to').textContent = STK_MAIL_TO;
+  document.getElementById('skm_status').innerHTML = '';
+  openModal('modalStkMail');
+}
+function saveStkMailSettings(){
+  DATA.meta = DATA.meta || {};
+  DATA.meta.khoMail = {}; ['onLow','onBroken','onDiff','onEvery'].forEach(function(k){ DATA.meta.khoMail[k] = document.getElementById('skm_' + k).checked; });
+  closeModal('modalStkMail'); save();
+}
+
+/* ---------- món còn ít sau mỗi lần tồn thay đổi ---------- */
+// Trả về các món đang ≤ tối thiểu; isNew = vừa xuống ngưỡng / thấp hơn lần đã báo → cần báo thư.
+// Món đã lên lại trên ngưỡng → xoá dấu "đã báo" để lần sau tụt xuống lại báo tiếp.
+function stkLowCheck(itemIds){
+  const Q = stkQtyMap(), out = []; let changed = false;
+  khoUniq(itemIds || []).forEach(function(id){
+    const it = stkItemById(id); if(!it || it.cat==='gauge') return;
+    const q = Q[id] || 0, mn = stkNum(it.minQty), low = (mn > 0 && q <= mn) || q < 0;
+    if(!low){ if(it.lowMailQty!=null && it.lowMailQty!==''){ it.lowMailQty = null; it.lowMailAt = ''; it.updatedAt = new Date().toISOString(); changed = true; } return; }
+    out.push({it:it, q:q, mn:mn, isNew:(it.lowMailQty==null || it.lowMailQty==='' || q < stkNum(it.lowMailQty))});
+  });
+  return {list:out, changed:changed};
+}
+function stkMarkLowMailed(list){ const d = todayStr(), now = new Date().toISOString(); list.forEach(function(x){ x.it.lowMailQty = x.q; x.it.lowMailAt = d; x.it.updatedAt = now; }); }
+function stkLowText(items, Q){
+  Q = Q || stkQtyMap();
+  return items.map(function(x){ const it = x.it || x, q = Q[it.id] || 0, mn = stkNum(it.minQty);
+    return '- ' + (it.code||'') + ' · ' + (it.name||'') + (it.spec ? ' ' + it.spec : '') + ': còn ' + stkFmt(q) + ' ' + (it.unit||'') + ' / tối thiểu ' + (mn ? stkFmt(mn) : '—')
+      + (mn > q ? ' → thiếu ' + stkFmt(mn - q) : '') + (it.brand ? ' · NCC thường mua: ' + it.brand : '') + (it.loc ? ' · vị trí ' + it.loc : ''); }).join('\n');
+}
+function stkMailLowList(){
+  if(!requireWork()) return;
+  const Q = stkQtyMap(), low = stkLowItems(Q);
+  if(!low.length){ alert('Không có món nào dưới tồn tối thiểu.'); return; }
+  const subject = '⚠ Danh sách sắp hết / cần mua — ' + low.length + ' món (' + fmtDate(todayStr()) + ')';
+  const text = 'DANH SÁCH HÀNG DƯỚI TỒN TỐI THIỂU — CẦN MUA\nLập lúc ' + new Date().toLocaleString('vi-VN') + ((DATA.meta && DATA.meta.user) ? ' · ' + DATA.meta.user : '') + '\n\n'
+    + stkLowText(low, Q) + '\n\n— Thư từ DHP Manager · tab 📦 Kho & Vật tư · ' + stkAppUrl();
+  stkToast('📨 Đang gửi danh sách sắp hết…');
+  stkMailSend('lowlist', subject, text).then(function(r){
+    if(r.ok){ stkMarkLowMailed(low.map(function(it){ return {it:it, q:Q[it.id] || 0}; })); save(); stkToast('📨 Đã gửi danh sách ' + low.length + ' món sắp hết cho <b>' + esc(STK_MAIL_TO) + '</b>', 'ok'); }
+    else if(confirm('Chưa gửi tự động được: ' + r.err + '\n\nMở webmail để gửi tay (nội dung đã copy sẵn)?')) openWebmailWithContent(STK_MAIL_TO, '', subject, text);
+  });
+}
+// Phiếu thường (xuất / hủy / kiểm kê / nhập) → kiểm món vừa tụt dưới ngưỡng, tự báo thư
+function stkAfterMoveSaved(rec){
+  if(!rec) return;
+  const ids = (rec.lines||[]).map(function(l){ return l && l.itemId; }).filter(Boolean);
+  if(!ids.length) return;
+  const chk = stkLowCheck(ids);
+  const fresh = chk.list.filter(function(x){ return x.isNew; });
+  if(rec.dir==='in' || !fresh.length || !stkMailCfg().onLow){ if(chk.changed) save(); return; }
+  const Q = stkQtyMap(), o = stkOrderById(rec.orderId);
+  const subject = '⚠ Sắp hết ' + fresh.length + ' món — sau phiếu ' + (rec.no||'') + ' (' + ((STK_PURPOSES[rec.purpose]||{}).short||'') + ')';
+  const text = 'HÀNG VỪA XUỐNG DƯỚI TỒN TỐI THIỂU\nPhiếu ' + (rec.no||'') + ' · ' + ((STK_PURPOSES[rec.purpose]||{}).label||'') + ' · ' + fmtDate(rec.date)
+    + (o ? '\nĐơn hàng: ' + (o.code||'') + ' — ' + (o.name||'') : '') + (rec.receiver ? '\nNgười nhận: ' + rec.receiver : '') + (rec.by ? '\nNgười lập: ' + rec.by : '') + '\n\n'
+    + stkLowText(fresh, Q) + '\n\nToàn kho đang dưới tối thiểu: ' + stkLowItems(Q).length + ' món (xem tab Kho → ⚠ Sắp hết).\n\n— Thư tự động từ DHP Manager · ' + stkAppUrl();
+  stkMarkLowMailed(fresh); save();
+  stkMailForMove(rec.id, 'low', subject, text);
+}
+
+/* ---------- 📤 form báo kho ---------- */
+function wrapHas(id, el){ const w = document.getElementById(id); return !!(w && el && w.contains(el)); }
+function stkUseLine(x){ return Object.assign({id:localId('SU'), itemId:'', name:'', take:'', broken:'', reason:'', left:''}, x || {}); }
+function openStkUseModal(preset){
+  if(!requireWork()) return;
+  preset = preset || {};
+  stkFillDatalists();
+  _su = {lines:[]};
+  (preset.itemIds || (preset.itemId ? [preset.itemId] : [])).forEach(function(id){ if(stkItemById(id)) _su.lines.push(stkUseLine({itemId:id})); });
+  if(!_su.lines.length) _su.lines.push(stkUseLine());
+  const who = document.getElementById('su_who');
+  who.innerHTML = '<option value="">— 👷 Người lấy / báo (bắt buộc) —</option>' + stkStaffNames().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join('');
+  let last = ''; try{ last = localStorage.getItem('dhp_su_who') || ''; }catch(e){}
+  who.value = (last && stkStaffNames().indexOf(last)>=0) ? last : '';
+  fillSelect(document.getElementById('su_order'), [{id:'__none__', label:'— Dùng chung, không theo đơn nào —'}].concat(stkOrderOptions().filter(function(o){ return !/\(đã giao\)$/.test(o.label); })), 'id', 'label', '— Lấy cho đơn hàng nào? (bắt buộc chọn) —');
+  document.getElementById('su_order').value = preset.orderId || '';
+  document.getElementById('su_date').value = todayStr();
+  document.getElementById('su_note').value = '';
+  document.getElementById('su_no').textContent = stkNextNo('BK');
+  const c = stkMailCfg();
+  document.getElementById('su_mailhint').innerHTML = 'Bấm GỬI là xong: app ghi phiếu, cập nhật tồn' + ((c.onLow || c.onBroken || c.onDiff || c.onEvery) ? ' và <b>tự gửi thư cho ' + esc(STK_MAIL_TO) + '</b> khi ' + [c.onEvery ? 'mọi lần báo kho' : '', c.onLow ? 'món còn ít (≤ tối thiểu)' : '', c.onBroken ? 'có hàng hư' : '', c.onDiff ? 'đếm lệch sổ' : ''].filter(Boolean).join(' · ') : '') + '.';
+  stkUseRender();
+  opSyncAll();
+  openModal('modalStkUse');
+}
+function stkUseRender(){
+  const wrap = document.getElementById('su_lines'); if(!wrap) return;
+  _rdGen.su = (_rdGen.su || 0) + 1;
+  const Q = stkQtyMap();
+  wrap.innerHTML = _su.lines.map(function(l, i){
+    const it = stkItemById(l.itemId);
+    return '<div class="su-line" id="su_l' + i + '">'
+      + '<div style="display:flex;gap:8px;align-items:center"><b style="color:#64748b;min-width:18px">' + (i + 1) + '.</b>'
+      + '<input class="su-item" list="stkDlItems" value="' + esc(it ? stkItemLabel(it) : (l.name||'')) + '" placeholder="Gõ mã / tên món lấy — vd DAO-001, Thép S45C, KTR Rotex 38…" onchange="stkUsePick(' + i + ',this.value)">'
+      + (_su.lines.length > 1 ? '<a onclick="_su.lines.splice(' + i + ',1);stkUseRender()" style="color:var(--st-late);cursor:pointer;font-weight:800;font-size:16px" title="Bỏ dòng">✕</a>' : '') + '</div>'
+      + '<div class="su-info">' + (it ? stkCat(it.cat).ic + ' Tồn sổ: <b>' + stkFmt(Q[it.id]||0) + '</b> ' + esc(it.unit||'') + (stkNum(it.minQty) ? ' · tối thiểu ' + stkFmt(stkNum(it.minQty)) : ' · <i>chưa đặt tối thiểu</i>') + (it.loc ? ' · 📍 ' + esc(it.loc) : '') : (String(l.name||'').trim() ? '<span style="color:#b91c1c">⚠ Không có trong danh mục kho — chọn đúng mã trong danh sách gợi ý (hoặc nhờ điều phối thêm mặt hàng).</span>' : '<span class="muted">Chọn món trong danh sách gợi ý.</span>')) + '</div>'
+      + '<div class="su-row">'
+        + '<label>Lấy ra<input inputmode="decimal" value="' + esc(l.take) + '" placeholder="0" oninput="stkUseSet(' + i + ',\'take\',this.value)"></label>'
+        + '<label>Hư / hỏng<input inputmode="decimal" value="' + esc(l.broken) + '" placeholder="0" oninput="stkUseSet(' + i + ',\'broken\',this.value)"></label>'
+        + '<label class="su-reason" id="su_r' + i + '" style="' + (stkNum(l.broken) > 0 ? '' : 'display:none') + '">Lý do hư<input value="' + esc(l.reason) + '" placeholder="mẻ, gãy, mòn, rỉ…" oninput="stkUseSet(' + i + ',\'reason\',this.value)"></label>'
+        + '<label>Còn lại trên kệ (đếm)<input inputmode="decimal" value="' + esc(l.left) + '" placeholder="đếm thực tế" oninput="stkUseSet(' + i + ',\'left\',this.value)" style="border-color:#16a34a"></label>'
+        + '<span class="su-st" id="su_s' + i + '"></span>'
+      + '</div></div>';
+  }).join('');
+  _su.lines.forEach(function(l, i){ stkUseStatus(i); });
+}
+function stkUseAdd(){ const a = document.activeElement; if(a && a.blur && wrapHas('su_lines', a)) a.blur(); _su.lines.push(stkUseLine()); stkUseRender(); const ins = document.querySelectorAll('#su_lines .su-item'); if(ins.length) ins[ins.length - 1].focus(); }
+function stkUsePick(i, val){
+  const l = _su.lines[i]; if(!l) return;
+  const v = String(val||'').trim();
+  const items = (DATA.stockItems||[]).filter(function(x){ return x && x.cat!=='gauge'; });
+  const hit = items.find(function(x){ return stkItemLabel(x)===v; }) || items.find(function(x){ return x.code && (v.toUpperCase()===String(x.code).toUpperCase() || v.toUpperCase().indexOf(String(x.code).toUpperCase() + ' ')===0); });
+  if(hit){ l.itemId = hit.id; l.name = ''; } else { l.itemId = ''; l.name = v; }
+  deferRender('su', stkUseRender);
+}
+function stkUseSet(i, k, v){ const l = _su.lines[i]; if(!l) return; l[k] = v; if(k==='broken'){ const r = document.getElementById('su_r' + i); if(r) r.style.display = stkNum(v) > 0 ? '' : 'none'; } stkUseStatus(i); }
+function stkUseStatus(i){
+  const el = document.getElementById('su_s' + i), l = _su.lines[i]; if(!el || !l) return;
+  const it = stkItemById(l.itemId); if(!it){ el.innerHTML = ''; return; }
+  const Q = stkQtyMap(), sys = Q[it.id] || 0, exp = sys - stkNum(l.take) - stkNum(l.broken), mn = stkNum(it.minQty);
+  const bits = [];
+  if(stkHasNum(l.left)){
+    const d = stkNum(l.left) - exp;
+    bits.push(Math.abs(d) < 1e-9 ? '<span style="color:#15803d">✓ khớp sổ</span>' : '<span style="color:#b45309">≠ lệch ' + (d > 0 ? '+' : '') + stkFmt(d) + ' (sổ còn ' + stkFmt(exp) + ')</span>');
+    const after = stkNum(l.left);
+    if((mn > 0 && after <= mn) || after <= 0) bits.push('<span style="color:#b91c1c">⚠ ' + (after <= 0 ? 'HẾT' : 'sắp hết') + ' → báo thư</span>');
+  } else bits.push('<span class="muted">sổ sẽ còn ' + stkFmt(exp) + ' — đếm lại cho chắc</span>');
+  el.innerHTML = bits.join(' · ');
+}
+function stkUseSubmit(){
+  if(!requireWork()) return;
+  const who = document.getElementById('su_who').value.trim();
+  const ordSel = document.getElementById('su_order').value;
+  const date = document.getElementById('su_date').value || todayStr();
+  const note = document.getElementById('su_note').value.trim();
+  const errs = [];
+  if(!who) errs.push('• Chọn NGƯỜI LẤY / BÁO');
+  if(!ordSel) errs.push('• Chọn ĐƠN HÀNG (hoặc "Dùng chung, không theo đơn")');
+  const lines = _su.lines.filter(function(l){ return l.itemId || String(l.name||'').trim() || l.take || l.broken || l.left; });
+  if(!lines.length) errs.push('• Chưa có món nào');
+  lines.forEach(function(l, k){
+    const it = stkItemById(l.itemId), n = (k + 1) + '. ' + (it ? it.code + ' ' + it.name : (l.name || '(chưa chọn món)'));
+    if(!it){ errs.push('• Dòng ' + n + ': chọn món có trong danh mục kho'); return; }
+    const miss = [];
+    if(!stkHasNum(l.take)) miss.push('LẤY RA');
+    if(!stkHasNum(l.broken)) miss.push('HƯ (không hư ghi 0)');
+    if(!stkHasNum(l.left)) miss.push('CÒN LẠI (đếm trên kệ)');
+    if(miss.length) errs.push('• Dòng ' + n + ': thiếu ' + miss.join(', '));
+    if(stkNum(l.take) < 0 || stkNum(l.broken) < 0 || stkNum(l.left) < 0) errs.push('• Dòng ' + n + ': số không được âm');
+    if(stkNum(l.broken) > 0 && !String(l.reason||'').trim()) errs.push('• Dòng ' + n + ': ghi LÝ DO HƯ');
+    if(stkHasNum(l.take) && stkHasNum(l.broken) && stkNum(l.take)===0 && stkNum(l.broken)===0 && !note) errs.push('• Dòng ' + n + ': lấy 0, hư 0 — nếu chỉ đếm lại thì ghi lý do ở ô Ghi chú');
+  });
+  const ids = lines.map(function(l){ return l.itemId; }).filter(Boolean);
+  if(ids.some(function(id, i){ return ids.indexOf(id)!==i; })) errs.push('• Một món bị ghi 2 dòng — gộp lại 1 dòng');
+  if(errs.length){ alert('⛔ Chưa gửi được — còn thiếu:\n' + errs.join('\n')); return; }
+  try{ localStorage.setItem('dhp_su_who', who); }catch(e){}
+  const orderId = ordSel==='__none__' ? '' : ordSel;
+  const Q0 = stkQtyMap(), nowIso = new Date().toISOString();
+  const reportNo = stkNextNo('BK');
+  const base = {date:date, by:who, receiver:who, reportNo:reportNo, createdAt:nowIso, updatedAt:nowIso};
+  const made = [];
+  const mk = function(dir, purpose, mlines, extra){
+    if(!mlines.length) return null;
+    const rec = Object.assign({id:uid('KHO', 'stkMove'), no:stkNextNo(STK_DIR[dir].pre), dir:dir, purpose:purpose, orderId:orderId, partner:'', docRef:'', certRef:'', note:note, lines:mlines}, base, extra || {});
+    stkArr('stockMoves').push(rec); made.push(rec); return rec;
+  };
+  const isToolish = function(it){ return it.cat==='tool' || it.cat==='gauge'; };
+  const L = lines.map(function(l){ const it = stkItemById(l.itemId); return {l:l, it:it, take:stkNum(l.take), broken:stkNum(l.broken), left:stkNum(l.left), sys:Q0[it.id] || 0}; });
+  const lineOf = function(x, qty, extra){ return Object.assign({id:localId('LN'), itemId:x.it.id, name:'', grade:x.it.grade||'', spec:x.it.spec||'', qty:String(qty), unit:x.it.unit||'', kg:'', heatNo:'', orderId:''}, extra || {}); };
+  mk('out', orderId ? 'to_prod' : 'other_out', L.filter(function(x){ return x.take > 0 && !isToolish(x.it); }).map(function(x){ return lineOf(x, x.take); }), orderId ? {} : {note:(note ? note + ' · ' : '') + 'Lấy dùng chung (báo kho ' + reportNo + ')'});
+  mk('out', 'tool_issue', L.filter(function(x){ return x.take > 0 && isToolish(x.it); }).map(function(x){ return lineOf(x, x.take); }));
+  mk('out', 'scrap', L.filter(function(x){ return x.broken > 0; }).map(function(x){ return lineOf(x, x.broken, {note:String(x.l.reason||'').trim()}); }));
+  const diffs = L.filter(function(x){ return Math.abs(x.left - (x.sys - x.take - x.broken)) > 1e-9; });
+  mk('adj', 'count', diffs.map(function(x){ return lineOf(x, x.left, {note:'Đếm khi báo kho: sổ ' + stkFmt(x.sys - x.take - x.broken) + ' → thực ' + stkFmt(x.left)}); }), {note:(note ? note + ' · ' : '') + 'Đếm lại trên kệ khi báo kho ' + reportNo});
+  if(!made.length){
+    // chỉ đếm lại mà khớp sổ → vẫn ghi 1 phiếu kiểm kê để có dấu vết ai đã đếm
+    mk('adj', 'count', L.map(function(x){ return lineOf(x, x.left, {note:'Đếm khi báo kho — khớp sổ'}); }), {note:(note ? note + ' · ' : '') + 'Đếm lại khi báo kho ' + reportNo});
+  }
+  // món còn ít sau khi báo
+  const chk = stkLowCheck(ids), Q1 = stkQtyMap();
+  const lowNow = chk.list;
+  const brokenL = L.filter(function(x){ return x.broken > 0; });
+  closeModal('modalStkUse');
+  save();
+  const c = stkMailCfg();
+  const need = c.onEvery || (c.onLow && lowNow.length) || (c.onBroken && brokenL.length) || (c.onDiff && diffs.length);
+  const o = stkOrderById(orderId);
+  let msg = '✓ Đã ghi báo kho <b>' + esc(reportNo) + '</b> — ' + made.map(function(m){ return esc(m.no); }).join(', ');
+  if(!need){ stkToast(msg, 'ok'); return; }
+  const subject = 'Báo kho ' + reportNo + ' — ' + who + (lowNow.length ? ' — ⚠ ' + lowNow.length + ' món sắp hết' : '') + (brokenL.length ? ' · ' + brokenL.length + ' món hư' : '') + (diffs.length ? ' · ' + diffs.length + ' món đếm lệch' : '');
+  const allLow = stkLowItems(Q1);
+  const text = 'BÁO KHO ' + reportNo + ' — ' + fmtDate(date) + ' ' + new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) + '\n'
+    + 'Người lấy / báo: ' + who + '\n'
+    + 'Đơn hàng: ' + (o ? (o.code||'') + ' — ' + (o.name||'') + (o.quoteNo ? ' (BG ' + o.quoteNo + ')' : '') : 'Dùng chung, không theo đơn') + '\n'
+    + (note ? 'Ghi chú: ' + note + '\n' : '') + '\n'
+    + 'CHI TIẾT (' + L.length + ' món)\n'
+    + L.map(function(x, i){
+        const exp = x.sys - x.take - x.broken, d = x.left - exp, mn = stkNum(x.it.minQty), u = x.it.unit || '';
+        const isLow = (mn > 0 && x.left <= mn) || x.left <= 0;
+        return (i + 1) + '. ' + (x.it.code||'') + ' · ' + (x.it.name||'') + (x.it.spec ? ' ' + x.it.spec : '') + '\n'
+          + '   Lấy ra: ' + stkFmt(x.take) + ' ' + u + ' · Hư: ' + stkFmt(x.broken) + ' ' + u + (x.broken > 0 ? ' (' + String(x.l.reason||'').trim() + ')' : '') + ' · Còn trên kệ (đếm): ' + stkFmt(x.left) + ' ' + u + '\n'
+          + '   Sổ trước khi lấy: ' + stkFmt(x.sys) + ' → sổ dự kiến ' + stkFmt(exp) + (Math.abs(d) < 1e-9 ? ' → KHỚP' : ' → LỆCH ' + (d > 0 ? '+' : '') + stkFmt(d) + ' (đã chỉnh theo số đếm)') + '\n'
+          + '   Tối thiểu: ' + (mn ? stkFmt(mn) + ' ' + u : 'chưa đặt') + (isLow ? '  ⚠ ' + (x.left <= 0 ? 'HẾT HÀNG' : 'SẮP HẾT') + ' — cần mua' + (mn > x.left ? ' ~' + stkFmt(mn - x.left) + ' ' + u + ' để về mức tối thiểu' : '') : '');
+      }).join('\n')
+    + (allLow.length ? '\n\n⚠ TOÀN KHO ĐANG DƯỚI TỐI THIỂU (' + allLow.length + ' món):\n' + stkLowText(allLow, Q1) : '')
+    + '\n\nPhiếu đã tạo: ' + made.map(function(m){ return m.no + ' (' + ((STK_PURPOSES[m.purpose]||{}).short||'') + ')'; }).join(', ')
+    + '\n\n— Thư tự động từ DHP Manager · tab 📦 Kho & Vật tư · ' + stkAppUrl();
+  if(lowNow.length) stkMarkLowMailed(lowNow);
+  save();
+  stkToast(msg + '<br>📨 Đang gửi thư cho ' + esc(STK_MAIL_TO) + '…', 'ok');
+  stkMailForMove(made[0].id, 'report', subject, text);
+}
+
+/* =====================================================================================
+   👁 XEM NHANH (ai cũng xem được — không cần quyền sửa)
+   ===================================================================================== */
+function stkInfo(title, html){
+  document.getElementById('stkInfoTitle').textContent = title;
+  document.getElementById('stkInfoBody').innerHTML = html;
+  openModal('modalStkInfo');
+}
+function stkKv(rows){ return '<table class="stk-kv">' + rows.filter(function(r){ return r && r[1]!=='' && r[1]!=null; }).map(function(r){ return '<tr><th>' + esc(r[0]) + '</th><td>' + r[1] + '</td></tr>'; }).join('') + '</table>'; }
+function viewStkMove(id){
+  const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m){ alert('Không tìm thấy phiếu.'); return; }
+  const p = STK_PURPOSES[m.purpose] || {label:m.purpose||''}, d = STK_DIR[m.dir] || STK_DIR.in, o = stkOrderById(m.orderId);
+  const lines = (m.lines||[]).filter(Boolean).map(function(l, i){ const it = stkItemById(l.itemId), lo = l.orderId ? stkOrderById(l.orderId) : null;
+    return '<tr><td>' + (i + 1) + '</td><td>' + (it ? '<a class="kho-link" onclick="viewStkItem(\'' + it.id + '\')"><b>' + esc(it.code||'') + '</b></a> ' + esc(it.name||'') : esc(l.name||'') + ' <span class="muted">(ngoài DM)</span>') + '</td><td>' + esc(l.grade||'') + '</td><td>' + esc(l.spec||'') + '</td><td style="text-align:right"><b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b> ' + esc(l.unit||(it&&it.unit)||'') + '</td><td>' + esc(l.kg ? l.kg + ' kg' : '') + '</td><td>' + esc(l.heatNo||'') + '</td><td>' + esc(lo ? lo.code : '') + '</td><td class="small">' + esc(l.note||'') + '</td></tr>'; }).join('');
+  const mail = m.mail ? (m.mail.status==='sent' ? '<b style="color:#15803d">📨 Đã gửi ' + esc(new Date(m.mail.at).toLocaleString('vi-VN')) + '</b>' : '<b style="color:#b91c1c">📨 Chưa gửi được: ' + esc(m.mail.err||'') + '</b> <a class="kho-link" onclick="stkMailResend(\'' + m.id + '\')">↻ Gửi lại</a> · <a class="kho-link" onclick="stkMailWebmail(\'' + m.id + '\')">📧 Gửi tay</a>') : '';
+  const siblings = m.reportNo ? (DATA.stockMoves||[]).filter(function(x){ return x && x.reportNo===m.reportNo && x.id!==m.id; }) : [];
+  stkInfo(d.ic + ' ' + (m.no||'') + ' · ' + (p.label||''), stkKv([
+      ['Ngày', fmtDate(m.date)], ['Loại', '<b style="color:' + d.c + '">' + d.t + '</b> · ' + esc(p.label||'')],
+      ['Báo kho', m.reportNo ? '📤 <b>' + esc(m.reportNo) + '</b>' + (siblings.length ? ' — cùng lượt: ' + siblings.map(function(x){ return '<a class="kho-link" onclick="viewStkMove(\'' + x.id + '\')">' + esc(x.no||'') + '</a>'; }).join(', ') : '') : ''],
+      ['Đơn hàng', o ? '<a class="kho-link" onclick="closeModal(\'modalStkInfo\');openOrderView(\'' + o.id + '\')"><b>' + esc(o.code||'') + '</b></a>' + ordRefTxt(o) + ' — ' + esc(o.name||'') : ''],
+      [m.dir==='in' ? 'NCC / nguồn' : 'Xuất cho', esc(m.partner||'')], [m.dir==='in' ? 'Người giao' : 'Người nhận', esc(m.receiver||'')], ['Người lập', esc(m.by||'')],
+      ['Chứng từ', esc(m.docRef||'')], ['CO/CQ · heat', esc(m.certRef||'')], ['Ghi chú', esc(m.note||'')], ['Thư báo', mail]])
+    + '<div style="overflow:auto;margin-top:8px"><table data-tc="off"><thead><tr><th>#</th><th>Hàng</th><th>Mác</th><th>Quy cách</th><th style="text-align:right">' + (m.dir==='adj' ? 'SL đếm' : 'SL') + '</th><th>kg</th><th>Heat / lô</th><th>Đơn riêng</th><th>Ghi chú</th></tr></thead><tbody>' + lines + '</tbody></table></div>'
+    + ((m.editLog||[]).length ? '<div class="small" style="margin-top:8px"><b>Lịch sử sửa số lượng:</b>' + m.editLog.slice().reverse().map(function(e){ return '<div>' + esc(new Date(e.at).toLocaleString('vi-VN')) + ' · ' + esc(e.by||'') + ': ' + esc(e.before||'') + ' → ' + esc(e.after||'') + '</div>'; }).join('') + '</div>' : '')
+    + '<div class="toolbar" style="margin-top:12px"><button class="ghost sm" onclick="printStkMove(\'' + m.id + '\')">🖨 In phiếu</button>' + (canWork() ? '<button class="ghost sm" onclick="closeModal(\'modalStkInfo\');openStkMoveModal(\'' + m.id + '\')">✏ Sửa thông tin</button>' : '') + '</div>');
+}
+function viewStkCheck(id){
+  const c = (DATA.stockChecks||[]).find(function(x){ return x && x.id===id; }); if(!c){ alert('Không tìm thấy phiếu kiểm.'); return; }
+  const o = stkOrderById(c.orderId), mism = stkCodeMismatch(c.labelCode, c.partCode);
+  const ck = STK_CHECK_ITEMS.map(function(x){ const v = c.checks && c.checks[x[0]]; return '<div class="small">' + (v==='ok' ? '<b style="color:#15803d">✓</b>' : (v==='ng' ? '<b style="color:#b91c1c">✕</b>' : '<span class="muted">–</span>')) + ' ' + esc(x[1]) + '</div>'; }).join('');
+  const dims = (c.dims||[]).filter(function(d){ return d && (d.param || d.actual); }).map(function(d){ const g = stkItemById(d.gaugeId); return '<tr><td>' + esc(d.param||'') + '</td><td>' + esc(d.spec||'') + '</td><td><b>' + esc(d.actual||'') + '</b></td><td class="small">' + esc(g ? g.code + ' ' + (g.name||'') : (d.gauge||'')) + (d.gaugeOk===false ? ' <b style="color:#b91c1c">quá hạn HC</b>' : '') + '</td><td>' + (d.pass==='pass' ? '<b style="color:#15803d">Đạt</b>' : (d.pass==='fail' ? '<b style="color:#b91c1c">Không</b>' : '')) + '</td></tr>'; }).join('');
+  stkInfo('🔍 ' + (c.no||'') + ' · ' + (c.itemName||''), stkKv([
+      ['Kết luận', c.result==='pass' ? '<b style="color:#15803d">✓ ĐẠT — cho gia công</b>' : (c.result==='fail' ? '<b style="color:#b91c1c">✕ KHÔNG ĐẠT</b>' : '<span class="muted">chưa kết luận</span>')],
+      ['Ngày kiểm', fmtDate(c.date)], ['Đơn hàng', o ? '<b>' + esc(o.code||'') + '</b> — ' + esc(o.name||'') : ''], ['Số lượng', esc(c.qty||'')],
+      ['Mã trên hộp', esc(c.labelCode||'')], ['Mã trên sản phẩm', '<b style="color:' + (mism ? '#b91c1c' : 'inherit') + '">' + esc(c.partCode||'') + '</b>' + (mism ? ' ≠ hộp' : '')],
+      ['Người kiểm', esc(c.inspector||'')], ['Thợ nhận', esc(c.receiver||'')], ['Ghi chú', esc(c.note||'')], ['Ảnh', esc(c.photos||'')]])
+    + '<div style="margin-top:8px">' + ck + '</div>'
+    + (dims ? '<div style="overflow:auto;margin-top:8px"><table data-tc="off"><thead><tr><th>Kích thước</th><th>Yêu cầu</th><th>Đo thực</th><th>Dụng cụ đo</th><th>Đạt?</th></tr></thead><tbody>' + dims + '</tbody></table></div>' : '')
+    + '<div class="toolbar" style="margin-top:12px"><button class="ghost sm" onclick="printStkCheck(\'' + c.id + '\')">🖨 In phiếu</button>' + (canWork() ? '<button class="ghost sm" onclick="closeModal(\'modalStkInfo\');openStkCheckModal(\'' + c.id + '\')">✏ Sửa</button>' : '') + '</div>');
+}
+
+/* =====================================================================================
+   🪟 CỬA SỔ THAO TÁC NỔI — nắm thanh trên cùng kéo đi góc nào cũng được (25-11-2026)
+   • Form của tab Kho + "Xem đơn": NỔI, không che trang — vừa điền phiếu vừa xem bảng phía sau,
+     kéo giãn ở góc dưới phải, nhớ vị trí / kích thước theo máy.
+   • Các form khác (sửa đơn…): vẫn che nền (tránh mở 2 đơn chồng nhau) nhưng kéo dịch được.
+   ===================================================================================== */
+const WIN_FLOAT = ['modalStkItem','modalStkMove','modalStkCheck','modalStkCal','modalStkInfo','modalStkUse','modalStkMail','modalView','modalNcrResp'];
+const WIN_POS_KEY = 'dhp_win_pos_v1';
+let _winDrag = null, _winZ = 60;
+function winPos(){ try{ return JSON.parse(localStorage.getItem(WIN_POS_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function winSavePos(id, p){ const P = winPos(); P[id] = p; try{ localStorage.setItem(WIN_POS_KEY, JSON.stringify(P)); }catch(e){} }
+function winSetup(id){
+  const bg = document.getElementById(id); if(!bg || !bg.classList.contains('modal-bg')) return;
+  const m = bg.querySelector('.modal'); if(!m) return;
+  const float = window.innerWidth >= 760 && WIN_FLOAT.indexOf(id)>=0;
+  bg.classList.toggle('win-float', float);
+  if(!m.querySelector(':scope > .win-bar')){
+    const bar = document.createElement('div'); bar.className = 'win-bar';
+    bar.innerHTML = '<span class="win-grip">⠿ Nắm đây kéo đi</span><span class="win-btns">'
+      + '<a data-w="left" title="Đưa sang trái">⇤</a><a data-w="center" title="Về giữa">◎</a><a data-w="right" title="Đưa sang phải">⇥</a>'
+      + '<a data-w="max" title="Phóng to / thu lại">⤢</a><a data-w="close" title="Đóng">✕</a></span>';
+    m.insertBefore(bar, m.firstChild);
+    bar.addEventListener('pointerdown', function(e){ if(e.target.closest('a')) return; winDragStart(e, id); });
+    bar.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); winAction(id, a.dataset.w); }); });
+    m.addEventListener('pointerdown', function(){ if(bg.classList.contains('win-float')) bg.style.zIndex = String(++_winZ); });
+    if(window.ResizeObserver){
+      let t = null;
+      new ResizeObserver(function(){ if(!bg.classList.contains('win-float') || !bg.classList.contains('show') || _winDrag) return; clearTimeout(t); t = setTimeout(function(){ if(m.style.width || m.style.height){ const P = winPos()[id] || {}; if(m.style.width) P.w = parseFloat(m.style.width); if(m.style.height) P.h = parseFloat(m.style.height); winSavePos(id, P); } }, 300); }).observe(m);
+    }
+  }
+  if(float) bg.style.zIndex = String(++_winZ); else bg.style.zIndex = '';
+  winApplyPos(id);
+}
+function winApplyPos(id){
+  const bg = document.getElementById(id); if(!bg) return; const m = bg.querySelector('.modal'); if(!m) return;
+  const P = winPos()[id] || {};
+  if(bg.classList.contains('win-float')){
+    m.style.transform = '';
+    m.style.width = P.w ? Math.min(P.w, window.innerWidth - 16) + 'px' : '';
+    m.style.height = P.h ? Math.min(P.h, window.innerHeight - 16) + 'px' : '';
+    const w = m.offsetWidth || 640;
+    let x = (P.x!=null) ? P.x : Math.round((window.innerWidth - w) / 2), y = (P.y!=null) ? P.y : 46;
+    x = Math.min(Math.max(x, 8 - w + 120), window.innerWidth - 120); y = Math.min(Math.max(y, 0), window.innerHeight - 60);
+    m.style.left = x + 'px'; m.style.top = y + 'px';
+  } else {
+    m.style.left = ''; m.style.top = ''; m.style.width = ''; m.style.height = '';
+    m.style.transform = (P.dx || P.dy) ? 'translate(' + (P.dx || 0) + 'px,' + (P.dy || 0) + 'px)' : '';
+  }
+}
+function winDragStart(e, id){
+  const bg = document.getElementById(id), m = bg.querySelector('.modal'); const float = bg.classList.contains('win-float');
+  const r = m.getBoundingClientRect(), P = winPos()[id] || {};
+  _winDrag = {id:id, m:m, float:float, sx:e.clientX, sy:e.clientY, x:r.left, y:r.top, dx:P.dx || 0, dy:P.dy || 0};
+  if(float) bg.style.zIndex = String(++_winZ);
+  document.body.classList.add('win-dragging');
+  document.addEventListener('pointermove', winDragMove);
+  document.addEventListener('pointerup', winDragEnd, {once:true});
+  e.preventDefault();
+}
+function winDragMove(e){
+  const d = _winDrag; if(!d) return;
+  const ddx = e.clientX - d.sx, ddy = e.clientY - d.sy;
+  if(d.float){
+    const w = d.m.offsetWidth;
+    d.cx = Math.min(Math.max(d.x + ddx, 8 - w + 120), window.innerWidth - 120); d.cy = Math.min(Math.max(d.y + ddy, 0), window.innerHeight - 40);
+    d.m.style.left = d.cx + 'px'; d.m.style.top = d.cy + 'px';
+  } else { d.cdx = d.dx + ddx; d.cdy = d.dy + ddy; d.m.style.transform = 'translate(' + d.cdx + 'px,' + d.cdy + 'px)'; }
+}
+function winDragEnd(){
+  const d = _winDrag; _winDrag = null; document.removeEventListener('pointermove', winDragMove); document.body.classList.remove('win-dragging');
+  if(!d) return; const P = winPos()[d.id] || {};
+  if(d.float){ if(d.cx!=null){ P.x = Math.round(d.cx); P.y = Math.round(d.cy); } } else if(d.cdx!=null){ P.dx = Math.round(d.cdx); P.dy = Math.round(d.cdy); }
+  winSavePos(d.id, P);
+}
+function winAction(id, a){
+  if(a==='close'){ closeModal(id); return; }
+  const bg = document.getElementById(id), m = bg.querySelector('.modal'); const P = winPos()[id] || {};
+  if(!bg.classList.contains('win-float')){ P.dx = 0; P.dy = 0; if(a==='left') P.dx = -Math.round((window.innerWidth - m.offsetWidth) / 2) + 10; if(a==='right') P.dx = Math.round((window.innerWidth - m.offsetWidth) / 2) - 10; winSavePos(id, P); winApplyPos(id); return; }
+  const w = m.offsetWidth;
+  if(a==='max'){
+    if(P.max){ P.w = P.pw || null; P.h = P.ph || null; P.x = P.px; P.y = P.py; delete P.max; }
+    else { P.pw = P.w || null; P.ph = P.h || null; P.px = P.x; P.py = P.y; P.max = 1; P.w = window.innerWidth - 16; P.h = window.innerHeight - 16; P.x = 8; P.y = 8; }
+  }
+  if(a==='left'){ P.x = 8; P.y = 8; }
+  if(a==='right'){ P.x = window.innerWidth - w - 8; P.y = 8; }
+  if(a==='center'){ P.x = Math.round((window.innerWidth - w) / 2); P.y = 46; }
+  winSavePos(id, P); winApplyPos(id);
+}
+window.addEventListener('resize', function(){ document.querySelectorAll('.modal-bg.show').forEach(function(bg){ if(bg.id) winSetup(bg.id); }); });
+
+/* =====================================================================================
+   ↔ CỘT BẢNG NHƯ APP THƯỜNG — kéo mép để giãn · kéo tiêu đề để đổi chỗ · ⚙ Cột để ẩn / hiện
+   Áp cho MỌI bảng (kể cả bảng đơn hàng). Nhớ theo máy, theo từng bảng.            (25-11-2026)
+   ===================================================================================== */
+const TC_STORE = 'dhp_cols_v1';
+let TC_DATA = (function(){ try{ return JSON.parse(localStorage.getItem(TC_STORE) || '{}') || {}; }catch(e){ return {}; } })();
+let _tcDrag = null, _tcResizing = null;
+function tcSave(){ try{ localStorage.setItem(TC_STORE, JSON.stringify(TC_DATA)); }catch(e){} }
+function tcText(th){ const c = th.cloneNode(true); c.querySelectorAll('.tf-arr,.tf-btn,.tc-rz').forEach(function(x){ x.remove(); }); return (c.textContent||'').replace(/[▲▼↑↓⇅↕▾⬍]/g, '').replace(/\s+/g, ' ').trim(); }
+function tcEligible(tbl){
+  if(tbl.dataset.tcDone || tbl.dataset.tc==='off') return false;
+  if(tbl.classList.contains('tg') || tbl.classList.contains('zi-tbl') || tbl.classList.contains('stk-kv')) return false;
+  if(tbl.closest('#modalOrder')) return false;
+  if(tbl.parentElement && tbl.parentElement.closest('table')) return false;
+  if(!tbl.closest('.view,.modal')) return false;
+  if(!tbl.tHead || tbl.tHead.rows.length!==1) return false;
+  const h = tfHeadRow(tbl); if(!h || h.cells.length < 3) return false;
+  return ![].some.call(h.cells, function(c){ return (c.colSpan || 1) > 1; });
+}
+function tcCurLabels(tbl){ return [].map.call(tfHeadRow(tbl).cells, function(th){ return th.dataset.tcLbl; }); }
+function tcRows(tbl, n){ return [].filter.call(tbl.rows, function(r){ return r.cells.length===n; }); }
+function tcSetup(tbl){
+  tbl.dataset.tcDone = '1';
+  const h = tfHeadRow(tbl);
+  const labels = [].map.call(h.cells, function(th, i){ return tfNorm(tcText(th)) || ('#' + i); });
+  labels.forEach(function(l, i){ if(labels.indexOf(l)!==i) labels[i] = l + '~' + i; });
+  [].forEach.call(h.cells, function(th, i){ th.dataset.tcLbl = labels[i]; });
+  const host = tbl.closest('.modal-bg') || tbl.closest('.view');
+  tbl.dataset.tcKey = (host ? host.id : '') + '::' + labels.join('|');
+  const S = TC_DATA[tbl.dataset.tcKey];
+  if(S && Array.isArray(S.order) && S.order.length){
+    const want = S.order.filter(function(l){ return labels.indexOf(l)>=0; });
+    labels.forEach(function(l, i){ if(want.indexOf(l)<0) want.splice(Math.min(i, want.length), 0, l); });
+    if(want.join('|')!==labels.join('|')) tcReorderTo(tbl, want);
+  }
+  tcApplyHideWidth(tbl);
+  tcDecorate(tbl);
+}
+function tcReorderTo(tbl, want){
+  const h = tfHeadRow(tbl), n = h.cells.length, cur = tcCurLabels(tbl);
+  const perm = want.map(function(l){ return cur.indexOf(l); });
+  if(perm.length!==n || perm.some(function(i){ return i < 0; })) return;
+  tcRows(tbl, n).forEach(function(r){ const cells = [].slice.call(r.cells); perm.forEach(function(i){ r.appendChild(cells[i]); }); });
+}
+function tcApplyHideWidth(tbl){
+  const S = TC_DATA[tbl.dataset.tcKey] || {}, h = tfHeadRow(tbl), n = h.cells.length, labels = tcCurLabels(tbl), hide = S.hide || [];
+  const rows = tcRows(tbl, n);
+  labels.forEach(function(l, i){ const hid = hide.indexOf(l)>=0; rows.forEach(function(r){ r.cells[i].classList.toggle('tc-hid', hid); }); });
+  const W = S.w || {};
+  if(Object.keys(W).length){
+    const cur = [].map.call(h.cells, function(th){ return th.getBoundingClientRect().width; });
+    let sum = 0;
+    [].forEach.call(h.cells, function(th, i){ if(th.classList.contains('tc-hid')) return; const w = W[labels[i]] || Math.max(60, Math.round(cur[i] || 120)); th.style.width = w + 'px'; sum += w; });
+    tbl.style.tableLayout = 'fixed'; tbl.style.width = sum + 'px'; tbl.style.minWidth = '100%';
+  } else {
+    tbl.style.tableLayout = ''; tbl.style.width = ''; tbl.style.minWidth = '';
+    [].forEach.call(h.cells, function(th){ th.style.width = ''; });
+  }
+}
+function tcDecorate(tbl){
+  [].forEach.call(tfHeadRow(tbl).cells, function(th){
+    if(th.dataset.tcDeco) return; th.dataset.tcDeco = '1';
+    const rz = document.createElement('span'); rz.className = 'tc-rz'; rz.title = 'Kéo để giãn / thu cột · bấm đúp: vừa nội dung';
+    th.appendChild(rz);
+    rz.addEventListener('pointerdown', function(e){ tcResizeStart(e, tbl, th); });
+    rz.addEventListener('click', function(e){ e.stopPropagation(); });
+    rz.addEventListener('dblclick', function(e){ e.stopPropagation(); tcAutoWidth(tbl, th); });
+    th.draggable = true;
+    th.addEventListener('dragstart', function(e){
+      if(_tcResizing || (e.target && e.target.classList && e.target.classList.contains('tc-rz'))){ e.preventDefault(); return; }
+      _tcDrag = {tbl:tbl, lbl:th.dataset.tcLbl}; e.dataTransfer.effectAllowed = 'move'; try{ e.dataTransfer.setData('text/plain', th.dataset.tcLbl); }catch(x){}
+      th.classList.add('tc-dragging');
+    });
+    th.addEventListener('dragend', function(){ th.classList.remove('tc-dragging'); [].forEach.call(tfHeadRow(tbl).cells, function(c){ c.classList.remove('tc-over-l', 'tc-over-r'); }); _tcDrag = null; });
+    th.addEventListener('dragover', function(e){ if(!_tcDrag || _tcDrag.tbl!==tbl) return; e.preventDefault(); const r = th.getBoundingClientRect(), right = e.clientX > r.left + r.width / 2; th.classList.toggle('tc-over-r', right); th.classList.toggle('tc-over-l', !right); });
+    th.addEventListener('dragleave', function(){ th.classList.remove('tc-over-l', 'tc-over-r'); });
+    th.addEventListener('drop', function(e){
+      if(!_tcDrag || _tcDrag.tbl!==tbl) return; e.preventDefault();
+      const r = th.getBoundingClientRect(), right = e.clientX > r.left + r.width / 2, from = _tcDrag.lbl, to = th.dataset.tcLbl;
+      _tcDrag = null; th.classList.remove('tc-over-l', 'tc-over-r');
+      if(from!==to) tcMoveCol(tbl, from, to, right);
+    });
+  });
+}
+function tcBar(tbl){
+  if(!tbl.isConnected || !tbl.dataset.tcDone) return;
+  let bar = tbl.previousElementSibling;
+  if(!(bar && (bar.classList.contains('tf-bar') || bar.classList.contains('tc-bar')))){
+    bar = document.createElement('div'); bar.className = 'tc-bar';
+    bar.innerHTML = '<span>↔ Kéo mép tiêu đề để giãn cột · kéo tiêu đề để đổi chỗ</span>';
+    tbl.parentNode.insertBefore(bar, tbl);
+  }
+  if(bar.querySelector('.tc-btn')) return;
+  const a = document.createElement('a'); a.className = 'tc-btn'; a.textContent = '⚙ Cột';
+  a.title = 'Ẩn / hiện / đổi thứ tự cột · kéo mép tiêu đề để giãn · kéo tiêu đề để đổi chỗ';
+  a.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); tcMenu(tbl, a); });
+  bar.appendChild(a);
+}
+function tcStore(tbl){ const k = tbl.dataset.tcKey; return (TC_DATA[k] = TC_DATA[k] || {}); }
+function tcMoveCol(tbl, from, to, after){
+  const want = tcCurLabels(tbl).filter(function(l){ return l!==from; }); const i = want.indexOf(to); if(i < 0) return;
+  want.splice(after ? i + 1 : i, 0, from);
+  tcReorderTo(tbl, want); tcStore(tbl).order = want; tcSave();
+  tcRefreshTf(tbl);
+}
+// Bảng đã gắn lọc / sắp xếp theo vị trí cột → đổi chỗ xong phải gắn lại cho đúng cột
+function tcRefreshTf(tbl){
+  if(tbl.dataset.tfDone){
+    const bar = tbl.previousElementSibling; if(bar && bar.classList.contains('tf-bar')) bar.remove();
+    [].forEach.call(tbl.tBodies, function(tb){ [].forEach.call(tb.rows, function(r){ if(r.dataset.tfHid==='1'){ r.style.display = r.dataset.tfPrev || ''; r.dataset.tfHid = ''; } }); });
+    [].slice.call(tfHeadRow(tbl).cells).forEach(function(th){
+      th.querySelectorAll('.tf-arr,.tf-btn,.tc-rz').forEach(function(x){ x.remove(); });
+      th.classList.remove('tf-th', 'tf-asc', 'tf-desc'); delete th.dataset.tfLbl; delete th.dataset.tcDeco;
+      th.replaceWith(th.cloneNode(true));
+    });
+    delete tbl.dataset.tfDone;
+    tcDecorate(tbl);
+    if(tfEligible(tbl)) tfEnhance(tbl);
+  }
+  tcApplyHideWidth(tbl);
+  tcBar(tbl);
+}
+function tcMenu(tbl, anchor){
+  tfCloseMenu();
+  const m = document.createElement('div'); m.className = 'tf-menu'; m.id = 'tfMenu';
+  document.body.appendChild(m);
+  const draw = function(){
+    const S = tcStore(tbl), labels = tcCurLabels(tbl), h = tfHeadRow(tbl), hide = S.hide || [];
+    m.innerHTML = '<b style="font-size:12px">Cột của bảng</b><div class="small muted" style="margin:2px 0 4px">Tick = hiện · ↑↓ đổi thứ tự (hoặc kéo tiêu đề ngay trên bảng) · kéo mép tiêu đề để giãn</div><div class="tf-vals">'
+      + labels.map(function(l, i){ return '<div class="tc-mrow"><label><input type="checkbox" data-l="' + esc(l) + '"' + (hide.indexOf(l)<0 ? ' checked' : '') + '><span>' + esc(tcText(h.cells[i]) || '(cột thao tác)') + '</span></label><span><a data-up="' + i + '" title="Lên trước">↑</a><a data-dn="' + i + '" title="Xuống sau">↓</a></span></div>'; }).join('')
+      + '</div><div class="tf-row"><button class="ghost sm" data-fit title="Bỏ độ rộng đã kéo — để app tự chia">↔ Tự chia độ rộng</button><button class="ghost sm" data-reset>↺ Mặc định</button></div>';
+    m.querySelectorAll('input[data-l]').forEach(function(cb){ cb.onchange = function(){
+      const S2 = tcStore(tbl); let hd = (S2.hide || []).filter(function(x){ return x!==cb.dataset.l; }); if(!cb.checked) hd.push(cb.dataset.l);
+      if(hd.length >= tcCurLabels(tbl).length){ cb.checked = true; return; }
+      S2.hide = hd; tcSave(); tcApplyHideWidth(tbl);
+    }; });
+    m.querySelectorAll('a[data-up],a[data-dn]').forEach(function(a){ a.onclick = function(){
+      const L = tcCurLabels(tbl), i = +(a.dataset.up!=null ? a.dataset.up : a.dataset.dn), up = a.dataset.up!=null, j = up ? i - 1 : i + 1;
+      if(j < 0 || j >= L.length) return;
+      tcMoveCol(tbl, L[i], L[j], !up); draw();
+    }; });
+    m.querySelector('[data-fit]').onclick = function(){ delete tcStore(tbl).w; tcSave(); tcApplyHideWidth(tbl); };
+    m.querySelector('[data-reset]').onclick = function(){
+      const orig = tbl.dataset.tcKey.split('::').slice(1).join('::').split('|');
+      delete TC_DATA[tbl.dataset.tcKey]; tcSave();
+      tcReorderTo(tbl, orig); tcRefreshTf(tbl); tfCloseMenu();
+    };
+  };
+  draw();
+  const r = anchor.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(window.innerWidth - 300, r.left - 160)) + 'px';
+  m.style.top = Math.min(window.innerHeight - 80, r.bottom + 4) + 'px';
+  const mh = m.getBoundingClientRect().height; if(r.bottom + 4 + mh > window.innerHeight - 8) m.style.top = Math.max(8, r.top - mh - 4) + 'px';
+}
+function tcResizeStart(e, tbl, th){
+  e.preventDefault(); e.stopPropagation();
+  const S = tcStore(tbl); S.w = S.w || {};
+  const h = tfHeadRow(tbl), labels = tcCurLabels(tbl);
+  if(tbl.style.tableLayout!=='fixed'){
+    [].forEach.call(h.cells, function(c, i){ if(!c.classList.contains('tc-hid') && !S.w[labels[i]]) S.w[labels[i]] = Math.max(40, Math.round(c.getBoundingClientRect().width)); });
+    tcApplyHideWidth(tbl);
+  }
+  _tcResizing = {tbl:tbl, th:th, lbl:th.dataset.tcLbl, sx:e.clientX, w0:th.getBoundingClientRect().width, S:S};
+  document.body.classList.add('tc-resizing');
+  document.addEventListener('pointermove', tcResizeMove);
+  document.addEventListener('pointerup', tcResizeEnd, {once:true});
+}
+function tcResizeMove(e){
+  const d = _tcResizing; if(!d) return;
+  const w = Math.max(40, Math.round(d.w0 + e.clientX - d.sx)); d.S.w[d.lbl] = w; d.th.style.width = w + 'px';
+  let s = 0; [].forEach.call(tfHeadRow(d.tbl).cells, function(c){ if(!c.classList.contains('tc-hid')) s += parseFloat(c.style.width) || c.getBoundingClientRect().width; });
+  d.tbl.style.width = s + 'px';
+}
+function tcResizeEnd(){
+  document.removeEventListener('pointermove', tcResizeMove); document.body.classList.remove('tc-resizing');
+  if(_tcResizing) tcSave();
+  setTimeout(function(){ _tcResizing = null; }, 0);   // chặn cú "click" ngay sau khi thả (khỏi sắp xếp nhầm)
+}
+function tcAutoWidth(tbl, th){
+  const S = tcStore(tbl); if(!S.w) return;
+  const lbl = th.dataset.tcLbl, saved = Object.assign({}, S.w);
+  tbl.style.tableLayout = ''; tbl.style.width = ''; [].forEach.call(tfHeadRow(tbl).cells, function(c){ c.style.width = ''; });
+  const natural = Math.round(th.getBoundingClientRect().width);
+  S.w = saved; S.w[lbl] = Math.min(640, Math.max(60, natural)); tcSave(); tcApplyHideWidth(tbl);
+}
+document.addEventListener('click', function(e){ if(_tcResizing){ e.stopPropagation(); e.preventDefault(); } }, true);
+
+/* ---------- 🖥 bố cục màn hình: bề ngang trang · khoảng cách dòng · cỡ chữ bảng ---------- */
+const UI_KEY = 'dhp_ui_v1';
+function uiPrefs(){ let p = null; try{ p = JSON.parse(localStorage.getItem(UI_KEY) || 'null'); }catch(e){} p = p || {}; if(p.full==null) p.full = true; p.dens = p.dens || 'normal'; p.font = p.font || 'm'; return p; }
+function uiApply(){
+  const p = uiPrefs(), b = document.body; if(!b) return;
+  b.classList.toggle('ui-full', !!p.full);
+  ['compact','normal','wide'].forEach(function(d){ b.classList.toggle('ui-dens-' + d, p.dens===d); });
+  ['s','m','l'].forEach(function(f){ b.classList.toggle('ui-font-' + f, p.font===f); });
+}
+function uiSet(k, v){ const p = uiPrefs(); p[k] = v; try{ localStorage.setItem(UI_KEY, JSON.stringify(p)); }catch(e){} uiApply(); }
+function uiMenu(btn){
+  tfCloseMenu();
+  const m = document.createElement('div'); m.className = 'tf-menu'; m.id = 'tfMenu';
+  document.body.appendChild(m);
+  const draw = function(){
+    const p = uiPrefs();
+    const opt = function(k, v, l){ return '<button class="sm ' + (p[k]===v ? '' : 'ghost') + '" data-k="' + k + '" data-v="' + v + '">' + l + '</button>'; };
+    m.innerHTML = '<b style="font-size:12px">🖥 Bố cục màn hình</b>'
+      + '<div class="small muted" style="margin-top:6px">Bề ngang trang</div><div class="tf-row" style="justify-content:flex-start;gap:6px">' + opt('full', true, '⤢ Toàn màn hình') + opt('full', false, '⊡ Vừa (1480px)') + '</div>'
+      + '<div class="small muted" style="margin-top:6px">Khoảng cách dòng trong bảng</div><div class="tf-row" style="justify-content:flex-start;gap:6px">' + opt('dens', 'compact', 'Gọn') + opt('dens', 'normal', 'Vừa') + opt('dens', 'wide', 'Thoáng') + '</div>'
+      + '<div class="small muted" style="margin-top:6px">Cỡ chữ bảng</div><div class="tf-row" style="justify-content:flex-start;gap:6px">' + opt('font', 's', 'Nhỏ') + opt('font', 'm', 'Vừa') + opt('font', 'l', 'Lớn') + '</div>'
+      + '<div class="small" style="margin-top:8px;line-height:1.5;color:#475569">Cột bảng: <b>kéo mép tiêu đề</b> để giãn · <b>kéo tiêu đề</b> sang chỗ khác để đổi vị trí · <b>⚙ Cột</b> để ẩn / hiện. Cửa sổ thao tác: nắm thanh trên cùng kéo đi.</div>'
+      + '<div class="tf-row" style="margin-top:6px"><button class="ghost sm" data-resetcols>↺ Trả mọi cột về mặc định</button><button class="ghost sm" data-resetwin>↺ Cửa sổ về giữa</button></div>';
+    m.querySelectorAll('button[data-k]').forEach(function(b){ b.onclick = function(){ const v = b.dataset.v; uiSet(b.dataset.k, v==='true' ? true : (v==='false' ? false : v)); draw(); }; });
+    m.querySelector('[data-resetcols]').onclick = function(){ if(!confirm('Trả độ rộng, thứ tự, ẩn/hiện của MỌI bảng về mặc định?')) return; TC_DATA = {}; tcSave(); tfCloseMenu(); renderAll(); };
+    m.querySelector('[data-resetwin]').onclick = function(){ try{ localStorage.removeItem(WIN_POS_KEY); }catch(e){} tfCloseMenu(); };
+  };
+  draw();
+  const r = btn.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(window.innerWidth - 320, r.right - 300)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+}
+uiApply();
+
+/* =====================================================================================
+   ⚖ TRÁCH NHIỆM & XỬ LÝ SAU NCR — tường trình · họp xử lý · khiển trách · nhắc nhở · mail đề nghị
+   (thêm 25-11-2026, mở đầu từ vụ đơn 231 Hải Long Mekong giao sai size)
+   Nguyên tắc đưa vào app (Bộ luật Lao động 2019 — HR rà lại trước khi áp dụng):
+     • Chỉ 4 hình thức KỶ LUẬT: khiển trách · kéo dài thời hạn nâng lương ≤ 6 tháng · cách chức · sa thải (Điều 124).
+     • CẤM phạt tiền, cắt lương thay kỷ luật (Điều 127). Trừ thưởng KPI chỉ theo Quy chế thưởng đã công bố.
+     • Chỉ kỷ luật hành vi CÓ trong nội quy lao động đã đăng ký; phải chứng minh lỗi, có mặt NLĐ + tổ chức đại diện,
+       họp có biên bản (Điều 122, Điều 70 NĐ 145/2020). Thời hiệu 6 tháng kể từ ngày vi phạm (Điều 123).
+     • Bồi thường hư hỏng tài sản do sơ suất: tối đa 3 tháng lương khi thiệt hại ≤ 10 tháng lương tối thiểu vùng;
+       khấu trừ lương ≤ 30%/tháng (Điều 129, Điều 102).
+   Dữ liệu nằm ngay trong bản ghi NCR (n.resp, n.disc) → đồng bộ cùng bảng ncr_records, không cần bảng mới.
+   ===================================================================================== */
+const DISC_STAGES = {
+  xuat_kho:{l:'Xuất kho / cấp phôi', duty:'Đối chiếu mã, size trên bao bì với lệnh sản xuất trước khi xuất'},
+  nhan_phoi:{l:'Thợ nhận phôi', duty:'Đối chiếu size với lệnh / bản vẽ trước khi gia công công đoạn đầu'},
+  gia_cong:{l:'Gia công (thợ đứng máy)', duty:'Làm theo lệnh và bản vẽ; thấy sai kích thước thì DỪNG và báo (SX/QĐ-01)'},
+  kiem_cuoi:{l:'Kiểm cuối / QC', duty:'Đo theo bản vẽ, kiểm nhãn trước khi ký Đạt (SX.QT01 bước 7, SX/BM-04)'},
+  giao_hang:{l:'Giao hàng', duty:'Đối chiếu nhãn với đơn hàng trước khi giao'},
+  quan_ly:{l:'Quản lý bộ phận', duty:'Bảo đảm có QC độc lập, quy trình được áp dụng'},
+  khac:{l:'Khác', duty:''},
+};
+const DISC_LEVELS = {chinh:{l:'Chính — trực tiếp gây lỗi / khâu chặn cuối', c:'#b91c1c'}, lien_doi:{l:'Liên đới — không chặn được lỗi', c:'#b45309'}, nhe:{l:'Nhẹ', c:'#64748b'}, quan_ly:{l:'Trách nhiệm quản lý', c:'#4338ca'}};
+// discipline:true = hình thức kỷ luật theo Điều 124 → bắt buộc đủ điều kiện pháp lý
+const DISC_FORMS = {
+  none:{l:'Chưa đề xuất / không xử lý'},
+  nhac_mieng:{l:'Nhắc nhở miệng (không phải kỷ luật)'},
+  nhac_vb:{l:'Nhắc nhở bằng văn bản (không phải kỷ luật)'},
+  kpi:{l:'Trừ điểm / hạ bậc KPI (theo Quy chế thưởng)'},
+  khien_trach:{l:'Khiển trách bằng văn bản — KỶ LUẬT', discipline:true},
+  keo_dai:{l:'Kéo dài thời hạn nâng lương ≤ 6 tháng — KỶ LUẬT', discipline:true},
+  cach_chuc:{l:'Cách chức — KỶ LUẬT', discipline:true},
+  sa_thai:{l:'Sa thải — KỶ LUẬT (chỉ trường hợp Điều 125)', discipline:true},
+  bp_kpi_bo_phan:{l:'Tính chi phí NCR vào KPI bộ phận (không kỷ luật cá nhân)'},
+};
+const DISC_TIERS = {
+  '1':{l:'Mức 1 — Nhẹ', ex:'Lỗi tự phát hiện trong xưởng, chưa gây thiệt hại; báo "Đạt" không ghi số đo', act:'Nhắc nhở, trừ điểm KPI'},
+  '2':{l:'Mức 2 — Trung bình', ex:'Lỗi lọt đến khách, phải giao lại; hoặc 3 lần lỗi mức 1 trong một quý', act:'Khiển trách bằng văn bản, hạ bậc KPI tháng'},
+  '3':{l:'Mức 3 — Nặng', ex:'Thiệt hại vượt ngưỡng công ty đặt, mất đơn; tái phạm mức 2 trong 6 tháng', act:'Kéo dài thời hạn nâng lương ≤ 6 tháng; bồi thường theo Điều 129'},
+  '4':{l:'Mức 4 — Rất nặng', ex:'Cố ý làm sai, giấu lỗi, khai khống số đo', act:'Cách chức; sa thải chỉ khi thuộc Điều 125'},
+};
+const DISC_STATUS = {draft:'Nháp — đang soạn đề xuất', proposed:'Đã gửi đề nghị xử lý', statements:'Đang thu tường trình', meeting:'Đã họp xác minh / xử lý', decided:'Đã ra quyết định / phiếu', closed:'Đóng hồ sơ'};
+const DISC_MIN_WAGE_I = 5310000;   // lương tối thiểu vùng I năm 2026 (NĐ 293/2025/NĐ-CP); từ 01/01/2027: 5.700.000 (NĐ 399/2026/NĐ-CP)
+let _drNcrId = null, _drRows = [], _drDisc = {};
+
+function discRowNew(x){ return Object.assign({id:localId('TR'), stage:'gia_cong', staffId:'', name:'', duty:'', lapse:'', level:'lien_doi', violDate:'', form:'none', kpi:'', comp:'', compNote:'', statement:'chua', statementDate:'', note:''}, x || {}); }
+function discHasDiscipline(rows){ return (rows || []).some(function(r){ return r && DISC_FORMS[r.form] && DISC_FORMS[r.form].discipline; }); }
+function discDeadline(rows, fallbackDate){
+  const ds = (rows || []).map(function(r){ return normDate(r.violDate); }).filter(Boolean).sort();
+  const d0 = ds[0] || normDate(fallbackDate); if(!d0) return '';
+  return stkAddMonths(d0, 6);
+}
+function discBadgeHtml(n){
+  if(!n || !(n.resp || []).length) return '';
+  const st = (n.disc && n.disc.status) || 'draft', dl = discDeadline(n.resp, n.date), left = dl ? daysBetween(todayStr(), dl) : null;
+  return '<div style="margin-top:3px"><a onclick="openNcrResp(\'' + n.id + '\')" style="cursor:pointer;font-size:10.5px;font-weight:800;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:5px;padding:0 6px">⚖ ' + (n.resp.length) + ' người · ' + esc(DISC_STATUS[st] || st) + '</a>'
+    + (discHasDiscipline(n.resp) && st!=='closed' && st!=='decided' && left!=null ? ' <span style="font-size:10px;font-weight:700;color:' + (left < 30 ? '#b91c1c' : '#64748b') + '">thời hiệu còn ' + left + ' ngày</span>' : '') + '</div>';
+}
+
+/* ---------- mở / vẽ form ---------- */
+function openNcrResp(id){
+  const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===id; }); if(!n){ alert('Không tìm thấy NCR.'); return; }
+  _drNcrId = id;
+  _drRows = (n.resp || []).map(function(r){ return discRowNew(r); });
+  _drDisc = Object.assign({tier:'', status:'draft', meetingDate:'', meetingPlace:'', decisionNo:'', decisionDate:'', rulesRef:'', employer:DHP_CO.vn, legal:{}}, JSON.parse(JSON.stringify(n.disc || {})));
+  _drDisc.legal = _drDisc.legal || {};
+  const o = (DATA.orders || []).find(function(x){ return x && x.id===n.orderId; });
+  document.getElementById('drTitle').textContent = '⚖ Trách nhiệm & xử lý — NCR ' + fmtDate(n.date) + (o ? ' · đơn ' + (o.code||'') : '');
+  document.getElementById('dr_head').innerHTML = '<b>' + (o ? esc(o.code||'') + ' · ' + esc(o.company||'') : '(đơn đã xoá)') + '</b>' + (o ? ' — ' + esc(truncate(o.name||'', 160)) : '')
+    + '<div style="margin-top:3px">' + esc(n.description||'') + '</div>'
+    + '<div class="muted" style="margin-top:3px">Mức độ: ' + esc(sevLabel(n.severity)) + ' · Hướng xử lý: ' + esc(n.action||'') + (n.rootCause ? ' · Nguyên nhân: ' + esc(n.rootCause) : '') + (n.cost ? ' · Thiệt hại ước tính: ' + Number(n.cost).toLocaleString('vi-VN') + ' đ' : '') + '</div>';
+  ['tier','status','meetingDate','meetingPlace','decisionNo','decisionDate','rulesRef','employer'].forEach(function(k){ const e = document.getElementById('dr_' + k); if(e) e.value = _drDisc[k] || ''; });
+  ['inRules','bonusRules','notified','union','present','minutes'].forEach(function(k){ const e = document.getElementById('dr_l_' + k); if(e) e.checked = !!_drDisc.legal[k]; });
+  discRender();
+  openModal('modalNcrResp');
+}
+function discStaffDatalist(){
+  let el = document.getElementById('discDl');
+  if(!el){ el = document.createElement('datalist'); el.id = 'discDl'; document.body.appendChild(el); }
+  el.innerHTML = (DATA.staff || []).filter(function(s){ return s && s.active!==false; }).map(function(s){ return '<option value="' + esc(s.name) + '">'; }).join('');
+}
+function discRender(){
+  discStaffDatalist();
+  const wrap = document.getElementById('dr_rows');
+  const opt = function(map, cur){ return Object.keys(map).map(function(k){ return '<option value="' + k + '"' + (k===cur ? ' selected' : '') + '>' + esc(map[k].l) + '</option>'; }).join(''); };
+  wrap.innerHTML = _drRows.length ? _drRows.map(function(r, i){
+    const f = DISC_FORMS[r.form] || {};
+    return '<div class="dr-row" style="border-left:4px solid ' + ((DISC_LEVELS[r.level]||{}).c || '#cbd5e1') + '">'
+      + '<div class="dr-g">'
+        + '<label>Khâu<select onchange="discSet(' + i + ',\'stage\',this.value,1)">' + opt(DISC_STAGES, r.stage) + '</select></label>'
+        + '<label>Người<input list="discDl" value="' + esc(r.name) + '" placeholder="Họ tên (chọn hoặc gõ)" oninput="discSet(' + i + ',\'name\',this.value)"></label>'
+        + '<label>Mức trách nhiệm<select onchange="discSet(' + i + ',\'level\',this.value,1)">' + opt(DISC_LEVELS, r.level) + '</select></label>'
+        + '<label>Ngày vi phạm<input type="date" value="' + esc(r.violDate) + '" onchange="discSet(' + i + ',\'violDate\',this.value,1)"></label>'
+        + '<a onclick="_drRows.splice(' + i + ',1);discRender()" style="color:var(--st-late);cursor:pointer;font-weight:800;align-self:center" title="Bỏ người này">✕</a>'
+      + '</div>'
+      + '<div class="dr-g2">'
+        + '<label>Việc phải làm theo quy định<input value="' + esc(r.duty) + '" oninput="discSet(' + i + ',\'duty\',this.value)"></label>'
+        + '<label>Sai sót thực tế<input value="' + esc(r.lapse) + '" placeholder="đã làm / không làm gì" oninput="discSet(' + i + ',\'lapse\',this.value)"></label>'
+      + '</div>'
+      + '<div class="dr-g">'
+        + '<label>Đề xuất xử lý<select onchange="discSet(' + i + ',\'form\',this.value,1)" style="' + (f.discipline ? 'color:#b91c1c;font-weight:800' : '') + '">' + opt(DISC_FORMS, r.form) + '</select></label>'
+        + '<label>KPI<input value="' + esc(r.kpi) + '" placeholder="vd: hạ 1 bậc KPI tháng 11" oninput="discSet(' + i + ',\'kpi\',this.value)"></label>'
+        + '<label>Bồi thường đề xuất (đ)<input inputmode="numeric" value="' + esc(r.comp) + '" placeholder="0 = không" oninput="discSet(' + i + ',\'comp\',this.value)"></label>'
+        + '<label>Tường trình<select onchange="discSet(' + i + ',\'statement\',this.value,1)"><option value="chua"' + (r.statement!=='da_nop' ? ' selected' : '') + '>Chưa nộp</option><option value="da_nop"' + (r.statement==='da_nop' ? ' selected' : '') + '>Đã nộp</option></select></label>'
+      + '</div>'
+      + '<label class="dr-note">Ghi chú<input value="' + esc(r.note) + '" oninput="discSet(' + i + ',\'note\',this.value)"></label>'
+      + '</div>';
+  }).join('') : '<div class="small muted" style="padding:8px">Chưa có ai. Bấm <b>⚡ Điền theo các khâu của đơn</b> để app tự lấy người làm từng công đoạn + người ký kiểm cuối, rồi sửa lại.</div>';
+  discWarn();
+}
+function discSet(i, k, v, rerender){
+  const r = _drRows[i]; if(!r) return;
+  r[k] = v;
+  if(k==='stage' && !String(r.duty||'').trim()) r.duty = (DISC_STAGES[v]||{}).duty || '';
+  if(k==='name'){ const s = (DATA.staff || []).find(function(x){ return x && x.name===v; }); r.staffId = s ? s.id : ''; }
+  if(rerender) deferRender('dr', discRender); else discWarn();
+}
+function discReadHead(){
+  ['tier','status','meetingDate','meetingPlace','decisionNo','decisionDate','rulesRef','employer'].forEach(function(k){ const e = document.getElementById('dr_' + k); if(e) _drDisc[k] = e.value; });
+  _drDisc.legal = _drDisc.legal || {};
+  ['inRules','bonusRules','notified','union','present','minutes'].forEach(function(k){ const e = document.getElementById('dr_l_' + k); if(e) _drDisc.legal[k] = e.checked; });
+}
+function discWarn(){
+  discReadHead();
+  const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; }) || {};
+  const box = document.getElementById('dr_warn'); if(!box) return;
+  const w = [], ok = [];
+  const t = DISC_TIERS[_drDisc.tier];
+  if(t) ok.push('Khung ' + t.l + ': gợi ý <b>' + esc(t.act) + '</b>');
+  const dl = discDeadline(_drRows, n.date);
+  if(dl){ const left = daysBetween(todayStr(), dl); (left < 30 ? w : ok).push('Thời hiệu xử lý kỷ luật (6 tháng từ ngày vi phạm sớm nhất): hạn chót <b>' + fmtDate(dl) + '</b> — còn <b>' + left + '</b> ngày'); }
+  if(discHasDiscipline(_drRows)){
+    const L = _drDisc.legal || {};
+    if(!L.inRules) w.push('Có đề xuất <b>hình thức kỷ luật</b> nhưng chưa xác nhận hành vi này <b>có trong nội quy lao động đã đăng ký</b> — chưa đủ điều kiện kỷ luật (chỉ nhắc nhở / KPI).');
+    const miss = [['notified','đã báo trước NLĐ + tổ chức đại diện thời gian, địa điểm họp'],['union','có tổ chức đại diện NLĐ tham dự'],['present','NLĐ có mặt, được tự bào chữa'],['minutes','họp có biên bản ký đủ']].filter(function(x){ return !L[x[0]]; });
+    if(_drDisc.status==='decided' && miss.length) w.push('Đã ghi "ra quyết định" nhưng còn thiếu bước: ' + miss.map(function(x){ return x[1]; }).join(' · '));
+    else if(miss.length) ok.push('Trước khi ra quyết định kỷ luật còn: ' + miss.map(function(x){ return x[1]; }).join(' · '));
+  }
+  if(_drRows.some(function(r){ return r.form==='kpi'; }) && !(_drDisc.legal || {}).bonusRules) w.push('Trừ / hạ bậc KPI chỉ áp dụng khi <b>Quy chế thưởng</b> đã công bố có điều khoản này.');
+  const comp = _drRows.filter(function(r){ return stkNum(r.comp) > 0; });
+  if(comp.length) ok.push('Bồi thường (Điều 129): sơ suất làm hư tài sản, thiệt hại ≤ 10 tháng lương tối thiểu vùng (vùng I: ' + (DISC_MIN_WAGE_I * 10).toLocaleString('vi-VN') + ' đ) thì bồi thường tối đa 3 tháng lương; khấu trừ ≤ 30% lương thực trả mỗi tháng. Chỉ cho tài sản bị hư, KHÔNG cho chi phí giao lại / công.');
+  if(_drRows.some(function(r){ return r.form==='sa_thai'; })) w.push('Sa thải chỉ áp dụng cho các trường hợp tại Điều 125 — lỗi chất lượng thông thường KHÔNG thuộc diện này.');
+  w.push('KHÔNG phạt tiền, cắt lương thay kỷ luật (Điều 127).');
+  box.innerHTML = w.map(function(x){ return '<div class="dr-w">⚠ ' + x + '</div>'; }).join('') + ok.map(function(x){ return '<div class="dr-ok">ℹ ' + x + '</div>'; }).join('');
+}
+// Điền theo dữ liệu đơn: người làm từng công đoạn gia công, người ký kiểm cuối, + khâu kho / giao / quản lý để trống tên
+function discAutoFill(){
+  const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; }); if(!n) return;
+  const o = (DATA.orders || []).find(function(x){ return x && x.id===n.orderId; });
+  if(_drRows.length && !confirm('Thêm các khâu theo đơn vào danh sách hiện có?')) return;
+  const nm = function(id){ const s = (DATA.staff || []).find(function(x){ return x && x.id===id; }); return s ? s.name : ''; };
+  const have = function(stage, name){ return _drRows.some(function(r){ return r.stage===stage && (r.name||'')===(name||''); }); };
+  const add = function(x){ if(!have(x.stage, x.name)) _drRows.push(discRowNew(Object.assign({duty:(DISC_STAGES[x.stage]||{}).duty || ''}, x))); };
+  const firstMove = o ? stkLinesOfOrder(o.id).find(function(x){ return x.m.dir==='out'; }) : null;
+  add({stage:'xuat_kho', name:firstMove ? (firstMove.m.by || '') : '', level:'chinh', violDate:firstMove ? firstMove.m.date : (o ? o.receivedDate || '' : '')});
+  if(o){
+    const seen = {};
+    orderAllStages(o).forEach(function(s){
+      if(!s || !stageNeedsDim(s) || !s.assignee) return;
+      const name = nm(s.assignee); if(!name || seen[name]) return;
+      const st = (DATA.staff || []).find(function(x){ return x && x.id===s.assignee; });
+      seen[name] = 1;
+      add({stage:'gia_cong', name:name, staffId:s.assignee, level:'lien_doi', violDate:s.doneDate || s.startDate || '', note:'Công đoạn ' + (s.code||'') + ' ' + (s.name||'') + (st && st.type==='outsource' ? ' — đối tác ngoài: không áp dụng kỷ luật lao động, xử lý theo hợp đồng gia công' : '')});
+    });
+    if(o.inspector){
+      const selfDid = orderAllStages(o).some(function(s){ return s && nm(s.assignee)===o.inspector && stageNeedsDim(s); });
+      add({stage:'kiem_cuoi', name:o.inspector, level:'chinh', violDate:o.inspectDate || '', note:selfDid ? 'Người ký kiểm cuối cũng làm công đoạn gia công của đơn → không có kiểm độc lập' : ''});
+    } else add({stage:'kiem_cuoi', level:'chinh'});
+  }
+  add({stage:'giao_hang', level:'nhe', violDate:o ? (o.deliveredDate || '') : ''});
+  add({stage:'quan_ly', level:'quan_ly', form:'bp_kpi_bo_phan'});
+  discRender();
+}
+function saveNcrResp(silent){
+  if(!requireEdit()) return false;
+  discReadHead();
+  const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; }); if(!n) return false;
+  n.resp = _drRows.filter(function(r){ return String(r.name||'').trim() || r.form!=='none' || String(r.lapse||'').trim() || String(r.duty||'').trim() || String(r.note||'').trim(); }).map(function(r){ return Object.assign({}, r); });
+  n.disc = Object.assign({}, _drDisc, {updatedAt:new Date().toISOString()});
+  save();
+  if(!silent) closeModal('modalNcrResp');
+  return true;
+}
+
+/* ---------- 📧 mail đề nghị xử lý ---------- */
+function discMailText(n){
+  const o = (DATA.orders || []).find(function(x){ return x && x.id===n.orderId; }) || {};
+  const rows = n.resp || [], d = n.disc || {}, t = DISC_TIERS[d.tier], dl = discDeadline(rows, n.date);
+  const subject = '[CK368] Đề nghị xử lý trách nhiệm — NCR ' + fmtDate(n.date) + ' · đơn ' + (o.code||'') + ' ' + (o.company||'');
+  const line = function(r, i){ return (i + 1) + '. ' + (r.name || '(chưa xác định)') + ' — ' + ((DISC_STAGES[r.stage]||{}).l || '') + ' — trách nhiệm: ' + ((DISC_LEVELS[r.level]||{}).l || '')
+    + (r.duty ? '\n   Việc phải làm: ' + r.duty : '') + (r.lapse ? '\n   Sai sót: ' + r.lapse : '')
+    + '\n   Đề xuất: ' + ((DISC_FORMS[r.form]||{}).l || '') + (r.kpi ? '; KPI: ' + r.kpi : '') + (stkNum(r.comp) > 0 ? '; bồi thường đề xuất: ' + stkNum(r.comp).toLocaleString('vi-VN') + ' đ' + (r.compNote ? ' (' + r.compNote + ')' : '') : '')
+    + (r.note ? '\n   Ghi chú: ' + r.note : '') + '\n   Tường trình: ' + (r.statement==='da_nop' ? 'đã nộp' : 'CHƯA nộp'); };
+  const body = 'Kính gửi Ban Giám đốc, Phòng Nhân sự,\n\n'
+    + 'Xưởng CK368 báo cáo sự việc và đề nghị xử lý trách nhiệm như sau.\n\n'
+    + '1. SỰ VIỆC\n'
+    + '- Đơn hàng: ' + (o.code||'') + (o.quoteNo ? ' (BG ' + o.quoteNo + ')' : '') + ' — ' + (o.company||'') + '\n'
+    + '- Hàng: ' + String(o.name||'').replace(/\s*\n\s*/g, ' ') + '\n'
+    + '- Nội dung: ' + (n.description||'') + '\n'
+    + '- Mức độ: ' + sevLabel(n.severity) + ' · Hướng xử lý hàng: ' + (n.action||'') + (n.rootCause ? ' · Nguyên nhân gốc: ' + n.rootCause : '') + '\n'
+    + (n.cost ? '- Thiệt hại ước tính: ' + Number(n.cost).toLocaleString('vi-VN') + ' đ\n' : '')
+    + (t ? '- Xếp mức theo khung xử lý sai lỗi chất lượng: ' + t.l + ' (' + t.ex + ')\n' : '')
+    + '\n2. TRÁCH NHIỆM TỪNG KHÂU — ĐỀ XUẤT, chờ tường trình và họp xác minh\n'
+    + (rows.length ? rows.map(line).join('\n') : '(chưa lập)') + '\n\n'
+    + '3. LƯU Ý PHÁP LÝ (nhờ HR rà lại)\n'
+    + '- Chỉ áp dụng 4 hình thức kỷ luật: khiển trách, kéo dài thời hạn nâng lương ≤ 6 tháng, cách chức, sa thải (Điều 124 BLLĐ 2019). Không phạt tiền, cắt lương (Điều 127).\n'
+    + '- Chỉ kỷ luật khi hành vi có trong nội quy lao động đã đăng ký' + (d.rulesRef ? ' (' + d.rulesRef + ')' : '') + '; phải họp có mặt người lao động, tổ chức đại diện và lập biên bản (Điều 122; Điều 70 NĐ 145/2020).\n'
+    + '- Trừ / hạ bậc KPI theo Quy chế thưởng đã công bố.\n'
+    + (dl ? '- Thời hiệu xử lý kỷ luật: đến ' + fmtDate(dl) + ' (6 tháng từ ngày vi phạm sớm nhất).\n' : '')
+    + (rows.some(function(r){ return stkNum(r.comp) > 0; }) ? '- Bồi thường theo Điều 129 chỉ cho tài sản bị hư; khấu trừ ≤ 30% lương thực trả mỗi tháng.\n' : '')
+    + '\n4. BIỆN PHÁP PHÒNG NGỪA\n' + (n.prevention ? n.prevention : '(đang soạn)') + '\n\n'
+    + '5. ĐỀ NGHỊ\n'
+    + '- Duyệt cho các cá nhân trên viết bảng tường trình sai sót (mẫu in từ app) trước ngày ……/……\n'
+    + '- Tổ chức họp xác minh' + (discHasDiscipline(rows) ? ' / họp xử lý kỷ luật' : '') + (d.meetingDate ? ' ngày ' + fmtDate(d.meetingDate) : ' ngày ……/……') + (d.meetingPlace ? ' tại ' + d.meetingPlace : '') + '\n'
+    + '- Phòng Nhân sự rà nội quy lao động và quy chế thưởng, bổ sung khung xử lý sai lỗi chất lượng (4 mức) và khoản thưởng cho người phát hiện, chặn lỗi.\n\n'
+    + 'Hồ sơ NCR, bảng tường trình, biên bản và quyết định mẫu có trên DHP Manager (tab ⚠ Ghi nhận NCR → ⚖ Trách nhiệm).\n\n'
+    + 'Trân trọng,\n' + ((DATA.meta && DATA.meta.user) || '') + '\nXưởng CK368';
+  return {subject:subject, body:body};
+}
+function discMail(){
+  if(!saveNcrResp(true)) return;
+  const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; }); if(!n) return;
+  const mt = discMailText(n);
+  DATA.meta = DATA.meta || {};
+  if(!DATA.meta.discMailTo){ const v = prompt('Email nhận đề nghị xử lý (Giám đốc, HR — cách nhau dấu phẩy):', ''); if(v===null) return; DATA.meta.discMailTo = v.trim(); }
+  const nn = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; });
+  if(nn){ nn.disc = Object.assign({}, nn.disc || {}, {mailAt:new Date().toISOString(), status:((nn.disc||{}).status==='draft' || !(nn.disc||{}).status) ? 'proposed' : nn.disc.status}); }
+  save();
+  openWebmailWithContent(DATA.meta.discMailTo || '', DATA.meta.feedbackCc || '', mt.subject, mt.body);
+}
+function discCopyMail(){
+  if(!saveNcrResp(true)) return;
+  const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; }); if(!n) return;
+  const mt = discMailText(n), txt = 'Tiêu đề: ' + mt.subject + '\n\n' + mt.body;
+  const done = function(){ stkToast('📋 Đã copy nội dung mail đề nghị xử lý', 'ok'); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function(){ fallbackCopy(txt, done); }); else fallbackCopy(txt, done);
+}
+
+/* ---------- 🖨 biểu mẫu ---------- */
+function discCtx(){ saveNcrResp(true); const n = (DATA.ncrRecords || []).find(function(x){ return x && x.id===_drNcrId; }) || {}; const o = (DATA.orders || []).find(function(x){ return x && x.id===n.orderId; }) || {}; return {n:n, o:o, d:n.disc || {}, rows:n.resp || []}; }
+function discDots(v, w){ return v ? '<b>' + esc(v) + '</b>' : '<span style="color:#94a3b8">' + '.'.repeat(w || 40) + '</span>'; }
+function printDiscStatement(){
+  const c = discCtx(); if(!c.n.id) return;
+  const people = c.rows.length ? c.rows : [{}];
+  const one = function(r){
+    return docHeader('BẢNG TƯỜNG TRÌNH SAI SÓT') + '<h1 style="text-align:center;margin-top:8px">Bảng tường trình sai sót</h1>'
+      + '<table><tr><th style="width:130px">Họ tên</th><td>' + discDots(r.name, 50) + '</td><th style="width:90px">Bộ phận</th><td>' + discDots((DISC_STAGES[r.stage]||{}).l, 30) + '</td></tr>'
+      + '<tr><th>Đơn hàng</th><td colspan="3">' + esc(c.o.code||'') + ordRefTxt(c.o) + ' — ' + esc(c.o.company||'') + '<div class="muted" style="font-size:11px">' + esc(truncate(String(c.o.name||'').replace(/\s*\n\s*/g, ' '), 220)) + '</div></td></tr>'
+      + '<tr><th>Sự việc (NCR ' + fmtDate(c.n.date) + ')</th><td colspan="3">' + esc(c.n.description||'') + '</td></tr>'
+      + '<tr><th>Việc tôi phải làm theo quy định</th><td colspan="3">' + discDots(r.duty, 90) + '</td></tr></table>'
+      + '<h2>1. Diễn biến — tôi đã làm gì, lúc nào</h2>' + '<div style="border:1px solid #999;min-height:34mm;padding:6px"></div>'
+      + '<h2>2. Ai thực hiện / ai kiểm tra / ai xác nhận cuối ở khâu của tôi</h2><table><tr><th style="width:33%">Ai thực hiện</th><th style="width:33%">Ai kiểm tra</th><th>Ai xác nhận cuối</th></tr><tr><td style="height:16mm"></td><td></td><td></td></tr></table>'
+      + '<h2>3. Theo tôi, nguyên nhân sai sót</h2><div style="border:1px solid #999;min-height:24mm;padding:6px"></div>'
+      + '<h2>4. Đề xuất / cam kết để không lặp lại</h2><div style="border:1px solid #999;min-height:20mm;padding:6px"></div>'
+      + '<p class="muted" style="font-size:11px">Bảng tường trình dùng để xác minh sự việc, chưa phải là quyết định xử lý. Người viết được trình bày đầy đủ ý kiến của mình.</p>'
+      + '<div class="sign"><div><b>Người tường trình</b><div class="line">' + esc(r.name||'(ký, ghi rõ họ tên)') + '<br>Ngày ……/……/………</div></div><div><b>Quản lý trực tiếp</b><div class="line">(ký, ghi rõ họ tên)</div></div></div>';
+  };
+  printDoc('Bang tuong trinh NCR ' + (c.o.code||''), people.map(one).join(''));
+}
+function printDiscMinutes(){
+  const c = discCtx(); if(!c.n.id) return;
+  const rows = c.rows.map(function(r, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name||'') + '</td><td>' + esc((DISC_STAGES[r.stage]||{}).l||'') + '</td><td>' + esc((DISC_LEVELS[r.level]||{}).l||'') + '</td><td>' + esc((DISC_FORMS[r.form]||{}).l||'') + (r.kpi ? '<div class="muted" style="font-size:10.5px">KPI: ' + esc(r.kpi) + '</div>' : '') + '</td><td style="width:28mm"></td></tr>'; }).join('');
+  const body = docHeader('BIÊN BẢN HỌP XỬ LÝ KỶ LUẬT LAO ĐỘNG') + '<h1 style="text-align:center;margin-top:8px">Biên bản họp ' + (discHasDiscipline(c.rows) ? 'xử lý kỷ luật lao động' : 'xác minh trách nhiệm') + '</h1>'
+    + '<p>Hôm nay, ngày ' + (c.d.meetingDate ? fmtDate(c.d.meetingDate) : '……/……/………') + ', lúc ……giờ……, tại ' + discDots(c.d.meetingPlace, 50) + ', ' + esc(c.d.employer || DHP_CO.vn) + ' tiến hành họp về sự việc NCR ngày ' + fmtDate(c.n.date) + ' — đơn ' + esc(c.o.code||'') + ' (' + esc(c.o.company||'') + ').</p>'
+    + '<h2>I. Thành phần tham dự</h2><table><tr><th style="width:42%">Đại diện người sử dụng lao động</th><td>1. ……………………………… chức vụ ………………<br>2. ……………………………… chức vụ ………………</td></tr>'
+    + '<tr><th>Đại diện tổ chức đại diện người lao động (công đoàn cơ sở)</th><td>……………………………… chức vụ ………………</td></tr>'
+    + '<tr><th>Người lao động liên quan (có mặt / vắng — lý do)</th><td>' + (c.rows.map(function(r){ return esc(r.name||'………………') + ': ☐ có mặt ☐ vắng'; }).join('<br>') || '………………') + '</td></tr>'
+    + '<tr><th>Thư ký cuộc họp</th><td>………………………………</td></tr></table>'
+    + '<p style="font-size:11.5px">Thông báo họp đã gửi ngày ……/……/……… (☐ đủ thời gian luật định). Thời hiệu xử lý: ' + (discDeadline(c.rows, c.n.date) ? 'đến ' + fmtDate(discDeadline(c.rows, c.n.date)) : '………………') + '.</p>'
+    + '<h2>II. Nội dung sự việc</h2><p>' + esc(c.n.description||'') + '</p>' + (c.n.rootCause ? '<p><b>Nguyên nhân gốc (sơ bộ):</b> ' + esc(c.n.rootCause) + '</p>' : '')
+    + '<h2>III. Ý kiến tự bào chữa của người lao động / người bào chữa</h2><div style="border:1px solid #999;min-height:30mm"></div>'
+    + '<h2>IV. Ý kiến của tổ chức đại diện người lao động</h2><div style="border:1px solid #999;min-height:18mm"></div>'
+    + '<h2>V. Kết luận trách nhiệm và hình thức xử lý</h2><table><thead><tr><th>#</th><th>Họ tên</th><th>Khâu</th><th>Mức trách nhiệm</th><th>Hình thức</th><th>Ký xác nhận</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<p style="font-size:11px" class="muted">Căn cứ: Bộ luật Lao động 2019 (Điều 122, 123, 124, 127); Nghị định 145/2020/NĐ-CP (Điều 70); Nội quy lao động ' + esc(c.d.rulesRef || '…………………………') + '. Không áp dụng phạt tiền, cắt lương. Biên bản được thông qua trước khi kết thúc cuộc họp; người không ký phải ghi rõ lý do.</p>'
+    + '<div class="sign sign4"><div><b>Chủ trì</b><div class="line"></div></div><div><b>Đại diện công đoàn</b><div class="line"></div></div><div><b>Người lao động</b><div class="line"></div></div><div><b>Thư ký</b><div class="line"></div></div></div>';
+  printDoc('Bien ban hop NCR ' + (c.o.code||''), body);
+}
+function printDiscDecision(){
+  const c = discCtx(); if(!c.n.id) return;
+  const ppl = c.rows.filter(function(r){ return DISC_FORMS[r.form] && DISC_FORMS[r.form].discipline; });
+  if(!ppl.length){ alert('Chưa có ai được đề xuất HÌNH THỨC KỶ LUẬT (khiển trách / kéo dài nâng lương / cách chức / sa thải).\nNhắc nhở và KPI dùng "Phiếu nhắc nhở".'); return; }
+  if(!(c.d.legal || {}).inRules && !confirm('Chưa xác nhận hành vi có trong NỘI QUY LAO ĐỘNG đã đăng ký.\nQuyết định kỷ luật khi nội quy không quy định là trái luật.\n\nVẫn in BẢN NHÁP để HR xem?')) return;
+  const formTxt = {khien_trach:'KHIỂN TRÁCH', keo_dai:'KÉO DÀI THỜI HẠN NÂNG LƯƠNG …… THÁNG (không quá 06 tháng)', cach_chuc:'CÁCH CHỨC', sa_thai:'SA THẢI'};
+  const clear = {khien_trach:'Sau 03 tháng kể từ ngày bị xử lý, nếu không tiếp tục vi phạm thì đương nhiên được xóa kỷ luật (Điều 126 BLLĐ 2019).', keo_dai:'Sau 06 tháng kể từ ngày bị xử lý, nếu không tiếp tục vi phạm thì đương nhiên được xóa kỷ luật (Điều 126 BLLĐ 2019).', cach_chuc:'Sau 03 năm, nếu không tiếp tục vi phạm thì được xóa kỷ luật (Điều 126 BLLĐ 2019).', sa_thai:''};
+  const one = function(r){
+    return docHeader('QUYẾT ĐỊNH XỬ LÝ KỶ LUẬT LAO ĐỘNG')
+      + '<p style="text-align:right">Số: ' + discDots(c.d.decisionNo, 16) + ' · Ngày ' + (c.d.decisionDate ? fmtDate(c.d.decisionDate) : '……/……/………') + '</p>'
+      + (!(c.d.legal || {}).inRules ? '<p style="text-align:center;color:#b91c1c;font-weight:800">BẢN NHÁP — CHƯA ĐỦ CĂN CỨ NỘI QUY LAO ĐỘNG</p>' : '')
+      + '<h1 style="text-align:center;margin-top:6px">Quyết định<br><span style="font-size:15px">Về việc xử lý kỷ luật lao động</span></h1>'
+      + '<p style="text-align:center"><b>' + esc(c.d.employer || DHP_CO.vn) + '</b></p>'
+      + '<p>Căn cứ Bộ luật Lao động số 45/2019/QH14;<br>Căn cứ Nghị định số 145/2020/NĐ-CP ngày 14/12/2020 của Chính phủ;<br>Căn cứ Nội quy lao động của Công ty ' + discDots(c.d.rulesRef, 40) + ';<br>Căn cứ Biên bản họp xử lý kỷ luật lao động ngày ' + (c.d.meetingDate ? fmtDate(c.d.meetingDate) : '……/……/………') + ';<br>Xét tính chất, mức độ vi phạm,</p>'
+      + '<p style="text-align:center"><b>QUYẾT ĐỊNH:</b></p>'
+      + '<p><b>Điều 1.</b> Thi hành kỷ luật lao động đối với Ông/Bà: <b>' + discDots(r.name, 30) + '</b>; bộ phận / công việc: ' + esc((DISC_STAGES[r.stage]||{}).l||'') + '.<br>'
+      + 'Hình thức kỷ luật: <b>' + (formTxt[r.form] || '') + '</b>.<br>'
+      + 'Lý do: ' + esc(r.lapse || c.n.description || '') + ' (sự việc NCR ngày ' + fmtDate(c.n.date) + ', đơn ' + esc(c.o.code||'') + ' — ' + esc(c.o.company||'') + '); vi phạm quy định: ' + esc(r.duty||'………………') + '.</p>'
+      + (clear[r.form] ? '<p><b>Điều 2.</b> ' + clear[r.form] + '</p>' : '<p><b>Điều 2.</b> ……………………………………………………</p>')
+      + '<p><b>Điều 3.</b> Quyết định có hiệu lực kể từ ngày ký. Ông/Bà có tên tại Điều 1 và các bộ phận liên quan chịu trách nhiệm thi hành. Quyết định được gửi đến người lao động và tổ chức đại diện người lao động.</p>'
+      + '<p class="muted" style="font-size:11px">Không áp dụng phạt tiền, cắt lương (Điều 127 BLLĐ 2019). Người lao động có quyền khiếu nại theo quy định của pháp luật.</p>'
+      + '<div class="sign"><div><b>Nơi nhận</b><div style="text-align:left;font-size:11.5px;margin-top:8px">- Như Điều 1;<br>- Tổ chức đại diện NLĐ;<br>- Lưu hồ sơ nhân sự.</div></div><div><b>NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT</b><div class="line">(ký, ghi rõ họ tên, đóng dấu)</div></div></div>';
+  };
+  printDoc('Quyet dinh ky luat NCR ' + (c.o.code||''), ppl.map(one).join(''));
+}
+function printDiscReminder(){
+  const c = discCtx(); if(!c.n.id) return;
+  const ppl = c.rows.filter(function(r){ return ['nhac_mieng','nhac_vb','kpi'].indexOf(r.form)>=0; });
+  if(!ppl.length){ alert('Chưa có ai được đề xuất nhắc nhở / KPI.'); return; }
+  const one = function(r){
+    return docHeader('PHIẾU NHẮC NHỞ CHẤT LƯỢNG') + '<h1 style="text-align:center;margin-top:8px">Phiếu nhắc nhở chất lượng</h1>'
+      + '<p style="text-align:center;font-size:11.5px" class="muted">Phiếu nội bộ — KHÔNG phải hình thức kỷ luật lao động. Áp dụng theo quy trình chất lượng và Quy chế đánh giá KPI / thưởng.</p>'
+      + '<table><tr><th style="width:140px">Gửi</th><td><b>' + discDots(r.name, 40) + '</b> — ' + esc((DISC_STAGES[r.stage]||{}).l||'') + '</td></tr>'
+      + '<tr><th>Sự việc</th><td>NCR ngày ' + fmtDate(c.n.date) + ' — đơn ' + esc(c.o.code||'') + ' (' + esc(c.o.company||'') + '): ' + esc(c.n.description||'') + '</td></tr>'
+      + '<tr><th>Việc phải làm theo quy định</th><td>' + esc(r.duty||'') + '</td></tr>'
+      + '<tr><th>Điểm chưa làm đúng</th><td>' + discDots(r.lapse, 80) + '</td></tr>'
+      + '<tr><th>Mức trách nhiệm</th><td>' + esc((DISC_LEVELS[r.level]||{}).l||'') + '</td></tr>'
+      + '<tr><th>Ảnh hưởng KPI</th><td>' + (r.form==='kpi' ? discDots(r.kpi, 40) + ' <span class="muted" style="font-size:11px">(theo Quy chế thưởng đã công bố)</span>' : 'Không') + '</td></tr>'
+      + '<tr><th>Yêu cầu từ nay</th><td style="height:22mm">' + esc(c.n.prevention||'') + '</td></tr></table>'
+      + '<div class="sign"><div><b>Người nhận phiếu</b><div class="line">' + esc(r.name||'') + '<br>(đã đọc, hiểu)</div></div><div><b>Quản lý</b><div class="line">(ký, ghi rõ họ tên)</div></div></div>';
+  };
+  printDoc('Phieu nhac nho NCR ' + (c.o.code||''), ppl.map(one).join(''));
 }
 
 /* ---------------- INIT ---------------- */

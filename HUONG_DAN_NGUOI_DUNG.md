@@ -70,6 +70,22 @@ Mọi người **đều xem được mọi thứ**. Chỉ 2 người (TPKT & đi
 - Đơn gia công mới tự bật ô **🔍 Kiểm hàng xuất kho** (trong form đơn, cạnh ô 🛃 hàng nhập) — bỏ tick nếu đơn không lấy hàng từ kho.
 - **📏 Dụng cụ đo**: mỗi cái 1 dòng, ghi ngày hiệu chuẩn + chu kỳ → app báo quá hạn; phiếu kiểm dùng thước quá hạn sẽ bị nhắc.
 
+### 📤 Lấy hàng / báo kho (thợ) — tự gửi thư tech.manager
+- Tab Kho → nút xanh **📤 LẤY HÀNG / BÁO KHO**: chọn người, đơn hàng (hoặc "dùng chung"), từng món **lấy ra · hư (lý do) · đếm còn lại trên kệ** — cả 3 ô bắt buộc.
+- Bấm **GỬI** là xong: app tự tạo phiếu xuất / hủy / kiểm kê (nếu đếm lệch sổ). Món còn ít (≤ tối thiểu), có hàng hư hoặc đếm lệch → **tự gửi thư cho tech.manager@dhp-corp.com.vn**.
+- Thư chưa gửi được → tab Kho báo đỏ, có nút **↻ Gửi lại** hoặc **📧 Gửi tay qua webmail**.
+
+### Bảng & cửa sổ linh hoạt
+- **Cột bảng**: kéo mép tiêu đề để giãn · kéo tiêu đề sang chỗ khác để đổi vị trí · **⚙ Cột** để ẩn/hiện. Nhớ theo từng máy.
+- **🖥 Bố cục** (góc trên phải): toàn màn hình / vừa, khoảng cách dòng gọn · vừa · thoáng, cỡ chữ bảng.
+- **Tab Kho → ▦ Bảng kéo thả**: nắm tiêu đề bảng kéo sang chỗ khác, ½ hoặc cả bề ngang, thu gọn, ẩn.
+- **Cửa sổ thao tác** (phiếu kho, xem đơn…): nắm thanh trên cùng kéo đi góc nào cũng được, kéo góc dưới phải để đổi cỡ.
+
+### ⚖ Trách nhiệm & xử lý sau NCR
+- Tab NCR → **⚖ Trách nhiệm**: ghi người từng khâu (kho · gia công · kiểm cuối · giao hàng · quản lý), mức trách nhiệm, đề xuất (nhắc nhở · KPI · khiển trách…), tường trình.
+- In: **bảng tường trình**, **biên bản họp**, **phiếu nhắc nhở**, **quyết định kỷ luật** (bản nháp cho HR). Nút **📧 Mail đề nghị xử lý**.
+- App nhắc luật: chỉ 4 hình thức kỷ luật, **không phạt tiền / cắt lương**, hành vi phải có trong nội quy lao động đã đăng ký, thời hiệu 6 tháng.
+
 ### Đọc màu công đoạn trên đơn
 🟢 xong · 🟠 đang làm · 🔴 trễ (vượt số ngày) · ⚪ chưa làm.
 

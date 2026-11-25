@@ -288,6 +288,7 @@ function gateCheck(){
   -->
   <div class="tab" data-tab="kpi" onclick="goTab('kpi')">📊 <span data-i18n="tab_kpi">KPI &amp; Báo cáo</span></div>
   <div class="tab" data-tab="outsource" onclick="goTab('outsource')">🔁 <span data-i18n="tab_outsource">Outsource</span></div>
+  <div class="tab" data-tab="kho" onclick="goTab('kho')">📦 <span data-i18n="tab_kho">Kho &amp; Vật tư</span></div>
   <div class="tab" data-tab="ncr" onclick="goTab('ncr')">⚠ <span data-i18n="tab_ncr">Ghi nhận NCR</span></div>
   <div class="tab" data-tab="guide" onclick="goTab('guide')">📋 Quy trình &amp; Hướng dẫn</div>
   <div class="tab" data-tab="data" onclick="goTab('data')">⚙ <span data-i18n="tab_data">Dữ liệu &amp; Đồng bộ</span></div>
@@ -311,6 +312,8 @@ function gateCheck(){
   <div class="view" id="view-kpi"></div>
   <!-- ============ OUTSOURCE ============ -->
   <div class="view" id="view-outsource"></div>
+  <!-- ============ KHO & VẬT TƯ (25-11-2026) ============ -->
+  <div class="view" id="view-kho"></div>
   <!-- ============ NCR ============ -->
   <div class="view" id="view-ncr"></div>
   <!-- ============ DATA ============ -->
@@ -572,6 +575,13 @@ function gateCheck(){
           <input id="ord_impNote" placeholder="Lưu ý cho thợ — vd: hub nhập, lỗ sẵn Ø38, chỉ doa lên Ø42H7; đo lỗ trước khi xọc then" style="flex:1;min-width:260px">
         </div>
       </div>
+      <div class="field" id="ord_stk_box" style="margin:8px 0 0;border:1.5px solid #c4b5fd;background:#f5f3ff;border-radius:8px;padding:8px 10px">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:800;color:#5b21b6;cursor:pointer;margin:0">
+          <input type="checkbox" id="ord_stkchk" style="width:auto" onchange="_stkFlagTouched=true;stkFormSync()">
+          🔍 Kiểm hàng xuất kho trước gia công <span class="muted small" style="font-weight:600">(hàng lấy từ kho / KH gửi về: mở hộp đo MÃ + KÍCH THƯỚC, ĐẠT mới cho bắt đầu công đoạn gia công)</span>
+        </label>
+        <div id="ord_stk_info" class="small" style="margin-top:5px;line-height:1.7"></div>
+      </div>
       <!-- Ẩn theo yêu cầu (tài liệu quản lý trên NAS). Giữ element để không vỡ JS lưu/đọc. -->
       <div class="field" style="margin:8px 0 0;display:none">
         <label>📁 Thư mục Google Drive của đơn <span class="muted small">(bản vẽ, tài liệu Sale, ảnh SP, report đo đạc...)</span></label>
@@ -681,11 +691,13 @@ function gateCheck(){
     <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff7ed">
       <label>📦 Vật tư cần mua / phôi chế tạo <span class="muted small">— gửi kế toán đặt mua. Bấm "Copy gửi kế toán" để dán vào Zalo nhóm kế toán–GĐ.</span></label>
       <div id="ord_mat_list"></div>
+      <div id="ord_mat_stk" class="small" style="margin-top:6px;line-height:1.7"></div>
       <div class="toolbar" style="margin-top:8px">
         <button type="button" class="ghost sm" onclick="addMaterial()">＋ Thêm vật tư</button>
         <button type="button" class="ghost sm" onclick="copyMaterialsForAccounting()">📋 Copy (Zalo)</button>
         <button type="button" class="ghost sm" onclick="mailMaterialsToAccounting()" style="border-color:#0EA5E9;color:#0369a1">📧 Mail kế toán</button>
         <button type="button" class="ghost sm" onclick="exportMaterialsExcel()">📊 Xuất vật tư ra Excel</button>
+        <button type="button" class="ghost sm" onclick="stkReceiveFromForm()" style="border-color:#15803d;color:#15803d;font-weight:700" title="Phôi / vật tư đã về — ghi phiếu nhập kho gắn với đơn này (NCC, CO/CQ, số heat)">⬇ Phôi đã về — ghi nhập kho</button>
       </div>
     </div>
     <div class="field"><label>Ghi chú / Lưu ý</label><textarea id="ord_note" rows="2"></textarea></div>
@@ -762,6 +774,7 @@ function gateCheck(){
           <option value="Gia công">Trong khi gia công</option>
           <option value="QC nội bộ">Kiểm tra QC nội bộ</option>
           <option value="Nhận hàng outsource">Khi nhận hàng từ outsource</option>
+          <option value="Kiểm hàng xuất kho">Khi kiểm hàng xuất kho (trước gia công)</option>
           <option value="Lắp ráp">Lắp ráp / hoàn thiện</option>
           <option value="Phản hồi khách hàng">Khách hàng phản hồi sau giao hàng</option>
         </select>
@@ -813,6 +826,162 @@ function gateCheck(){
       <button class="ghost" onclick="closeModal('modalNcr')">Hủy</button>
       <button onclick="saveNcr()">💾 Lưu ghi nhận</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== 📦 KHO (25-11-2026): mặt hàng · phiếu nhập/xuất · kiểm hàng xuất kho · hiệu chuẩn · thẻ kho ===== -->
+<div class="modal-bg" id="modalStkItem">
+  <div class="modal">
+    <h3 id="stkItemTitle">Thêm mặt hàng kho</h3>
+    <input type="hidden" id="si_id">
+    <div class="row2">
+      <div class="field"><label>Nhóm hàng</label><select id="si_cat" onchange="stkItemCatChanged()"></select></div>
+      <div class="field"><label>Mã kho <span class="muted small">(để trống → app tự đặt)</span></label><input id="si_code" autocomplete="off"></div>
+    </div>
+    <div class="field"><label>Tên hàng</label><input id="si_name" autocomplete="off"></div>
+    <div class="row3">
+      <div class="field"><label id="si_grade_lbl">Mác thép / vật liệu</label><input id="si_grade" list="stkDlGrade" placeholder="S45C · SCM440 · SS400"></div>
+      <div class="field"><label>Quy cách / kích thước</label><input id="si_spec" placeholder="Ø120 × 6000 · dày 20 · 0–150mm"></div>
+      <div class="field"><label>NCC / hãng thường mua</label><input id="si_brand" list="stkDlPartner" placeholder="China Steel · Posco · KTR…"></div>
+    </div>
+    <div class="row3" id="si_qty_row">
+      <div class="field"><label>Tồn đầu kỳ <span class="muted small">(số đang có khi bắt đầu dùng app)</span></label><input id="si_open" inputmode="decimal"></div>
+      <div class="field"><label>Tồn tối thiểu <span class="muted small">(dưới mức này app báo)</span></label><input id="si_min" inputmode="decimal"></div>
+      <div class="field"><label>ĐVT</label><input id="si_unit" list="stkDlUnit" placeholder="cây · kg · tấm · cái"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Vị trí kệ / khu</label><input id="si_loc" placeholder="Kệ A2 · khu thép tròn · tủ dụng cụ đo"></div>
+      <div class="field" id="si_machine_f"><label>Máy dùng (dao cụ)</label><input id="si_machine" placeholder="Tiện CNC 1 · Phay đứng"></div>
+    </div>
+    <div id="si_gauge_box" style="display:none;border:1.5px solid #c4b5fd;background:#f5f3ff;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <b class="small" style="color:#5b21b6">📏 Dụng cụ đo — mỗi cái 1 dòng, theo dõi hiệu chuẩn &amp; người đang giữ</b>
+      <div class="row3" style="margin-top:6px">
+        <div class="field"><label>Số seri</label><input id="si_serial"></div>
+        <div class="field"><label>Phạm vi đo</label><input id="si_range" placeholder="0–150 mm"></div>
+        <div class="field"><label>Độ chia / cấp chính xác</label><input id="si_res" placeholder="0.01 mm"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Ngày hiệu chuẩn gần nhất</label><input id="si_cal" type="date"></div>
+        <div class="field"><label>Chu kỳ hiệu chuẩn (tháng)</label><input id="si_cyc" type="number" min="1" step="1" placeholder="12"></div>
+        <div class="field"><label>Tình trạng</label><select id="si_status"><option value="ok">Đang dùng tốt</option><option value="calib">Đang gửi hiệu chuẩn</option><option value="broken">Hỏng — không dùng</option><option value="lost">Mất</option><option value="retired">Đã thanh lý</option></select></div>
+      </div>
+      <div class="row2" style="margin-bottom:-12px">
+        <div class="field"><label>Người đang giữ / mượn</label><select id="si_holder"></select></div>
+        <div class="field"><label>Đơn vị hiệu chuẩn · số giấy CN</label><input id="si_calorg" placeholder="QUATEST 3 · 1234/HC · nội bộ"></div>
+      </div>
+    </div>
+    <div class="field"><label>Ghi chú</label><input id="si_note"></div>
+    <div class="toolbar" style="justify-content:space-between">
+      <button class="ghost" id="si_del" onclick="deleteStkItem()" style="color:var(--st-late);border-color:#fecaca">🗑 Xóa</button>
+      <div style="display:flex;gap:8px;margin-left:auto"><button class="ghost" onclick="closeModal('modalStkItem')">Hủy</button><button onclick="saveStkItem()">💾 Lưu</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalStkMove">
+  <div class="modal wide">
+    <h3 id="stkMoveTitle">Phiếu nhập kho</h3>
+    <input type="hidden" id="sm_id">
+    <div class="row3">
+      <div class="field"><label>Loại phiếu</label><select id="sm_dirsel" onchange="stkMoveDirChanged()"><option value="in">⬇ NHẬP kho</option><option value="out">⬆ XUẤT kho</option><option value="adj">🧮 Kiểm kê</option></select></div>
+      <div class="field"><label>Lý do</label><select id="sm_purpose" onchange="stkMovePurposeChanged()"></select></div>
+      <div class="field"><label>Ngày</label><input id="sm_date" type="date"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Đơn hàng <span id="sm_order_req" class="muted small"></span></label><select id="sm_order" data-op="1"></select></div>
+      <div class="field"><label id="sm_partner_lbl">Nhà cung cấp / nguồn hàng</label><input id="sm_partner" list="stkDlPartner" placeholder="China Steel · KH gửi về · Hòa Phát…"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Chứng từ (HĐ · PGH · PO NCC)</label><input id="sm_doc" placeholder="HĐ 0001234 · PGH 56"></div>
+      <div class="field"><label>CO/CQ · mill cert · số heat</label><input id="sm_cert" placeholder="CQ 2026/118 · heat 3A1234"></div>
+      <div class="field"><label id="sm_recv_lbl">Người giao / nhận</label><input id="sm_recv" list="stkDlStaff" placeholder="tên người"></div>
+    </div>
+    <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8fafc">
+      <label style="font-weight:800;color:#334155">Hàng trên phiếu <span class="muted small" style="font-weight:600">— gõ mã / tên để chọn từ danh mục (tính tồn). Hàng của KH, chưa có trong danh mục → gõ tự do. Cột "Đơn riêng" khi phôi mua chung cho nhiều đơn.</span></label>
+      <div id="sm_lines"></div>
+      <div class="toolbar" style="margin:6px 0 0"><button type="button" class="ghost sm" onclick="stkAddLine()">＋ Thêm dòng</button><span id="sm_hint" class="small" style="color:#5b21b6"></span></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Ghi chú</label><input id="sm_note"></div>
+      <div class="field"><label>Người lập phiếu</label><input id="sm_by" list="stkDlStaff"></div>
+    </div>
+    <div class="toolbar" style="justify-content:space-between">
+      <button class="ghost" id="sm_del" onclick="deleteStkMove()" style="color:var(--st-late);border-color:#fecaca">🗑 Xóa phiếu</button>
+      <div style="display:flex;gap:8px;margin-left:auto"><button class="ghost" onclick="closeModal('modalStkMove')">Hủy</button><button class="ghost" onclick="saveStkMove(true)">💾 Lưu &amp; in</button><button onclick="saveStkMove()">💾 Lưu phiếu</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalStkCheck">
+  <div class="modal wide">
+    <h3 id="stkCheckTitle">🔍 Phiếu kiểm hàng xuất kho trước gia công</h3>
+    <div class="small" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:7px 10px;margin:-6px 0 12px;color:#991b1b;line-height:1.5"><b>Vỏ hộp đúng chưa chắc hàng bên trong đúng.</b> Mở hộp, đọc mã đóng trên sản phẩm, đo kích thước thực bằng dụng cụ còn hạn hiệu chuẩn — kết luận <b>ĐẠT</b> mới giao thợ gia công.</div>
+    <input type="hidden" id="sc_id">
+    <div class="row3">
+      <div class="field" style="grid-column:span 2"><label>Đơn hàng</label><select id="sc_order" data-op="1" onchange="stkCheckOrderChanged(true)"></select></div>
+      <div class="field"><label>Ngày kiểm</label><input id="sc_date" type="date"></div>
+    </div>
+    <div id="sc_orderinfo" class="small" style="margin:-6px 0 10px;color:#334155"></div>
+    <div class="row3">
+      <div class="field" style="grid-column:span 2"><label>Món kiểm (hàng lấy từ kho / KH gửi về)</label><input id="sc_name" placeholder="VD: KTR Rotex 38 GG Hub 1a — 2 cái"></div>
+      <div class="field"><label>Chi tiết con của đơn</label><select id="sc_item"></select></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>📦 Mã trên NHÃN / HỘP (vỏ ngoài)</label><input id="sc_label" placeholder="mã in trên hộp, tem" oninput="stkMismUpdate()"></div>
+      <div class="field"><label>🔩 Mã ĐÓNG / KHẮC trên sản phẩm</label><input id="sc_part" placeholder="mở hộp, đọc mã trên hàng" oninput="stkMismUpdate()" style="border-color:#7c3aed"></div>
+      <div class="field"><label>Số lượng kiểm</label><input id="sc_qty" placeholder="2 cái"></div>
+    </div>
+    <div id="sc_mism" class="small" style="color:#b91c1c;font-weight:700;margin:-6px 0 8px"></div>
+    <div class="field" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8fafc">
+      <label style="font-weight:800;color:#334155">Đối chiếu — bấm Đạt / Không cho từng mục</label>
+      <div id="sc_checks"></div>
+    </div>
+    <div class="field" style="border:1px solid #bae6fd;border-radius:10px;padding:10px;background:#f0f9ff">
+      <label style="font-weight:800;color:#0369a1">📐 Kích thước đo thực tế <span class="muted small" style="font-weight:600">— ghi số đo thật; chọn dụng cụ đo trong danh mục để app kiểm hạn hiệu chuẩn</span></label>
+      <div id="sc_dims"></div>
+      <div class="toolbar" style="margin:6px 0 0"><button type="button" class="ghost sm" onclick="stkAddDim()">＋ Thêm kích thước</button><select id="sc_tpl" onchange="stkDimTpl(this.value);this.value=''" style="font-size:11.5px;padding:5px 8px;width:auto"></select></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>👤 Người kiểm / đo</label><select id="sc_insp"></select></div>
+      <div class="field"><label>👷 Thợ nhận gia công</label><select id="sc_recv"></select></div>
+      <div class="field"><label>Kết luận</label><select id="sc_result" style="font-weight:800"><option value="">— chưa kết luận —</option><option value="pass">✓ ĐẠT — cho gia công</option><option value="fail">✕ KHÔNG ĐẠT — giữ lại, không gia công</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>🔗 Ảnh mã / số đo (link Drive, NAS — mỗi dòng 1 link)</label><textarea id="sc_photos" rows="2"></textarea></div>
+      <div class="field"><label>Ghi chú / sai khác phát hiện</label><textarea id="sc_note" rows="2" style="font-family:inherit"></textarea></div>
+    </div>
+    <div class="toolbar" style="justify-content:space-between">
+      <button class="ghost" id="sc_del" onclick="deleteStkCheck()" style="color:var(--st-late);border-color:#fecaca">🗑 Xóa</button>
+      <div style="display:flex;gap:8px;margin-left:auto"><button class="ghost" onclick="closeModal('modalStkCheck')">Hủy</button><button class="ghost" onclick="saveStkCheck(true)">💾 Lưu &amp; in phiếu</button><button onclick="saveStkCheck()">💾 Lưu phiếu kiểm</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalStkCal">
+  <div class="modal">
+    <h3 id="stkCalTitle">✓ Ghi hiệu chuẩn</h3>
+    <input type="hidden" id="cal_id">
+    <div class="row2">
+      <div class="field"><label>Ngày hiệu chuẩn / kiểm</label><input id="cal_date" type="date"></div>
+      <div class="field"><label>Kết quả</label><select id="cal_result"><option value="pass">✓ Đạt — dùng tiếp</option><option value="fail">✕ Không đạt — ngưng dùng</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Đơn vị hiệu chuẩn</label><input id="cal_org" placeholder="QUATEST 3 · nội bộ (so với căn mẫu)"></div>
+      <div class="field"><label>Số giấy chứng nhận / link</label><input id="cal_cert"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Người thực hiện / nhận</label><select id="cal_by"></select></div>
+      <div class="field"><label>Ghi chú</label><input id="cal_note"></div>
+    </div>
+    <div id="cal_hist" style="margin-bottom:10px"></div>
+    <div class="toolbar" style="justify-content:flex-end"><button class="ghost" onclick="closeModal('modalStkCal')">Hủy</button><button onclick="saveStkCal()">💾 Lưu</button></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalStkInfo">
+  <div class="modal wide">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 id="stkInfoTitle" style="margin:0"></h3><button class="ghost sm" onclick="closeModal('modalStkInfo')">✕ Đóng</button></div>
+    <div id="stkInfoBody"></div>
   </div>
 </div>
 
@@ -1108,6 +1277,7 @@ function defaultData(){
     assignments: [],
     products: [],   // Catalogue sản phẩm: {id, sku, name, brand, category, series, size, pn, material, price, imageUrl, note}
     incidents: [],  // Nhật ký sự cố / bất khả kháng: {id,date,machine,downtimeHours,repairHours,repairStaff:[],reason,orderIds:[]}
+    stockItems: [], stockMoves: [], stockChecks: [],   // 📦 Kho (25-11-2026): danh mục · phiếu nhập/xuất · phiếu kiểm hàng xuất kho
   };
 }
 function load(){
@@ -1131,6 +1301,7 @@ function load(){
   if(!DATA.customers) DATA.customers = [];
   if(!DATA.routingTemplates) DATA.routingTemplates = [];
   if(!DATA.products) DATA.products = [];
+  ['stockItems','stockMoves','stockChecks'].forEach(k=>{ if(!Array.isArray(DATA[k])) DATA[k] = []; });
   if(!DATA.counters) DATA.counters = { order:0, ncr:0, out:0, staff:0, assign:0, cust:0 };
   ['order','ncr','out','staff','assign','cust'].forEach(k=>{ if(DATA.counters[k]==null) DATA.counters[k]=0; });
   sanitizeOrderDates();
@@ -1293,6 +1464,7 @@ const I18N = {
   tab_customers:{vi:'Khách hàng', en:'Customers'},
   tab_kpi:     {vi:'KPI & Báo cáo', en:'KPI & Reports'},
   tab_outsource:{vi:'Outsource', en:'Outsource'},
+  tab_kho:     {vi:'Kho & Vật tư', en:'Stock & Tools'},
   tab_ncr:     {vi:'Ghi nhận NCR', en:'NCR Records'},
   tab_data:    {vi:'Dữ liệu & Đồng bộ', en:'Data & Sync'},
   /* ---- Bảng đơn hàng ---- */
@@ -2182,6 +2354,7 @@ function ordersTable(){
         (function(){ const au=estimateAudit(o); if(!au.ok && o.status!=='delivered' && o.status!=='new') bits.push(`<span style="font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:0 5px" title="${esc(au.missing.join(' | '))}">⚠ thiếu estimate</span>`);
           const gg=orderProgressInfo(o); if(o.status==='in_production' && gg.total && gg.done===0 && gg.doing===0) bits.push(`<span style="font-size:10px;font-weight:800;color:#B45309;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:0 5px" title="Trạng thái báo đang gia công nhưng chưa công đoạn nào được bấm Bắt đầu/Xong — % vì vậy đứng yên">⚠ chưa bấm CĐ nào</span>`); })();
         if(o.importCritical) bits.push(impBadgeHtml(o));
+        { const sb=stkBadgeHtml(o); if(sb) bits.push(sb); }   // 🔍 kiểm hàng xuất kho
         if(o.forceMajeure) bits.push(`<span style="font-size:10px;font-weight:800;color:#0e7490;background:#ecfeff;border:1px solid #a5f3fc;border-radius:5px;padding:0 5px" title="Bất khả kháng${o.fmReason?': '+esc(o.fmReason):''} — không tính KPI trễ">🛑 Bất khả kháng</span>`);
         if(o.qcResult==='pass') bits.push(`<span style="font-size:10px;font-weight:700;color:#15803D" title="QC Đạt">🛡 QC Đạt</span>`);
         else if(o.qcResult==='fail') bits.push(`<span style="font-size:10px;font-weight:700;color:var(--st-late)" title="QC Không đạt">🛡 QC ✕</span>`);
@@ -2502,7 +2675,7 @@ function updStage(i,k,v){
     alert('⛔ Công đoạn "'+(editingStages[i].code||'')+' '+(editingStages[i].name||'')+'" chưa thể đánh XONG.\n\nPhải nhập ÍT NHẤT 1 KÍCH THƯỚC đủ "Thông số gia công" + "Yêu cầu/dung sai"\n(vd: Phay rãnh then = 12P9; Tiện Ø ngoài = Ø80→Ø50 ±0.05).\n\nBấm "📐 + Thêm kích thước" trong công đoạn này.');
     renderStagesEditor(); return;
   }
-  if(k==='status' && !impStageGate(impFormOrder(), editingStages[i], v)){ renderStagesEditor(); return; }
+  if(k==='status' && !impStageGate(impFormOrder(), editingStages[i], v, editingStages[i]._itId||null)){ renderStagesEditor(); return; }
   editingStages[i][k] = (k==='plannedDays'||k==='hours'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
   if(k==='assignee'){ try{ outAssigneeChanged(i); }catch(e){} }   // chọn đối tác ngoài → ô "Ở đâu" = NCC
   if(k==='status'){
@@ -2645,7 +2818,7 @@ function itemStagesHtml(it,i){
 function addItemStage(i){ if(!editingItems[i])return; editingItems[i].stages=editingItems[i].stages||[]; editingItems[i].stages.push({id:localId('IST'),code:'',name:'',location:'',plannedDays:null,status:'pending',startDate:'',doneDate:'',assignee:'',hours:null,note:''}); renderItemsEditor(); }
 function updItemStage(i,si,k,v){
   const s = editingItems[i] && editingItems[i].stages && editingItems[i].stages[si]; if(!s) return;
-  if(k==='status' && !impStageGate(impFormOrder(), s, v)){ renderItemsEditor(); return; }
+  if(k==='status' && !impStageGate(impFormOrder(), s, v, (editingItems[i]||{}).id||null)){ renderItemsEditor(); return; }
   s[k] = (k==='hours'||k==='plannedDays'||k==='otHours') ? (v===''?null:parseFloat(v)) : v;
   if(k==='hours'||k==='plannedDays') updateItemsSummary();
   if(k==='status'){ if(v==='done'&&!s.doneDate)s.doneDate=todayStr(); if(v==='doing'&&!s.startDate)s.startDate=todayStr(); if(v==='pending')s.doneDate=''; renderItemsEditor(); }
@@ -3083,6 +3256,7 @@ function openOrderView(id){
     </table>
     <div style="margin-top:10px"><b style="font-size:12px">🔧 Công đoạn</b>${stagesHtml}</div>
     ${matHtml?`<div style="margin-top:8px"><b style="font-size:12px">📦 Vật tư mua/phôi</b>${matHtml}</div>`:''}
+    ${stkOrderViewHtml(o)}
     ${measHtml?`<div style="margin-top:8px"><b style="font-size:12px">📐 Nghiệm thu</b>${measHtml}</div>`:''}
     ${(o.driveFolder||attHtml)?`<div style="margin-top:8px"><b style="font-size:12px">📁 Tài liệu</b><div style="margin-top:3px">${o.driveFolder?`<a href="${esc(o.driveFolder)}" target="_blank" style="color:#0EA5E9;margin-right:10px">📁 Thư mục Drive</a>`:''}${attHtml}</div></div>`:''}
   `;
@@ -3128,6 +3302,10 @@ const PRINT_FORMS = {   // khoá = tiêu đề truyền vào docHeader()
   'PHIẾU KIỂM TRA CHẤT LƯỢNG CUỐI (FINAL INSPECTION REPORT)': {proc:'QUY TRÌNH KIỂM SOÁT CHẤT LƯỢNG',             code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'CHỨNG NHẬN XUẤT XƯỞNG':                                    {proc:'QUY TRÌNH XUẤT XƯỞNG',                       code:'', rev:'01', kind:'QUALITY DOCUMENT'},
   'PHIẾU GIA CÔNG NGOÀI':                                     {proc:'QUY TRÌNH SẢN XUẤT – GIA CÔNG NGOÀI (OUTSOURCE)', code:'', rev:'01', kind:'PRODUCTION DOCUMENT'},
+  'PHIẾU NHẬP KHO':                                           {proc:'QUY TRÌNH QUẢN LÝ KHO – NHẬP KHO',            code:'', rev:'01', kind:'WAREHOUSE DOCUMENT'},
+  'PHIẾU XUẤT KHO':                                           {proc:'QUY TRÌNH QUẢN LÝ KHO – XUẤT KHO',            code:'', rev:'01', kind:'WAREHOUSE DOCUMENT'},
+  'BIÊN BẢN KIỂM KÊ KHO':                                     {proc:'QUY TRÌNH QUẢN LÝ KHO – KIỂM KÊ',             code:'', rev:'01', kind:'WAREHOUSE DOCUMENT'},
+  'PHIẾU KIỂM TRA HÀNG XUẤT KHO TRƯỚC GIA CÔNG':              {proc:'QUY TRÌNH SẢN XUẤT – KIỂM HÀNG XUẤT KHO TRƯỚC GIA CÔNG', code:'', rev:'01', kind:'QUALITY DOCUMENT'},
 };
 const SHEET_MARK = '<!--DHP-SHEET-->';
 // Mở cửa sổ in A4 — mỗi docHeader() trong nội dung mở một tờ mới, tờ nào cũng có tiêu đề + chân trang
@@ -3596,6 +3774,7 @@ function openOrderModal(id){
     document.getElementById('ord_fmReason').value = o.fmReason||'';
     document.getElementById('ord_fmReason').style.display = o.forceMajeure?'block':'none';
     impLoadForm(o);
+    stkFormLoad(o);
     editingItems = (o.items||[]).map(x=>({...x}));
     editingAtts = (o.attachments||[]).map(x=>({...x}));
     editingStages = (o.stages||[]).map(x=>({...x}));
@@ -3613,6 +3792,7 @@ function openOrderModal(id){
     document.getElementById('ord_fmReason').value = '';
     document.getElementById('ord_fmReason').style.display = 'none';
     impLoadForm(null);
+    stkFormLoad(null);
     _ordFormBase = null;
     document.getElementById('orderModalTitle').textContent = 'Thêm đơn hàng';
     ['ord_code','ord_quote','ord_po','ord_company','ord_name','ord_product','ord_qty','ord_unit','ord_received','ord_requested','ord_due','ord_completed','ord_delivered','ord_progress','ord_forecast','ord_drive','ord_note'].forEach(id=>document.getElementById(id).value='');
@@ -3651,6 +3831,7 @@ function toggleTargetField(){
   const f=document.getElementById('ord_target_field');
   if(f) f.style.display = (document.getElementById('ord_type').value==='Nội bộ') ? 'block' : 'none';
   try{ ordRefHint(); }catch(e){}
+  try{ stkFormTypeChanged(); }catch(e){}
   updateFormGates();   // áp mode đơn nội bộ (ẩn/hiện G1-G2)
 }
 function toggleOutsourceField(){
@@ -3736,6 +3917,8 @@ function saveOrder(){
     importCritical: !!(document.getElementById('ord_imp')&&document.getElementById('ord_imp').checked),
     replaceLeadWeeks: (function(){ const v=parseFloat((document.getElementById('ord_impWeeks')||{}).value); return isNaN(v)?'':v; })(),
     importNote: ((document.getElementById('ord_impNote')||{}).value||'').trim(),
+    // 🔍 kiểm hàng xuất kho: chỉ ghi khi người dùng đổi ô tick (hoặc đơn mới) — không thì giữ nguyên / tự suy từ phiếu kho
+    ...(function(){ const cb=document.getElementById('ord_stkchk'); return (cb && (_stkFlagTouched || !id)) ? {stockCheckRequired: !!cb.checked} : {}; })(),
     statusHistory: [],
     updatedAt: new Date().toISOString(),
   };
@@ -4707,6 +4890,7 @@ function qiCreate(openAfter){
     outsourcePartner:'', completedDate:null, deliveredDate:null, progress:null, forecastDate:null,
     driveFolder:'', currentLocation:'', items: items, attachments:[], stages:[], measures:[], materials:[],
     inspector:'', intake: intake, qcResult:'', qcNote:'', note: (QI.parsed && QI.parsed.note)||'',
+    stockCheckRequired: true,   // 🔍 đơn gia công mới: hàng lấy từ kho phải kiểm mã + kích thước trước gia công
     statusHistory:[{status:'planned', date:todayStr(), note:'⚡ Tạo đơn nhanh'}],
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
   };
@@ -6255,8 +6439,12 @@ const SYNC_TABLES = ['orders','customers','staff','assignments','outsourceShipme
 // map tên bảng trong app  →  tên bảng trong Supabase (snake_case)
 const SUPA_TABLES = {
   orders:'orders', customers:'customers', staff:'staff', assignments:'assignments',
-  outsourceShipments:'outsource_shipments', ncrRecords:'ncr_records', products:'products'
+  outsourceShipments:'outsource_shipments', ncrRecords:'ncr_records', products:'products',
+  stockItems:'stock_items', stockMoves:'stock_moves', stockChecks:'stock_checks'   // 📦 Kho (25-11-2026) — tạo bằng supabase_kho_2026-11-25.sql
 };
+// Bảng app có nhưng kho chung CHƯA tạo (vd 3 bảng kho khi chưa chạy SQL) → dữ liệu giữ trên máy,
+// không báo "chưa đẩy được" mãi, không nghe real-time bảng đó. Tải về thành công là tự xoá cờ.
+var _sbMissing = {};
 let _sb = null;            // client Supabase
 let _sbChannels = [];      // các kênh real-time đang lắng nghe
 let _syncSnap = {};        // table -> { id: JSON } trạng thái ĐÃ đồng bộ gần nhất (để chỉ đẩy phần THAY ĐỔI)
@@ -6275,7 +6463,7 @@ function pendingLocalChanges(){
   const out = {};
   if(!_syncReady && !_snapFromDisk) return out;   // chưa có mốc nào để so → không đoán bừa
   Object.keys(SUPA_TABLES).forEach(function(appT){
-    if(appT==='products') return;
+    if(appT==='products' || _sbMissing[appT]) return;
     const cur=_snapOf(appT), prev=_syncSnap[appT]||{};
     const ids=Object.keys(cur).filter(function(id){ return cur[id]!==prev[id]; });
     if(ids.length) out[appT]=ids;
@@ -6310,7 +6498,7 @@ function loadSyncSnap(){
     _syncSnap = o; _snapFromDisk = true; return true;
   }catch(e){ return false; }
 }
-function resetSyncSnap(){ Object.keys(SUPA_TABLES).forEach(t=>{ _syncSnap[t]=_snapOf(t); }); _syncReady=true; persistSyncSnap(); }
+function resetSyncSnap(){ Object.keys(SUPA_TABLES).forEach(t=>{ if(!_sbMissing[t]) _syncSnap[t]=_snapOf(t); }); _syncReady=true; persistSyncSnap(); }
 function supaConfigured(){ return !!(DATA.meta && DATA.meta.supaUrl && DATA.meta.supaKey); }
 function setSupaStatus(msg, err){ const el=document.getElementById('supaStatus'); if(el){ el.textContent=msg; el.style.color=err?'var(--st-late)':'#16A34A'; } }
 // Cắt phần dư người dùng hay dán nhầm: /rest/v1, dấu / cuối...
@@ -6674,7 +6862,7 @@ async function _supaPushCore(changedOnly){
         const jsons = {};
         const rows = ids.slice(i, i + 200).map(function(id){ const rec = _recOf(appT, id); if(!rec) return null; const j = JSON.stringify(rec); jsons[id] = j; return {id: id, data: JSON.parse(j), updated_at: nowIso}; }).filter(Boolean);
         const { data, error } = await _sb.from(T).upsert(rows).select('id,updated_at');
-        if(error){ ok = false; if(!_isMissingTable(error)) fails.push(T + ': ' + (error.message || 'lỗi không rõ')); break; }
+        if(error){ ok = false; if(!_isMissingTable(error)) fails.push(T + ': ' + (error.message || 'lỗi không rõ')); else _sbMissing[appT] = true; break; }
         const vers = {}; (data || []).forEach(function(r){ if(r && r.id != null) vers[String(r.id)] = r.updated_at; });
         rows.forEach(function(r){ _setBase(appT, r.id, jsons[r.id], vers[r.id] !== undefined ? vers[r.id] : undefined); fullSnap[r.id] = _hashStr(jsons[r.id]); });
       }
@@ -6693,7 +6881,7 @@ async function _supaPushCore(changedOnly){
       let remote = null;
       try{ remote = await _fetchRowsByIds(T, ids); }
       catch(error){
-        if(_isMissingTable(error)) { console.warn('Bỏ qua bảng chưa tạo: ' + T); continue; }
+        if(_isMissingTable(error)) { _sbMissing[appT] = true; console.warn('Bỏ qua bảng chưa tạo: ' + T); continue; }
         fails.push(T + ': ' + ((error && error.message) || 'lỗi không rõ')); continue;   // không đổi mốc → lần sau thử lại đúng các bản ghi này
       }
       for(const id of ids){
@@ -6750,7 +6938,7 @@ async function _supaPushCore(changedOnly){
         if(skipTable) break;
       }
     }
-    if(skipTable){ console.warn('Bỏ qua bảng chưa tạo: ' + T); continue; }
+    if(skipTable){ _sbMissing[appT] = true; console.warn('Bỏ qua bảng chưa tạo: ' + T); continue; }
     // ── xoá: bản ghi máy này đã xoá ──
     const nowIds = {}; (DATA[appT] || []).forEach(function(r){ if(r && r.id != null) nowIds[String(r.id)] = 1; });
     const delIds = Object.keys(prev).filter(function(id){ return !nowIds[id]; });
@@ -6819,7 +7007,8 @@ async function _supaPullCore(){
     if(appT === 'products' && (DATA.products || []).length && pullStart - catAt < 6 * 3600000) continue;
     let { data, error } = await _selectAll(SUPA_TABLES[appT], 'id,data,updated_at');
     if(error && /updated_at/i.test(error.message || '')) ({ data, error } = await _selectAll(SUPA_TABLES[appT], 'id,data'));
-    if(error){ console.warn('Bỏ qua bảng ' + SUPA_TABLES[appT] + ' (chưa tạo?): ' + error.message); continue; }
+    if(error){ if(_isMissingTable(error)) _sbMissing[appT] = true; console.warn('Bỏ qua bảng ' + SUPA_TABLES[appT] + ' (chưa tạo?): ' + error.message); continue; }
+    delete _sbMissing[appT];
     fetched[appT] = (data || []).filter(function(r){ return r && r.id != null && r.data != null; });
     if(appT === 'products'){ try{ localStorage.setItem(CAT_KEY, String(pullStart)); }catch(e){} window._catRefAt = pullStart; }
   }
@@ -6949,6 +7138,7 @@ function supaSubscribe(){
   if(!_sb) return;
   _sbChannels.forEach(function(ch){ try{ _sb.removeChannel(ch); }catch(e){} }); _sbChannels = [];
   Object.keys(SUPA_TABLES).forEach(function(appT){
+    if(_sbMissing[appT]) return;   // bảng chưa tạo trên kho chung → không nghe (tránh kênh lỗi kéo đối chiếu liên tục)
     const dbT = SUPA_TABLES[appT];
     let wasUp = false;
     const ch = _sb.channel('rt-' + dbT)
@@ -7506,7 +7696,7 @@ function workerSetStage(assignId, newStatus){
   const f = findStageForAssign(a);
   if(!f || !f.stage){ alert('Không tìm thấy công đoạn (đơn có thể đã đổi). Báo quản đốc.'); return; }
   const st = f.stage;
-  if(!impStageGate(f.order, st, newStatus)){ renderToday(); return; }
+  if(!impStageGate(f.order, st, newStatus, (f.host && f.host!==f.order) ? f.host.id : null)){ renderToday(); return; }
   st.status = newStatus;
   const today = todayStr();
   if(newStatus==='doing' && !st.startDate) st.startDate = today;
@@ -7557,6 +7747,7 @@ function renderToday(){
         <div style="font-size:16px;font-weight:800">${o?esc(o.code):'?'} · ${esc((st&&(st.code+' '+(st.name||'')))||a.stage||'')}</div>
         <div class="muted" style="font-size:13px;margin-top:2px">${ALLWHO?`<b style="color:var(--brand)">👤 ${esc(_nameOf(a.staffId)||'?')}</b> · `:''}${o?esc(truncate(o.name,60)):''}</div>
         <div style="margin-top:4px"><span class="pill" style="background:${sColor};font-size:11px">${sLabel}</span> <span class="muted small">· ${a.hours||8}h${st&&st.location?' · @'+esc(st.location):''}</span></div>
+        ${o&&st&&stageNeedsDim(st)?(function(){ const b=stkBadgeHtml(o); return b?'<div style="margin-top:5px">'+b+'</div>':''; })():''}
       </div>
       <div style="display:flex;gap:8px;align-items:center">${btns}${o?`<button class="ghost sm" onclick="openOrderModal('${o.id}')" title="Mở/sửa đơn — thêm yêu cầu, ghi chú">✏ Đơn</button>`:''}</div>
     </div>`;
@@ -8915,7 +9106,8 @@ function impDoneBlockMsg(o, s){
     +'\n\nĐo xong ghi vào 📐 của công đoạn rồi mới báo Xong (làm hư phải chờ '+impWeeksTxt(o)+').';
 }
 // Cổng chung cho mọi chỗ đổi trạng thái công đoạn. Trả false = chặn.
-function impStageGate(o, s, newStatus){
+function impStageGate(o, s, newStatus, itemId){
+  if(!stkStageGate(o, s, newStatus, itemId)) return false;   // 🔍 chưa kiểm hàng xuất kho → chưa cho gia công (25-11-2026)
   if(!o||!o.importCritical||!s) return true;
   if(newStatus==='doing' && (s.status||'pending')!=='doing') return impConfirmStart(o, s);
   if(newStatus==='done'){ const m=impDoneBlockMsg(o, s); if(m){ alert(m); return false; } }
@@ -8924,7 +9116,9 @@ function impStageGate(o, s, newStatus){
 // Đơn đang mở trong form (chưa lưu) — đọc cờ hàng nhập từ ô tick
 function impFormOrder(){
   const cb=document.getElementById('ord_imp');
-  return {importCritical:!!(cb&&cb.checked), replaceLeadWeeks:(document.getElementById('ord_impWeeks')||{}).value||'', importNote:(document.getElementById('ord_impNote')||{}).value||''};
+  const sk=document.getElementById('ord_stkchk');
+  return {id:(document.getElementById('ord_id')||{}).value||'', code:(document.getElementById('ord_code')||{}).value||'', stockCheckRequired: sk ? !!sk.checked : undefined,
+    importCritical:!!(cb&&cb.checked), replaceLeadWeeks:(document.getElementById('ord_impWeeks')||{}).value||'', importNote:(document.getElementById('ord_impNote')||{}).value||''};
 }
 function impToggleForm(){ const on=document.getElementById('ord_imp').checked; document.getElementById('ord_imp_more').style.display=on?'flex':'none'; }
 function impLoadForm(o){
@@ -9986,6 +10180,7 @@ function ziParseSeg(seg, raw, date, sender){
     }
   }
   if(r.act==='start' && s && stageState(s)!=='pending') r.notes.push('Công đoạn đã '+(stageState(s)==='done'?'xong':'bắt đầu')+' từ trước');
+  if((r.act==='start'||r.act==='done') && s && stageState(s)!=='done' && !stkGateOk(f.o, s, (r.x&&r.x.it&&r.x.it.id)||null)){ r.err='🔍 Chưa kiểm hàng xuất kho (mã + kích thước) — chưa cho gia công. Lập phiếu kiểm ở tab Kho trước'; r.on=false; }
   if(s && (s.reports||[]).some(function(p){ return p.text===raw.slice(0,300) && p.date===date; })){ r.notes.push('Tin này đã nhập trước đó'); r.on=false; r.dup=true; }
   if(r.act==='ncr' && (DATA.ncrRecords||[]).some(function(x){ return x&&x.orderId===f.o.id && String(x.description||'').indexOf(raw.slice(0,120))>=0; })){ r.notes.push('NCR từ tin này đã tạo trước đó'); r.on=false; r.dup=true; }
   return r;
@@ -11042,11 +11237,1074 @@ function outTabBadge(){
   b.textContent = n; tab.appendChild(b);
 }
 
+/* =====================================================================================
+   📦 KHO & VẬT TƯ  +  🔍 KIỂM HÀNG XUẤT KHO TRƯỚC GIA CÔNG                (thêm 25-11-2026)
+   Nhóm hàng: thép · sắt/gang · khớp nối & hàng tồn · dao cụ · dụng cụ đo.
+   Vì sao có phiếu kiểm: khớp nối lấy từ kho ra, VỎ HỘP đúng mà hàng BÊN TRONG sai (size, kiểu
+   hub, lỗ sẵn, vật liệu…). Thợ không mở ra đo → gia công xong, giao rồi khách mới phát hiện.
+   Nay đơn có hàng lấy từ kho / KH gửi về phải có phiếu kiểm (mã đóng trên SP + kích thước đo thực
+   + kết luận ĐẠT) thì mới BẮT ĐẦU / báo XONG được công đoạn gia công (A, B, C, D, O, P…).
+   Công đoạn hỗ trợ (mua phôi, QC, vận chuyển, lắp ráp…) không bị chặn.
+   Dữ liệu — 3 bảng đồng bộ riêng, MỖI PHIẾU LÀ 1 DÒNG → 2 máy cùng nhập kho không đè nhau:
+     • stockItems  — danh mục: mã, nhóm, mác, quy cách, vị trí, tồn đầu kỳ, tối thiểu, hiệu chuẩn
+     • stockMoves  — phiếu NHẬP / XUẤT / KIỂM KÊ; mỗi dòng hàng gắn được với ĐƠN HÀNG
+     • stockChecks — phiếu kiểm hàng xuất kho trước gia công
+   Tồn = tồn đầu kỳ + Σ nhập − Σ xuất (phiếu kiểm kê đặt lại bằng số đếm thực) — tính lại mỗi lần vẽ.
+   ===================================================================================== */
+const STK_CATS = {
+  steel: {ic:'🔩', label:'Thép',                 hint:'thép tròn / tấm / ống — S45C, SCM440, SS400…', unit:'cây', pre:'THEP'},
+  iron:  {ic:'⛓', label:'Sắt / gang',           hint:'sắt hộp, V, U, I, gang đúc…',                  unit:'cây', pre:'SAT'},
+  goods: {ic:'⚙', label:'Khớp nối & hàng tồn',  hint:'khớp nối, hub, spider, ống lót… lấy ra gia công', unit:'cái', pre:'HANG'},
+  tool:  {ic:'🔪', label:'Dao cụ',               hint:'mảnh tiện, dao phay, mũi khoan, taro, dao xọc, dây cắt…', unit:'cái', pre:'DAO'},
+  gauge: {ic:'📏', label:'Dụng cụ đo',           hint:'thước cặp, panme, đồng hồ so, calip, đo lỗ…', unit:'cái', pre:'DCD'},
+  other: {ic:'📦', label:'Khác',                 hint:'',                                              unit:'cái', pre:'KHAC'},
+};
+const STK_CAT_ORDER = ['steel','iron','goods','tool','gauge','other'];
+// Lý do nhập / xuất. needOrder: bắt buộc chọn đơn. check: đơn gắn dòng hàng này phải KIỂM trước gia công.
+const STK_PURPOSES = {
+  buy_blank: {dir:'in',  label:'Mua phôi cho đơn hàng',                          short:'Mua phôi',          needOrder:true,  color:'#0369a1'},
+  cust_bore: {dir:'in',  label:'Hàng gửi về gia công LỖ (khoét · doa · xọc then)', short:'Về gia công lỗ',    needOrder:true,  check:true, color:'#7c3aed'},
+  cust_cut:  {dir:'in',  label:'Hàng gửi về gia công CẮT BỚT (cắt ngắn · tiện bớt)', short:'Về cắt bớt',      needOrder:true,  check:true, color:'#9333ea'},
+  buy_stock: {dir:'in',  label:'Mua nhập kho dự trữ',                            short:'Nhập dự trữ',                         color:'#0f766e'},
+  return_in: {dir:'in',  label:'Trả lại kho (dư từ xưởng / thu hồi dụng cụ)',    short:'Trả lại kho',                         color:'#15803d'},
+  other_in:  {dir:'in',  label:'Nhập khác',                                      short:'Nhập khác',                           color:'#64748b'},
+  to_prod:   {dir:'out', label:'Xuất cho gia công đơn hàng',                     short:'Xuất gia công',     needOrder:true,  check:true, color:'#b45309'},
+  tool_issue:{dir:'out', label:'Cấp dao cụ / dụng cụ đo cho thợ',               short:'Cấp cho thợ',                         color:'#c2410c'},
+  to_cust:   {dir:'out', label:'Xuất giao khách / trả hàng của KH',              short:'Giao / trả KH',                       color:'#0e7490'},
+  scrap:     {dir:'out', label:'Hủy · phế · hao hụt · dao mòn gãy',              short:'Hủy / phế',                           color:'#b91c1c'},
+  other_out: {dir:'out', label:'Xuất khác',                                      short:'Xuất khác',                           color:'#64748b'},
+  count:     {dir:'adj', label:'Kiểm kê — đặt tồn bằng số đếm thực tế',         short:'Kiểm kê',                             color:'#334155'},
+};
+const STK_DIR = {in:{t:'NHẬP', pre:'NK', ic:'⬇', c:'#15803d'}, out:{t:'XUẤT', pre:'XK', ic:'⬆', c:'#b45309'}, adj:{t:'KIỂM KÊ', pre:'KK', ic:'🧮', c:'#334155'}};
+const STK_CHECK_ITEMS = [
+  ['labelMatch','Nhãn / hộp (vỏ ngoài) đúng hàng của đơn'],
+  ['partMatch', 'Mã đóng / khắc trên sản phẩm KHỚP nhãn hộp'],
+  ['typeOk',    'Đúng chủng loại · size · kiểu hub (1a/1b…)'],
+  ['materialOk','Đúng vật liệu (GG / ST / AL / mác thép…)'],
+  ['qtyOk',     'Đủ số lượng · đủ chi tiết trong bộ (hub, spider, bu lông…)'],
+  ['visualOk',  'Không nứt, mẻ, gỉ, cong vênh, móp'],
+];
+const STK_DIM_TPL = {
+  jaw:    {l:'Khớp vấu / pin / lốp', d:['Ø ngoài hub (D)','Lỗ sẵn / lỗ phôi (d)','Chiều dài hub (L)','Ø cổ hub (D1)','Size vấu / spider (độ cứng, màu)']},
+  gear:   {l:'Khớp răng',            d:['Ø ngoài (D)','Lỗ sẵn (d)','Chiều dài hub (L)','Số răng / module']},
+  disc:   {l:'Khớp đĩa',             d:['Ø ngoài (D)','Lỗ sẵn (d)','Chiều dài hub (L)','Số lỗ bu lông / PCD']},
+  pulley: {l:'Puly / ống lót côn',   d:['Ø ngoài / Ø vòng chia','Lỗ côn / lỗ sẵn (d)','Chiều dài (L)','Số rãnh · tiết diện đai']},
+  brake:  {l:'Phanh / brake drum',   d:['Ø ngoài (D)','Bề rộng mặt phanh (B)','Lỗ sẵn (d)','Độ cứng / vật liệu']},
+  steel:  {l:'Phôi thép / sắt',      d:['Đường kính / chiều dày','Chiều dài','Mác thép (đối chiếu CO/CQ, số heat)','Độ cứng (nếu yêu cầu)']},
+  general:{l:'Chung',                d:['Ø ngoài (D)','Lỗ sẵn (d)','Chiều dài (L)']},
+};
+const STK_GRADES = ['S45C (C45)','S50C','SCM440 (42CrMo4)','SCR440 (40Cr)','SS400 (CT3)','SKD11','SUJ2','SUS304','SUS316','SUS420J2','FC250 (gang xám)','FCD450 (gang cầu)','GG (gang)','ST (thép)','AL (nhôm)','Nhôm A6061','Đồng thau C3604'];
+const STK_PARTNERS = ['China Steel (Đài Loan)','Posco','Hòa Phát','Thép Việt Nhật','KH gửi về'];
+const STK_UNITS = ['cây','kg','tấm','cái','bộ','hộp','mét','đoạn','cuộn'];
+const STK_TABLES = ['stockItems','stockMoves','stockChecks'];
+
+let khoSub = 'stock', khoCat = '', khoQ = '', khoLow = false, khoMvDir = '', khoMvQ = '', khoChkQ = '';
+let _smLines = [], _scDims = [], _scChecks = {}, _stkFlagTouched = false;
+
+function stkCat(c){ return STK_CATS[c] || STK_CATS.other; }
+function stkArr(k){ if(!Array.isArray(DATA[k])) DATA[k] = []; return DATA[k]; }
+function stkNum(v){ const n = parseFloat(String(v==null?'':v).replace(',', '.')); return isNaN(n) ? 0 : n; }
+function stkHasNum(v){ return v!=null && String(v).trim()!=='' && !isNaN(parseFloat(String(v).replace(',', '.'))); }
+function stkFmt(n){ return rN(n, 2); }
+function stkItemById(id){ return id ? ((DATA.stockItems||[]).find(function(x){ return x && x.id===id; }) || null) : null; }
+function stkOrderById(id){ return id ? ((DATA.orders||[]).find(function(x){ return x && x.id===id; }) || null) : null; }
+function stkMoveTime(m){ return (m.date||'') + '|' + (m.createdAt||''); }
+function stkStaffNames(){ return (DATA.staff||[]).filter(function(s){ return s && s.active!==false && s.type!=='outsource'; }).map(function(s){ return s.name; }).filter(Boolean); }
+function stkItemLabel(it){ return it ? ((it.code ? it.code + ' · ' : '') + (it.name||'') + (it.spec ? ' ' + it.spec : '')) : ''; }
+function stkLineOrder(m, l){ return (l && l.orderId) || (m && m.orderId) || ''; }
+function stkCloudMissing(){ return typeof supaConfigured==='function' && supaConfigured() && STK_TABLES.some(function(t){ return _sbMissing[t]; }); }
+
+/* ---------- tồn kho ---------- */
+function stkQtyMap(){
+  const q = {};
+  (DATA.stockItems||[]).forEach(function(it){ if(it && it.id) q[it.id] = stkNum(it.openingQty); });
+  (DATA.stockMoves||[]).filter(Boolean).slice().sort(function(a,b){ return stkMoveTime(a).localeCompare(stkMoveTime(b)); }).forEach(function(m){
+    (m.lines||[]).forEach(function(l){
+      if(!l || !l.itemId || !(l.itemId in q) || !stkHasNum(l.qty)) return;
+      const n = stkNum(l.qty);
+      if(m.dir==='in') q[l.itemId] += n; else if(m.dir==='out') q[l.itemId] -= n; else if(m.dir==='adj') q[l.itemId] = n;
+    });
+  });
+  return q;
+}
+function stkLastMoveMap(){
+  const last = {};
+  (DATA.stockMoves||[]).filter(Boolean).forEach(function(m){
+    (m.lines||[]).forEach(function(l){ if(l && l.itemId && (!last[l.itemId] || stkMoveTime(m) > stkMoveTime(last[l.itemId].m))) last[l.itemId] = {m:m, l:l}; });
+  });
+  return last;
+}
+function stkNextCode(cat){
+  const pre = (STK_CATS[cat]||STK_CATS.other).pre + '-'; let mx = 0;
+  (DATA.stockItems||[]).forEach(function(it){ const c = String((it&&it.code)||''); if(c.indexOf(pre)===0){ const n = parseInt(c.slice(pre.length).replace(/\D/g,''), 10); if(!isNaN(n) && n>mx) mx = n; } });
+  return pre + String(mx+1).padStart(3, '0');
+}
+function stkNextNo(pre){
+  const head = pre + '-' + String(new Date().getFullYear()).slice(-2) + '-'; let mx = 0;
+  (DATA.stockMoves||[]).concat(DATA.stockChecks||[]).forEach(function(r){ const c = String((r&&r.no)||''); if(c.indexOf(head)===0){ const n = parseInt(c.slice(head.length), 10); if(!isNaN(n) && n>mx) mx = n; } });
+  return head + String(mx+1).padStart(4, '0');
+}
+
+/* ---------- dụng cụ đo: hiệu chuẩn ---------- */
+function stkAddMonths(ymd, n){ const d = new Date(ymd + 'T00:00:00'); if(isNaN(d)) return ''; d.setMonth(d.getMonth() + n); return ymdLocal(d); }
+function stkCalDue(g){ const d = normDate(g && g.calibDate); if(!d) return ''; return stkAddMonths(d, parseInt(g.calibCycle, 10) || 12); }
+function stkCalState(g){
+  if(!g) return {k:'none', t:'—', c:'#64748b'};
+  if(g.status==='broken')  return {k:'broken',  t:'Hỏng — không dùng', c:'#b91c1c'};
+  if(g.status==='calib')   return {k:'calib',   t:'Đang gửi hiệu chuẩn', c:'#7c3aed'};
+  if(g.status==='lost')    return {k:'lost',    t:'Mất', c:'#b91c1c'};
+  if(g.status==='retired') return {k:'retired', t:'Đã thanh lý', c:'#64748b'};
+  const due = stkCalDue(g);
+  if(!due) return {k:'none', t:'Chưa ghi ngày hiệu chuẩn', c:'#b45309'};
+  const d = daysBetween(todayStr(), due);
+  if(d < 0)   return {k:'over', t:'QUÁ HẠN ' + (-d) + ' ngày', c:'#b91c1c', due:due};
+  if(d <= 30) return {k:'soon', t:'Sắp hết hạn — còn ' + d + ' ngày', c:'#b45309', due:due};
+  return {k:'ok', t:'Còn hạn', c:'#15803d', due:due};
+}
+function stkGaugeBad(g){ const k = stkCalState(g).k; return k==='over'||k==='broken'||k==='lost'||k==='retired'||k==='calib'; }
+function stkGaugeByText(txt){
+  const t = String(txt||'').trim().toLowerCase(); if(!t) return null;
+  return (DATA.stockItems||[]).find(function(g){ return g && g.cat==='gauge' && (String(g.code||'').toLowerCase()===t || stkItemLabel(g).toLowerCase()===t || t.indexOf(String(g.code||'#').toLowerCase()+' ')===0); }) || null;
+}
+
+/* ---------- liên kết ĐƠN HÀNG ---------- */
+function stkLinesOfOrder(oid){
+  const out = [];
+  (DATA.stockMoves||[]).forEach(function(m){ if(!m) return; (m.lines||[]).forEach(function(l){ if(l && stkLineOrder(m, l)===oid) out.push({m:m, l:l}); }); });
+  return out.sort(function(a,b){ return stkMoveTime(a.m).localeCompare(stkMoveTime(b.m)); });
+}
+function stkLineNeedsCheck(m, l){
+  const p = STK_PURPOSES[m && m.purpose]; if(!p || !p.check || !l) return false;
+  const it = stkItemById(l.itemId);
+  if(it && (it.cat==='tool' || it.cat==='gauge')) return false;   // cấp dao / thước không phải hàng gia công
+  return true;
+}
+// Đơn có phải KIỂM hàng xuất kho trước gia công không? Ô tick trên đơn thắng; chưa tick thì tự suy từ phiếu kho.
+function stockCheckNeeded(o){
+  if(!o) return false;
+  if(o.stockCheckRequired===false) return false;
+  if(o.stockCheckRequired===true) return true;
+  return !!o.id && stkLinesOfOrder(o.id).some(function(x){ return stkLineNeedsCheck(x.m, x.l); });
+}
+function stkChecksOfOrder(oid){
+  return (DATA.stockChecks||[]).filter(function(c){ return c && c.orderId===oid; })
+    .sort(function(a,b){ return ((b.date||'') + (b.createdAt||'')).localeCompare((a.date||'') + (a.createdAt||'')); });
+}
+// Phiếu ĐẠT không gắn chi tiết con = cả đơn; gắn chi tiết con thì chỉ mở cổng cho chi tiết đó.
+function stockCheckOkFor(oid, itemId){
+  return (DATA.stockChecks||[]).some(function(c){ return c && c.orderId===oid && c.result==='pass' && (!c.orderItemId || !itemId || c.orderItemId===itemId); });
+}
+function stockCheckState(o){   // 'na' không cần · 'ok' đã Đạt · 'fail' chỉ có phiếu Không đạt · 'todo' chưa kiểm
+  if(!stockCheckNeeded(o)) return 'na';
+  const cs = stkChecksOfOrder(o.id);
+  if(cs.some(function(c){ return c.result==='pass'; })) return 'ok';
+  if(cs.some(function(c){ return c.result==='fail'; })) return 'fail';
+  return 'todo';
+}
+function stkOrdersWaitingCheck(){
+  return (DATA.orders||[]).filter(function(o){
+    if(!o || o.status==='delivered' || o.status==='done_waiting') return false;
+    const s = stockCheckState(o); return s==='todo' || s==='fail';
+  });
+}
+// Mã trên hộp vs mã trên sản phẩm: bỏ dấu, khoảng trắng, gạch; một bên chứa bên kia (hộp in kèm hãng) thì coi là khớp
+function stkCodeKey(x){ return tfNorm(x).replace(/[\s\-_.\/·]/g, ''); }
+function stkCodeMismatch(a, b){ const x = stkCodeKey(a), y = stkCodeKey(b); return !!(x && y && x.indexOf(y)<0 && y.indexOf(x)<0); }
+function stkOpenOrPrint(id){ if(canWork()) openStkCheckModal(id); else printStkCheck(id); }
+function stkBadgeHtml(o){
+  const st = stockCheckState(o);
+  if(st==='na') return '';
+  if(st==='ok'){
+    const c = stkChecksOfOrder(o.id).find(function(x){ return x.result==='pass'; }) || {};
+    return '<a onclick="event.stopPropagation();stkOpenOrPrint(\'' + c.id + '\')" style="cursor:pointer;font-size:10px;font-weight:700;color:#15803D" title="Đã kiểm hàng xuất kho: ' + esc(c.no||'') + ' · ' + esc(c.inspector||'') + ' · ' + fmtDate(c.date) + '">🔍 Kho Đạt</a>';
+  }
+  if(o.status==='delivered' || o.status==='done_waiting') return '';
+  return '<a onclick="event.stopPropagation();openStkCheckModal(null,\'' + o.id + '\')" style="cursor:pointer;font-size:10px;font-weight:800;color:#B91C1C;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;padding:0 5px" title="Hàng lấy từ kho / KH gửi về: mở hộp đo MÃ + KÍCH THƯỚC, kết luận ĐẠT trước khi gia công — bấm để lập phiếu">🔍 ' + (st==='fail' ? 'Kiểm kho KHÔNG ĐẠT' : 'Chưa kiểm hàng kho') + '</a>';
+}
+
+/* ---------- CỔNG: chưa kiểm hàng xuất kho → không cho bắt đầu / báo xong công đoạn gia công ---------- */
+function stkGateOk(o, s, itemId){
+  if(!o || !s || !stageNeedsDim(s)) return true;
+  const full = stkOrderById(o.id);
+  const ord = Object.assign({}, full || {}, o);
+  if(!stockCheckNeeded(ord)) return true;
+  return !!(ord.id && stockCheckOkFor(ord.id, itemId || null));
+}
+function stkStageGate(o, s, newStatus, itemId){
+  if(newStatus!=='doing' && newStatus!=='done') return true;
+  if(!s || (s.status||'pending')===newStatus) return true;
+  if(stkGateOk(o, s, itemId)) return true;
+  const full = stkOrderById(o && o.id) || o || {};
+  const fail = full.id && stkChecksOfOrder(full.id).some(function(c){ return c.result==='fail'; });
+  const msg = '⛔ CHƯA KIỂM HÀNG XUẤT KHO — chưa cho ' + (newStatus==='doing' ? 'BẮT ĐẦU' : 'báo XONG') + ' "' + ((s.code||'') + ' ' + (s.name||'')).trim() + '".\n\n'
+    + 'Đơn ' + (full.code||'') + ': hàng lấy từ kho / KH gửi về phải được ĐO KIỂM trước khi gia công:\n'
+    + '• Mở hộp — mã đóng trên sản phẩm có khớp nhãn hộp & đơn hàng không\n'
+    + '• Đo kích thước thực: lỗ sẵn, Ø ngoài, chiều dài…\n'
+    + '• Kết luận ĐẠT, ghi rõ người kiểm\n\n'
+    + (fail ? 'Phiếu kiểm gần nhất KHÔNG ĐẠT — đổi hàng / lập NCR xong rồi kiểm lại.\n\n' : '')
+    + 'Vỏ hộp đúng chưa chắc hàng bên trong đúng — gia công xong khách mới phát hiện là quá muộn.';
+  if(full.id && canWork()){ if(confirm(msg + '\n\nBấm OK để mở PHIẾU KIỂM ngay.')) setTimeout(function(){ openStkCheckModal(null, full.id, itemId || ''); }, 30); }
+  else alert(msg + (full.id ? '' : '\n\n(Lưu đơn trước rồi mới lập phiếu kiểm được.)'));
+  return false;
+}
+
+/* ---------- badge tab ---------- */
+function khoTabBadge(){
+  const tab = document.querySelector('.tab[data-tab="kho"]'); if(!tab) return;
+  const old = tab.querySelector('.tabBadge'); if(old) old.remove();
+  const wait = stkOrdersWaitingCheck().filter(function(o){ return o.status!=='hold'; }).length;
+  const gOver = (DATA.stockItems||[]).filter(function(g){ return g && g.cat==='gauge' && stkCalState(g).k==='over'; }).length;
+  const n = wait + gOver; if(!n) return;
+  const b = document.createElement('span'); b.className = 'tabBadge';
+  b.title = (wait ? wait + ' đơn chưa kiểm hàng xuất kho' : '') + (wait && gOver ? ' · ' : '') + (gOver ? gOver + ' dụng cụ đo quá hạn hiệu chuẩn' : '');
+  b.style.cssText = 'display:inline-block;min-width:16px;height:16px;line-height:16px;text-align:center;background:var(--st-late);color:#fff;border-radius:99px;font-size:10px;font-weight:800;margin-left:6px;padding:0 4px';
+  b.textContent = n; tab.appendChild(b);
+}
+
+/* ---------- datalist dùng chung cho các form kho ---------- */
+function stkFillDatalists(){
+  let el = document.getElementById('stkDatalists');
+  if(!el){ el = document.createElement('div'); el.id = 'stkDatalists'; el.style.display = 'none'; document.body.appendChild(el); }
+  const uniq = function(a){ return a.filter(function(v, i){ return v && a.indexOf(v)===i; }); };
+  const opt = function(a){ return uniq(a).map(function(v){ return '<option value="' + esc(v) + '">'; }).join(''); };
+  const partners = STK_PARTNERS.concat((DATA.stockMoves||[]).map(function(m){ return m && m.partner; }), (DATA.stockItems||[]).map(function(i){ return i && i.brand; }));
+  const grades = STK_GRADES.concat((DATA.stockItems||[]).map(function(i){ return i && i.grade; }));
+  el.innerHTML = '<datalist id="stkDlGrade">' + opt(grades) + '</datalist>'
+    + '<datalist id="stkDlPartner">' + opt(partners) + '</datalist>'
+    + '<datalist id="stkDlUnit">' + opt(STK_UNITS) + '</datalist>'
+    + '<datalist id="stkDlStaff">' + opt(stkStaffNames()) + '</datalist>'
+    + '<datalist id="stkDlItems">' + opt((DATA.stockItems||[]).filter(function(i){ return i && i.cat!=='gauge'; }).map(stkItemLabel)) + '</datalist>'
+    + '<datalist id="stkDlGauges">' + opt((DATA.stockItems||[]).filter(function(i){ return i && i.cat==='gauge' && i.status!=='retired'; }).map(stkItemLabel).concat(MEAS_TOOLS)) + '</datalist>';
+}
+function stkOrderOptions(){
+  // đơn đang mở lên trước, đơn đã giao xếp sau
+  return (DATA.orders||[]).filter(Boolean).slice().sort(function(a,b){
+    const da = a.status==='delivered' ? 1 : 0, db = b.status==='delivered' ? 1 : 0;
+    if(da!==db) return da - db;
+    return String(b.receivedDate||'').localeCompare(String(a.receivedDate||''));
+  }).map(function(o){ return {id:o.id, label:(o.code||'') + ' — ' + truncate(o.name||'', 46) + (o.status==='delivered' ? ' (đã giao)' : '')}; });
+}
+
+/* =====================================================================================
+   TAB 📦 KHO
+   ===================================================================================== */
+function khoSetSub(k){ khoSub = k; khoCat = ''; renderKho(); }
+function khoSetCat(c){ khoCat = c; renderKho(); }
+function renderKho(){
+  const el = document.getElementById('view-kho'); if(!el) return;
+  const Q = stkQtyMap();
+  const items = (DATA.stockItems||[]).filter(Boolean);
+  const low = items.filter(function(it){ return it.cat!=='gauge' && stkNum(it.minQty)>0 && Q[it.id] < stkNum(it.minQty); });
+  const gauges = items.filter(function(g){ return g.cat==='gauge' && g.status!=='retired'; });
+  const gOver = gauges.filter(function(g){ const k = stkCalState(g).k; return k==='over' || k==='broken' || k==='lost'; });
+  const gSoon = gauges.filter(function(g){ return stkCalState(g).k==='soon'; });
+  const waiting = stkOrdersWaitingCheck();
+  const month = todayStr().slice(0, 7);
+  const mvMonth = (DATA.stockMoves||[]).filter(function(m){ return m && String(m.date||'').slice(0, 7)===month; }).length;
+  const subBtn = function(k, label, n, red){
+    return '<button class="' + (khoSub===k ? '' : 'ghost') + ' sm" onclick="khoSetSub(\'' + k + '\')" style="' + (khoSub===k ? '' : 'border-color:var(--brand);color:var(--brand)') + '">' + label
+      + (n ? ' <span style="display:inline-block;min-width:16px;background:' + (red ? 'var(--st-late)' : '#64748b') + ';color:#fff;border-radius:99px;font-size:10px;padding:0 5px;margin-left:3px">' + n + '</span>' : '') + '</button>';
+  };
+  const cloudWarn = stkCloudMissing() ? '<div class="card" style="border-left:4px solid #f59e0b;background:#fffbeb;margin-bottom:12px">'
+    + '<b style="color:#92400e">⚠ Kho chung (Supabase) chưa có 3 bảng kho — dữ liệu kho hiện CHỈ lưu trên máy này, máy khác chưa thấy.</b>'
+    + '<div class="small" style="margin-top:4px;color:#78350f">Quản lý làm 1 lần: Supabase → SQL Editor → New query → dán nội dung file <b>supabase_kho_2026-11-25.sql</b> → Run → quay lại app bấm F5. Dữ liệu đã nhập trên máy này sẽ tự đẩy lên.</div>'
+    + '<div class="toolbar" style="margin:8px 0 0"><button class="ghost sm" onclick="stkCopySql()">📋 Copy đoạn SQL</button></div></div>' : '';
+  let body = '';
+  if(khoSub==='stock') body = khoStockHtml(Q, ['steel','iron','goods','other']);
+  else if(khoSub==='tool') body = khoStockHtml(Q, ['tool']);
+  else if(khoSub==='gauge') body = khoGaugeHtml();
+  else if(khoSub==='moves') body = khoMovesHtml();
+  else if(khoSub==='check') body = khoChecksHtml(waiting);
+  el.innerHTML = cloudWarn + '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
+      + kpiCard('🔍 Đơn chờ kiểm hàng kho', waiting.length, waiting.length ? 'chưa có phiếu kiểm ĐẠT → chưa cho gia công' : 'không có đơn nào đang chờ', waiting.length ? 'var(--st-late)' : 'var(--st-done)')
+      + kpiCard('📉 Dưới tồn tối thiểu', low.length, low.length ? 'cần đặt mua thêm' : 'tồn kho đủ', low.length ? '#f59e0b' : 'var(--st-done)')
+      + kpiCard('📏 Dụng cụ đo cần xử lý', gOver.length, gOver.length ? 'quá hạn hiệu chuẩn / hỏng / mất' : (gSoon.length ? gSoon.length + ' cái sắp hết hạn (≤30 ngày)' : 'tất cả còn hạn'), gOver.length ? 'var(--st-late)' : (gSoon.length ? '#f59e0b' : 'var(--st-done)'))
+      + kpiCard('📦 Mặt hàng trong danh mục', items.length, STK_CAT_ORDER.map(function(c){ const n = items.filter(function(i){ return i.cat===c; }).length; return n ? STK_CATS[c].label + ' ' + n : ''; }).filter(Boolean).join(' · ') || 'chưa có — bấm ＋ Thêm mặt hàng', '')
+      + kpiCard('🧾 Phiếu nhập/xuất tháng này', mvMonth, 'tổng ' + (DATA.stockMoves||[]).length + ' phiếu', '')
+    + '</div>'
+    + '<div class="toolbar" style="margin-top:14px">'
+      + subBtn('stock', '📦 Tồn kho thép · sắt · hàng', low.filter(function(i){ return i.cat!=='tool'; }).length, false)
+      + subBtn('tool', '🔪 Dao cụ', low.filter(function(i){ return i.cat==='tool'; }).length, false)
+      + subBtn('gauge', '📏 Dụng cụ đo', gOver.length, true)
+      + subBtn('moves', '🧾 Phiếu nhập / xuất', 0)
+      + subBtn('check', '🔍 Kiểm trước gia công', waiting.length, true)
+    + '</div>' + body;
+  if(khoSub==='moves') khoRenderMovesTable();
+  if(khoSub==='stock' || khoSub==='tool') khoRenderItemsTable();
+}
+function stkCopySql(){
+  const sql = "create table if not exists stock_items  (id text primary key, data jsonb not null, updated_at timestamptz default now());\n"
+    + "create table if not exists stock_moves  (id text primary key, data jsonb not null, updated_at timestamptz default now());\n"
+    + "create table if not exists stock_checks (id text primary key, data jsonb not null, updated_at timestamptz default now());\n"
+    + "do $$ declare t text; begin\n  foreach t in array array['stock_items','stock_moves','stock_checks'] loop\n"
+    + "    execute format('alter table %I enable row level security', t);\n"
+    + "    execute format('drop policy if exists dhp_all on %I', t);\n"
+    + "    execute format('create policy dhp_all on %I for all using (true) with check (true)', t);\n"
+    + "    if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then\n"
+    + "      execute format('alter publication supabase_realtime add table %I', t);\n    end if;\n  end loop;\nend $$;\n"
+    + "-- Bản đầy đủ (kèm thùng rác + nhật ký): file supabase_kho_2026-11-25.sql trong repo dhp-manager\n";
+  const done = function(){ alert('✓ Đã copy SQL.\nSupabase → SQL Editor → New query → dán (Ctrl+V) → Run → quay lại app bấm F5.'); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(sql).then(done, function(){ fallbackCopy(sql, done); });
+  else fallbackCopy(sql, done);
+}
+
+/* ---------- 📦 tồn kho / 🔪 dao cụ ---------- */
+function khoStockHtml(Q, cats){
+  const isTool = cats.length===1 && cats[0]==='tool';
+  const chips = isTool ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap">' + [''].concat(cats).map(function(c){
+    const on = khoCat===c; const lbl = c ? STK_CATS[c].ic + ' ' + STK_CATS[c].label : 'Tất cả';
+    return '<button class="' + (on ? '' : 'ghost') + ' sm" onclick="khoSetCat(\'' + c + '\')" style="border-radius:99px">' + lbl + '</button>';
+  }).join('') + '</div>';
+  return '<div class="toolbar">'
+      + '<button onclick="openStkItemModal(null,\'' + (isTool ? 'tool' : (khoCat||'steel')) + '\')">＋ Thêm ' + (isTool ? 'dao cụ' : 'mặt hàng') + '</button>'
+      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'' + (isTool ? 'buy_stock' : 'buy_blank') + '\'})" style="border-color:#15803d;color:#15803d">⬇ Phiếu nhập</button>'
+      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'' + (isTool ? 'tool_issue' : 'to_prod') + '\'})" style="border-color:#b45309;color:#b45309">⬆ Phiếu xuất' + (isTool ? ' / cấp cho thợ' : '') + '</button>'
+      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'adj\',purpose:\'count\'})">🧮 Kiểm kê</button>'
+      + '<button class="ghost" onclick="khoExportItems(' + (isTool ? '[\'tool\']' : '[\'steel\',\'iron\',\'goods\',\'other\']') + ')">📊 Xuất Excel tồn kho</button>'
+      + chips
+      + '<input id="khoQ" placeholder="Tìm mã / tên / mác / quy cách / vị trí…" value="' + esc(khoQ) + '" oninput="khoQ=this.value;khoRenderItemsTable()" style="min-width:240px;flex:1">'
+      + '<label class="small" style="display:flex;align-items:center;gap:5px;font-weight:700;cursor:pointer"><input type="checkbox" ' + (khoLow ? 'checked' : '') + ' onchange="khoLow=this.checked;khoRenderItemsTable()" style="width:auto"> chỉ hàng dưới tối thiểu</label>'
+    + '</div>'
+    + '<div class="small muted" style="margin:-6px 0 8px">' + (isTool
+        ? 'Dao cụ: nhập khi mua về, <b>cấp cho thợ</b> bằng phiếu xuất (ghi người nhận). Đặt "tồn tối thiểu" để app báo cần mua thêm.'
+        : 'Phôi mua cho đơn nào, hàng KH gửi về gia công lỗ / cắt bớt — ghi ở <b>Phiếu nhập</b> và chọn đơn hàng. Hàng của KH không có trong danh mục thì gõ tên tự do (không tính vào tồn).') + '</div>'
+    + '<div class="card" style="overflow:auto;padding:0" id="khoItemsTbl" data-cats="' + cats.join(',') + '"></div>';
+}
+function khoRenderItemsTable(){
+  const box = document.getElementById('khoItemsTbl'); if(!box) return;
+  const cats = (box.dataset.cats||'').split(',').filter(Boolean);
+  const isTool = cats.length===1 && cats[0]==='tool';
+  const Q = stkQtyMap(), last = stkLastMoveMap();
+  const q = tfNorm(khoQ||'');
+  let list = (DATA.stockItems||[]).filter(function(it){ return it && cats.indexOf(it.cat||'other')>=0 && (!khoCat || it.cat===khoCat || isTool); });
+  if(q) list = list.filter(function(it){ return tfNorm([it.code, it.name, it.grade, it.spec, it.loc, it.brand, it.machine].join(' ')).indexOf(q)>=0; });
+  if(khoLow) list = list.filter(function(it){ return stkNum(it.minQty)>0 && Q[it.id] < stkNum(it.minQty); });
+  list.sort(function(a,b){ return (STK_CAT_ORDER.indexOf(a.cat) - STK_CAT_ORDER.indexOf(b.cat)) || String(a.code||'').localeCompare(String(b.code||'')); });
+  if(!list.length){ box.innerHTML = '<div class="empty">' + ((DATA.stockItems||[]).some(function(it){ return it && cats.indexOf(it.cat)>=0; }) ? 'Không có mặt hàng khớp bộ lọc.' : 'Chưa có ' + (isTool ? 'dao cụ' : 'mặt hàng') + ' nào. Bấm <b>＋ Thêm</b> để tạo danh mục (mã, mác, quy cách, vị trí, tồn đầu kỳ).') + '</div>'; return; }
+  box.innerHTML = '<table><thead><tr><th>Mã</th><th>Tên hàng</th><th>' + (isTool ? 'Loại · kích thước' : 'Mác / vật liệu') + '</th><th>Quy cách</th><th>' + (isTool ? 'Máy dùng' : 'NCC / hãng') + '</th><th>Vị trí</th><th style="text-align:right">Tồn</th><th style="text-align:right">Tối thiểu</th><th>Gần nhất</th><th></th></tr></thead><tbody>'
+    + list.map(function(it){
+      const qty = Q[it.id] || 0, min = stkNum(it.minQty), isLow = min>0 && qty < min;
+      const lm = last[it.id];
+      const lmTxt = lm ? '<span style="color:' + STK_DIR[lm.m.dir].c + ';font-weight:700">' + STK_DIR[lm.m.dir].ic + '</span> ' + fmtDate(lm.m.date) + '<div class="muted" style="font-size:10.5px">' + esc((STK_PURPOSES[lm.m.purpose]||{}).short||'') + (stkLineOrder(lm.m, lm.l) ? ' · ' + esc((stkOrderById(stkLineOrder(lm.m, lm.l))||{}).code||'') : '') + '</div>' : '<span class="muted">—</span>';
+      return '<tr style="' + (isLow ? 'background:#fffbeb' : '') + '">'
+        + '<td style="white-space:nowrap"><b>' + esc(it.code||'') + '</b><div class="muted" style="font-size:10px">' + stkCat(it.cat).ic + ' ' + esc(stkCat(it.cat).label) + '</div></td>'
+        + '<td style="min-width:160px">' + esc(it.name||'') + (it.note ? '<div class="muted small">' + esc(truncate(it.note, 60)) + '</div>' : '') + '</td>'
+        + '<td>' + esc(it.grade||'') + '</td><td>' + esc(it.spec||'') + '</td>'
+        + '<td class="small">' + esc(isTool ? (it.machine||'') : (it.brand||'')) + '</td>'
+        + '<td class="small">' + esc(it.loc||'') + '</td>'
+        + '<td style="text-align:right;white-space:nowrap;font-weight:800;color:' + (qty<0 ? 'var(--st-late)' : (isLow ? '#b45309' : 'inherit')) + '">' + stkFmt(qty) + ' <span class="muted" style="font-weight:600">' + esc(it.unit||'') + '</span>' + (isLow ? '<div style="font-size:10px;color:#b45309">⚠ dưới tối thiểu</div>' : '') + '</td>'
+        + '<td style="text-align:right" class="small">' + (min ? stkFmt(min) : '—') + '</td>'
+        + '<td class="small" style="white-space:nowrap">' + lmTxt + '</td>'
+        + '<td class="actions" style="white-space:nowrap">'
+          + '<a onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'' + (isTool ? 'buy_stock' : 'buy_blank') + '\',itemId:\'' + it.id + '\'})" title="Nhập kho">⬇ Nhập</a>'
+          + '<a onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'' + (isTool ? 'tool_issue' : 'to_prod') + '\',itemId:\'' + it.id + '\'})" title="Xuất kho">⬆ ' + (isTool ? 'Cấp' : 'Xuất') + '</a>'
+          + '<a onclick="openStkCard(\'' + it.id + '\')" title="Thẻ kho — lịch sử nhập xuất">📒</a>'
+          + '<a onclick="openStkItemModal(\'' + it.id + '\')">Sửa</a>'
+        + '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+/* ---------- 📏 dụng cụ đo ---------- */
+function khoGaugeHtml(){
+  const list = (DATA.stockItems||[]).filter(function(g){ return g && g.cat==='gauge'; })
+    .sort(function(a,b){ const r = {over:0, broken:1, lost:2, none:3, soon:4, calib:5, ok:6, retired:9}; return (r[stkCalState(a).k] - r[stkCalState(b).k]) || String(a.code||'').localeCompare(String(b.code||'')); });
+  const rows = list.map(function(g){
+    const st = stkCalState(g), due = stkCalDue(g);
+    const lastLog = (g.calibLog||[]).slice(-1)[0];
+    return '<tr style="' + (st.k==='over' || st.k==='broken' || st.k==='lost' ? 'background:#fff5f5' : (st.k==='retired' ? 'opacity:.55' : '')) + '">'
+      + '<td style="white-space:nowrap"><b>' + esc(g.code||'') + '</b></td>'
+      + '<td>' + esc(g.name||'') + (g.spec ? ' <span class="muted">' + esc(g.spec) + '</span>' : '') + '</td>'
+      + '<td class="small">' + esc(g.serial||'—') + '</td>'
+      + '<td class="small">' + esc([g.range, g.resolution].filter(Boolean).join(' · ') || '—') + '</td>'
+      + '<td class="small">' + (g.holder ? '👤 ' + esc(g.holder) : '<span class="muted">' + esc(g.loc ? 'ở ' + g.loc : 'trong kho') + '</span>') + '</td>'
+      + '<td class="small" style="white-space:nowrap">' + (g.calibDate ? fmtDate(g.calibDate) : '—') + (g.calibOrg ? '<div class="muted" style="font-size:10.5px">' + esc(truncate(g.calibOrg, 28)) + '</div>' : '') + '</td>'
+      + '<td class="small" style="white-space:nowrap">' + (due ? fmtDate(due) : '—') + '</td>'
+      + '<td><span style="font-size:11px;font-weight:800;color:' + st.c + '">' + esc(st.t) + '</span>' + (lastLog && lastLog.result==='fail' ? '<div class="small" style="color:#b91c1c">lần HC gần nhất: KHÔNG ĐẠT</div>' : '') + '</td>'
+      + '<td class="actions" style="white-space:nowrap"><a onclick="openStkCalModal(\'' + g.id + '\')" style="color:#7c3aed">✓ Ghi hiệu chuẩn</a><a onclick="openStkCard(\'' + g.id + '\')">📒 Lịch sử</a><a onclick="openStkItemModal(\'' + g.id + '\')">Sửa</a></td>'
+      + '</tr>';
+  }).join('');
+  return '<div class="toolbar">'
+      + '<button onclick="openStkItemModal(null,\'gauge\')">＋ Thêm dụng cụ đo</button>'
+      + '<button class="ghost" onclick="khoExportItems([\'gauge\'])">📊 Xuất Excel danh sách</button>'
+      + '<span class="small muted">Mỗi dụng cụ là 1 dòng (đánh mã DCĐ-001…). Ghi ngày hiệu chuẩn + chu kỳ → app tự báo quá hạn. Phiếu kiểm hàng xuất kho chọn dụng cụ quá hạn sẽ bị nhắc.</span>'
+    + '</div>'
+    + '<div class="card" style="overflow:auto;padding:0">' + (list.length
+      ? '<table><thead><tr><th>Mã</th><th>Tên dụng cụ</th><th>Số seri</th><th>Phạm vi · độ chia</th><th>Người giữ</th><th>Hiệu chuẩn gần nhất</th><th>Hạn tiếp theo</th><th>Tình trạng</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>'
+      : '<div class="empty">Chưa khai dụng cụ đo nào. Bấm <b>＋ Thêm dụng cụ đo</b> — thước cặp, panme, đồng hồ so, calip nút, đo lỗ…</div>') + '</div>';
+}
+
+/* ---------- 🧾 phiếu nhập / xuất ---------- */
+function khoMovesHtml(){
+  return '<div class="toolbar">'
+      + '<button onclick="openStkMoveModal(null,{dir:\'in\',purpose:\'buy_blank\'})" style="background:#15803d;border-color:#15803d">⬇ Phiếu nhập</button>'
+      + '<button onclick="openStkMoveModal(null,{dir:\'out\',purpose:\'to_prod\'})" style="background:#b45309;border-color:#b45309">⬆ Phiếu xuất</button>'
+      + '<button class="ghost" onclick="openStkMoveModal(null,{dir:\'adj\',purpose:\'count\'})">🧮 Kiểm kê</button>'
+      + '<button class="ghost" onclick="khoExportMoves()">📊 Xuất Excel phiếu</button>'
+      + '<span style="display:flex;gap:5px">' + ['', 'in', 'out', 'adj'].map(function(d){ return '<button class="' + (khoMvDir===d ? '' : 'ghost') + ' sm khoDirBtn" data-d="' + d + '" onclick="khoMvDir=this.dataset.d;document.querySelectorAll(\'.khoDirBtn\').forEach(function(b){b.classList.toggle(\'ghost\', b.dataset.d!==khoMvDir);});khoRenderMovesTable()" style="border-radius:99px">' + (d ? STK_DIR[d].ic + ' ' + (d==='adj' ? 'Kiểm kê' : (d==='in' ? 'Nhập' : 'Xuất')) : 'Tất cả') + '</button>'; }).join('') + '</span>'
+      + '<input id="khoMvQ" placeholder="Tìm số phiếu / mã đơn / hàng / NCC (China Steel…) / heat…" value="' + esc(khoMvQ) + '" oninput="khoMvQ=this.value;khoRenderMovesTable()" style="min-width:260px;flex:1">'
+    + '</div>'
+    + '<div class="card" style="overflow:auto;padding:0" id="khoMvTbl"></div>';
+}
+function khoRenderMovesTable(){
+  const box = document.getElementById('khoMvTbl'); if(!box) return;
+  const q = tfNorm(khoMvQ||'');
+  let list = (DATA.stockMoves||[]).filter(function(m){ return m && (!khoMvDir || m.dir===khoMvDir); });
+  if(q) list = list.filter(function(m){
+    const ords = (m.lines||[]).map(function(l){ const o = stkOrderById(stkLineOrder(m, l)); return o ? (o.code||'') + ' ' + (o.quoteNo||'') + ' ' + (o.poNo||'') + ' ' + (o.company||'') : ''; }).join(' ');
+    const ln = (m.lines||[]).map(function(l){ const it = stkItemById(l.itemId); return [it ? stkItemLabel(it) : '', l.name, l.grade, l.spec, l.heatNo].join(' '); }).join(' ');
+    return tfNorm([m.no, m.partner, m.docRef, m.certRef, m.receiver, m.by, m.note, (STK_PURPOSES[m.purpose]||{}).label, ords, ln].join(' ')).indexOf(q)>=0;
+  });
+  list.sort(function(a,b){ return stkMoveTime(b).localeCompare(stkMoveTime(a)); });
+  if(!list.length){ box.innerHTML = '<div class="empty">' + ((DATA.stockMoves||[]).length ? 'Không có phiếu khớp bộ lọc.' : 'Chưa có phiếu nhập / xuất nào. Phôi mua về, hàng KH gửi gia công lỗ / cắt bớt — bấm <b>⬇ Phiếu nhập</b> và chọn đơn hàng.') + '</div>'; return; }
+  box.innerHTML = '<table><thead><tr><th>Ngày</th><th>Số phiếu</th><th>Loại</th><th>Đơn hàng</th><th>Hàng hoá</th><th>NCC / nguồn · người nhận</th><th>Chứng từ · CO/CQ</th><th></th></tr></thead><tbody>'
+    + list.slice(0, 400).map(function(m){
+      const p = STK_PURPOSES[m.purpose] || {short:m.purpose||'', color:'#64748b'}, d = STK_DIR[m.dir] || STK_DIR.in;
+      const ordIds = []; (m.lines||[]).forEach(function(l){ const id = stkLineOrder(m, l); if(id && ordIds.indexOf(id)<0) ordIds.push(id); }); if(m.orderId && ordIds.indexOf(m.orderId)<0) ordIds.unshift(m.orderId);
+      const ordHtml = ordIds.map(function(id){ const o = stkOrderById(id); return o ? '<a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a>' : '<span class="muted">(đơn đã xoá)</span>'; }).join(' ') || '<span class="muted">—</span>';
+      const lnHtml = (m.lines||[]).filter(Boolean).map(function(l){ const it = stkItemById(l.itemId);
+        return '<div>' + esc(it ? (it.code + ' · ' + (it.name||'')) : (l.name||'')) + (l.grade ? ' <b>' + esc(l.grade) + '</b>' : '') + (l.spec ? ' ' + esc(l.spec) : '')
+          + ' — <b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b> ' + esc(l.unit||(it&&it.unit)||'') + (stkHasNum(l.kg) ? ' · ' + stkFmt(stkNum(l.kg)) + ' kg' : '') + (l.heatNo ? ' <span class="muted">· heat ' + esc(l.heatNo) + '</span>' : '') + (it ? '' : ' <span class="muted" style="font-size:10px" title="Không có trong danh mục — không tính tồn">(ngoài DM)</span>') + '</div>'; }).join('');
+      return '<tr><td style="white-space:nowrap">' + fmtDate(m.date) + '</td>'
+        + '<td style="white-space:nowrap"><b style="color:' + d.c + '">' + d.ic + ' ' + esc(m.no||'') + '</b></td>'
+        + '<td><span style="font-size:10.5px;font-weight:800;color:#fff;background:' + p.color + ';border-radius:5px;padding:1px 6px;white-space:nowrap">' + esc(p.short) + '</span></td>'
+        + '<td>' + ordHtml + '</td>'
+        + '<td class="small" style="min-width:220px">' + lnHtml + (m.note ? '<div class="muted" style="font-size:10.5px">' + esc(truncate(m.note, 80)) + '</div>' : '') + '</td>'
+        + '<td class="small">' + esc(m.partner||'') + (m.receiver ? '<div class="muted">👤 ' + esc(m.receiver) + '</div>' : '') + '</td>'
+        + '<td class="small">' + esc(m.docRef||'') + (m.certRef ? '<div class="muted">📄 ' + esc(m.certRef) + '</div>' : '') + '</td>'
+        + '<td class="actions" style="white-space:nowrap"><a onclick="openStkMoveModal(\'' + m.id + '\')">Sửa</a><a onclick="printStkMove(\'' + m.id + '\')">🖨 In</a></td></tr>';
+    }).join('') + '</tbody></table>' + (list.length>400 ? '<div class="small muted" style="padding:8px 12px">Hiện 400/' + list.length + ' phiếu mới nhất — gõ ô tìm để lọc.</div>' : '');
+}
+
+/* ---------- 🔍 kiểm trước gia công ---------- */
+function khoChecksHtml(waiting){
+  const wRows = waiting.slice().sort(function(a,b){ return String(a.dueDate||a.requestedDate||'9').localeCompare(String(b.dueDate||b.requestedDate||'9')); }).map(function(o){
+    const st = stockCheckState(o), g = orderProgressInfo(o), cur = g && g.current ? ((g.current.code||'') + ' ' + (g.current.name||'')).trim() : '';
+    const src = stkLinesOfOrder(o.id).filter(function(x){ return stkLineNeedsCheck(x.m, x.l); }).map(function(x){ const it = stkItemById(x.l.itemId); return esc((x.m.no||'') + ' ' + (it ? it.name : (x.l.name||''))); }).join('<br>');
+    return '<tr><td><a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a><div class="muted small">' + esc(truncate(o.company||'', 30)) + '</div></td>'
+      + '<td style="min-width:220px">' + esc(truncate(o.name||'', 90)) + (src ? '<div class="small muted" style="margin-top:2px">📦 ' + src + '</div>' : '') + '</td>'
+      + '<td>' + pillFor(o.status) + (cur ? '<div class="small muted">⏳ ' + esc(cur) + '</div>' : '') + '</td>'
+      + '<td class="small">' + fmtDate(o.dueDate||o.requestedDate) + '</td>'
+      + '<td>' + (st==='fail' ? '<b style="color:#b91c1c;font-size:11px">✕ phiếu trước KHÔNG ĐẠT</b>' : '<b style="color:#b45309;font-size:11px">chưa kiểm</b>') + '</td>'
+      + '<td><button class="sm" onclick="openStkCheckModal(null,\'' + o.id + '\')">🔍 Lập phiếu kiểm</button></td></tr>';
+  }).join('');
+  const q = tfNorm(khoChkQ||'');
+  let list = (DATA.stockChecks||[]).filter(Boolean);
+  if(q) list = list.filter(function(c){ const o = stkOrderById(c.orderId); return tfNorm([c.no, c.itemName, c.labelCode, c.partCode, c.inspector, c.receiver, c.note, o && o.code, o && o.name, o && o.company].join(' ')).indexOf(q)>=0; });
+  list.sort(function(a,b){ return ((b.date||'') + (b.createdAt||'')).localeCompare((a.date||'') + (a.createdAt||'')); });
+  const cRows = list.slice(0, 300).map(function(c){
+    const o = stkOrderById(c.orderId), dims = (c.dims||[]).filter(function(d){ return d && String(d.param||'').trim(); });
+    const dOk = dims.filter(function(d){ return d.pass==='pass'; }).length, dNg = dims.filter(function(d){ return d.pass==='fail'; }).length;
+    const mism = stkCodeMismatch(c.labelCode, c.partCode);
+    return '<tr style="' + (c.result==='fail' ? 'background:#fff5f5' : '') + '"><td style="white-space:nowrap">' + fmtDate(c.date) + '<div class="muted small">' + esc(c.no||'') + '</div></td>'
+      + '<td>' + (o ? '<a onclick="openOrderView(\'' + o.id + '\')" style="cursor:pointer;font-weight:800;color:#0369a1">' + esc(o.code||'') + '</a>' : '<span class="muted">(đơn đã xoá)</span>') + '</td>'
+      + '<td style="min-width:180px">' + esc(c.itemName||'') + (c.qty ? ' <span class="muted">× ' + esc(c.qty) + '</span>' : '') + '</td>'
+      + '<td class="small">📦 ' + esc(c.labelCode||'—') + '<br>🔩 <b style="color:' + (mism ? '#b91c1c' : 'inherit') + '">' + esc(c.partCode||'—') + '</b>' + (mism ? ' <span style="color:#b91c1c;font-weight:800" title="Mã trên hộp và mã trên sản phẩm KHÁC nhau">≠</span>' : '') + '</td>'
+      + '<td class="small">' + dims.length + ' kích thước' + (dims.length ? '<div>' + (dOk ? '<span style="color:#15803d">✓' + dOk + '</span> ' : '') + (dNg ? '<span style="color:#b91c1c;font-weight:800">✕' + dNg + '</span>' : '') + '</div>' : '') + '</td>'
+      + '<td class="small">' + esc(c.inspector||'—') + (c.receiver ? '<div class="muted">→ ' + esc(c.receiver) + '</div>' : '') + '</td>'
+      + '<td>' + (c.result==='pass' ? '<b style="color:#15803d">✓ ĐẠT</b>' : c.result==='fail' ? '<b style="color:#b91c1c">✕ KHÔNG ĐẠT</b>' : '<span class="muted">chưa kết luận</span>') + '</td>'
+      + '<td class="actions" style="white-space:nowrap"><a onclick="openStkCheckModal(\'' + c.id + '\')">Sửa</a><a onclick="printStkCheck(\'' + c.id + '\')">🖨 In</a></td></tr>';
+  }).join('');
+  return '<div class="card" style="border-left:4px solid #7c3aed;background:#faf5ff;margin-bottom:12px">'
+      + '<b style="color:#5b21b6">🔍 Quy tắc: hàng lấy từ kho / KH gửi về → MỞ HỘP, ĐỌC MÃ TRÊN SẢN PHẨM, ĐO KÍCH THƯỚC → ĐẠT mới giao thợ gia công.</b>'
+      + '<div class="small" style="margin-top:4px;color:#4c1d95;line-height:1.6">Đơn nào phải kiểm: ô <b>🔍 Kiểm hàng xuất kho</b> trên đơn (đơn gia công mới tự bật), hoặc đơn có phiếu kho "Xuất cho gia công" / "Hàng gửi về gia công lỗ · cắt bớt". '
+      + 'Chưa có phiếu ĐẠT thì app <b>không cho BẮT ĐẦU / báo XONG</b> công đoạn gia công (Tiện, Phay, Cắt dây, Khoan, Xọc…). Phiếu KHÔNG ĐẠT → giữ hàng lại, lập NCR, đổi hàng rồi kiểm lại.</div></div>'
+    + '<h2 class="sec" style="margin-top:6px"><span class="bar"></span>⏳ Đơn đang chờ kiểm (' + waiting.length + ')</h2>'
+    + '<div class="card" style="overflow:auto;padding:0">' + (waiting.length
+      ? '<table><thead><tr><th>Đơn</th><th>Tên hàng · nguồn hàng</th><th>Trạng thái</th><th>Hạn KH</th><th>Kiểm</th><th></th></tr></thead><tbody>' + wRows + '</tbody></table>'
+      : '<div class="empty" style="padding:22px">✓ Không có đơn nào đang chờ kiểm hàng xuất kho.</div>') + '</div>'
+    + '<h2 class="sec"><span class="bar"></span>📋 Phiếu kiểm đã lập (' + (DATA.stockChecks||[]).length + ')</h2>'
+    + '<div class="toolbar"><button onclick="openStkCheckModal()">＋ Phiếu kiểm mới</button><input placeholder="Tìm số phiếu / mã đơn / mã hàng / người kiểm…" value="' + esc(khoChkQ) + '" onchange="khoChkQ=this.value;renderKho()" style="min-width:260px;flex:1"></div>'
+    + '<div class="card" style="overflow:auto;padding:0">' + (list.length
+      ? '<table><thead><tr><th>Ngày · số</th><th>Đơn</th><th>Món kiểm</th><th>Mã hộp / mã trên SP</th><th>Kích thước</th><th>Người kiểm → thợ</th><th>Kết luận</th><th></th></tr></thead><tbody>' + cRows + '</tbody></table>'
+      : '<div class="empty" style="padding:22px">Chưa có phiếu kiểm nào.</div>') + '</div>';
+}
+
+/* =====================================================================================
+   FORM: MẶT HÀNG / DAO CỤ / DỤNG CỤ ĐO
+   ===================================================================================== */
+function openStkItemModal(id, cat){
+  if(!requireWork()) return;
+  stkFillDatalists();
+  const it = id ? stkItemById(id) : null;
+  if(id && !it){ alert('Không tìm thấy mặt hàng.'); return; }
+  const v = it || {cat:cat||'steel'};
+  document.getElementById('si_id').value = it ? it.id : '';
+  document.getElementById('si_cat').innerHTML = STK_CAT_ORDER.map(function(c){ return '<option value="' + c + '">' + STK_CATS[c].ic + ' ' + esc(STK_CATS[c].label) + '</option>'; }).join('');
+  document.getElementById('si_cat').value = v.cat || 'steel';
+  const set = function(k, val){ const e = document.getElementById(k); if(e) e.value = (val==null ? '' : val); };
+  set('si_code', v.code); set('si_name', v.name); set('si_grade', v.grade); set('si_spec', v.spec); set('si_brand', v.brand);
+  set('si_open', v.openingQty); set('si_min', v.minQty); set('si_unit', v.unit || (it ? '' : STK_CATS[v.cat||'steel'].unit)); set('si_loc', v.loc); set('si_machine', v.machine);
+  set('si_serial', v.serial); set('si_range', v.range); set('si_res', v.resolution); set('si_cal', v.calibDate); set('si_cyc', v.calibCycle || (it ? '' : 12));
+  set('si_status', v.status || 'ok'); set('si_calorg', v.calibOrg); set('si_note', v.note);
+  const hs = document.getElementById('si_holder');
+  hs.innerHTML = '<option value="">— trong kho (không ai giữ) —</option>' + stkStaffNames().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join('');
+  if(v.holder && stkStaffNames().indexOf(v.holder)<0) hs.innerHTML += '<option>' + esc(v.holder) + '</option>';
+  hs.value = v.holder || '';
+  document.getElementById('stkItemTitle').textContent = it ? ('Sửa ' + (it.code||'') + ' — ' + (it.name||'')) : 'Thêm mặt hàng kho';
+  document.getElementById('si_del').style.display = it ? '' : 'none';
+  stkItemCatChanged(true);
+  openModal('modalStkItem');
+}
+function stkItemCatChanged(keepUnit){
+  const c = document.getElementById('si_cat').value;
+  const g = c==='gauge', t = c==='tool';
+  document.getElementById('si_gauge_box').style.display = g ? '' : 'none';
+  document.getElementById('si_qty_row').style.display = g ? 'none' : '';
+  document.getElementById('si_machine_f').style.visibility = t ? 'visible' : 'hidden';
+  document.getElementById('si_grade_lbl').textContent = t ? 'Loại dao / vật liệu dao' : (g ? 'Loại dụng cụ' : 'Mác thép / vật liệu');
+  document.getElementById('si_code').placeholder = 'để trống → ' + stkNextCode(c);
+  document.getElementById('si_name').placeholder = (STK_CATS[c]||{}).hint || '';
+  const u = document.getElementById('si_unit'); if(!keepUnit || !u.value) u.value = (STK_CATS[c]||STK_CATS.other).unit;
+}
+function saveStkItem(){
+  if(!requireWork()) return;
+  const g = function(k){ const e = document.getElementById(k); return e ? String(e.value||'').trim() : ''; };
+  const id = g('si_id'), cat = g('si_cat') || 'other';
+  const name = g('si_name');
+  if(!name){ alert('Nhập tên hàng (vd: Thép tròn đặc S45C, Panme 25–50, Mảnh tiện CNMG120408).'); return; }
+  let code = g('si_code').toUpperCase();
+  if(!code) code = stkNextCode(cat);
+  if((DATA.stockItems||[]).some(function(x){ return x && x.id!==id && String(x.code||'').toUpperCase()===code; })){ alert('Mã "' + code + '" đã có trong danh mục — đặt mã khác.'); return; }
+  const old = id ? stkItemById(id) : null;
+  const rec = Object.assign({}, old || {}, {
+    id: id || uid('VT', 'stkItem'), code: code, cat: cat, name: name,
+    grade: g('si_grade'), spec: g('si_spec'), brand: g('si_brand'), unit: g('si_unit'), loc: g('si_loc'), machine: g('si_machine'), note: g('si_note'),
+    openingQty: cat==='gauge' ? 1 : (g('si_open')==='' ? 0 : stkNum(g('si_open'))), minQty: cat==='gauge' ? '' : (g('si_min')==='' ? '' : stkNum(g('si_min'))),
+    updatedAt: new Date().toISOString()
+  });
+  if(cat==='gauge'){
+    Object.assign(rec, {serial:g('si_serial'), range:g('si_range'), resolution:g('si_res'), calibDate:g('si_cal') || '', calibCycle:g('si_cyc') ? (parseInt(g('si_cyc'), 10) || 12) : 12,
+      status:g('si_status') || 'ok', calibOrg:g('si_calorg'), holder:g('si_holder')});
+    if(old && (old.holder||'')!==rec.holder) rec.holdLog = (old.holdLog||[]).concat([{date:todayStr(), from:old.holder||'', to:rec.holder||'', at:new Date().toISOString()}]).slice(-30);
+  }
+  if(!old) rec.createdAt = new Date().toISOString();
+  const arr = stkArr('stockItems'), i = arr.findIndex(function(x){ return x && x.id===rec.id; });
+  if(i>=0) arr[i] = rec; else arr.push(rec);
+  closeModal('modalStkItem'); save();
+}
+function deleteStkItem(){
+  if(!requireEdit()) return;
+  const id = document.getElementById('si_id').value; const it = stkItemById(id); if(!it) return;
+  const used = (DATA.stockMoves||[]).filter(function(m){ return m && (m.lines||[]).some(function(l){ return l && l.itemId===id; }); }).length;
+  if(!confirm('Xóa "' + (it.code||'') + ' — ' + (it.name||'') + '" khỏi danh mục?' + (used ? '\n\n⚠ Đã có ' + used + ' phiếu nhập/xuất dùng mặt hàng này — các phiếu vẫn giữ nhưng không còn tính tồn.' : ''))) return;
+  DATA.stockItems = (DATA.stockItems||[]).filter(function(x){ return x && x.id!==id; });
+  closeModal('modalStkItem'); save();
+}
+
+/* ---------- ✓ ghi hiệu chuẩn ---------- */
+function openStkCalModal(id){
+  if(!requireWork()) return;
+  const gg = stkItemById(id); if(!gg) return;
+  document.getElementById('cal_id').value = id;
+  document.getElementById('stkCalTitle').textContent = '✓ Ghi hiệu chuẩn — ' + (gg.code||'') + ' ' + (gg.name||'');
+  document.getElementById('cal_date').value = todayStr();
+  document.getElementById('cal_result').value = 'pass';
+  document.getElementById('cal_org').value = gg.calibOrg || '';
+  document.getElementById('cal_cert').value = '';
+  document.getElementById('cal_by').innerHTML = '<option value="">— người thực hiện / nhận —</option>' + stkStaffNames().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join('');
+  document.getElementById('cal_note').value = '';
+  const log = (gg.calibLog||[]).slice().reverse();
+  document.getElementById('cal_hist').innerHTML = log.length ? '<b class="small">Lịch sử</b>' + log.slice(0, 8).map(function(l){ return '<div class="small">' + fmtDate(l.date) + ' — ' + (l.result==='pass' ? '<b style="color:#15803d">Đạt</b>' : '<b style="color:#b91c1c">Không đạt</b>') + (l.org ? ' · ' + esc(l.org) : '') + (l.cert ? ' · ' + esc(l.cert) : '') + (l.by ? ' · ' + esc(l.by) : '') + (l.note ? ' <span class="muted">' + esc(l.note) + '</span>' : '') + '</div>'; }).join('') : '';
+  openModal('modalStkCal');
+}
+function saveStkCal(){
+  if(!requireWork()) return;
+  const gg = stkItemById(document.getElementById('cal_id').value); if(!gg) return;
+  const date = document.getElementById('cal_date').value || todayStr();
+  const res = document.getElementById('cal_result').value;
+  const rec = {id:localId('HC'), date:date, result:res, org:document.getElementById('cal_org').value.trim(), cert:document.getElementById('cal_cert').value.trim(),
+    by:document.getElementById('cal_by').value, note:document.getElementById('cal_note').value.trim(), at:new Date().toISOString()};
+  gg.calibLog = (gg.calibLog||[]).concat([rec]).slice(-40);
+  if(res==='pass'){ gg.calibDate = date; gg.status = 'ok'; if(rec.org) gg.calibOrg = rec.org + (rec.cert ? ' · ' + rec.cert : ''); }
+  else gg.status = 'broken';
+  gg.updatedAt = new Date().toISOString();
+  closeModal('modalStkCal'); save();
+  if(res!=='pass') alert('Đã chuyển ' + (gg.code||'') + ' sang "Hỏng — không dùng". Thu hồi dụng cụ, gửi sửa / thay mới.');
+}
+
+/* ---------- 📒 thẻ kho ---------- */
+function openStkCard(id){
+  const it = stkItemById(id); if(!it) return;
+  const rows = []; let bal = stkNum(it.openingQty);
+  (DATA.stockMoves||[]).filter(Boolean).slice().sort(function(a,b){ return stkMoveTime(a).localeCompare(stkMoveTime(b)); }).forEach(function(m){
+    (m.lines||[]).forEach(function(l){
+      if(!l || l.itemId!==id) return;
+      const n = stkNum(l.qty);
+      if(m.dir==='in') bal += n; else if(m.dir==='out') bal -= n; else if(m.dir==='adj') bal = n;
+      rows.push({m:m, l:l, bal:bal});
+    });
+  });
+  let html = '<div class="small" style="margin-bottom:8px">' + stkCat(it.cat).ic + ' ' + esc(stkCat(it.cat).label) + ' · ' + esc([it.grade, it.spec, it.loc ? 'vị trí ' + it.loc : ''].filter(Boolean).join(' · ')) + ' · tồn đầu kỳ <b>' + stkFmt(stkNum(it.openingQty)) + '</b> ' + esc(it.unit||'') + '</div>';
+  if(it.cat==='gauge'){
+    const st = stkCalState(it);
+    html += '<div class="small" style="margin-bottom:8px">Hiệu chuẩn: <b style="color:' + st.c + '">' + esc(st.t) + '</b>' + (st.due ? ' · hạn ' + fmtDate(st.due) : '') + (it.holder ? ' · 👤 đang giữ: <b>' + esc(it.holder) + '</b>' : '') + '</div>';
+    const hl = (it.holdLog||[]).slice().reverse();
+    if(hl.length) html += '<div class="small" style="margin-bottom:8px"><b>Giao / thu hồi:</b> ' + hl.slice(0, 10).map(function(h){ return fmtDate(h.date) + ' ' + esc(h.from||'kho') + ' → ' + esc(h.to||'kho'); }).join(' · ') + '</div>';
+    const used = (DATA.stockChecks||[]).filter(function(c){ return c && (c.dims||[]).some(function(d){ return d && d.gaugeId===id; }); });
+    if(used.length) html += '<div class="small" style="margin-bottom:8px"><b>Đã dùng đo ' + used.length + ' phiếu kiểm:</b> ' + used.slice(-10).map(function(c){ return esc(c.no||''); }).join(', ') + '</div>';
+  }
+  html += rows.length ? '<div style="overflow:auto;max-height:60vh"><table><thead><tr><th>Ngày</th><th>Phiếu</th><th>Loại</th><th>Đơn</th><th style="text-align:right">Nhập</th><th style="text-align:right">Xuất</th><th style="text-align:right">Tồn</th><th>Ghi chú</th></tr></thead><tbody>'
+    + rows.slice().reverse().map(function(r){ const o = stkOrderById(stkLineOrder(r.m, r.l)); const n = stkNum(r.l.qty);
+      return '<tr><td>' + fmtDate(r.m.date) + '</td><td><a onclick="closeModal(\'modalStkInfo\');openStkMoveModal(\'' + r.m.id + '\')" style="cursor:pointer;color:#0369a1;font-weight:700">' + esc(r.m.no||'') + '</a></td><td class="small">' + esc((STK_PURPOSES[r.m.purpose]||{}).short||'') + '</td><td>' + (o ? esc(o.code||'') : '') + '</td>'
+        + '<td style="text-align:right">' + (r.m.dir==='in' ? stkFmt(n) : '') + '</td><td style="text-align:right">' + (r.m.dir==='out' ? stkFmt(n) : '') + (r.m.dir==='adj' ? '<span class="muted">đếm ' + stkFmt(n) + '</span>' : '') + '</td><td style="text-align:right;font-weight:800">' + stkFmt(r.bal) + '</td><td class="small">' + esc([r.m.partner, r.m.receiver, r.l.heatNo ? 'heat ' + r.l.heatNo : ''].filter(Boolean).join(' · ')) + '</td></tr>'; }).join('')
+    + '</tbody></table></div>' : '<div class="empty" style="padding:20px">Chưa có phiếu nhập / xuất nào cho mặt hàng này.</div>';
+  document.getElementById('stkInfoTitle').textContent = '📒 Thẻ kho — ' + (it.code||'') + ' · ' + (it.name||'');
+  document.getElementById('stkInfoBody').innerHTML = html;
+  openModal('modalStkInfo');
+}
+
+/* =====================================================================================
+   FORM: PHIẾU NHẬP / XUẤT / KIỂM KÊ
+   ===================================================================================== */
+function stkNewLine(x){ return Object.assign({id:localId('LN'), itemId:'', name:'', grade:'', spec:'', qty:'', unit:'', kg:'', heatNo:'', orderId:''}, x||{}); }
+function openStkMoveModal(id, preset){
+  if(!requireWork()) return;
+  preset = preset || {};
+  stkFillDatalists();
+  const m = id ? (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }) : null;
+  if(id && !m){ alert('Không tìm thấy phiếu.'); return; }
+  const dir = m ? m.dir : (preset.dir || 'in');
+  document.getElementById('sm_id').value = m ? m.id : '';
+  document.getElementById('sm_dirsel').value = dir;
+  document.getElementById('sm_dirsel').disabled = !!m;
+  stkFillPurposes(dir, m ? m.purpose : (preset.purpose || ''));
+  document.getElementById('sm_date').value = m ? (m.date||'') : todayStr();
+  fillSelect(document.getElementById('sm_order'), stkOrderOptions(), 'id', 'label', '— Không gắn đơn (nhập dự trữ / dùng chung) —');
+  document.getElementById('sm_order').value = m ? (m.orderId||'') : (preset.orderId || '');
+  const set = function(k, val){ document.getElementById(k).value = val==null ? '' : val; };
+  set('sm_partner', m ? m.partner : (preset.partner||'')); set('sm_doc', m ? m.docRef : ''); set('sm_cert', m ? m.certRef : '');
+  set('sm_recv', m ? m.receiver : ''); set('sm_note', m ? m.note : (preset.note||'')); set('sm_by', m ? m.by : ((DATA.meta && DATA.meta.user) || ''));
+  if(m) _smLines = (m.lines||[]).map(function(l){ return stkNewLine(l); });
+  else if(preset.lines && preset.lines.length) _smLines = preset.lines.map(function(l){ return stkNewLine(l); });
+  else if(preset.itemId){ const it = stkItemById(preset.itemId); _smLines = [stkNewLine(it ? {itemId:it.id, grade:it.grade||'', spec:it.spec||'', unit:it.unit||''} : {})]; }
+  else _smLines = [stkNewLine()];
+  document.getElementById('sm_del').style.display = m ? '' : 'none';
+  stkMoveDirChanged(true);
+  opSyncAll();
+  openModal('modalStkMove');
+}
+function stkFillPurposes(dir, cur){
+  const sel = document.getElementById('sm_purpose');
+  sel.innerHTML = Object.keys(STK_PURPOSES).filter(function(k){ return STK_PURPOSES[k].dir===dir; }).map(function(k){ return '<option value="' + k + '">' + esc(STK_PURPOSES[k].label) + '</option>'; }).join('');
+  if(cur && STK_PURPOSES[cur] && STK_PURPOSES[cur].dir===dir) sel.value = cur;
+}
+function stkMoveDirChanged(keep){
+  const dir = document.getElementById('sm_dirsel').value;
+  if(!keep) stkFillPurposes(dir, '');
+  const m = document.getElementById('sm_id').value;
+  const no = m ? ((DATA.stockMoves||[]).find(function(x){ return x && x.id===m; })||{}).no : stkNextNo(STK_DIR[dir].pre);
+  document.getElementById('stkMoveTitle').innerHTML = '<span style="color:' + STK_DIR[dir].c + '">' + STK_DIR[dir].ic + ' Phiếu ' + STK_DIR[dir].t.toLowerCase() + (dir==='adj' ? '' : ' kho') + '</span> <span class="muted small">' + esc(no||'') + '</span>';
+  document.getElementById('sm_partner_lbl').textContent = dir==='in' ? 'Nhà cung cấp / nguồn hàng (China Steel, KH gửi…)' : (dir==='out' ? 'Xuất cho (bộ phận / khách)' : 'Khu vực kiểm kê');
+  document.getElementById('sm_recv_lbl').textContent = dir==='in' ? 'Người giao hàng' : (dir==='out' ? 'Người nhận (thợ / khách)' : 'Người đếm');
+  stkMovePurposeChanged();
+}
+function stkMovePurposeChanged(){
+  const p = STK_PURPOSES[document.getElementById('sm_purpose').value] || {};
+  document.getElementById('sm_order_req').innerHTML = p.needOrder ? '<b style="color:#b91c1c">* bắt buộc</b>' : '(nếu có)';
+  document.getElementById('sm_hint').innerHTML = p.check ? '🔍 Đơn gắn phiếu này sẽ phải <b>kiểm hàng xuất kho</b> (mã + kích thước) trước khi gia công.' : '';
+  stkRenderLines();
+}
+function stkRenderLines(){
+  const wrap = document.getElementById('sm_lines'); if(!wrap) return;
+  const dir = document.getElementById('sm_dirsel').value; const Q = stkQtyMap();
+  const ordOpts = '<option value="">(theo phiếu)</option>' + stkOrderOptions().filter(function(o){ return !/\(đã giao\)$/.test(o.label); }).map(function(o){ return '<option value="' + esc(o.id) + '">' + esc(o.label.split(' — ')[0]) + '</option>'; }).join('');
+  wrap.innerHTML = '<div style="display:flex;gap:5px;font-size:10px;font-weight:800;color:var(--muted);padding:0 2px 3px"><span style="flex:1;min-width:150px">Mã / tên hàng</span><span style="width:84px">Mác / VL</span><span style="width:100px">Quy cách</span><span style="width:58px">' + (dir==='adj' ? 'SL đếm' : 'SL') + '</span><span style="width:58px">ĐVT</span><span style="width:56px">kg</span><span style="width:74px">Heat / lô</span><span style="width:92px">Đơn riêng</span><span style="width:14px"></span></div>'
+    + _smLines.map(function(l, i){
+      const it = stkItemById(l.itemId);
+      const stockTxt = it ? '<span style="color:' + (dir==='out' && stkNum(l.qty) > (Q[it.id]||0) ? '#b91c1c' : '#64748b') + '">tồn hiện tại: <b>' + stkFmt(Q[it.id]||0) + '</b> ' + esc(it.unit||'') + '</span>' : (String(l.name||'').trim() ? '<span class="muted">ngoài danh mục — không tính tồn' + (dir==='in' ? ' · <a onclick="stkLineToCatalog(' + i + ')" style="cursor:pointer;color:#0369a1;font-weight:700">＋ thêm vào danh mục</a>' : '') + '</span>' : '');
+      const lineOrd = l.orderId ? ordOpts.replace('value="' + esc(l.orderId) + '"', 'value="' + esc(l.orderId) + '" selected') : ordOpts;
+      return '<div style="margin-bottom:5px"><div style="display:flex;gap:5px;align-items:center">'
+        + '<input style="flex:1;min-width:150px;font-size:11px" list="stkDlItems" value="' + esc(it ? stkItemLabel(it) : (l.name||'')) + '" placeholder="gõ mã / tên — vd THEP-001 hoặc KTR Rotex 38" onchange="stkLinePick(' + i + ',this.value)">'
+        + '<input style="width:84px;font-size:11px" list="stkDlGrade" value="' + esc(l.grade||'') + '" placeholder="S45C" oninput="_smLines[' + i + '].grade=this.value">'
+        + '<input style="width:100px;font-size:11px" value="' + esc(l.spec||'') + '" placeholder="Ø120×200" oninput="_smLines[' + i + '].spec=this.value">'
+        + '<input style="width:58px;font-size:11px" value="' + esc(l.qty==null ? '' : l.qty) + '" placeholder="1" inputmode="decimal" oninput="_smLines[' + i + '].qty=this.value">'
+        + '<input style="width:58px;font-size:11px" list="stkDlUnit" value="' + esc(l.unit||'') + '" placeholder="' + esc(it ? (it.unit||'') : 'cây') + '" oninput="_smLines[' + i + '].unit=this.value">'
+        + '<input style="width:56px;font-size:11px" value="' + esc(l.kg==null ? '' : l.kg) + '" placeholder="kg" inputmode="decimal" oninput="_smLines[' + i + '].kg=this.value">'
+        + '<input style="width:74px;font-size:11px" value="' + esc(l.heatNo||'') + '" placeholder="heat / lô" oninput="_smLines[' + i + '].heatNo=this.value">'
+        + '<select style="width:92px;font-size:11px;padding:6px 4px" onchange="_smLines[' + i + '].orderId=this.value" title="Dòng này thuộc đơn khác với đơn của phiếu (phôi mua chung cho nhiều đơn)">' + lineOrd + '</select>'
+        + '<a onclick="_smLines.splice(' + i + ',1);if(!_smLines.length)_smLines.push(stkNewLine());stkRenderLines()" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>'
+        + '</div>' + (stockTxt ? '<div style="font-size:10.5px;margin:1px 0 0 4px">' + stockTxt + '</div>' : '') + '</div>';
+    }).join('');
+}
+function stkAddLine(){ _smLines.push(stkNewLine()); stkRenderLines(); }
+function stkLinePick(i, val){
+  const l = _smLines[i]; if(!l) return;
+  const v = String(val||'').trim();
+  const items = (DATA.stockItems||[]).filter(function(x){ return x && x.cat!=='gauge'; });
+  const hit = items.find(function(x){ return stkItemLabel(x)===v; })
+    || items.find(function(x){ return x.code && (v.toUpperCase()===String(x.code).toUpperCase() || v.toUpperCase().indexOf(String(x.code).toUpperCase() + ' ')===0); });
+  if(hit){ l.itemId = hit.id; l.name = ''; if(!l.grade) l.grade = hit.grade||''; if(!l.spec) l.spec = hit.spec||''; if(!l.unit) l.unit = hit.unit||''; }
+  else { l.itemId = ''; l.name = v; }
+  stkRenderLines();
+}
+function stkLineToCatalog(i){
+  const l = _smLines[i]; if(!l || !String(l.name||'').trim()) return;
+  if(!confirm('Thêm "' + l.name + '" vào danh mục kho để theo dõi tồn?\n(Hàng của khách gửi về gia công thì KHÔNG cần thêm.)')) return;
+  const cat = /dao|mui khoan|taro|manh|insert|endmill|day cat/i.test(tfNorm(l.name)) ? 'tool' : (/thep|sat|phoi|ong|tam|s45c|scm|ss400/i.test(tfNorm(l.name + ' ' + (l.grade||''))) ? 'steel' : 'goods');
+  const rec = {id:uid('VT', 'stkItem'), code:stkNextCode(cat), cat:cat, name:l.name.trim(), grade:l.grade||'', spec:l.spec||'', unit:l.unit||STK_CATS[cat].unit,
+    brand:document.getElementById('sm_partner').value.trim(), loc:'', openingQty:0, minQty:'', note:'', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
+  stkArr('stockItems').push(rec);
+  l.itemId = rec.id; l.name = '';
+  stkFillDatalists(); stkRenderLines();
+}
+function saveStkMove(andPrint){
+  if(!requireWork()) return;
+  const id = document.getElementById('sm_id').value;
+  const old = id ? (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }) : null;
+  const dir = document.getElementById('sm_dirsel').value, purpose = document.getElementById('sm_purpose').value;
+  const p = STK_PURPOSES[purpose] || {};
+  const orderId = document.getElementById('sm_order').value;
+  const lines = _smLines.filter(function(l){ return l && (l.itemId || String(l.name||'').trim()); }).map(function(l){
+    const o = Object.assign({}, l); o.name = String(o.name||'').trim(); o.qty = String(o.qty==null ? '' : o.qty).trim().replace(',', '.'); o.kg = String(o.kg==null ? '' : o.kg).trim().replace(',', '.'); return o; });
+  if(!lines.length){ alert('Phiếu chưa có dòng hàng nào.'); return; }
+  const noQty = lines.filter(function(l){ return !stkHasNum(l.qty); });
+  if(noQty.length){ alert('Còn ' + noQty.length + ' dòng chưa ghi SỐ LƯỢNG (số).'); return; }
+  if(p.needOrder && !orderId && lines.some(function(l){ return !l.orderId; })){ alert('⛔ "' + p.label + '" phải chọn ĐƠN HÀNG — để biết phôi / hàng này của đơn nào.'); return; }
+  if(dir==='out'){
+    const Q = stkQtyMap(); if(old) (old.lines||[]).forEach(function(l){ if(l && l.itemId && l.itemId in Q) Q[l.itemId] += stkNum(l.qty); });
+    const over = lines.filter(function(l){ return l.itemId && stkNum(l.qty) > (Q[l.itemId]||0); });
+    if(over.length && !confirm('⚠ Xuất nhiều hơn tồn kho:\n— ' + over.map(function(l){ const it = stkItemById(l.itemId); return (it ? it.code + ' ' + it.name : '') + ': xuất ' + l.qty + ', tồn ' + stkFmt(Q[l.itemId]||0); }).join('\n— ') + '\n\nCó thể tồn đầu kỳ chưa đúng. Vẫn lưu?')) return;
+  }
+  const rec = Object.assign({}, old || {}, {
+    id: id || uid('KHO', 'stkMove'),
+    no: (old && old.no) || stkNextNo(STK_DIR[dir].pre),
+    dir: dir, purpose: purpose, date: document.getElementById('sm_date').value || todayStr(),
+    orderId: orderId, partner: document.getElementById('sm_partner').value.trim(), docRef: document.getElementById('sm_doc').value.trim(),
+    certRef: document.getElementById('sm_cert').value.trim(), receiver: document.getElementById('sm_recv').value.trim(),
+    by: document.getElementById('sm_by').value.trim(), note: document.getElementById('sm_note').value.trim(),
+    lines: lines, updatedAt: new Date().toISOString()
+  });
+  if(!old) rec.createdAt = new Date().toISOString();
+  const arr = stkArr('stockMoves'), i = arr.findIndex(function(x){ return x && x.id===rec.id; });
+  if(i>=0) arr[i] = rec; else arr.push(rec);
+  closeModal('modalStkMove'); save();
+  if(andPrint) printStkMove(rec.id);
+  // hàng cần kiểm → nhắc lập phiếu kiểm ngay (thợ chưa được gia công cho tới khi ĐẠT)
+  if(p.check && !old){
+    const oids = []; lines.forEach(function(l){ const oid = l.orderId || orderId; if(oid && oids.indexOf(oid)<0 && stkLineNeedsCheck(rec, l)) oids.push(oid); });
+    const todo = oids.map(stkOrderById).filter(function(o){ return o && !stockCheckOkFor(o.id); });
+    if(todo.length===1 && confirm('🔍 Đơn ' + (todo[0].code||'') + ' cần KIỂM HÀNG XUẤT KHO trước gia công.\n\nLập phiếu kiểm (mã trên sản phẩm + kích thước) ngay bây giờ?')) setTimeout(function(){ openStkCheckModal(null, todo[0].id); }, 60);
+  }
+}
+function deleteStkMove(){
+  if(!requireEdit()) return;
+  const id = document.getElementById('sm_id').value; const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m) return;
+  if(!confirm('Xóa phiếu ' + (m.no||'') + '? Tồn kho sẽ tính lại như chưa có phiếu này.')) return;
+  DATA.stockMoves = (DATA.stockMoves||[]).filter(function(x){ return x && x.id!==id; });
+  closeModal('modalStkMove'); save();
+}
+
+/* =====================================================================================
+   FORM: 🔍 PHIẾU KIỂM HÀNG XUẤT KHO TRƯỚC GIA CÔNG
+   ===================================================================================== */
+function openStkCheckModal(id, orderId, itemId){
+  if(!requireWork()) return;
+  stkFillDatalists();
+  const c = id ? (DATA.stockChecks||[]).find(function(x){ return x && x.id===id; }) : null;
+  if(id && !c){ alert('Không tìm thấy phiếu kiểm.'); return; }
+  document.getElementById('sc_id').value = c ? c.id : '';
+  fillSelect(document.getElementById('sc_order'), stkOrderOptions(), 'id', 'label', '— Chọn đơn hàng —');
+  document.getElementById('sc_order').value = c ? (c.orderId||'') : (orderId||'');
+  document.getElementById('sc_date').value = c ? (c.date||'') : todayStr();
+  const set = function(k, val){ document.getElementById(k).value = val==null ? '' : val; };
+  set('sc_name', c ? c.itemName : ''); set('sc_label', c ? c.labelCode : ''); set('sc_part', c ? c.partCode : ''); set('sc_qty', c ? c.qty : '');
+  set('sc_photos', c ? c.photos : ''); set('sc_note', c ? c.note : ''); set('sc_result', c ? (c.result||'') : '');
+  const staffOpt = function(ph){ return '<option value="">' + ph + '</option>' + stkStaffNames().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join(''); };
+  document.getElementById('sc_insp').innerHTML = staffOpt('— 👤 người kiểm / đo —');
+  document.getElementById('sc_recv').innerHTML = staffOpt('— 👷 thợ nhận gia công —');
+  ['sc_insp', 'sc_recv'].forEach(function(k){ const v = c ? (k==='sc_insp' ? c.inspector : c.receiver) : ''; const s = document.getElementById(k); if(v && stkStaffNames().indexOf(v)<0) s.innerHTML += '<option>' + esc(v) + '</option>'; s.value = v||''; });
+  _scChecks = Object.assign({}, (c && c.checks) || {});
+  _scDims = c ? (c.dims||[]).map(function(d){ return Object.assign({}, d); }) : [];
+  document.getElementById('sc_tpl').innerHTML = '<option value="">⚙ Nạp mẫu kích thước…</option>' + Object.keys(STK_DIM_TPL).map(function(k){ return '<option value="' + k + '">' + esc(STK_DIM_TPL[k].l) + '</option>'; }).join('');
+  document.getElementById('sc_del').style.display = c ? '' : 'none';
+  document.getElementById('stkCheckTitle').innerHTML = '🔍 Phiếu kiểm hàng xuất kho trước gia công <span class="muted small">' + esc(c ? (c.no||'') : stkNextNo('KXK')) + '</span>';
+  stkCheckOrderChanged(!c, itemId || (c && c.orderItemId) || '');
+  opSyncAll();
+  openModal('modalStkCheck');
+}
+function stkCheckOrderChanged(fill, itemId){
+  const o = stkOrderById(document.getElementById('sc_order').value);
+  const sel = document.getElementById('sc_item');
+  const its = (o && o.items || []).filter(function(it){ return it && String(it.name||'').trim(); });
+  sel.innerHTML = '<option value="">' + (its.length ? '— cả đơn —' : '(đơn 1 món)') + '</option>' + its.map(function(it){ return '<option value="' + esc(it.id) + '">' + esc(truncate(it.name, 40)) + '</option>'; }).join('');
+  sel.disabled = !its.length;
+  if(itemId!==undefined && itemId!==null) sel.value = itemId;
+  const info = document.getElementById('sc_orderinfo');
+  if(o){
+    const src = stkLinesOfOrder(o.id).filter(function(x){ return x.m.dir!=='adj'; });
+    info.innerHTML = '<b>' + esc(o.code||'') + '</b> · ' + esc(truncate(o.name||'', 120)) + (o.productSku ? ' · <b style="color:#0EA5E9">' + esc(o.productSku) + '</b>' : '')
+      + (src.length ? '<div class="muted" style="margin-top:2px">📦 Kho: ' + src.slice(-4).map(function(x){ const it = stkItemById(x.l.itemId); return esc((x.m.no||'') + ' ' + ((STK_PURPOSES[x.m.purpose]||{}).short||'') + ': ' + (it ? it.name : (x.l.name||'')) + ' ×' + (x.l.qty||'')); }).join(' · ') + '</div>' : '');
+  } else info.innerHTML = '';
+  if(fill && o){
+    if(!document.getElementById('sc_name').value.trim()){
+      const it = its.find(function(x){ return x.id===sel.value; });
+      const lastSrc = stkLinesOfOrder(o.id).filter(function(x){ return stkLineNeedsCheck(x.m, x.l); }).slice(-1)[0];
+      const srcIt = lastSrc ? stkItemById(lastSrc.l.itemId) : null;
+      document.getElementById('sc_name').value = it ? it.name : (srcIt ? srcIt.name + (srcIt.spec ? ' ' + srcIt.spec : '') : (lastSrc ? lastSrc.l.name : truncate(o.name||'', 80)));
+      if(!document.getElementById('sc_label').value && o.productSku) document.getElementById('sc_label').value = o.productSku;
+      if(!document.getElementById('sc_qty').value) document.getElementById('sc_qty').value = (it ? (it.qty||'') + ' ' + (it.unit||'') : (o.qty!=null ? o.qty + ' ' + (o.unit||'') : '')).trim();
+    }
+    if(!_scDims.length){
+      const fam = detectFamily((o.name||'') + ' ' + (o.productSku||''));
+      const lastSrc = stkLinesOfOrder(o.id).slice(-1)[0], srcIt = lastSrc ? stkItemById(lastSrc.l.itemId) : null;
+      const key = (srcIt && (srcIt.cat==='steel' || srcIt.cat==='iron')) ? 'steel' : (STK_DIM_TPL[fam] ? fam : 'general');
+      stkDimTpl(key, true);
+    }
+  }
+  stkRenderCheckForm();
+}
+function stkDimTpl(k, silent){
+  const t = STK_DIM_TPL[k]; if(!t) return;
+  const have = _scDims.map(function(d){ return String(d.param||'').trim(); });
+  t.d.forEach(function(p){ if(have.indexOf(p)<0) _scDims.push({id:localId('DM'), param:p, spec:'', actual:'', gauge:'', gaugeId:'', pass:''}); });
+  if(!silent) stkRenderCheckForm();
+}
+function stkAddDim(){ _scDims.push({id:localId('DM'), param:'', spec:'', actual:'', gauge:'', gaugeId:'', pass:''}); stkRenderCheckForm(); }
+function stkSetCheck(k, v){ _scChecks[k] = (_scChecks[k]===v ? '' : v); stkRenderCheckForm(); }
+function stkDimSet(i, k, v){
+  const d = _scDims[i]; if(!d) return;
+  d[k] = v;
+  if(k==='gauge'){ const g = stkGaugeByText(v); d.gaugeId = g ? g.id : ''; stkRenderCheckForm(); }
+  if(k==='pass') stkRenderCheckForm();
+}
+function stkRenderCheckForm(){
+  const ck = document.getElementById('sc_checks');
+  ck.innerHTML = STK_CHECK_ITEMS.map(function(x){
+    const v = _scChecks[x[0]] || '';
+    return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px">'
+      + '<button type="button" class="sm ' + (v==='ok' ? '' : 'ghost') + '" style="padding:3px 9px;' + (v==='ok' ? 'background:#16a34a;border-color:#16a34a' : '') + '" onclick="stkSetCheck(\'' + x[0] + '\',\'ok\')">✓ Đạt</button>'
+      + '<button type="button" class="sm ' + (v==='ng' ? '' : 'ghost') + '" style="padding:3px 9px;' + (v==='ng' ? 'background:#dc2626;border-color:#dc2626' : '') + '" onclick="stkSetCheck(\'' + x[0] + '\',\'ng\')">✕ Không</button>'
+      + '<span style="' + (v==='ng' ? 'color:#b91c1c;font-weight:800' : '') + '">' + esc(x[1]) + '</span></div>';
+  }).join('');
+  const dm = document.getElementById('sc_dims');
+  dm.innerHTML = _scDims.length ? '<div style="display:flex;gap:5px;font-size:10px;font-weight:800;color:var(--muted);padding:0 2px 3px"><span style="flex:1;min-width:150px">Kích thước / thông số</span><span style="width:110px">Yêu cầu (catalogue / đơn)</span><span style="width:90px">Đo thực tế</span><span style="width:150px">Dụng cụ đo</span><span style="width:74px">Đạt?</span><span style="width:14px"></span></div>'
+    + _scDims.map(function(d, i){
+      const g = stkItemById(d.gaugeId), gs = g ? stkCalState(g) : null;
+      return '<div style="margin-bottom:4px"><div style="display:flex;gap:5px;align-items:center">'
+        + '<input style="flex:1;min-width:150px;font-size:11px" value="' + esc(d.param||'') + '" placeholder="vd Lỗ sẵn (d)" oninput="stkDimSet(' + i + ',\'param\',this.value)">'
+        + '<input style="width:110px;font-size:11px" value="' + esc(d.spec||'') + '" placeholder="Ø38 / 100±0.5" oninput="stkDimSet(' + i + ',\'spec\',this.value)">'
+        + '<input style="width:90px;font-size:11px;border-color:#0ea5e9;font-weight:700" value="' + esc(d.actual||'') + '" placeholder="số đo" oninput="stkDimSet(' + i + ',\'actual\',this.value)">'
+        + '<input style="width:150px;font-size:11px" list="stkDlGauges" value="' + esc(d.gauge||'') + '" placeholder="DCĐ-001 / Thước cặp" onchange="stkDimSet(' + i + ',\'gauge\',this.value)">'
+        + '<select style="width:74px;font-size:11px;padding:6px 4px;' + (d.pass==='fail' ? 'color:#b91c1c;font-weight:800' : (d.pass==='pass' ? 'color:#15803d;font-weight:800' : '')) + '" onchange="stkDimSet(' + i + ',\'pass\',this.value)"><option value="" ' + (!d.pass ? 'selected' : '') + '>—</option><option value="pass" ' + (d.pass==='pass' ? 'selected' : '') + '>Đạt</option><option value="fail" ' + (d.pass==='fail' ? 'selected' : '') + '>Không</option></select>'
+        + '<a onclick="_scDims.splice(' + i + ',1);stkRenderCheckForm()" style="color:var(--st-late);cursor:pointer;font-weight:800">✕</a>'
+        + '</div>' + (gs && gs.k!=='ok' ? '<div style="font-size:10.5px;margin:1px 0 0 4px;color:' + gs.c + ';font-weight:700">📏 ' + esc(g.code||'') + ': ' + esc(gs.t) + '</div>' : '') + '</div>';
+    }).join('') : '<div class="small muted">Chưa có kích thước — bấm "＋ Thêm kích thước" hoặc nạp mẫu.</div>';
+  stkMismUpdate();
+}
+function stkMismUpdate(){
+  const lab = document.getElementById('sc_label').value.trim(), part = document.getElementById('sc_part').value.trim();
+  const mm = document.getElementById('sc_mism');
+  if(mm) mm.innerHTML = stkCodeMismatch(lab, part) ? '⚠ Mã trên hộp và mã trên sản phẩm <b>KHÁC NHAU</b> — đối chiếu catalogue trước khi kết luận.' : '';
+}
+function saveStkCheck(andPrint){
+  if(!requireWork()) return;
+  const id = document.getElementById('sc_id').value;
+  const old = id ? (DATA.stockChecks||[]).find(function(x){ return x && x.id===id; }) : null;
+  const orderId = document.getElementById('sc_order').value;
+  if(!orderId){ alert('Chọn đơn hàng của món hàng đang kiểm.'); return; }
+  const g = function(k){ return String(document.getElementById(k).value||'').trim(); };
+  const result = g('sc_result');
+  const dims = _scDims.filter(function(d){ return d && (String(d.param||'').trim() || String(d.actual||'').trim()); }).map(function(d){
+    const x = Object.assign({}, d); x.param = String(x.param||'').trim(); x.actual = String(x.actual||'').trim(); x.spec = String(x.spec||'').trim(); x.gauge = String(x.gauge||'').trim();
+    const gg = stkItemById(x.gaugeId); if(gg){ x.gaugeDue = stkCalDue(gg); x.gaugeOk = !stkGaugeBad(gg); }   // chụp lại hạn hiệu chuẩn LÚC ĐO để phiếu in đúng sau này
+    return x; });
+  const measured = dims.filter(function(d){ return d.param && d.actual; });
+  const ngChecks = STK_CHECK_ITEMS.filter(function(x){ return _scChecks[x[0]]==='ng'; });
+  const ngDims = dims.filter(function(d){ return d.pass==='fail'; });
+  if(result==='pass'){
+    const miss = [];
+    if(!g('sc_part')) miss.push('• Mã đóng / khắc trên SẢN PHẨM (mở hộp đọc mã — đây là chỗ hay sai)');
+    if(!measured.length) miss.push('• Ít nhất 1 kích thước có SỐ ĐO THỰC TẾ');
+    const noAct = dims.filter(function(d){ return d.param && !d.actual; });
+    if(noAct.length) miss.push('• ' + noAct.length + ' kích thước chưa ghi số đo: ' + noAct.map(function(d){ return d.param; }).slice(0, 4).join(', '));
+    if(!g('sc_insp')) miss.push('• Người kiểm / đo');
+    const unset = STK_CHECK_ITEMS.filter(function(x){ return !_scChecks[x[0]]; });
+    if(unset.length) miss.push('• ' + unset.length + ' mục checklist chưa chọn Đạt/Không');
+    if(miss.length){ alert('⛔ Chưa kết luận ĐẠT được — còn thiếu:\n' + miss.join('\n') + '\n\nKết luận ĐẠT là mở cổng cho thợ gia công, nên phải đủ bằng chứng.'); return; }
+    if(ngChecks.length || ngDims.length){ alert('⛔ Có mục KHÔNG ĐẠT:\n— ' + ngChecks.map(function(x){ return x[1]; }).concat(ngDims.map(function(d){ return d.param + ' = ' + d.actual + (d.spec ? ' (YC ' + d.spec + ')' : ''); })).join('\n— ') + '\n\n→ Kết luận phải là KHÔNG ĐẠT (giữ hàng lại, lập NCR, đổi hàng).'); return; }
+    const badG = dims.map(function(d){ return stkItemById(d.gaugeId); }).filter(function(x, i, a){ return x && stkGaugeBad(x) && a.indexOf(x)===i; });
+    if(badG.length && !confirm('⚠ Dụng cụ đo đang dùng KHÔNG còn tin cậy:\n— ' + badG.map(function(x){ return (x.code||'') + ' ' + (x.name||'') + ': ' + stkCalState(x).t; }).join('\n— ') + '\n\nNên đo lại bằng dụng cụ còn hạn hiệu chuẩn. Vẫn kết luận ĐẠT?')) return;
+  }
+  if(result==='fail' && !ngChecks.length && !ngDims.length && !g('sc_note')){ alert('Kết luận KHÔNG ĐẠT — ghi rõ sai khác ở ô "Ghi chú" (hoặc đánh dấu mục / kích thước Không đạt).'); return; }
+  const o = stkOrderById(orderId);
+  const rec = Object.assign({}, old || {}, {
+    id: id || uid('KXK', 'stkCheck'), no: (old && old.no) || stkNextNo('KXK'),
+    date: g('sc_date') || todayStr(), orderId: orderId, orderItemId: document.getElementById('sc_item').disabled ? '' : g('sc_item'),
+    itemName: g('sc_name') || (o ? truncate(o.name||'', 80) : ''), qty: g('sc_qty'), labelCode: g('sc_label'), partCode: g('sc_part'),
+    checks: Object.assign({}, _scChecks), dims: dims, photos: g('sc_photos'), note: g('sc_note'),
+    inspector: g('sc_insp'), receiver: g('sc_recv'), result: result, updatedAt: new Date().toISOString()
+  });
+  if(!old) rec.createdAt = new Date().toISOString();
+  if(result && (!old || old.result!==result)) rec.resultAt = new Date().toISOString();
+  const arr = stkArr('stockChecks'), i = arr.findIndex(function(x){ return x && x.id===rec.id; });
+  if(i>=0) arr[i] = rec; else arr.push(rec);
+  closeModal('modalStkCheck'); save();
+  if(andPrint) printStkCheck(rec.id);
+  if(result==='fail' && (!old || old.result!=='fail') && !rec.ncrId && confirm('✕ KHÔNG ĐẠT — giữ hàng lại, KHÔNG giao thợ gia công.\n\nLập NCR (sai lệch) cho đơn ' + (o ? o.code : '') + ' luôn không?')) setTimeout(function(){ stkNcrFromCheck(rec.id); }, 80);
+}
+function deleteStkCheck(){
+  if(!requireEdit()) return;
+  const id = document.getElementById('sc_id').value; const c = (DATA.stockChecks||[]).find(function(x){ return x && x.id===id; }); if(!c) return;
+  if(!confirm('Xóa phiếu kiểm ' + (c.no||'') + '?' + (c.result==='pass' ? '\n\n⚠ Đây là phiếu ĐẠT — xoá xong đơn sẽ bị khoá gia công lại cho tới khi có phiếu mới.' : ''))) return;
+  DATA.stockChecks = (DATA.stockChecks||[]).filter(function(x){ return x && x.id!==id; });
+  closeModal('modalStkCheck'); save();
+}
+function stkNcrFromCheck(id){
+  const c = (DATA.stockChecks||[]).find(function(x){ return x && x.id===id; }); if(!c) return;
+  const bad = STK_CHECK_ITEMS.filter(function(x){ return c.checks && c.checks[x[0]]==='ng'; }).map(function(x){ return x[1]; })
+    .concat((c.dims||[]).filter(function(d){ return d.pass==='fail'; }).map(function(d){ return d.param + ' đo ' + d.actual + (d.spec ? ' (YC ' + d.spec + ')' : ''); }));
+  openNcrModal();
+  setTimeout(function(){
+    const set = function(k, v){ const e = document.getElementById(k); if(e) e.value = v; };
+    set('ncr_order', c.orderId); try{ ncrOrderChanged(); }catch(e){}
+    set('ncr_stage', 'Kiểm hàng xuất kho'); set('ncr_severity', '3'); set('ncr_recover', 'usable');
+    set('ncr_desc', 'Kiểm hàng xuất kho ' + (c.no||'') + ' — ' + (c.itemName||'') + ': mã hộp "' + (c.labelCode||'—') + '" / mã trên SP "' + (c.partCode||'—') + '"' + (bad.length ? '. Không đạt: ' + bad.join('; ') : '') + (c.note ? '. ' + c.note : ''));
+    set('ncr_action', 'Trả lại NCC/đối tác'); set('ncr_cause', 'Phôi / vật liệu lỗi'); set('ncr_by', c.inspector||'');
+    try{ opSyncAll(); }catch(e){}
+  }, 60);
+}
+
+/* =====================================================================================
+   ĐƠN HÀNG ↔ KHO: ô tick trong form đơn, khối trong "Xem đơn", nhập phôi từ vật tư của đơn
+   ===================================================================================== */
+function stkFormLoad(o){
+  _stkFlagTouched = false;
+  const cb = document.getElementById('ord_stkchk'); if(!cb) return;
+  if(o) cb.checked = stockCheckNeeded(o);
+  else { const t = (document.getElementById('ord_type')||{}).value || 'Gia công'; cb.checked = (t==='Gia công' || t==='Dự án'); }
+  stkFormSync();
+}
+function stkFormTypeChanged(){
+  const cb = document.getElementById('ord_stkchk'); if(!cb || _stkFlagTouched || document.getElementById('ord_id').value) return;
+  const t = (document.getElementById('ord_type')||{}).value; cb.checked = (t==='Gia công' || t==='Dự án');
+  stkFormSync();
+}
+function stkFormSync(){
+  const box = document.getElementById('ord_stk_info'); if(!box) return;
+  const id = document.getElementById('ord_id').value, cb = document.getElementById('ord_stkchk');
+  const cs = id ? stkChecksOfOrder(id) : [];
+  const auto = id ? stkLinesOfOrder(id).filter(function(x){ return stkLineNeedsCheck(x.m, x.l); }) : [];
+  let h = '';
+  if(cs.length) h += cs.slice(0, 4).map(function(c){ return '<a onclick="openStkCheckModal(\'' + c.id + '\')" style="cursor:pointer;margin-right:10px;font-weight:700;color:' + (c.result==='pass' ? '#15803d' : (c.result==='fail' ? '#b91c1c' : '#64748b')) + '">' + (c.result==='pass' ? '✓' : (c.result==='fail' ? '✕' : '…')) + ' ' + esc(c.no||'') + ' ' + fmtDate(c.date) + (c.inspector ? ' · ' + esc(c.inspector) : '') + '</a>'; }).join('');
+  else if(cb && cb.checked) h += '<span style="color:#b45309;font-weight:700">Chưa có phiếu kiểm — công đoạn gia công sẽ bị khoá cho tới khi kiểm ĐẠT.</span> ';
+  if(auto.length && cb && !cb.checked) h += '<span style="color:#b91c1c">⚠ Đơn có ' + auto.length + ' dòng kho "xuất gia công / gửi về gia công" — bỏ tick là bỏ qua kiểm.</span> ';
+  if(id && cb && cb.checked) h += '<a onclick="openStkCheckModal(null,\'' + id + '\')" style="cursor:pointer;color:#5b21b6;font-weight:800">＋ Lập phiếu kiểm</a>';
+  else if(!id && cb && cb.checked) h += '<span class="muted">Lưu đơn xong mới lập phiếu kiểm được.</span>';
+  box.innerHTML = h;
+  const mb = document.getElementById('ord_mat_stk');
+  if(mb){
+    const ls = id ? stkLinesOfOrder(id) : [];
+    mb.innerHTML = ls.length ? '<b style="color:#0f766e">📦 Kho đã ghi cho đơn này:</b> ' + ls.slice(-6).map(function(x){ const it = stkItemById(x.l.itemId); const d = STK_DIR[x.m.dir]||STK_DIR.in;
+      return '<a onclick="openStkMoveModal(\'' + x.m.id + '\')" style="cursor:pointer;color:' + d.c + ';margin-right:8px">' + d.ic + ' ' + esc(x.m.no||'') + ' ' + esc((STK_PURPOSES[x.m.purpose]||{}).short||'') + ': ' + esc(it ? it.name : (x.l.name||'')) + (x.l.spec ? ' ' + esc(x.l.spec) : '') + ' ×' + esc(String(x.l.qty||'')) + (x.m.partner ? ' (' + esc(x.m.partner) + ')' : '') + '</a>'; }).join('') : '';
+  }
+}
+function stkReceiveFromForm(){
+  const id = document.getElementById('ord_id').value;
+  if(!id){ alert('Lưu đơn trước, rồi mới ghi nhập kho cho đơn này.'); return; }
+  const mats = (typeof currentMaterials==='function') ? currentMaterials() : [];
+  const lines = mats.map(function(m){ return {name:String(m.material||'').trim(), grade:'', spec:m.spec||'', qty:m.qty||'', unit:m.unit||''}; });
+  const sup = (mats.find(function(m){ return String(m.supplier||'').trim(); })||{}).supplier || '';
+  openStkMoveModal(null, {dir:'in', purpose:'buy_blank', orderId:id, partner:sup, lines:lines});
+}
+function stkOrderViewHtml(o){
+  const need = stockCheckNeeded(o), cs = stkChecksOfOrder(o.id), ls = stkLinesOfOrder(o.id);
+  if(!need && !cs.length && !ls.length) return '<div style="margin-top:8px"><b style="font-size:12px">📦 Kho</b> <span class="muted small">— chưa có phiếu kho nào cho đơn này.</span>'
+    + (canWork() ? ' <a onclick="closeModal(\'modalView\');openStkMoveModal(null,{dir:\'in\',purpose:\'buy_blank\',orderId:\'' + o.id + '\'})" style="cursor:pointer;color:#15803d;font-weight:700;font-size:12px">⬇ Ghi nhập kho</a> · <a onclick="closeModal(\'modalView\');openStkCheckModal(null,\'' + o.id + '\')" style="cursor:pointer;color:#5b21b6;font-weight:700;font-size:12px">🔍 Lập phiếu kiểm</a>' : '') + '</div>';
+  const st = stockCheckState(o);
+  const stTxt = st==='ok' ? '<b style="color:#15803d">✓ Đã kiểm ĐẠT — được gia công</b>' : st==='fail' ? '<b style="color:#b91c1c">✕ Phiếu kiểm KHÔNG ĐẠT — giữ hàng, chưa gia công</b>' : st==='todo' ? '<b style="color:#b45309">⏳ Chưa kiểm — công đoạn gia công đang bị khoá</b>' : '<span class="muted">không yêu cầu kiểm</span>';
+  return '<div style="margin-top:10px;border:1px solid #ddd6fe;background:#faf5ff;border-radius:10px;padding:8px 10px;font-size:12px">'
+    + '<b style="font-size:12px">📦 Kho & 🔍 kiểm hàng xuất kho trước gia công</b> · ' + stTxt
+    + (cs.length ? '<div style="margin-top:4px">' + cs.map(function(c){ return '<div class="small"><a onclick="closeModal(\'modalView\');openStkCheckModal(\'' + c.id + '\')" style="cursor:pointer;font-weight:800;color:' + (c.result==='pass' ? '#15803d' : (c.result==='fail' ? '#b91c1c' : '#64748b')) + '">' + (c.result==='pass' ? '✓ ĐẠT' : (c.result==='fail' ? '✕ KHÔNG ĐẠT' : '… chưa KL')) + ' ' + esc(c.no||'') + '</a> ' + fmtDate(c.date) + ' · ' + esc(c.itemName||'') + ' · hộp <b>' + esc(c.labelCode||'—') + '</b> / SP <b>' + esc(c.partCode||'—') + '</b> · ' + (c.dims||[]).filter(function(d){ return d.actual; }).length + ' kích thước · ' + esc(c.inspector||'') + ' <a onclick="printStkCheck(\'' + c.id + '\')" style="cursor:pointer;color:#0369a1">🖨</a></div>'; }).join('') + '</div>' : '')
+    + (ls.length ? '<div style="margin-top:4px">' + ls.map(function(x){ const it = stkItemById(x.l.itemId); const d = STK_DIR[x.m.dir]||STK_DIR.in;
+        return '<div class="small"><span style="color:' + d.c + ';font-weight:800">' + d.ic + ' ' + esc(x.m.no||'') + '</span> ' + fmtDate(x.m.date) + ' · ' + esc((STK_PURPOSES[x.m.purpose]||{}).short||'') + ' · ' + esc(it ? it.name : (x.l.name||'')) + (x.l.grade ? ' ' + esc(x.l.grade) : '') + (x.l.spec ? ' ' + esc(x.l.spec) : '') + ' × <b>' + esc(String(x.l.qty||'')) + '</b> ' + esc(x.l.unit||(it&&it.unit)||'') + (x.m.partner ? ' · ' + esc(x.m.partner) : '') + (x.l.heatNo ? ' · heat ' + esc(x.l.heatNo) : '') + (x.m.certRef ? ' · 📄 ' + esc(x.m.certRef) : '') + '</div>'; }).join('') + '</div>' : '')
+    + (canWork() ? '<div style="margin-top:5px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"><a onclick="closeModal(\'modalView\');openStkCheckModal(null,\'' + o.id + '\')" style="cursor:pointer;color:#5b21b6;font-weight:800">🔍 Lập phiếu kiểm</a><a onclick="closeModal(\'modalView\');openStkMoveModal(null,{dir:\'in\',purpose:\'buy_blank\',orderId:\'' + o.id + '\'})" style="cursor:pointer;color:#15803d;font-weight:700">⬇ Nhập kho cho đơn</a><a onclick="closeModal(\'modalView\');openStkMoveModal(null,{dir:\'out\',purpose:\'to_prod\',orderId:\'' + o.id + '\'})" style="cursor:pointer;color:#b45309;font-weight:700">⬆ Xuất kho cho đơn</a></div>' : '')
+    + '</div>';
+}
+
+/* =====================================================================================
+   IN PHIẾU + XUẤT EXCEL
+   ===================================================================================== */
+function printStkMove(id){
+  const m = (DATA.stockMoves||[]).find(function(x){ return x && x.id===id; }); if(!m) return;
+  const d = STK_DIR[m.dir] || STK_DIR.in, p = STK_PURPOSES[m.purpose] || {label:m.purpose||''};
+  const title = m.dir==='in' ? 'PHIẾU NHẬP KHO' : (m.dir==='out' ? 'PHIẾU XUẤT KHO' : 'BIÊN BẢN KIỂM KÊ KHO');
+  const o = stkOrderById(m.orderId);
+  const rows = (m.lines||[]).filter(Boolean).map(function(l, i){ const it = stkItemById(l.itemId); const lo = l.orderId ? stkOrderById(l.orderId) : null;
+    return '<tr><td>' + (i+1) + '</td><td>' + esc(it ? it.code : '') + '</td><td>' + esc(it ? it.name : (l.name||'')) + '</td><td>' + esc(l.grade||'') + '</td><td>' + esc(l.spec||'') + '</td><td style="text-align:right"><b>' + esc(String(l.qty==null ? '' : l.qty)) + '</b></td><td>' + esc(l.unit||(it&&it.unit)||'') + '</td><td style="text-align:right">' + esc(String(l.kg||'')) + '</td><td>' + esc(l.heatNo||'') + '</td><td>' + esc(lo ? lo.code : '') + '</td></tr>'; }).join('');
+  const body = docHeader(title)
+    + '<h1 style="text-align:center;margin-top:8px">' + title + '</h1>'
+    + '<table><tr><th style="width:110px">Số phiếu</th><td><b>' + esc(m.no||'') + '</b></td><th style="width:90px">Ngày</th><td>' + fmtDate(m.date) + '</td></tr>'
+    + '<tr><th>Lý do</th><td colspan="3">' + esc(p.label) + '</td></tr>'
+    + '<tr><th>Đơn hàng</th><td colspan="3">' + (o ? '<b>' + esc(o.code||'') + '</b>' + ordRefTxt(o) + ' — ' + esc(o.name||'') + (o.company ? ' · ' + esc(o.company) : '') : '—') + '</td></tr>'
+    + '<tr><th>' + (m.dir==='in' ? 'NCC / nguồn' : 'Xuất cho') + '</th><td>' + esc(m.partner||'') + '</td><th>' + (m.dir==='in' ? 'Người giao' : 'Người nhận') + '</th><td>' + esc(m.receiver||'') + '</td></tr>'
+    + '<tr><th>Chứng từ</th><td>' + esc(m.docRef||'') + '</td><th>CO/CQ · heat</th><td>' + esc(m.certRef||'') + '</td></tr></table>'
+    + '<table><thead><tr><th style="width:24px">TT</th><th>Mã kho</th><th>Tên hàng</th><th>Mác</th><th>Quy cách</th><th style="text-align:right">' + (m.dir==='adj' ? 'SL đếm' : 'SL') + '</th><th>ĐVT</th><th style="text-align:right">kg</th><th>Heat / lô</th><th>Đơn</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + (m.note ? '<p><b>Ghi chú:</b> ' + esc(m.note) + '</p>' : '')
+    + '<div class="sign"><div><b>Người lập phiếu</b><div class="line">' + esc(m.by||'') + '</div></div><div><b>' + (m.dir==='in' ? 'Người giao hàng' : 'Người nhận') + '</b><div class="line">' + esc(m.receiver||'') + '</div></div><div><b>Thủ kho</b><div class="line">(Ký, ghi rõ họ tên)</div></div></div>';
+  printDoc(title + ' ' + (m.no||''), body);
+}
+function printStkCheck(id){
+  const c = (DATA.stockChecks||[]).find(function(x){ return x && x.id===id; }); if(!c) return;
+  const o = stkOrderById(c.orderId) || {};
+  const ck = STK_CHECK_ITEMS.map(function(x){ const v = c.checks && c.checks[x[0]]; return '<tr><td>' + esc(x[1]) + '</td><td style="text-align:center;width:70px">' + (v==='ok' ? '☑' : '☐') + '</td><td style="text-align:center;width:70px">' + (v==='ng' ? '<b class="fail">☒</b>' : '☐') + '</td></tr>'; }).join('');
+  const dims = (c.dims||[]).filter(function(d){ return d && (d.param || d.actual); });
+  const dRows = (dims.length ? dims : [{}, {}, {}, {}]).map(function(d, i){ const g = stkItemById(d.gaugeId); const gs = g ? stkCalState(g) : null;
+    return '<tr><td>' + (i+1) + '</td><td>' + esc(d.param||'') + '</td><td>' + esc(d.spec||'') + '</td><td><b>' + esc(d.actual||'') + '</b></td><td>' + esc(g ? (g.code + ' ' + (g.name||'')) : (d.gauge||'')) + ((d.gaugeDue || (gs && gs.due)) ? '<div class="' + (d.gaugeOk===false ? 'fail' : 'muted') + '" style="font-size:10px">HC đến ' + fmtDate(d.gaugeDue || gs.due) + (d.gaugeOk===false ? ' — quá hạn lúc đo' : '') + '</div>' : '') + '</td><td class="' + (d.pass==='pass' ? 'pass' : (d.pass==='fail' ? 'fail' : '')) + '">' + (d.pass==='pass' ? '✓ Đạt' : (d.pass==='fail' ? '✕ Không' : '')) + '</td></tr>'; }).join('');
+  const mism = stkCodeMismatch(c.labelCode, c.partCode);
+  const res = c.result==='pass' ? '<span class="pass">✓ ĐẠT — CHO GIA CÔNG</span>' : (c.result==='fail' ? '<span class="fail">✕ KHÔNG ĐẠT — GIỮ LẠI, KHÔNG GIA CÔNG</span>' : '☐ ĐẠT &nbsp;&nbsp; ☐ KHÔNG ĐẠT');
+  const body = docHeader('PHIẾU KIỂM TRA HÀNG XUẤT KHO TRƯỚC GIA CÔNG')
+    + '<h1 style="text-align:center;margin-top:8px">Phiếu kiểm tra hàng xuất kho trước gia công</h1>'
+    + '<table><tr><th style="width:110px">Số phiếu</th><td><b>' + esc(c.no||'') + '</b></td><th style="width:100px">Ngày kiểm</th><td>' + fmtDate(c.date) + '</td></tr>'
+    + '<tr><th>Mã đơn</th><td>' + esc(o.code||'') + ordRefTxt(o) + '</td><th>Khách hàng</th><td>' + esc(o.company||'') + '</td></tr>'
+    + '<tr><th>Tên hàng (đơn)</th><td colspan="3">' + esc(o.name||'') + (o.productSku ? ' · <b>Mã SP:</b> ' + esc(o.productSku) : '') + '</td></tr>'
+    + '<tr><th>Món kiểm</th><td>' + esc(c.itemName||'') + '</td><th>Số lượng</th><td>' + esc(c.qty||'') + '</td></tr>'
+    + '<tr><th>Mã trên nhãn / hộp</th><td>' + esc(c.labelCode||'') + '</td><th>Mã trên sản phẩm</th><td><b class="' + (mism ? 'fail' : '') + '">' + esc(c.partCode||'') + '</b>' + (mism ? ' ≠ hộp' : '') + '</td></tr></table>'
+    + '<h2>1. Đối chiếu — vỏ ngoài đúng chưa chắc hàng bên trong đúng</h2>'
+    + '<table><thead><tr><th>Hạng mục</th><th style="text-align:center">Đạt</th><th style="text-align:center">Không</th></tr></thead><tbody>' + ck + '</tbody></table>'
+    + '<h2>2. Kích thước đo thực tế</h2>'
+    + '<table><thead><tr><th style="width:24px">TT</th><th>Kích thước / thông số</th><th style="width:120px">Yêu cầu</th><th style="width:90px">Đo thực tế</th><th style="width:140px">Dụng cụ đo</th><th style="width:70px">Đạt?</th></tr></thead><tbody>' + dRows + '</tbody></table>'
+    + '<h2>3. Kết luận: ' + res + '</h2>'
+    + (c.note ? '<p style="white-space:pre-wrap"><b>Ghi chú / sai khác:</b> ' + esc(c.note) + '</p>' : '')
+    + (c.photos ? '<p class="muted" style="font-size:11px;word-break:break-all"><b>Ảnh:</b> ' + esc(c.photos).replace(/\n/g, ' · ') + '</p>' : '')
+    + '<div class="sign"><div><b>Người kiểm / đo</b><div class="line">' + esc(c.inspector||'') + '</div></div><div><b>Thợ nhận gia công</b><div class="line">' + esc(c.receiver||'') + '</div></div><div><b>Tổ trưởng KT</b><div class="line">(Ký duyệt)</div></div></div>'
+    + '<p class="muted" style="font-size:11px;margin-top:8px">* Chỉ được gia công khi phiếu kết luận ĐẠT. Phiếu KHÔNG ĐẠT: giữ hàng tại kho, lập NCR, báo Sale/Kho đổi hàng.</p>';
+  printDoc('Phieu kiem xuat kho ' + (c.no||''), body);
+}
+function stkDownloadCsv(head, rows, name){
+  const csv = [head].concat(rows).map(function(r){ return r.map(csvCell).join(','); }).join('\r\n');
+  const blob = new Blob([String.fromCharCode(0xFEFF) + csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name + '_' + todayStr() + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function khoExportItems(cats){
+  const Q = stkQtyMap();
+  const list = (DATA.stockItems||[]).filter(function(it){ return it && cats.indexOf(it.cat||'other')>=0; });
+  if(!list.length){ alert('Chưa có mặt hàng nào để xuất.'); return; }
+  if(cats.length===1 && cats[0]==='gauge'){
+    stkDownloadCsv(['Mã','Tên','Số seri','Phạm vi','Độ chia','Người giữ','Hiệu chuẩn gần nhất','Chu kỳ (tháng)','Hạn tiếp theo','Tình trạng','Đơn vị HC'],
+      list.map(function(g){ return [g.code, g.name, g.serial, g.range, g.resolution, g.holder, g.calibDate, g.calibCycle, stkCalDue(g), stkCalState(g).t, g.calibOrg]; }), 'DHP_dung_cu_do');
+    return;
+  }
+  stkDownloadCsv(['Mã','Nhóm','Tên hàng','Mác / vật liệu','Quy cách','NCC / hãng','Vị trí','Tồn','ĐVT','Tối thiểu','Dưới tối thiểu'],
+    list.map(function(it){ const q = Q[it.id]||0, mn = stkNum(it.minQty); return [it.code, stkCat(it.cat).label, it.name, it.grade, it.spec, it.brand || it.machine, it.loc, q, it.unit, it.minQty, (mn>0 && q<mn) ? 'CÓ' : '']; }),
+    'DHP_ton_kho');
+}
+function khoExportMoves(){
+  const rows = [];
+  (DATA.stockMoves||[]).filter(Boolean).slice().sort(function(a,b){ return stkMoveTime(a).localeCompare(stkMoveTime(b)); }).forEach(function(m){
+    (m.lines||[]).forEach(function(l){ const it = stkItemById(l.itemId), o = stkOrderById(stkLineOrder(m, l));
+      rows.push([m.date, m.no, (STK_DIR[m.dir]||{}).t, (STK_PURPOSES[m.purpose]||{}).label, o ? o.code : '', o ? (o.quoteNo||o.poNo||'') : '', it ? it.code : '', it ? it.name : l.name, l.grade, l.spec, l.qty, l.unit || (it && it.unit) || '', l.kg, l.heatNo, m.partner, m.docRef, m.certRef, m.receiver, m.by, m.note]); });
+  });
+  if(!rows.length){ alert('Chưa có phiếu nào để xuất.'); return; }
+  stkDownloadCsv(['Ngày','Số phiếu','Loại','Lý do','Mã đơn','Mã BG / PO','Mã kho','Tên hàng','Mác','Quy cách','SL','ĐVT','kg','Heat / lô','NCC / nguồn / xuất cho','Chứng từ','CO/CQ','Người giao / nhận','Người lập','Ghi chú'], rows, 'DHP_phieu_kho');
+}
+
 /* ---------------- INIT ---------------- */
 function renderAll(){
   document.getElementById('topStamp').textContent = 'Cập nhật lúc ' + new Date().toLocaleString('vi-VN');
   try{ renderAlertBar(); }catch(e){ console.error('alertBar', e); }
   try{ outTabBadge(); }catch(e){}
+  try{ khoTabBadge(); }catch(e){}
   const active = document.querySelector('.view.active');
   if(!active) return;
   const id = active.id;
@@ -11059,6 +12317,7 @@ function renderAll(){
     else if(id==='view-guide') renderGuide();
     else if(id==='view-kpi'){ renderKpi(); try{ rptKpiCard(); }catch(e){ console.error('rptKpiCard', e); } }
     else if(id==='view-outsource') renderOutsource();
+    else if(id==='view-kho') renderKho();
     else if(id==='view-ncr') renderNcr();
     else if(id==='view-data') renderData();
   }catch(e){

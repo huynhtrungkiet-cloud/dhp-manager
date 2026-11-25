@@ -53,6 +53,7 @@ Mọi người **đều xem được mọi thứ**. Chỉ 2 người (TPKT & đi
 | 📅 **Lịch phân công & Đơn hàng** | Màn hình chính. Trên: lịch (người × ngày, ai làm việc gì). Dưới: danh sách đơn hàng + tiến độ. |
 | 🏢 **Khách hàng** | Danh bạ khách (tự sinh từ đơn hàng). |
 | 📊 **KPI & Báo cáo** | Tỷ lệ đúng hạn, đơn quá hạn, NCR, giờ công… |
+| 📦 **Kho & Vật tư** | Tồn kho thép · sắt · khớp nối tồn, dao cụ, dụng cụ đo (hiệu chuẩn); phiếu nhập/xuất gắn đơn hàng; **phiếu kiểm hàng xuất kho trước gia công**. |
 | ⚠ **Ghi nhận NCR** | Ghi lỗi/sai lệch khi phát hiện. |
 | ⚙ **Dữ liệu & Đồng bộ** | Kết nối Supabase, sao lưu JSON. |
 
@@ -61,6 +62,13 @@ Mọi người **đều xem được mọi thứ**. Chỉ 2 người (TPKT & đi
 2. **Chuỗi công đoạn (routing)**: bấm **⚡ Dùng mẫu chuẩn** hoặc **💡 Gợi ý từ đơn giống**, hoặc tự thêm.
 3. Mỗi công đoạn: chọn **👤 người làm + ngày bắt đầu + số ngày** → app **tự dàn lên lịch** (bỏ Chủ Nhật) cho người đó.
 4. Khi làm: đổi trạng thái công đoạn **Chưa → Đang → Xong** → **% đơn tự tính**, mọi người thấy ngay.
+
+### 📦 Kho & kiểm hàng xuất kho trước gia công (25-11-2026)
+- **Phiếu nhập**: phôi mua cho đơn nào (vd *China Steel*, ghi CO/CQ + số heat), hàng KH gửi về **gia công lỗ** hay **cắt bớt** → chọn **lý do** + **đơn hàng**. Hàng của KH không có trong danh mục thì gõ tên tự do (không tính tồn).
+- **Phiếu xuất**: xuất cho gia công đơn nào; dao cụ / dụng cụ đo cấp cho thợ nào.
+- **🔍 Kiểm trước gia công**: hàng lấy từ kho / KH gửi về → **mở hộp, ghi mã đóng trên sản phẩm + đo kích thước thực** (lỗ sẵn, Ø ngoài, chiều dài…), chọn dụng cụ đo, kết luận **ĐẠT** mới giao thợ. Chưa có phiếu ĐẠT thì app **không cho bắt đầu / báo xong công đoạn gia công** (Tiện, Phay, Cắt dây, Khoan, Xọc…). KHÔNG ĐẠT → giữ hàng, lập NCR, đổi hàng.
+- Đơn gia công mới tự bật ô **🔍 Kiểm hàng xuất kho** (trong form đơn, cạnh ô 🛃 hàng nhập) — bỏ tick nếu đơn không lấy hàng từ kho.
+- **📏 Dụng cụ đo**: mỗi cái 1 dòng, ghi ngày hiệu chuẩn + chu kỳ → app báo quá hạn; phiếu kiểm dùng thước quá hạn sẽ bị nhắc.
 
 ### Đọc màu công đoạn trên đơn
 🟢 xong · 🟠 đang làm · 🔴 trễ (vượt số ngày) · ⚪ chưa làm.

@@ -58,6 +58,10 @@ end $$;
 
 → Báo **Success** là xong.
 
+> 🆕 **25-11-2026 — tab 📦 Kho & Vật tư** dùng thêm 3 bảng `stock_items`, `stock_moves`, `stock_checks`.
+> Chạy file **`supabase_kho_2026-11-25.sql`** (dán toàn bộ vào SQL Editor → Run, 1 lần). Chưa chạy thì tab Kho vẫn dùng được
+> nhưng dữ liệu kho chỉ nằm trên máy đang nhập — tab Kho hiện dòng cảnh báo vàng cho tới khi chạy xong.
+
 ## Bước 3 — Lấy 2 thông tin để dán vào app
 
 1. Menu trái → **Project Settings** (bánh răng) → **API**
